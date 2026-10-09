@@ -1,5 +1,5 @@
 /* ==========================================================================
-   VoltFit Customer Screen Styles
+   VoltFit Customer Screen Styles (Refined Alignment & Symmetry)
    ========================================================================== */
 
 /* Bike Selector Hero Bar */
@@ -9,25 +9,27 @@
   backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-card);
-  padding: 20px;
-  margin-bottom: 24px;
+  padding: 18px 22px;
+  margin-bottom: 22px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 16px;
   box-shadow: var(--glass-shadow), var(--inner-highlight);
+  box-sizing: border-box;
 }
 
 .bike-selector-left {
   display: flex;
   align-items: center;
   gap: 14px;
+  min-width: 0;
 }
 
 .bike-icon-circle {
-  width: 48px;
-  height: 48px;
+  width: 46px;
+  height: 46px;
   border-radius: 14px;
   background: var(--accent-blue-tint);
   border: 1px solid rgba(0, 122, 255, 0.2);
@@ -36,6 +38,7 @@
   justify-content: center;
   font-size: 22px;
   color: var(--accent-blue);
+  flex-shrink: 0;
 }
 
 .bike-selector-dropdowns {
@@ -48,9 +51,11 @@
 /* Battery Discovery Grid */
 .battery-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 20px;
-  margin-top: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 18px;
+  margin-top: 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .battery-card {
@@ -59,55 +64,60 @@
   height: 100%;
   position: relative;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .battery-card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
+  gap: 8px;
 }
 
 .battery-name {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--text-primary);
+  line-height: 1.25;
 }
 
 .battery-supplier {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--text-secondary);
   display: flex;
   align-items: center;
   gap: 4px;
+  margin-top: 3px;
 }
 
 .battery-specs-pills {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  margin: 14px 0;
-  padding: 12px;
+  margin: 12px 0;
+  padding: 10px 12px;
   background: rgba(255, 255, 255, 0.45);
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.6);
+  box-sizing: border-box;
 }
 
 .spec-item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .spec-label {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 500;
   color: var(--text-secondary);
   text-transform: uppercase;
 }
 
 .spec-val {
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -117,12 +127,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 14px;
+  padding-top: 12px;
   border-top: 1px solid var(--hairline);
+  gap: 10px;
 }
 
 .battery-price {
-  font-size: 22px;
+  font-size: 21px;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-primary);
@@ -131,49 +142,55 @@
 /* 4-Step Booking Page Container */
 .book-container {
   display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) 350px;
+  gap: 20px;
   align-items: flex-start;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .book-steps {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
+  min-width: 0;
 }
 
 .book-step-card {
   position: relative;
+  box-sizing: border-box;
 }
 
 .step-num-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: var(--accent-blue);
   color: white;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 700;
   margin-right: 8px;
+  flex-shrink: 0;
 }
 
 .service-center-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px;
-  margin-top: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .service-center-card {
-  padding: 14px;
-  border-radius: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.45);
   border: 1.5px solid var(--glass-border);
   cursor: pointer;
   transition: all var(--transition-fast);
+  box-sizing: border-box;
 }
 
 .service-center-card:hover {
@@ -189,28 +206,28 @@
 /* 7-Day Date Strip & Slot Matrix */
 .date-strip {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   overflow-x: auto;
-  padding-bottom: 8px;
-  margin-bottom: 16px;
+  padding-bottom: 6px;
+  margin-bottom: 14px;
 }
 
 .slot-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 10px;
-  margin-top: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .booking-duration-notice {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 9px 12px;
   border-radius: 12px;
   background: var(--accent-blue-tint);
   color: var(--accent-blue);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
   margin-top: 12px;
 }
@@ -218,16 +235,19 @@
 /* Order Summary Sticky Card */
 .order-summary-card {
   position: sticky;
-  top: 90px;
+  top: 80px;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .summary-line-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
-  font-size: 14px;
+  padding: 7px 0;
+  font-size: 13.5px;
   color: var(--text-secondary);
+  gap: 8px;
 }
 
 .summary-line-item.credit {
@@ -237,9 +257,9 @@
 
 .summary-line-item.total {
   border-top: 1.5px solid var(--hairline-strong);
-  margin-top: 8px;
-  padding-top: 14px;
-  font-size: 18px;
+  margin-top: 6px;
+  padding-top: 12px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -249,84 +269,89 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
   flex-wrap: wrap;
   gap: 12px;
 }
 
 .order-detail-layout {
   display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 20px;
   align-items: flex-start;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .technician-card-assigned {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85), rgba(240, 245, 255, 0.75));
-  border: 1px solid rgba(0, 122, 255, 0.3);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(240, 246, 255, 0.82));
+  border: 1px solid rgba(0, 122, 255, 0.28);
 }
 
 .technician-profile-header {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 14px;
+  gap: 12px;
+  margin-bottom: 12px;
+  min-width: 0;
 }
 
 .tech-photo {
-  width: 54px;
-  height: 54px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid white;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
 .tech-placeholder-box {
-  padding: 24px;
+  padding: 20px;
   text-align: center;
-  border-radius: 18px;
+  border-radius: 16px;
   background: rgba(118, 118, 128, 0.08);
   border: 1.5px dashed var(--hairline-strong);
   color: var(--text-secondary);
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 /* Live Map Canvas */
 .live-map-container {
   width: 100%;
-  height: 240px;
+  height: 230px;
   border-radius: 18px;
   overflow: hidden;
   position: relative;
   border: 1px solid var(--glass-border);
-  margin-top: 14px;
+  margin-top: 12px;
   background: #dfe6e9;
 }
 
 .map-eta-overlay {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  background: rgba(255, 255, 255, 0.92);
+  top: 10px;
+  left: 10px;
+  background: rgba(255, 255, 255, 0.94);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  border-radius: 12px;
-  padding: 8px 14px;
+  border-radius: 10px;
+  padding: 6px 12px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--accent-blue);
+  z-index: 5;
 }
 
 /* Garage / Bikes Grid */
 .bikes-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 18px;
+  gap: 16px;
 }
 
 .bike-garage-card {
