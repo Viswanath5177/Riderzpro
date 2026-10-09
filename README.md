@@ -69,7 +69,7 @@
 
 ## 🏃 Running Locally
 
-To run the web app locally:
+To run the web app locally
 
 ```bash
 # Start local HTTP server
