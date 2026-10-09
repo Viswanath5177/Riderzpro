@@ -289,3 +289,290 @@ sequenceDiagram
    - Finalize the timeout threshold before auto-reassignment (e.g., 60s vs. 120s) and rider penalty/re-routing policy.
 6. **MCP Tool Capabilities & Security Policy**:
    - Confirm exact tool specifications and authorization rules for Model Context Protocol (MCP) agents interacting with logistics state.
+
+---
+
+## Part 2 — Delivery Management Backend Implementation
+
+### 1. Module Responsibilities
+The **Delivery Management Subsystem** implements the backend core for order fulfillment, rider assignment, delivery tracking, and route optimization.
+- **Fulfillment Lifecycle**: Ingests confirmed customer orders, verifies spatial coordinates, enforces duplicate delivery prevention, and creates traceable delivery entities.
+- **State Machine Management**: Validates status transitions (`pending` &rarr; `assigned` &rarr; `picked_up` &rarr; `in_transit` &rarr; `delivered`), logs immutable audit history, and manages terminal outcomes (`failed`, `cancelled`).
+- **Rider Assignment Business Logic**: Evaluates rider availability, active workloads, payload limits, vehicle capabilities, and proximity to pickup, with concurrency control and safe reassignment.
+- **Route Planning Engine**: Calculates road-adjusted transit distance, estimated travel duration, and EV battery energy consumption profiles.
+- **Optimization Bridge**: Dual-tier optimizer supporting classical baselines (Google OR-Tools & heuristic nearest-neighbor) alongside a quantum QUBO/QAOA formulation with automatic fallback.
+- **MCP Integration**: Exposes authorized Model Context Protocol tools for AI agent task queries and supervisor-approved dispatches.
+
+---
+
+### 2. API Endpoints and Request/Response Examples
+
+Base URL: `http://localhost:8000/api/deliveries`
+
+#### 2.1 Create Delivery Task
+- **Endpoint**: `POST /api/deliveries`
+- **Status**: `201 Created` (or `409 Conflict` if active delivery exists for order, `400 Bad Request` if invalid coordinates)
+- **Request Example**:
+```json
+{
+  "order_id": "VF-2026-8941",
+  "customer_id": "usr_customer_demo",
+  "customer_name": "Rahul Verma",
+  "customer_phone": "+91 98860 99887",
+  "vendor_id": "vnd_nexgen_ev",
+  "vendor_name": "NexGen Power Systems",
+  "pickup_address": "Indiranagar Hub, HAL 2nd Stage, Bengaluru",
+  "pickup_lat": 12.9719,
+  "pickup_lng": 77.6412,
+  "dropoff_address": "Apartment 4B, Palm Meadows, Whitefield, Bengaluru",
+  "dropoff_lat": 12.9550,
+  "dropoff_lng": 77.7200,
+  "package_weight_kg": 19.5,
+  "package_dimensions": "45x30x25 cm",
+  "priority": "express",
+  "notes": "NexCharge Pro 51.1V battery delivery"
+}
+```
+- **Response Example**:
+```json
+{
+  "id": "del_a1b2c3d4e5f6",
+  "order_id": "VF-2026-8941",
+  "customer_id": "usr_customer_demo",
+  "customer_name": "Rahul Verma",
+  "customer_phone": "+91 98860 99887",
+  "vendor_id": "vnd_nexgen_ev",
+  "vendor_name": "NexGen Power Systems",
+  "pickup_address": "Indiranagar Hub, HAL 2nd Stage, Bengaluru",
+  "pickup_lat": 12.9719,
+  "pickup_lng": 77.6412,
+  "dropoff_address": "Apartment 4B, Palm Meadows, Whitefield, Bengaluru",
+  "dropoff_lat": 12.9550,
+  "dropoff_lng": 77.7200,
+  "package_weight_kg": 19.5,
+  "package_dimensions": "45x30x25 cm",
+  "priority": "express",
+  "status": "pending",
+  "assigned_rider_id": null,
+  "assigned_rider": null,
+  "created_at": "2026-10-09T17:50:00Z",
+  "updated_at": "2026-10-09T17:50:00Z",
+  "latest_route": {
+    "id": "rt_88419201",
+    "delivery_id": "del_a1b2c3d4e5f6",
+    "provider": "haversine_builtin",
+    "distance_km": 11.25,
+    "duration_minutes": 29.1,
+    "energy_consumption_kwh": 0.248,
+    "waypoints": [
+      {"step": 0, "lat": 12.9719, "lng": 77.6412, "eta_minute_offset": 0.0},
+      {"step": 5, "lat": 12.9550, "lng": 77.7200, "eta_minute_offset": 29.1}
+    ]
+  },
+  "status_history": [
+    {
+      "id": "dsh_9921",
+      "from_status": null,
+      "to_status": "pending",
+      "changed_by_user_id": "usr_customer_demo",
+      "changed_by_role": "customer",
+      "reason": "Fulfillment task created and queued for dispatch",
+      "created_at": "2026-10-09T17:50:00Z"
+    }
+  ]
+}
+```
+
+#### 2.2 List and Filter Deliveries
+- **Endpoint**: `GET /api/deliveries?page=1&limit=20&status=pending&priority=express`
+- **Status**: `200 OK`
+- **Response Example**:
+```json
+{
+  "items": [...],
+  "total": 1,
+  "page": 1,
+  "limit": 20,
+  "total_pages": 1
+}
+```
+
+#### 2.3 Retrieve Delivery Details
+- **Endpoint**: `GET /api/deliveries/{delivery_id}`
+- **Status**: `200 OK` (or `404 Not Found`)
+
+#### 2.4 Update Delivery Status
+- **Endpoint**: `PATCH /api/deliveries/{delivery_id}/status`
+- **Status**: `200 OK` (or `400 Bad Request` on invalid state transition)
+- **Request Example**:
+```json
+{
+  "status": "delivered",
+  "actor_id": "tech_ramesh",
+  "actor_role": "rider",
+  "reason": "Completed installation and verified OTP with customer",
+  "proof_of_delivery": "OTP-9921-VERIFIED"
+}
+```
+
+#### 2.5 Assign or Reassign Rider
+- **Endpoint**: `POST /api/deliveries/{delivery_id}/assign`
+- **Status**: `200 OK` (or `422 Unprocessable Entity` if rider is offline/busy, `404 Not Found`)
+- **Request Example**:
+```json
+{
+  "rider_id": "tech_ramesh",
+  "actor_id": "vnd_nexgen_ev",
+  "actor_role": "vendor",
+  "reason": "Dispatched for morning time slot"
+}
+```
+*Note: If `rider_id` is omitted, the assignment engine automatically finds and assigns the top-ranked available rider.*
+
+#### 2.6 Calculate / Optimize Route
+- **Endpoint**: `POST /api/deliveries/{delivery_id}/optimize-route`
+- **Status**: `200 OK`
+- **Request Example**:
+```json
+{
+  "provider": "haversine_builtin",
+  "vehicle_type": "electric_bike"
+}
+```
+
+#### 2.7 Multi-Delivery Batch Optimization
+- **Endpoint**: `POST /api/deliveries/optimize-batch`
+- **Status**: `200 OK`
+- **Request Example**:
+```json
+{
+  "delivery_ids": ["del_001", "del_002", "del_003"],
+  "optimizer_type": "classical_ortools"
+}
+```
+
+---
+
+### 3. Database Dependencies
+
+The subsystem utilizes SQLAlchemy 2.0 models mapped to SQLite (local) or PostgreSQL (production):
+- **`deliveries`**: Master delivery task record with foreign keys to `riders`, composite indexes on `(order_id, status)` and `(vendor_id, status)`.
+- **`riders`**: Fleet partner profiles with live coordinates, status flags (`available`, `busy`, `on_break`, `offline`), capacity limits, and current workload counters.
+- **`rider_assignments`**: Audit logs of every dispatch binding, tracking reassignments and completion timestamps.
+- **`delivery_routes`**: Persisted route computations containing distances, durations, energy usage, and JSON waypoints.
+- **`delivery_status_history`**: Immutable ledger of all lifecycle transitions with actor ID, role, and reasoning.
+
+*Coordinated with Database Lead (Vamsi): Shared models reuse existing user/order IDs without breaking dependencies.*
+
+---
+
+### 4. Rider Assignment Business Rules
+
+1. **Availability Gate**: A rider must be `is_online == True` and `status == "available"`. Offline or on-break riders are strictly excluded.
+2. **Workload Ceiling**: Current workload must satisfy `current_workload_count < max_concurrent_orders`. Reaching the limit automatically marks the rider `status = "busy"`.
+3. **Payload Check**: `max_payload_kg >= delivery.package_weight_kg`.
+4. **Ranking Objective Function**:
+   $$\text{Score} = \text{Distance}_{\text{pickup}}(\text{km}) + 3.0 \times \text{Workload} - 1.0 \times \max(0, \text{Rating} - 4.0)$$
+   *Minimizes travel time while balancing fleet workload.*
+5. **Reassignment Safety**: Reassigning automatically decrements the previous rider's workload counter, sets their status back to `available` if previously busy, and logs a `reassigned` event.
+
+---
+
+### 5. Delivery Status State Machine
+
+```
+              +-------------+
+              |   pending   |
+              +------+------+
+                     |
+         +-----------+-----------+
+         |                       |
+         v                       v
+   +----------+            +-----------+
+   | assigned |            | cancelled | [Terminal]
+   +-----+----+            +-----------+
+         |
+         +-----------------------+
+         |                       |
+         v                       v
+   +-----------+           +-----------+
+   | picked_up |           |  pending  | (Reassignment fallback)
+   +-----+-----+           +-----------+
+         |
+         +-----------------------+
+         |                       |
+         v                       v
+   +------------+          +-----------+
+   | in_transit |          |  failed   |
+   +-----+------+          +-----+-----+
+         |                       |
+         +-----------+           +---> retry &rarr; pending
+         |           |
+         v           v
+   +-----------+ +--------+
+   | delivered | | failed |
+   +-----------+ +--------+
+    [Terminal]
+```
+
+- Invalid transitions (e.g. `pending` &rarr; `delivered`, or mutating `delivered`/`cancelled`) are rejected with `HTTP 400 Bad Request`.
+- Completion releases the assigned rider's capacity slot and marks the assignment `completed`.
+
+---
+
+### 6. Route Planning Design
+
+- **Pluggable Architecture (`RoutingProvider`)**:
+  - `HaversineRoutingProvider`: Great-circle distance with a 1.25x urban road detour coefficient and vehicle speed profiling (`regular_bike`: 18 km/h, `electric_bike`: 28 km/h, `van`: 32 km/h).
+  - `OSRMRoutingProvider`: Connects to OSRM APIs via `OSRM_API_URL` with automatic fallback to Haversine.
+  - `GoogleMapsRoutingProvider`: Connects to Google Maps Directions via `GOOGLE_MAPS_API_KEY` with fallback.
+- **EV Energy Estimator**: Tracks energy draw ($\approx 0.022\text{ kWh/km}$ for e-bikes, $0.180\text{ kWh/km}$ for vans).
+
+---
+
+### 7. Quantum Optimization Integration Points
+
+- **Classical Baseline**: Production-ready implementation using **Google OR-Tools** (`pywrapcp.RoutingModel` with `PATH_CHEAPEST_ARC` heuristic) solving Capacitated VRP.
+- **Quantum Hybrid Bridge (`QuantumHybridDeliveryOptimizer`)**:
+  - Prepares Quadratic Unconstrained Binary Optimization (QUBO) formulations:
+    $$\min_{x} x^T Q x \quad \text{where } x_{d,r} \in \{0, 1\}$$
+  - Exposes standardized input/output payloads ready for **Harshitha and Hema's** Qiskit/QAOA module.
+  - **Graceful Fallback**: If the quantum backend is unreachable or unconfigured, the classical solver executes transparently and returns `quantum_backend_status: "classical_fallback"` without blocking fulfillment operations.
+
+---
+
+### 8. Environment Variables & Testing
+
+#### Environment Variables
+```bash
+DATABASE_URL="sqlite:///./riderzpro_logistics.db"  # Or postgresql://user:pass@localhost:5432/riderzpro
+OSRM_API_URL="http://router.project-osrm.org"      # Optional external OSRM endpoint
+GOOGLE_MAPS_API_KEY=""                            # Optional Google Maps API key
+QUANTUM_BACKEND_URL=""                            # Optional Quantum simulator/service endpoint
+```
+
+#### Running Locally
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run backend development server
+uvicorn main:app --reload --port 8000
+```
+Open **`http://localhost:8000/docs`** in your browser for interactive Swagger API documentation.
+
+#### Executing the Test Suite
+```bash
+python -m pytest tests/test_delivery_backend.py -v
+```
+
+---
+
+### 9. Cross-Team Coordination
+
+| Team Member | Shared Interface | Coordination Items |
+|---|---|---|
+| **Vamsi** | Database & Models | Align on PostGIS spatial geometry column types for production PostgreSQL migration. |
+| **Pushpam** | Backend & Deployment | Coordinate JWT authentication middleware injection into `/api/deliveries` endpoints. |
+| **Amrutha** | Rider Panel | Provide delivery task payload schema and status webhook triggers for the Rider Panel UI. |
+| **Harshitha & Hema** | Quantum Algorithms | Connect QUBO/Ising formulation matrices generated by `QuantumHybridDeliveryOptimizer` to Qiskit simulator endpoints. |
