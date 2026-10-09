@@ -1,5 +1,5 @@
 /* ==========================================================================
-   VoltFit Customer View Module (Find, Book 4-Step, Orders, Garage, Tracking)
+   VoltFit Customer View Module (Refined Layout Alignment & Extended Catalog)
    ========================================================================== */
 
 import { store } from "../state/store.js";
@@ -49,18 +49,18 @@ function renderFindTab() {
     <div class="bike-selector-hero">
       <div class="bike-selector-left">
         <div class="bike-icon-circle">${activeBike?.modelDetails?.image || "🛵"}</div>
-        <div>
+        <div style="min-width: 0;">
           <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--accent-blue); letter-spacing: 0.04em;">Selected Vehicle</div>
-          <div style="font-size: 19px; font-weight: 700; color: var(--text-primary);">
+          <div style="font-size: 18px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
             ${activeBike ? `${activeBike.modelDetails.brand} ${activeBike.modelDetails.model} (${activeBike.year})` : "Select a Bike"}
           </div>
-          <div style="font-size: 13px; color: var(--text-secondary);">
+          <div style="font-size: 12.5px; color: var(--text-secondary);">
             ${activeBike?.nickname ? `“${activeBike.nickname}” • ` : ""}${activeBike?.registration_number || ""}
           </div>
         </div>
       </div>
       <div class="bike-selector-dropdowns">
-        <select id="select-quick-bike" class="form-control" style="width: auto; min-width: 200px;">
+        <select id="select-quick-bike" class="form-control" style="width: auto; min-width: 220px;">
           ${store.savedBikes.map(b => {
             const m = store.bikeModels.find(m => m.id === b.bike_model_id);
             return `<option value="${b.id}" ${b.id === store.selectedBikeId ? 'selected' : ''}>${m?.brand} ${m?.model} (${b.registration_number})</option>`;
@@ -71,7 +71,7 @@ function renderFindTab() {
     </div>
 
     <!-- Section Heading -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px; margin-bottom: 12px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
       <div>
         <h2 class="text-title-medium">Compatible Batteries</h2>
         <p class="text-caption">Showing only batteries strictly verified to fit ${activeBike?.modelDetails?.model || "your bike"}</p>
@@ -93,12 +93,12 @@ function renderFindTab() {
         ${compatibleBatteries.map(bat => `
           <div class="glass-card battery-card interactive" data-battery-id="${bat.id}">
             <div class="battery-card-header">
-              <div>
+              <div style="min-width: 0; flex: 1;">
                 <span class="fit-badge">✓ Fits ${activeBike?.modelDetails?.model}</span>
                 <h3 class="battery-name" style="margin-top: 6px;">${bat.name}</h3>
                 <div class="battery-supplier">by ${bat.vendor_name} • ★ ${bat.rating} (${bat.review_count})</div>
               </div>
-              <span class="brand-badge">${bat.badge || bat.chemistry.split(" ")[0]}</span>
+              <span class="brand-badge" style="flex-shrink: 0;">${bat.badge || bat.chemistry.split(" ")[0]}</span>
             </div>
 
             <!-- Quick Specs Pills Grid -->
@@ -121,13 +121,13 @@ function renderFindTab() {
               </div>
             </div>
 
-            <div style="font-size: 12.5px; color: var(--text-secondary); margin-bottom: 12px;">
+            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
               ${bat.bms_features}
             </div>
 
             <div class="battery-footer">
               <div>
-                <div style="font-size: 11px; color: var(--text-secondary); font-weight: 500;">TOTAL PRICE</div>
+                <div style="font-size: 10.5px; color: var(--text-secondary); font-weight: 500;">TOTAL PRICE</div>
                 <div class="battery-price tabular-nums">${formatCurrency(bat.price)}</div>
               </div>
               <div style="display: flex; gap: 8px;">
@@ -178,18 +178,18 @@ function renderBookTab() {
     </div>
 
     <!-- Selected Battery Strip -->
-    <div class="glass-card" style="margin-bottom: 20px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: rgba(255, 255, 255, 0.75);">
-      <div style="display: flex; align-items: center; gap: 14px;">
-        <div style="font-size: 28px;">⚡</div>
-        <div>
+    <div class="glass-card" style="margin-bottom: 20px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: rgba(255, 255, 255, 0.75);">
+      <div style="display: flex; align-items: center; gap: 14px; min-width: 0;">
+        <div style="font-size: 26px; flex-shrink: 0;">⚡</div>
+        <div style="min-width: 0;">
           <span class="fit-badge" style="font-size: 11px;">Fits ${activeBike?.modelDetails?.model}</span>
-          <div style="font-size: 16px; font-weight: 700; color: var(--text-primary); margin-top: 2px;">${battery.name}</div>
-          <div style="font-size: 12.5px; color: var(--text-secondary);">${battery.voltage}V ${battery.capacity_ah}Ah (${battery.kwh} kWh) • ${battery.warranty_months}m Warranty</div>
+          <div style="font-size: 15.5px; font-weight: 700; color: var(--text-primary); margin-top: 2px;">${battery.name}</div>
+          <div style="font-size: 12px; color: var(--text-secondary);">${battery.voltage}V ${battery.capacity_ah}Ah (${battery.kwh} kWh) • ${battery.warranty_months}m Warranty</div>
         </div>
       </div>
-      <div style="text-align: right;">
-        <div style="font-size: 11px; color: var(--text-secondary);">BATTERY PRICE</div>
-        <div class="tabular-nums" style="font-size: 20px; font-weight: 700; color: var(--text-primary);">${formatCurrency(battery.price)}</div>
+      <div style="text-align: right; flex-shrink: 0;">
+        <div style="font-size: 10.5px; color: var(--text-secondary);">BATTERY PRICE</div>
+        <div class="tabular-nums" style="font-size: 19px; font-weight: 700; color: var(--text-primary);">${formatCurrency(battery.price)}</div>
       </div>
     </div>
 
@@ -199,12 +199,12 @@ function renderBookTab() {
         
         <!-- STEP 1: Installation Type -->
         <div class="glass-card book-step-card">
-          <div style="display: flex; align-items: center; margin-bottom: 14px;">
+          <div style="display: flex; align-items: center; margin-bottom: 12px;">
             <span class="step-num-badge">1</span>
             <h3 class="text-section-title">Installation Type</h3>
           </div>
 
-          <div class="segmented-control" style="width: 100%; display: flex; margin-bottom: 14px;">
+          <div class="segmented-control" style="width: 100%; display: flex; margin-bottom: 12px;">
             <button class="segmented-option ${draft.installType === 'home_visit' ? 'active' : ''}" id="seg-home-visit" style="flex: 1; justify-content: center;">
               🏠 Doorstep Home Visit (+${formatCurrency(store.pricingRules.install_home)})
             </button>
@@ -240,7 +240,7 @@ function renderBookTab() {
 
         <!-- STEP 2: Date & Time Slot Grid -->
         <div class="glass-card book-step-card">
-          <div style="display: flex; align-items: center; margin-bottom: 14px;">
+          <div style="display: flex; align-items: center; margin-bottom: 12px;">
             <span class="step-num-badge">2</span>
             <h3 class="text-section-title">Date & Available Time Slot</h3>
           </div>
@@ -256,7 +256,7 @@ function renderBookTab() {
           </div>
 
           <!-- Slots Grid -->
-          <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">
+          <div style="font-size: 12.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">
             Available Slots for ${selectedDayObj.dayLabel} (${selectedDayObj.dateString}):
           </div>
           <div class="slot-grid">
@@ -285,12 +285,12 @@ function renderBookTab() {
 
         <!-- STEP 3: Old Battery Exchange -->
         <div class="glass-card book-step-card">
-          <div style="display: flex; align-items: center; justify-content: space-between;">
-            <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
               <span class="step-num-badge">3</span>
               <div>
                 <h3 class="text-section-title">Old Battery Exchange</h3>
-                <p class="text-caption">Exchange your existing dead/old battery for an instant instant credit of <strong>${formatCurrency(store.pricingRules.exchange_credit)}</strong></p>
+                <p class="text-caption">Exchange existing old battery for instant credit of <strong>${formatCurrency(store.pricingRules.exchange_credit)}</strong></p>
               </div>
             </div>
             <label class="switch">
@@ -304,37 +304,37 @@ function renderBookTab() {
 
       <!-- STEP 4: Cost Summary & Sticky Confirmation Card -->
       <div class="glass-card order-summary-card">
-        <div style="display: flex; align-items: center; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; margin-bottom: 14px;">
           <span class="step-num-badge">4</span>
           <h3 class="text-section-title">Cost Summary</h3>
         </div>
 
         <div class="summary-line-item">
-          <span>${battery.name}</span>
+          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${battery.name}</span>
           <span class="tabular-nums">${formatCurrency(costBreakdown.batteryPrice)}</span>
         </div>
 
         <div class="summary-line-item">
-          <span>Installation (${draft.installType === 'home_visit' ? 'Home Visit' : 'Service Center'})</span>
+          <span>Installation (${draft.installType === 'home_visit' ? 'Home' : 'Center'})</span>
           <span class="tabular-nums">${formatCurrency(costBreakdown.installFee)}</span>
         </div>
 
         ${costBreakdown.travelFee > 0 ? `
           <div class="summary-line-item">
-            <span>Home Visit Travel Charge</span>
+            <span>Travel Charge</span>
             <span class="tabular-nums">${formatCurrency(costBreakdown.travelFee)}</span>
           </div>
         ` : ""}
 
         ${draft.hasExchange ? `
           <div class="summary-line-item credit">
-            <span>Old Battery Exchange Credit</span>
+            <span>Exchange Credit</span>
             <span class="tabular-nums">- ${formatCurrency(costBreakdown.exchangeCredit)}</span>
           </div>
         ` : ""}
 
         <div class="summary-line-item">
-          <span>GST & Platform Taxes (18%)</span>
+          <span>GST Taxes (18%)</span>
           <span class="tabular-nums">${formatCurrency(costBreakdown.taxAmount)}</span>
         </div>
 
@@ -343,12 +343,12 @@ function renderBookTab() {
           <span class="tabular-nums">${formatCurrency(costBreakdown.totalAmount)}</span>
         </div>
 
-        <button id="btn-confirm-booking" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 20px;" ${!isSlotSelected ? 'disabled' : ''}>
+        <button id="btn-confirm-booking" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 18px;" ${!isSlotSelected ? 'disabled' : ''}>
           ${isSlotSelected ? 'Confirm Order & Appointment' : 'Select a Slot to Continue'}
         </button>
 
-        <div style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11.5px; color: var(--text-secondary); margin-top: 12px;">
-          <span>🔒</span> 100% Certified Technician Guarantee • Free Cancellation
+        <div style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11.5px; color: var(--text-secondary); margin-top: 10px;">
+          <span>🔒</span> Certified Technician Guarantee • Free Cancel
         </div>
       </div>
     </div>
@@ -379,19 +379,23 @@ function renderOrdersTab() {
     ` : `
       <div class="order-detail-layout">
         <!-- Left: Active Order Details & Status Timeline -->
-        <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div style="display: flex; flex-direction: column; gap: 18px; min-width: 0;">
           
-          <!-- Orders Horizontal Switcher Pill -->
+          <!-- Orders Horizontal Switcher Strip (Clean & Perfectly Aligned) -->
           <div style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px;">
             ${store.orders.map(o => `
               <div class="glass-card interactive ${o.id === selectedOrder.id ? 'selected' : ''}" 
-                   style="padding: 10px 16px; min-width: 220px; cursor: pointer;" 
+                   style="padding: 12px 14px; min-width: 210px; max-width: 230px; flex-shrink: 0; cursor: pointer; display: flex; flex-direction: column;" 
                    onclick="window.voltfitStore.selectedOrderId = '${o.id}'; window.voltfitStore.notify();">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                  <span style="font-weight: 700; font-size: 13px;">${o.order_number}</span>
+                <div style="font-weight: 700; font-size: 13.5px; font-family: var(--font-mono); color: var(--text-primary); white-space: nowrap;">
+                  #${o.order_number}
+                </div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin: 3px 0 8px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  ${o.bike.brand} ${o.bike.model}
+                </div>
+                <div style="margin-top: auto;">
                   ${renderStatusChip(o.status)}
                 </div>
-                <div style="font-size: 12px; color: var(--text-secondary);">${o.bike.brand} ${o.bike.model}</div>
               </div>
             `).join("")}
           </div>
@@ -400,7 +404,7 @@ function renderOrdersTab() {
           <div class="glass-card">
             <div class="order-detail-header">
               <div>
-                <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--accent-blue);">Order Reference</div>
+                <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--accent-blue); letter-spacing: 0.04em;">Order Reference</div>
                 <h2 class="text-title-medium" style="margin-top: 2px;">#${selectedOrder.order_number}</h2>
                 <div style="font-size: 13px; color: var(--text-secondary);">${selectedOrder.bike.brand} ${selectedOrder.bike.model} (${selectedOrder.bike.registration_number})</div>
               </div>
@@ -410,7 +414,7 @@ function renderOrdersTab() {
             </div>
 
             <!-- Milestone Timeline -->
-            <div style="margin: 20px 0;">
+            <div style="margin: 18px 0;">
               <h3 class="text-section-title" style="margin-bottom: 12px;">Installation Milestone Timeline</h3>
               <div class="timeline">
                 ${renderTimelineStep(selectedOrder.status, "placed", "Order Placed", "Your order has been recorded and transmitted to the vendor.")}
@@ -424,7 +428,7 @@ function renderOrdersTab() {
 
             <!-- Live Map (Home Visits when technician is on the way) -->
             ${(selectedOrder.status === 'technician_on_the_way' && selectedOrder.install_type === 'home_visit') ? `
-              <div style="margin-top: 20px;">
+              <div style="margin-top: 18px;">
                 <h3 class="text-section-title" style="margin-bottom: 6px;">Live Technician GPS Tracking</h3>
                 <div id="customer-live-map" class="live-map-container"></div>
               </div>
@@ -432,11 +436,11 @@ function renderOrdersTab() {
 
             <!-- Completion & Warranty Certificate Download -->
             ${selectedOrder.status === 'completed' ? `
-              <div class="glass-card" style="margin-top: 20px; background: rgba(52, 199, 89, 0.08); border-color: rgba(52, 199, 89, 0.3);">
+              <div class="glass-card" style="margin-top: 18px; background: rgba(52, 199, 89, 0.08); border-color: rgba(52, 199, 89, 0.3);">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                   <div>
-                    <div style="font-size: 16px; font-weight: 700; color: var(--success-green);">✓ Installation Verified & Certified</div>
-                    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 2px;">Digital Warranty ID: <strong>${selectedOrder.warranty_certificate_id || 'WTY-VF-98412'}</strong></div>
+                    <div style="font-size: 15px; font-weight: 700; color: var(--success-green);">✓ Installation Verified & Certified</div>
+                    <div style="font-size: 12.5px; color: var(--text-secondary); margin-top: 2px;">Digital Warranty ID: <strong>${selectedOrder.warranty_certificate_id || 'WTY-VF-98412'}</strong></div>
                   </div>
                   <div style="display: flex; gap: 8px;">
                     <button class="btn btn-secondary btn-sm" id="btn-download-invoice" data-order-id="${selectedOrder.id}">📄 Tax Invoice</button>
@@ -450,12 +454,12 @@ function renderOrdersTab() {
         </div>
 
         <!-- Right Column: Appointment & Dynamic Technician Card -->
-        <div style="display: flex; flex-direction: column; gap: 18px;">
+        <div style="display: flex; flex-direction: column; gap: 16px; min-width: 0;">
           
           <!-- Appointment Info Card -->
           <div class="glass-card">
-            <h3 class="text-section-title" style="margin-bottom: 12px;">Appointment Details</h3>
-            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13.5px;">
+            <h3 class="text-section-title" style="margin-bottom: 10px;">Appointment Details</h3>
+            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
               <div>
                 <span class="text-secondary">Type:</span> <strong>${selectedOrder.install_type === 'home_visit' ? '🏠 Doorstep Home Visit' : '🏢 Service Center'}</strong>
               </div>
@@ -470,17 +474,17 @@ function renderOrdersTab() {
               </div>
               ${selectedOrder.delivery_address ? `
                 <div>
-                  <span class="text-secondary">Address:</span> <div style="font-size: 12.5px; margin-top: 2px;">${selectedOrder.delivery_address}</div>
+                  <span class="text-secondary">Address:</span> <div style="font-size: 12px; margin-top: 2px; line-height: 1.35;">${selectedOrder.delivery_address}</div>
                 </div>
               ` : `
                 <div>
-                  <span class="text-secondary">Location:</span> <div style="font-size: 12.5px; margin-top: 2px;">${selectedOrder.service_center?.name || 'VoltFit Service Hub'}</div>
+                  <span class="text-secondary">Location:</span> <div style="font-size: 12px; margin-top: 2px; line-height: 1.35;">${selectedOrder.service_center?.name || 'VoltFit Service Hub'}</div>
                 </div>
               `}
             </div>
 
             ${selectedOrder.status !== 'completed' && selectedOrder.status !== 'cancelled' ? `
-              <div style="display: flex; gap: 8px; margin-top: 16px;">
+              <div style="display: flex; gap: 8px; margin-top: 14px;">
                 <button class="btn btn-glass btn-sm" style="flex: 1;" id="btn-reschedule-order" data-order-id="${selectedOrder.id}">Reschedule</button>
                 <button class="btn btn-danger btn-sm" style="flex: 1;" id="btn-cancel-order" data-order-id="${selectedOrder.id}">Cancel</button>
               </div>
@@ -489,24 +493,24 @@ function renderOrdersTab() {
 
           <!-- Dynamic Technician Card (Revealed only when assigned) -->
           <div class="glass-card ${selectedOrder.technician ? 'technician-card-assigned' : ''}">
-            <h3 class="text-section-title" style="margin-bottom: 12px;">Assigned Technician</h3>
+            <h3 class="text-section-title" style="margin-bottom: 10px;">Assigned Technician</h3>
             
             ${selectedOrder.technician ? `
               <div class="technician-profile-header">
                 <img src="${selectedOrder.technician.photo}" alt="Tech" class="tech-photo">
-                <div>
-                  <div style="font-size: 16px; font-weight: 700; color: var(--text-primary);">${selectedOrder.technician.name}</div>
-                  <div style="font-size: 12px; color: var(--text-secondary);">${selectedOrder.technician.certification}</div>
-                  <div style="font-size: 12.5px; font-weight: 600; color: var(--accent-blue); margin-top: 2px;">★ ${selectedOrder.technician.rating} Certified Rating</div>
+                <div style="min-width: 0; flex: 1;">
+                  <div style="font-size: 15px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${selectedOrder.technician.name}</div>
+                  <div style="font-size: 11.5px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${selectedOrder.technician.certification}</div>
+                  <div style="font-size: 12px; font-weight: 600; color: var(--accent-blue); margin-top: 2px;">★ ${selectedOrder.technician.rating} Certified Rating</div>
                 </div>
               </div>
-              <div style="display: flex; gap: 8px; margin-top: 12px;">
-                <a href="tel:${selectedOrder.technician.phone}" class="btn btn-primary btn-sm" style="flex: 1;">📞 Call</a>
-                <button class="btn btn-secondary btn-sm" style="flex: 1;" onclick="window.voltfitShowToast('Direct Chat', 'Connecting secure technician chat channel...', '💬')">💬 Chat</button>
+              <div style="display: flex; gap: 8px; margin-top: 10px;">
+                <a href="tel:${selectedOrder.technician.phone}" class="btn btn-primary btn-sm" style="flex: 1; min-width: 0;">📞 Call</a>
+                <button class="btn btn-secondary btn-sm" style="flex: 1; min-width: 0;" onclick="window.voltfitShowToast('Direct Chat', 'Connecting secure technician chat channel...', '💬')">💬 Chat</button>
               </div>
             ` : `
               <div class="tech-placeholder-box">
-                <div style="font-size: 24px; margin-bottom: 6px;">👨‍🔧</div>
+                <div style="font-size: 22px; margin-bottom: 4px;">👨‍🔧</div>
                 <div>Technician details will appear once assigned by the vendor</div>
               </div>
             `}
@@ -514,9 +518,9 @@ function renderOrdersTab() {
 
           <!-- Cost Breakdown Card -->
           <div class="glass-card">
-            <h3 class="text-section-title" style="margin-bottom: 10px;">Order Amount</h3>
+            <h3 class="text-section-title" style="margin-bottom: 8px;">Order Amount</h3>
             <div class="summary-line-item">
-              <span>Battery</span>
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Battery</span>
               <span class="tabular-nums">${formatCurrency(selectedOrder.costs.battery_price)}</span>
             </div>
             <div class="summary-line-item">
