@@ -1,29 +1,29 @@
 /* ==========================================================================
-   VoltFit Dev Bypass Bar & Device Viewport Simulator
+   VoltFit Dev Bypass Bar & Device Viewport Simulator (Refined Positioning)
    ========================================================================== */
 
 .dev-bypass-bar {
   position: fixed;
-  top: 10px;
-  right: 18px;
-  background: rgba(29, 29, 31, 0.85);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  top: 12px;
+  right: 20px;
+  background: rgba(29, 29, 31, 0.88);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 9999px;
   padding: 4px 10px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   z-index: 9999;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
   color: #ffffff;
-  font-size: 12px;
+  font-size: 11.5px;
   transition: all var(--transition-smooth);
 }
 
 .dev-label {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -31,6 +31,7 @@
   background: rgba(255, 149, 0, 0.2);
   padding: 2px 6px;
   border-radius: 6px;
+  white-space: nowrap;
 }
 
 .dev-role-group, .dev-viewport-group {
@@ -43,12 +44,13 @@
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #e5e5e7;
-  padding: 4px 10px;
+  padding: 4px 9px;
   border-radius: 9999px;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition-fast);
+  white-space: nowrap;
 }
 
 .dev-role-btn:hover, .dev-viewport-btn:hover {
@@ -67,8 +69,10 @@
 /* Device Simulator Wrapper when previewing mobile or tablet inside desktop */
 .viewport-simulator-wrapper {
   margin: 0 auto;
+  width: 100%;
   transition: max-width 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease;
   min-height: 100vh;
+  box-sizing: border-box;
 }
 
 .viewport-simulator-wrapper.mode-desktop {
@@ -89,4 +93,16 @@
   background: var(--bg-base);
   border-left: 1px solid var(--glass-border);
   border-right: 1px solid var(--glass-border);
+}
+
+@media (max-width: 900px) {
+  .dev-bypass-bar {
+    top: 8px;
+    right: 10px;
+    padding: 3px 8px;
+    gap: 6px;
+  }
+  .dev-label {
+    display: none;
+  }
 }
