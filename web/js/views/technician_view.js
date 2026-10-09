@@ -25,7 +25,7 @@ export function renderTechnicianView() {
 // 1. TECHNICIAN JOBS QUEUE
 // --------------------------------------------------------------------------
 function renderTechJobs() {
-  const assignedJobs = store.orders.filter(o => o.technician_id === store.users.technician.id || o.status === "technician_assigned" || o.status === "technician_on_the_way" || o.status === "installing");
+  const assignedJobs = store.getAssignedTechnicianJobs();
   const isOnline = store.users.technician.isOnline;
 
   return `
@@ -85,7 +85,7 @@ function renderTechJobs() {
               <span>📅</span> <strong>${job.slot.date} (${job.slot.time})</strong>
             </div>
             <div class="job-meta-item">
-              <span>📍</span> <span>${job.delivery_address || job.service_center?.name || 'Assigned Center'}</span>
+              <span>📍</span> <span>${job.delivery_address || [job.service_center?.name, job.service_center?.address].filter(Boolean).join(' — ') || 'Location details unavailable'}</span>
             </div>
             <div class="job-meta-item">
               <span>⏱️</span> <span>Est. 90 mins</span>
@@ -116,7 +116,7 @@ function renderTechJobs() {
 // 2. ACTIVE JOB & DIAGNOSTIC CHECKLIST
 // --------------------------------------------------------------------------
 function renderTechActiveJob() {
-  const activeOrder = store.orders.find(o => o.status === "technician_on_the_way" || o.status === "installing") || store.orders[0];
+  const activeOrder = store.getActiveTechnicianJob();
 
   if (!activeOrder) {
     return `
@@ -130,8 +130,8 @@ function renderTechActiveJob() {
   }
 
   const cl = activeOrder.checklist || {
-    battery_collected: true,
-    vin_verified: true,
+    battery_collected: false,
+    vin_verified: false,
     old_removed: false,
     new_installed: false,
     diagnostics_passed: false,

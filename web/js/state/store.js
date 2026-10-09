@@ -80,6 +80,7 @@ class VoltFitStore {
 
     // Active Selected Order for Detail View
     this.selectedOrderId = this.orders[0]?.id || null;
+    this.activeTechnicianJobId = null;
   }
 
   // Subscribe to state changes
@@ -106,6 +107,40 @@ class VoltFitStore {
   setTab(tab) {
     this.currentTab = tab;
     this.notify();
+  }
+
+  // Rider job selectors use assignment ownership rather than status alone.
+  getAssignedTechnicianJobs() {
+    const technicianId = this.users.technician.id;
+    const riderVisibleStatuses = new Set([
+      "technician_assigned",
+      "technician_on_the_way",
+      "installing"
+    ]);
+
+    return this.orders.filter(order =>
+      order.technician_id === technicianId && riderVisibleStatuses.has(order.status)
+    );
+  }
+
+  setActiveTechnicianJob(orderId) {
+    const job = this.getAssignedTechnicianJobs().find(order => order.id === orderId);
+    if (!job) return false;
+
+    this.activeTechnicianJobId = job.id;
+    return true;
+  }
+
+  getActiveTechnicianJob() {
+    const activeStatuses = new Set(["technician_on_the_way", "installing"]);
+    const riderJobs = this.getAssignedTechnicianJobs().filter(order =>
+      activeStatuses.has(order.status)
+    );
+    const selectedJob = riderJobs.find(order => order.id === this.activeTechnicianJobId);
+    const activeJob = selectedJob || riderJobs[0] || null;
+
+    this.activeTechnicianJobId = activeJob?.id || null;
+    return activeJob;
   }
 
   setPreviewMode(mode) {

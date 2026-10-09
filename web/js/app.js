@@ -615,15 +615,25 @@ class VoltFitApp {
       const startJobBtn = target.closest(".btn-tech-start-job");
       if (startJobBtn) {
         const orderId = startJobBtn.dataset.orderId;
+        const job = store.orders.find(order => order.id === orderId);
+        if (!job || job.technician_id !== store.users.technician.id || job.status !== "technician_assigned") {
+          showToast("Assignment Unavailable", "This job is no longer assigned to your account.", "⚠️");
+          return;
+        }
+        store.setActiveTechnicianJob(orderId);
         store.updateOrderStatus(orderId, "technician_on_the_way");
         store.setTab("active");
-        showToast("En Route", "GPS location broadcasting to customer.", "🛵");
+        showToast("En Route", "Demo job status updated. Live location tracking is not connected.", "🛵");
         return;
       }
 
       // Technician: Open Active Checklist
       const openActiveBtn = target.closest(".btn-tech-open-active");
       if (openActiveBtn) {
+        if (!store.setActiveTechnicianJob(openActiveBtn.dataset.orderId)) {
+          showToast("Assignment Unavailable", "This job is no longer assigned to your account.", "⚠️");
+          return;
+        }
         store.setTab("active");
         return;
       }
@@ -632,7 +642,7 @@ class VoltFitApp {
       const checklistStep = target.closest(".checklist-step");
       if (checklistStep) {
         const stepKey = checklistStep.dataset.stepKey;
-        const activeOrder = store.orders.find(o => o.status === "technician_on_the_way" || o.status === "installing") || store.orders[0];
+        const activeOrder = store.getActiveTechnicianJob();
         if (activeOrder) {
           const currentVal = activeOrder.checklist ? activeOrder.checklist[stepKey] : false;
           store.updateTechnicianChecklist(activeOrder.id, stepKey, !currentVal);
@@ -649,11 +659,23 @@ class VoltFitApp {
 
       // Technician: Final Complete Job Button
       if (target.id === "btn-complete-job-final") {
-        const activeOrder = store.orders.find(o => o.status === "technician_on_the_way" || o.status === "installing") || store.orders[0];
-        if (activeOrder) {
+        const activeOrder = store.getActiveTechnicianJob();
+        const requiredChecklistSteps = [
+          "battery_collected",
+          "vin_verified",
+          "old_removed",
+          "new_installed",
+          "diagnostics_passed",
+          "customer_signoff"
+        ];
+        const canCompleteJob = activeOrder && activeOrder.status === "installing" &&
+          requiredChecklistSteps.every(step => activeOrder.checklist?.[step] === true);
+        if (canCompleteJob) {
           store.updateOrderStatus(activeOrder.id, "completed");
           showToast("Job Completed & Certified!", `Order #${activeOrder.order_number} finished. Warranty activated.`, "🎉");
           store.setTab("jobs");
+        } else {
+          showToast("Checklist Incomplete", "Finish all required checks before completing this installation.", "⚠️");
         }
         return;
       }
