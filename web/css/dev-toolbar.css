@@ -1,0 +1,92 @@
+/* ==========================================================================
+   VoltFit Dev Bypass Bar & Device Viewport Simulator
+   ========================================================================== */
+
+.dev-bypass-bar {
+  position: fixed;
+  top: 10px;
+  right: 18px;
+  background: rgba(29, 29, 31, 0.85);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 9999;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  color: #ffffff;
+  font-size: 12px;
+  transition: all var(--transition-smooth);
+}
+
+.dev-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #ff9500;
+  background: rgba(255, 149, 0, 0.2);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.dev-role-group, .dev-viewport-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dev-role-btn, .dev-viewport-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e5e5e7;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.dev-role-btn:hover, .dev-viewport-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.dev-role-btn.active, .dev-viewport-btn.active {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.4);
+}
+
+/* Device Simulator Wrapper when previewing mobile or tablet inside desktop */
+.viewport-simulator-wrapper {
+  margin: 0 auto;
+  transition: max-width 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease;
+  min-height: 100vh;
+}
+
+.viewport-simulator-wrapper.mode-desktop {
+  max-width: 100%;
+}
+
+.viewport-simulator-wrapper.mode-tablet {
+  max-width: 768px;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.15);
+  background: var(--bg-base);
+  border-left: 1px solid var(--glass-border);
+  border-right: 1px solid var(--glass-border);
+}
+
+.viewport-simulator-wrapper.mode-mobile {
+  max-width: 390px;
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.2);
+  background: var(--bg-base);
+  border-left: 1px solid var(--glass-border);
+  border-right: 1px solid var(--glass-border);
+}

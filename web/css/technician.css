@@ -1,0 +1,204 @@
+/* ==========================================================================
+   VoltFit Technician & Rider Screen Styles
+   ========================================================================== */
+
+/* Online / Offline Hero Switch */
+.tech-status-banner {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-card);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  box-shadow: var(--glass-shadow), var(--inner-highlight);
+}
+
+.tech-status-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.online-pulse-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--success-green);
+  box-shadow: 0 0 10px var(--success-green);
+  animation: pulse-ring 2s infinite;
+}
+
+.offline-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+
+/* Assigned Jobs Queue */
+.jobs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.job-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+}
+
+.job-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.job-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+
+.job-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Active Diagnostic Checklist */
+.checklist-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.checklist-step {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.checklist-step:hover {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.checklist-step.done {
+  background: rgba(52, 199, 89, 0.1);
+  border-color: rgba(52, 199, 89, 0.35);
+}
+
+.step-checkbox {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  border: 2px solid var(--hairline-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: white;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.checklist-step.done .step-checkbox {
+  background: var(--success-green);
+  border-color: var(--success-green);
+}
+
+.step-content {
+  flex: 1;
+}
+
+.step-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.step-subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Photo Capture Grid */
+.photo-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.photo-box {
+  height: 120px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1.5px dashed var(--hairline-strong);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: 8px;
+  text-align: center;
+}
+
+.photo-box:hover {
+  background: rgba(255, 255, 255, 0.75);
+  border-color: var(--accent-blue);
+}
+
+.photo-box.uploaded {
+  border-style: solid;
+  border-color: var(--success-green);
+  background: rgba(52, 199, 89, 0.08);
+}
+
+.photo-box-icon {
+  font-size: 24px;
+  color: var(--accent-blue);
+}
+
+/* Digital Signature Canvas Container */
+.signature-box-container {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid var(--hairline-strong);
+  padding: 8px;
+  position: relative;
+  margin-top: 10px;
+}
+
+.signature-canvas {
+  width: 100%;
+  height: 130px;
+  background: #fafafa;
+  border-radius: 8px;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.signature-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
