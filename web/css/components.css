@@ -1,5 +1,5 @@
 /* ==========================================================================
-   VoltFit Glass Component Library - Light Apple Glassmorphism (Refined Alignment)
+   VoltFit Glass Component Library - Light Apple Glassmorphism
    ========================================================================== */
 
 /* Glass Base Surface */
@@ -211,12 +211,13 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 16px;
-  padding-right: 320px; /* Leave clean headroom for Dev Bypass Bar on wide screens */
+  padding-right: 340px; /* Leave clean headroom for Dev Bypass Bar on wide screens */
 }
 
 @media (max-width: 1200px) {
   .page-header {
     padding-right: 0;
+    margin-top: 40px; /* Space below mobile dev toolbar */
   }
 }
 
@@ -373,16 +374,16 @@
 }
 
 .btn-glass {
-  background: var(--glass-bg);
+  background: rgba(255, 255, 255, 0.75);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(0, 0, 0, 0.15);
   color: var(--text-primary);
-  box-shadow: var(--glass-shadow-sm);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 .btn-glass:hover:not(:disabled) {
-  background: var(--glass-bg-hover);
-  border-color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.25);
 }
 
 .btn-danger {
@@ -404,10 +405,10 @@
 }
 
 .btn-sm {
-  min-height: 32px;
-  padding: 5px 12px;
-  font-size: 12.5px;
-  border-radius: 8px;
+  min-height: 34px;
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: 9px;
 }
 
 .btn-lg {
@@ -518,11 +519,11 @@
 
 /* Slot Pill */
 .slot-pill {
-  padding: 9px 12px;
+  padding: 8px 10px;
   border-radius: 12px;
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--text-primary);
   text-align: center;
@@ -531,7 +532,7 @@
   user-select: none;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   box-sizing: border-box;
 }
 .slot-pill:hover:not(.disabled) {
@@ -552,12 +553,14 @@
   background: rgba(118, 118, 128, 0.08);
   color: var(--text-tertiary);
   border-color: rgba(60, 60, 67, 0.08);
-  text-decoration: line-through;
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.65;
+}
+.slot-pill.disabled .slot-time-text {
+  text-decoration: line-through;
 }
 .slot-capacity {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 500;
   color: var(--text-secondary);
 }
@@ -765,7 +768,7 @@ input:checked + .slider:before {
   visibility: visible;
 }
 .glass-modal-sheet {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   -webkit-backdrop-filter: blur(30px) saturate(190%);
   backdrop-filter: blur(30px) saturate(190%);
   border: 1px solid var(--glass-border);
@@ -797,7 +800,7 @@ input:checked + .slider:before {
 }
 .glass-toast {
   pointer-events: auto;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   -webkit-backdrop-filter: blur(24px) saturate(190%);
   backdrop-filter: blur(24px) saturate(190%);
   border: 1px solid var(--glass-border);
