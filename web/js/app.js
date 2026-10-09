@@ -11,10 +11,10 @@ import { LiveMapCanvas } from "./components/map_view.js";
 import { DigitalSignaturePad } from "./components/signature.js";
 
 // Expose globals for inline event helpers
-window.voltfitStore = store;
-window.voltfitShowToast = showToast;
-window.voltfitOpenModal = openModal;
-window.voltfitCloseModal = closeModal;
+window.voltfitStore = window.riderzproStore = store;
+window.voltfitShowToast = window.riderzproShowToast = showToast;
+window.voltfitOpenModal = window.riderzproOpenModal = openModal;
+window.voltfitCloseModal = window.riderzproCloseModal = closeModal;
 
 class VoltFitApp {
   constructor() {
@@ -128,7 +128,7 @@ class VoltFitApp {
         <div class="brand-header">
           <div class="brand-icon">⚡</div>
           <div class="brand-title">
-            VoltFit
+            Riderzpro
             <span class="brand-badge">${role}</span>
           </div>
         </div>
@@ -360,7 +360,7 @@ class VoltFitApp {
             <div style="font-size: 13.5px; line-height: 1.6;">
               <div style="display: flex; justify-content: space-between; border-bottom: 2px solid var(--hairline); padding-bottom: 12px; margin-bottom: 14px;">
                 <div>
-                  <strong style="font-size: 16px;">VoltFit Mobility Technologies Pvt Ltd</strong><br>
+                  <strong style="font-size: 16px;">Riderzpro Mobility Technologies Pvt Ltd</strong><br>
                   GSTIN: 29AAACV9841K1Z2<br>
                   Indiranagar, Bengaluru, KA - 560038
                 </div>
@@ -425,8 +425,8 @@ class VoltFitApp {
           openModal(`Official Digital Warranty Certificate`, `
             <div style="text-align: center; padding: 10px 0;">
               <div style="font-size: 40px; margin-bottom: 8px;">🛡️</div>
-              <h3 style="font-size: 18px; font-weight: 700; color: var(--success-green);">VoltFit Guaranteed Fitment & Battery Warranty</h3>
-              <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Certificate #${o.warranty_certificate_id || 'WTY-VF-98412'}</div>
+              <h3 style="font-size: 18px; font-weight: 700; color: var(--success-green);">Riderzpro Guaranteed Fitment & Battery Warranty</h3>
+              <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Certificate #${o.warranty_certificate_id || 'WTY-RZ-98412'}</div>
               
               <div class="glass-card" style="margin: 18px 0; text-align: left; background: rgba(255, 255, 255, 0.7);">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
@@ -434,12 +434,12 @@ class VoltFitApp {
                   <div><strong>Plate No:</strong> ${o.bike.registration_number}</div>
                   <div><strong>Battery Model:</strong> ${o.battery.name}</div>
                   <div><strong>Coverage:</strong> ${o.battery.warranty_months} Months 100% Replacement</div>
-                  <div><strong>Installed By:</strong> ${o.technician?.name || 'VoltFit Certified Master Tech'}</div>
+                  <div><strong>Installed By:</strong> ${o.technician?.name || 'Riderzpro Certified Master Tech'}</div>
                   <div><strong>BMS Diagnostics:</strong> Passed (100% Health)</div>
                 </div>
               </div>
 
-              <p style="font-size: 12px; color: var(--text-secondary);">This warranty covers cell degradation > 20%, BMS faults, and thermal safety. Instant claims via the VoltFit app.</p>
+              <p style="font-size: 12px; color: var(--text-secondary);">This warranty covers cell degradation > 20%, BMS faults, and thermal safety. Instant claims via the Riderzpro app.</p>
               
               <button class="btn btn-primary btn-sm" style="margin-top: 14px;" onclick="window.voltfitCloseModal();">Close Certificate</button>
             </div>

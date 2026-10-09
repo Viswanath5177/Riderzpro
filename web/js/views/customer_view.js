@@ -474,7 +474,7 @@ function renderOrdersTab() {
                 </div>
               ` : `
                 <div>
-                  <span class="text-secondary">Location:</span> <div style="font-size: 12.5px; margin-top: 2px;">${selectedOrder.service_center?.name || 'VoltFit Service Hub'}</div>
+                  <span class="text-secondary">Location:</span> <div style="font-size: 12.5px; margin-top: 2px;">${selectedOrder.service_center?.name || 'Riderzpro Service Hub'}</div>
                 </div>
               `}
             </div>

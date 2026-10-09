@@ -1,10 +1,10 @@
-# ⚡ VoltFit — EV Bike Battery & Certified Installation Ecosystem
+# ⚡ Riderzpro — EV Bike Battery & Certified Installation Ecosystem
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20Android%20%7C%20iOS%20%7C%20Desktop-orange.svg)](#)
 [![Design](https://img.shields.io/badge/Design-Light%20Apple%20Glassmorphism-9cf.svg)](#)
 
-> **VoltFit** is a unified cross-platform platform for discovering guaranteed compatible EV bike batteries with bundled certified doorstep or service center installation, atomic zero-conflict slot booking, real-time technician dispatch & live GPS tracking, interactive diagnostic checklists, and digital warranty certificates.
+> **Riderzpro** is a unified cross-platform platform for discovering guaranteed compatible EV bike batteries with bundled certified doorstep or service center installation, atomic zero-conflict slot booking, real-time technician dispatch & live GPS tracking, interactive diagnostic checklists, and digital warranty certificates.
 
 ---
 

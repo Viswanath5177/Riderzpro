@@ -222,7 +222,7 @@ export const MOCK_SERVICE_CENTERS = [
   {
     id: "sc_indiranagar",
     vendor_id: "vnd_nexgen_ev",
-    name: "VoltFit Flagship Service Hub — Indiranagar",
+    name: "Riderzpro Flagship Service Hub — Indiranagar",
     address: "100 Feet Road, HAL 2nd Stage, Indiranagar, Bengaluru",
     distance_km: 2.4,
     rating: 4.9,
@@ -233,7 +233,7 @@ export const MOCK_SERVICE_CENTERS = [
   {
     id: "sc_koramangala",
     vendor_id: "vnd_nexgen_ev",
-    name: "VoltFit EV Care Center — Koramangala 5th Block",
+    name: "Riderzpro EV Care Center — Koramangala 5th Block",
     address: "80 Feet Main Road, 5th Block, Koramangala, Bengaluru",
     distance_km: 4.8,
     rating: 4.8,
@@ -276,7 +276,7 @@ export const MOCK_TECHNICIANS = [
     current_job_id: "ord_volt_102",
     lat: 12.9680,
     lng: 77.6350,
-    vehicle: "VoltFit Service Van #04"
+    vehicle: "Riderzpro Service Van #04"
   },
   {
     id: "tech_priya",
@@ -291,7 +291,7 @@ export const MOCK_TECHNICIANS = [
     current_job_id: null,
     lat: 12.9200,
     lng: 77.6300,
-    vehicle: "VoltFit Mobile Unit #12"
+    vehicle: "Riderzpro Mobile Unit #12"
   },
   {
     id: "tech_anil",
@@ -306,7 +306,7 @@ export const MOCK_TECHNICIANS = [
     current_job_id: null,
     lat: 12.9550,
     lng: 77.6500,
-    vehicle: "VoltFit Scooter #08"
+    vehicle: "Riderzpro Scooter #08"
   }
 ];
 
@@ -468,7 +468,7 @@ export const MOCK_ORDERS = [
     install_type: "service_center",
     delivery_address: null,
     service_center: {
-      name: "VoltFit Flagship Service Hub — Indiranagar",
+      name: "Riderzpro Flagship Service Hub — Indiranagar",
       address: "100 Feet Road, Indiranagar, Bengaluru"
     },
     slot: {

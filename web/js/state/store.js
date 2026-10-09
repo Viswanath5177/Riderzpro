@@ -29,7 +29,7 @@ class VoltFitStore {
         id: "usr_customer_demo",
         name: "Rahul Verma",
         phone: "+91 98860 99887",
-        email: "rahul.v@voltfit.demo",
+        email: "rahul.v@riderzpro.demo",
         avatar: "RV",
         address: "Apartment 4B, Palm Meadows, Whitefield, Bengaluru"
       },
