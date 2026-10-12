@@ -53,12 +53,9 @@ function VendorDash() {
     fetchProductsFromDb();
   }, []);
 
-  const [incoming, setIncoming] = useState([
-    { id: "RZ48213", item: "VoltRide 60V 30Ah Li-ion Pack", qty: 1, amount: 59520, bike: "Ola S1 Pro 2023", status: "New" },
-    { id: "RZ48207", item: "ChargeMax 3.3kW Fast Charger", qty: 2, amount: 27840, bike: "Bajaj Chetak 2022", status: "New" },
-    { id: "RZ48199", item: "VoltEdge 48V 50Ah LiFePO4", qty: 1, amount: 51840, bike: "Ather 450X 2024", status: "Accepted" },
-    { id: "RZ48188", item: "Wave Disc Brake Rotor", qty: 4, amount: 9200, bike: "Workshop order", status: "Delivered" },
-  ]);
+  const [incoming, setIncoming] = useState<
+    { id: string; item: string; qty: number; amount: number; bike: string; status: string }[]
+  >([]);
 
   const act = (id: string, status: string) => { 
     setIncoming((l) => l.map((o) => (o.id === id ? { ...o, status } : o))); 
@@ -239,17 +236,11 @@ function VendorDash() {
 
       {tab === "payouts" && (
         <div className="grid gap-6 lg:grid-cols-3">
-          <Stat label="Available balance" value={inr(186400)} Icon={Wallet} />
-          <Stat label="Next payout" value="Oct 12" Icon={PackageOpen} />
-          <Stat label="Paid this month" value={inr(624000)} Icon={IndianRupee} />
+          <Stat label="Available balance" value={inr(0)} Icon={Wallet} />
+          <Stat label="Next payout" value="No pending payouts" Icon={PackageOpen} />
+          <Stat label="Paid this month" value={inr(0)} Icon={IndianRupee} />
           <Panel title="Payout history" className="lg:col-span-3">
-            {["Oct 05", "Sep 28", "Sep 21"].map((d, i) => (
-              <div key={d} className="flex justify-between border-b border-border py-3 last:border-0">
-                <span>{d}</span>
-                <span className="font-semibold">{inr([212000, 198500, 176300][i])}</span>
-                <StatusPill s="Paid" />
-              </div>
-            ))}
+            <p className="text-sm text-muted-foreground py-6 text-center">No past payout settlements recorded.</p>
           </Panel>
         </div>
       )}

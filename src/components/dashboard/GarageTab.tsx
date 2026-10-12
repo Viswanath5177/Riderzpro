@@ -40,7 +40,7 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
     isSaved,
   } = useStore();
 
-  const [selectedBikeId, setSelectedBikeId] = useState<string>(activeBikeId || garage[0]?.bikeId || "ola-s1pro");
+  const [selectedBikeId, setSelectedBikeId] = useState<string | null>(activeBikeId || garage[0]?.bikeId || null);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [partsSearch, setPartsSearch] = useState<string>("");
   const [isVinModalOpen, setIsVinModalOpen] = useState(false);
@@ -336,7 +336,9 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50 text-primary mb-3">
               <Plus className="h-6 w-6" />
             </span>
-            <p className="text-base font-bold text-gray-900 font-display">Add Another EV</p>
+            <p className="text-base font-bold text-gray-900 font-display">
+              {garage.length === 0 ? "Add Your Electric Vehicle" : "Add Another EV"}
+            </p>
             <p className="text-xs text-gray-500 mt-1 max-w-xs">
               Enter VIN or select your model to unlock verified batteries, chargers, and spare parts.
             </p>
@@ -358,11 +360,13 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
                 <ShoppingBag className="h-4 w-4" />
               </span>
               <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 font-display">
-                Compatible Spares & Parts for {activeBikeMeta ? `${activeBikeMeta.make} ${activeBikeMeta.model}` : "Your Bike"}
+                {activeBikeMeta ? `Compatible Spares & Parts for ${activeBikeMeta.make} ${activeBikeMeta.model}` : "Compatible Spares & Parts"}
               </h2>
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Guaranteed 100% fitment for your {activeBikeMeta ? `${activeBikeMeta.voltage}V system` : "vehicle"}. Zero guesswork — verified against chassis and connector pinouts.
+              {activeBikeMeta
+                ? `Guaranteed 100% fitment for your ${activeBikeMeta.voltage}V system. Zero guesswork — verified against chassis and connector pinouts.`
+                : "Register a vehicle in your garage above to view custom-fit compatible spare parts."}
             </p>
           </div>
 
@@ -431,7 +435,15 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
         </div>
 
         {/* Parts Grid */}
-        {compatibleProducts.length === 0 ? (
+        {garage.length === 0 ? (
+          <div className="p-12 rounded-3xl border border-dashed border-gray-300 bg-white text-center">
+            <Bike className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+            <p className="text-base font-bold text-gray-800 font-display">No EV Registered Yet</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Please register your electric vehicle above to unlock verified compatible batteries, chargers, and parts.
+            </p>
+          </div>
+        ) : compatibleProducts.length === 0 ? (
           <div className="p-12 rounded-3xl border border-dashed border-gray-300 bg-white text-center">
             <ShoppingBag className="h-10 w-10 text-gray-300 mx-auto mb-2" />
             <p className="text-base font-bold text-gray-800 font-display">No Parts Found</p>

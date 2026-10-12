@@ -160,41 +160,16 @@ export function AdminDashboard() {
   const [perKmFee, setPerKmFee] = useState(12);
 
   // Audit Log State
-  const [auditLogs, setAuditLogs] = useState<AuditEntry[]>([
-    {
-      id: "aud-1",
-      timestamp: "10 mins ago",
-      actor: "Vikram Malhotra (Ops)",
-      action: "Status Transition",
-      target: "RZ-849201",
-      details: "Dispatched package with Delhivery Express (AWB: DEL984128471)",
-    },
-    {
-      id: "aud-2",
-      timestamp: "2 hours ago",
-      actor: "System Webhook",
-      action: "Checkpoint Scanned",
-      target: "RZ-849201",
-      details: "Arrived at South Hub Sorting Center, Bommasandra",
-    },
-    {
-      id: "aud-3",
-      timestamp: "1 day ago",
-      actor: "Anita Sen (Support)",
-      action: "Refund Processed",
-      target: "RZ-790112",
-      details: "Refunded ₹2,400 via Razorpay UPI for returned brake pads",
-    },
-  ]);
+  const [auditLogs, setAuditLogs] = useState<AuditEntry[]>([]);
 
   // KPI Calculations
-  const totalOrdersCount = orders.length + 18; // Includes historical baseline
-  const awaitingProcessingCount = orders.filter((o) => o.status === 0).length + 2;
-  const readyForDispatchCount = orders.filter((o) => o.status === 1).length + 3;
-  const inTransitCount = orders.filter((o) => o.status >= 2 && o.status < 5).length + 4;
-  const deliveredCount = orders.filter((o) => o.status === 5).length + 14;
-  const delayedOrFailedCount = 1;
-  const totalSales = orders.reduce((s, o) => s + o.total, 0) + 184500;
+  const totalOrdersCount = orders.length;
+  const awaitingProcessingCount = orders.filter((o) => o.status === 0).length;
+  const readyForDispatchCount = orders.filter((o) => o.status === 1).length;
+  const inTransitCount = orders.filter((o) => o.status >= 2 && o.status < 5).length;
+  const deliveredCount = orders.filter((o) => o.status === 5).length;
+  const delayedOrFailedCount = shipments.filter((s) => s.status === "Delayed").length;
+  const totalSales = orders.reduce((s, o) => s + o.total, 0);
   const lowStockProducts = adminProducts.filter((p) => (p.offers[0]?.stock ?? inventoryStock[p.id] ?? 10) < 5);
 
   const handleRestock = (productId: string) => {
@@ -602,24 +577,27 @@ export function AdminDashboard() {
                   </div>
                   <div className="space-y-3">
                     {[
-                      { name: "Delhivery Express", shipments: 8, status: "Healthy API", latency: "142ms", color: "bg-emerald-500" },
-                      { name: "Bluedart Apex", shipments: 5, status: "Healthy API", latency: "198ms", color: "bg-emerald-500" },
-                      { name: "Shadowfax Hyperlocal", shipments: 3, status: "Weather Warning", latency: "310ms", color: "bg-amber-500" },
-                      { name: "RiderzPro Fleet (Dedicated)", shipments: 4, status: "Real-time Telemetry", latency: "42ms", color: "bg-emerald-500" },
-                    ].map((c) => (
-                      <div key={c.name} className="flex items-center justify-between p-3 rounded-lg bg-[#F5F6F8] border border-gray-100">
-                        <div className="flex items-center gap-3">
-                          <span className={cn("h-2.5 w-2.5 rounded-full", c.color)} />
-                          <div>
-                            <p className="text-xs font-bold text-[#111111]">{c.name}</p>
-                            <p className="text-[10px] text-[#6B7280]">{c.shipments} packages assigned · Latency {c.latency}</p>
+                      { name: "Delhivery Express", provider: "Delhivery", status: "Healthy API", latency: "142ms", color: "bg-emerald-500" },
+                      { name: "Bluedart Apex", provider: "Bluedart", status: "Healthy API", latency: "198ms", color: "bg-emerald-500" },
+                      { name: "Shadowfax Hyperlocal", provider: "Shadowfax", status: "Active Adapter", latency: "310ms", color: "bg-emerald-500" },
+                      { name: "RiderzPro Fleet (Dedicated)", provider: "RiderzPro Fleet", status: "Real-time Telemetry", latency: "42ms", color: "bg-emerald-500" },
+                    ].map((c) => {
+                      const count = shipments.filter((s) => s.provider === c.provider).length;
+                      return (
+                        <div key={c.name} className="flex items-center justify-between p-3 rounded-lg bg-[#F5F6F8] border border-gray-100">
+                          <div className="flex items-center gap-3">
+                            <span className={cn("h-2.5 w-2.5 rounded-full", c.color)} />
+                            <div>
+                              <p className="text-xs font-bold text-[#111111]">{c.name}</p>
+                              <p className="text-[10px] text-[#6B7280]">{count} packages assigned · Latency {c.latency}</p>
+                            </div>
                           </div>
+                          <span className="text-xs font-semibold text-gray-700 bg-white px-2 py-1 rounded border border-gray-200">
+                            {c.status}
+                          </span>
                         </div>
-                        <span className="text-xs font-semibold text-gray-700 bg-white px-2 py-1 rounded border border-gray-200">
-                          {c.status}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -635,37 +613,41 @@ export function AdminDashboard() {
                     </button>
                   </div>
                   <div className="space-y-2.5">
-                    {orders.slice(0, 3).map((o) => (
-                      <div key={o.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-200 transition">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs font-bold text-[#111111]">{o.id}</span>
-                            <span className="rounded bg-red-50 text-[#E31E24] px-1.5 py-0.5 text-[10px] font-semibold">
-                              {ORDER_STEPS[o.status]}
-                            </span>
+                    {orders.length === 0 ? (
+                      <p className="text-xs text-[#6B7280] text-center py-6">No urgent dispatch orders pending</p>
+                    ) : (
+                      orders.slice(0, 3).map((o) => (
+                        <div key={o.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-200 transition">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs font-bold text-[#111111]">{o.id}</span>
+                              <span className="rounded bg-red-50 text-[#E31E24] px-1.5 py-0.5 text-[10px] font-semibold">
+                                {ORDER_STEPS[o.status]}
+                              </span>
+                            </div>
+                            <p className="text-xs text-[#6B7280] mt-0.5">
+                              {o.groups[0]?.items.length} line items · {inr(o.total)}
+                            </p>
                           </div>
-                          <p className="text-xs text-[#6B7280] mt-0.5">
-                            {o.groups[0]?.items.length} line items · {inr(o.total)}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setSelectedOrder(o)}
-                            className="rounded-md border border-[#E5E7EB] px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                          >
-                            Details
-                          </button>
-                          {o.status < 5 && (
+                          <div className="flex items-center gap-2">
                             <button
-                              onClick={() => handleAdvanceOrderStatus(o.id, o.status)}
-                              className="rounded-md bg-[#E31E24] px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700"
+                              onClick={() => setSelectedOrder(o)}
+                              className="rounded-md border border-[#E5E7EB] px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
                             >
-                              Advance →
+                              Details
                             </button>
-                          )}
+                            {o.status < 5 && (
+                              <button
+                                onClick={() => handleAdvanceOrderStatus(o.id, o.status)}
+                                className="rounded-md bg-[#E31E24] px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700"
+                              >
+                                Advance →
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
@@ -727,65 +709,73 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5E7EB]">
-                    {filteredOrders.map((o) => {
-                      const firstProduct = getProduct(o.groups[0]?.items[0]?.productId || "");
-                      return (
-                        <tr key={o.id} className="hover:bg-gray-50/80 transition">
-                          <td className="px-4 py-3 font-mono font-bold text-[#111111]">{o.id}</td>
-                          <td className="px-4 py-3">
-                            <p className="font-semibold text-gray-900">Aakash Sharma</p>
-                            <p className="text-[10px] text-gray-500">Bengaluru</p>
-                          </td>
-                          <td className="px-4 py-3 text-[#6B7280]">
-                            {new Date(o.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="font-medium text-gray-800 line-clamp-1 max-w-[150px]">
-                              {firstProduct?.name || "Automotive Spare"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 font-bold text-[#111111]">{inr(o.total)}</td>
-                          <td className="px-4 py-3">
-                            <span className="rounded bg-emerald-50 text-emerald-800 px-2 py-0.5 text-[10px] font-semibold">
-                              Paid ({o.payment.split("•")[0].split("·")[0]})
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={cn(
-                                "rounded px-2 py-0.5 text-[10px] font-bold",
-                                o.status === 5
-                                  ? "bg-emerald-50 text-emerald-700"
-                                  : o.status >= 3
-                                  ? "bg-blue-50 text-blue-700"
-                                  : "bg-amber-50 text-amber-700"
-                              )}
-                            >
-                              {ORDER_STEPS[o.status]}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-[#6B7280] text-[11px]">
-                            {o.status === 5 ? "Delivered & Signed" : o.status >= 3 ? "Out with Courier" : "Processing at Hub"}
-                          </td>
-                          <td className="px-4 py-3 text-right space-x-1.5">
-                            <button
-                              onClick={() => setSelectedOrder(o)}
-                              className="rounded border border-gray-200 px-2 py-1 text-[11px] font-medium text-gray-700 hover:bg-gray-100"
-                            >
-                              View
-                            </button>
-                            {o.status < 5 && (
-                              <button
-                                onClick={() => handleAdvanceOrderStatus(o.id, o.status)}
-                                className="rounded bg-[#E31E24] px-2 py-1 text-[11px] font-bold text-white hover:bg-red-700"
+                    {filteredOrders.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="px-6 py-10 text-center text-xs text-gray-400">
+                          No orders match your filter criteria.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredOrders.map((o) => {
+                        const firstProduct = getProduct(o.groups[0]?.items[0]?.productId || "");
+                        return (
+                          <tr key={o.id} className="hover:bg-gray-50/80 transition">
+                            <td className="px-4 py-3 font-mono font-bold text-[#111111]">{o.id}</td>
+                            <td className="px-4 py-3">
+                              <p className="font-semibold text-gray-900">{o.customerName || "Customer"}</p>
+                              <p className="text-[10px] text-gray-500">{o.shippingAddress?.city || "Bengaluru"}</p>
+                            </td>
+                            <td className="px-4 py-3 text-[#6B7280]">
+                              {new Date(o.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="font-medium text-gray-800 line-clamp-1 max-w-[150px]">
+                                {firstProduct?.name || "Automotive Spare"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 font-bold text-[#111111]">{inr(o.total)}</td>
+                            <td className="px-4 py-3">
+                              <span className="rounded bg-emerald-50 text-emerald-800 px-2 py-0.5 text-[10px] font-semibold">
+                                Paid ({o.payment.split("•")[0].split("·")[0]})
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={cn(
+                                  "rounded px-2 py-0.5 text-[10px] font-bold",
+                                  o.status === 5
+                                    ? "bg-emerald-50 text-emerald-700"
+                                    : o.status >= 3
+                                    ? "bg-blue-50 text-blue-700"
+                                    : "bg-amber-50 text-amber-700"
+                                )}
                               >
-                                Step →
+                                {ORDER_STEPS[o.status]}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-[#6B7280] text-[11px]">
+                              {o.status === 5 ? "Delivered & Signed" : o.status >= 3 ? "Out with Courier" : "Processing at Hub"}
+                            </td>
+                            <td className="px-4 py-3 text-right space-x-1.5">
+                              <button
+                                onClick={() => setSelectedOrder(o)}
+                                className="rounded border border-gray-200 px-2 py-1 text-[11px] font-medium text-gray-700 hover:bg-gray-100"
+                              >
+                                View
                               </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                              {o.status < 5 && (
+                                <button
+                                  onClick={() => handleAdvanceOrderStatus(o.id, o.status)}
+                                  className="rounded bg-[#E31E24] px-2 py-1 text-[11px] font-bold text-white hover:bg-red-700"
+                                >
+                                  Step →
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -822,46 +812,54 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5E7EB]">
-                    {shipments.map((s) => (
-                      <tr key={s.shipmentId} className="hover:bg-gray-50/80 transition">
-                        <td className="px-4 py-3 font-mono font-bold text-[#111111]">{s.shipmentId}</td>
-                        <td className="px-4 py-3 font-semibold text-gray-800">{s.provider}</td>
-                        <td className="px-4 py-3 font-mono text-[#6B7280]">{s.trackingNumber}</td>
-                        <td className="px-4 py-3 font-mono font-medium text-gray-800">{s.orderId}</td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={cn(
-                              "rounded px-2 py-0.5 text-[10px] font-bold",
-                              s.status === "Delivered"
-                                ? "bg-emerald-50 text-emerald-700"
-                                : s.status === "Delayed"
-                                ? "bg-rose-50 text-rose-700"
-                                : "bg-blue-50 text-blue-700"
-                            )}
-                          >
-                            {s.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1.5">
-                            <span className="rounded bg-gray-100 text-gray-600 px-1 text-[9px] font-bold">
-                              {s.locationType === "Live GPS Telemetry" ? "GPS" : "FACILITY"}
-                            </span>
-                            <span className="text-gray-800 font-medium">{s.latestLocation}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-[#6B7280]">{s.lastEventTimestamp}</td>
-                        <td className="px-4 py-3 text-[#6B7280]">{s.estimatedDelivery}</td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => setSelectedShipment(s)}
-                            className="rounded border border-gray-200 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-100 cursor-pointer"
-                          >
-                            Timeline
-                          </button>
+                    {shipments.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="px-6 py-10 text-center text-xs text-gray-400">
+                          No active shipments registered.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      shipments.map((s) => (
+                        <tr key={s.shipmentId} className="hover:bg-gray-50/80 transition">
+                          <td className="px-4 py-3 font-mono font-bold text-[#111111]">{s.shipmentId}</td>
+                          <td className="px-4 py-3 font-semibold text-gray-800">{s.provider}</td>
+                          <td className="px-4 py-3 font-mono text-[#6B7280]">{s.trackingNumber}</td>
+                          <td className="px-4 py-3 font-mono font-medium text-gray-800">{s.orderId}</td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={cn(
+                                "rounded px-2 py-0.5 text-[10px] font-bold",
+                                s.status === "Delivered"
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : s.status === "Delayed"
+                                  ? "bg-rose-50 text-rose-700"
+                                  : "bg-blue-50 text-blue-700"
+                              )}
+                            >
+                              {s.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1.5">
+                              <span className="rounded bg-gray-100 text-gray-600 px-1 text-[9px] font-bold">
+                                {s.locationType === "Live GPS Telemetry" ? "GPS" : "FACILITY"}
+                              </span>
+                              <span className="text-gray-800 font-medium">{s.latestLocation}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-[#6B7280]">{s.lastEventTimestamp}</td>
+                          <td className="px-4 py-3 text-[#6B7280]">{s.estimatedDelivery}</td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={() => setSelectedShipment(s)}
+                              className="rounded border border-gray-200 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-100 cursor-pointer"
+                            >
+                              Timeline
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -982,23 +980,29 @@ export function AdminDashboard() {
               <h1 className="font-display text-2xl font-extrabold text-[#111111]">Category Architecture</h1>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {[
-                  { name: "Electric Bikes", count: 3, desc: "Certified high-speed & commuter electric motorbikes & scooters" },
-                  { name: "Car Accessories", count: 3, desc: "Dashcams, tire inflators, level-2 wallbox chargers" },
-                  { name: "Bike Accessories", count: 3, desc: "All-weather covers, alarm disc locks, wireless phone mounts" },
-                  { name: "Spare Parts", count: 4, desc: "Brembo rotors, ceramic pads, Gates kevlar drive belts" },
-                  { name: "Battery Packs", count: 6, desc: "48V, 60V, 72V NMC and LiFePO4 packs with smart BMS" },
-                  { name: "Fast Chargers", count: 2, desc: "3.3kW Type-2 AC chargers and portable home units" },
-                ].map((cat) => (
-                  <div key={cat.name} className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-2xs">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-bold text-sm text-[#111111]">{cat.name}</h3>
-                      <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-700">
-                        {cat.count} items
-                      </span>
+                  { name: "Electric Bikes", desc: "Certified high-speed & commuter electric motorbikes & scooters" },
+                  { name: "Car Accessories", desc: "Dashcams, tire inflators, level-2 wallbox chargers" },
+                  { name: "Bike Accessories", desc: "All-weather covers, alarm disc locks, wireless phone mounts" },
+                  { name: "Spare Parts", desc: "Brembo rotors, ceramic pads, Gates kevlar drive belts" },
+                  { name: "Battery Packs", desc: "48V, 60V, 72V NMC and LiFePO4 packs with smart BMS" },
+                  { name: "Fast Chargers", desc: "3.3kW Type-2 AC chargers and portable home units" },
+                ].map((cat) => {
+                  const dynamicCount = adminProducts.filter((p) =>
+                    p.category.toLowerCase().includes(cat.name.toLowerCase().split(" ")[0]) ||
+                    cat.name.toLowerCase().includes(p.category.toLowerCase().split(" ")[0])
+                  ).length;
+                  return (
+                    <div key={cat.name} className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-bold text-sm text-[#111111]">{cat.name}</h3>
+                        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-700">
+                          {dynamicCount} items
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs text-[#6B7280]">{cat.desc}</p>
                     </div>
-                    <p className="mt-2 text-xs text-[#6B7280]">{cat.desc}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1087,20 +1091,24 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5E7EB]">
-                    {[
-                      { name: "Aakash Sharma", email: "aakash.sharma@example.com", phone: "+91 98765 43210", city: "Bengaluru, KA", bike: "Ola S1 Pro (60V)", orders: 3, gmv: 37305 },
-                      { name: "Pooja Reddy", email: "pooja.reddy@example.com", phone: "+91 98450 11223", city: "Hyderabad, TS", bike: "Ather 450X (48V)", orders: 2, gmv: 18900 },
-                      { name: "Rahul Verma", email: "rahul.v@example.com", phone: "+91 99100 44556", city: "Pune, MH", bike: "Revolt RV400 (72V)", orders: 4, gmv: 98400 },
-                    ].map((c) => (
-                      <tr key={c.email} className="hover:bg-gray-50/80 transition">
-                        <td className="px-4 py-3 font-semibold text-gray-900">{c.name}</td>
-                        <td className="px-4 py-3 text-[#6B7280]">{c.email} · {c.phone}</td>
-                        <td className="px-4 py-3">{c.city}</td>
-                        <td className="px-4 py-3 font-medium text-gray-800">{c.bike}</td>
-                        <td className="px-4 py-3 font-bold">{c.orders}</td>
-                        <td className="px-4 py-3 font-bold text-[#111111]">{inr(c.gmv)}</td>
+                    {orders.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-10 text-center text-xs text-gray-400">
+                          No registered customers or customer orders placed yet.
+                        </td>
                       </tr>
-                    ))}
+                    ) : (
+                      orders.map((o) => (
+                        <tr key={o.id} className="hover:bg-gray-50/80 transition">
+                          <td className="px-4 py-3 font-semibold text-gray-900">{o.customerName || "Customer"}</td>
+                          <td className="px-4 py-3 text-[#6B7280]">{o.customerPhone || "N/A"}</td>
+                          <td className="px-4 py-3">{o.shippingAddress?.city || "Bengaluru, KA"}</td>
+                          <td className="px-4 py-3 font-medium text-gray-800">Electric Vehicle</td>
+                          <td className="px-4 py-3 font-bold">1</td>
+                          <td className="px-4 py-3 font-bold text-[#111111]">{inr(o.total)}</td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1124,30 +1132,38 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5E7EB]">
-                    {[
-                      { txn: "TXN_UPI_849201", order: "RZ-849201", method: "Razorpay (Google Pay UPI)", amount: 17200, status: "Captured" },
-                      { txn: "TXN_CC_793420", order: "RZ-793420", method: "HDFC Payment Gateway (Card)", amount: 2909, status: "Settled" },
-                    ].map((tx) => (
-                      <tr key={tx.txn} className="hover:bg-gray-50/80 transition">
-                        <td className="px-4 py-3 font-mono font-bold text-gray-900">{tx.txn}</td>
-                        <td className="px-4 py-3 font-mono text-gray-700">{tx.order}</td>
-                        <td className="px-4 py-3 text-[#6B7280]">{tx.method}</td>
-                        <td className="px-4 py-3 font-bold text-[#111111]">{inr(tx.amount)}</td>
-                        <td className="px-4 py-3">
-                          <span className="rounded bg-emerald-50 text-emerald-800 px-2 py-0.5 text-[10px] font-bold">
-                            {tx.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => handleProcessRefund(tx.order)}
-                            className="rounded border border-gray-200 px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"
-                          >
-                            Refund
-                          </button>
+                    {orders.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-10 text-center text-xs text-gray-400">
+                          No payment transactions processed yet.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      orders.map((o) => {
+                        const txnId = `TXN_${o.payment.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase().slice(0, 8)}_${o.id.replace(/[^a-zA-Z0-9]/g, "").slice(-6)}`;
+                        return (
+                          <tr key={o.id} className="hover:bg-gray-50/80 transition">
+                            <td className="px-4 py-3 font-mono font-bold text-gray-900">{txnId}</td>
+                            <td className="px-4 py-3 font-mono text-gray-700">{o.id}</td>
+                            <td className="px-4 py-3 text-[#6B7280]">{o.payment}</td>
+                            <td className="px-4 py-3 font-bold text-[#111111]">{inr(o.total)}</td>
+                            <td className="px-4 py-3">
+                              <span className="rounded bg-emerald-50 text-emerald-800 px-2 py-0.5 text-[10px] font-bold">
+                                {o.status === 5 ? "Settled" : "Captured"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <button
+                                onClick={() => handleProcessRefund(o.id)}
+                                className="rounded border border-gray-200 px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+                              >
+                                Refund
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1158,26 +1174,10 @@ export function AdminDashboard() {
           {activeTab === "returns" && (
             <div className="space-y-5">
               <h1 className="font-display text-2xl font-extrabold text-[#111111]">Returns & Cancellations (RMA)</h1>
-              <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs">
-                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                  <div>
-                    <span className="font-mono text-xs font-bold text-[#E31E24]">RMA-2026-081</span>
-                    <h3 className="font-bold text-sm text-[#111111]">Wave Disc Brake Rotor 220mm (Order: RZ-790112)</h3>
-                    <p className="text-xs text-[#6B7280]">Customer reason: Ordered incorrect caliper bolt pattern for custom swingarm.</p>
-                  </div>
-                  <span className="rounded bg-amber-50 text-amber-700 px-2 py-0.5 text-xs font-bold">
-                    Inspection Approved
-                  </span>
-                </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <p className="text-xs text-[#6B7280]">Restocking destination: Jayanagar Warehouse Hub</p>
-                  <button
-                    onClick={() => toast.success("Item restocked to active inventory")}
-                    className="rounded bg-black px-3 py-1.5 text-xs font-bold text-white hover:bg-gray-800"
-                  >
-                    Confirm Restock & Close RMA
-                  </button>
-                </div>
+              <div className="rounded-xl border border-dashed border-[#E5E7EB] bg-white p-10 text-center shadow-2xs">
+                <RotateCcw className="mx-auto h-8 w-8 text-gray-300 mb-2" />
+                <p className="text-sm font-bold text-gray-700">No Pending Return or RMA Requests</p>
+                <p className="text-xs text-[#6B7280] mt-0.5">Return requests and warranty replacements will be listed here.</p>
               </div>
             </div>
           )}
@@ -1225,19 +1225,19 @@ export function AdminDashboard() {
               <h1 className="font-display text-2xl font-extrabold text-[#111111]">Logistics & Sales Analytics</h1>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs">
-                  <p className="text-xs font-semibold text-[#6B7280] uppercase">Average Transit Time</p>
-                  <p className="mt-2 text-3xl font-extrabold text-[#111111]">34.2 mins</p>
-                  <p className="mt-1 text-xs text-emerald-600 font-medium">-4.5m improvement vs target</p>
+                  <p className="text-xs font-semibold text-[#6B7280] uppercase">Total Realized GMV</p>
+                  <p className="mt-2 text-3xl font-extrabold text-[#111111]">{inr(totalSales)}</p>
+                  <p className="mt-1 text-xs text-emerald-600 font-medium">Calculated across all orders</p>
                 </div>
                 <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs">
-                  <p className="text-xs font-semibold text-[#6B7280] uppercase">On-Time SLA Delivery</p>
-                  <p className="mt-2 text-3xl font-extrabold text-[#111111]">98.4%</p>
-                  <p className="mt-1 text-xs text-emerald-600 font-medium">Exceeds 95% contractual SLA</p>
+                  <p className="text-xs font-semibold text-[#6B7280] uppercase">Delivered Orders</p>
+                  <p className="mt-2 text-3xl font-extrabold text-[#111111]">{deliveredCount} / {orders.length}</p>
+                  <p className="mt-1 text-xs text-emerald-600 font-medium">Doorstep completion rate</p>
                 </div>
                 <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs">
-                  <p className="text-xs font-semibold text-[#6B7280] uppercase">First-Attempt Delivery Rate</p>
-                  <p className="mt-2 text-3xl font-extrabold text-[#111111]">96.8%</p>
-                  <p className="mt-1 text-xs text-emerald-600 font-medium">Minimal customer reschedules</p>
+                  <p className="text-xs font-semibold text-[#6B7280] uppercase">Consignments In Transit</p>
+                  <p className="mt-2 text-3xl font-extrabold text-[#111111]">{inTransitCount}</p>
+                  <p className="mt-1 text-xs text-emerald-600 font-medium">Active courier tracking</p>
                 </div>
               </div>
             </div>
@@ -1248,21 +1248,34 @@ export function AdminDashboard() {
             <div className="space-y-5">
               <h1 className="font-display text-2xl font-extrabold text-[#111111]">Operations Notifications</h1>
               <div className="space-y-3">
-                {[
-                  { title: "Low Stock Alert: Kelly 72V 80A Controller", time: "15m ago", type: "warning" },
-                  { title: "Courier Webhook Ping: Delhivery API returned 200 OK", time: "1 hour ago", type: "info" },
-                  { title: "New high-value order RZ-849201 placed by customer", time: "2 hours ago", type: "order" },
-                ].map((n, i) => (
-                  <div key={i} className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-2xs flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-[#111111]">{n.title}</p>
-                      <p className="text-[10px] text-[#6B7280]">{n.time}</p>
-                    </div>
-                    <span className="text-[10px] font-bold text-[#E31E24] bg-red-50 px-2 py-0.5 rounded">
-                      Unread
-                    </span>
+                {lowStockProducts.length === 0 && orders.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-[#E5E7EB] bg-white p-10 text-center text-xs text-gray-400">
+                    No operational alerts. Systems running smoothly.
                   </div>
-                ))}
+                ) : (
+                  [
+                    ...lowStockProducts.map((p) => ({
+                      title: `Low Stock Alert: ${p.name}`,
+                      time: "Threshold reached (<5 units)",
+                      type: "warning" as const,
+                    })),
+                    ...orders.slice(0, 3).map((o) => ({
+                      title: `Order ${o.id} - ${inr(o.total)} placed`,
+                      time: new Date(o.createdAt).toLocaleDateString(),
+                      type: "order" as const,
+                    })),
+                  ].map((n, i) => (
+                    <div key={i} className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-2xs flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-[#111111]">{n.title}</p>
+                        <p className="text-[10px] text-[#6B7280]">{n.time}</p>
+                      </div>
+                      <span className="text-[10px] font-bold text-[#E31E24] bg-red-50 px-2 py-0.5 rounded">
+                        Active
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -1508,15 +1521,23 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5E7EB]">
-                    {auditLogs.map((a) => (
-                      <tr key={a.id} className="hover:bg-gray-50/80 transition">
-                        <td className="px-4 py-3 text-[#6B7280]">{a.timestamp}</td>
-                        <td className="px-4 py-3 font-semibold text-gray-900">{a.actor}</td>
-                        <td className="px-4 py-3 font-bold text-[#E31E24]">{a.action}</td>
-                        <td className="px-4 py-3 font-mono font-medium">{a.target}</td>
-                        <td className="px-4 py-3 text-gray-700">{a.details}</td>
+                    {auditLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-10 text-center text-xs text-gray-400">
+                          No audit entries recorded yet. Operational updates and status changes will appear here.
+                        </td>
                       </tr>
-                    ))}
+                    ) : (
+                      auditLogs.map((a) => (
+                        <tr key={a.id} className="hover:bg-gray-50/80 transition">
+                          <td className="px-4 py-3 text-[#6B7280]">{a.timestamp}</td>
+                          <td className="px-4 py-3 font-semibold text-gray-900">{a.actor}</td>
+                          <td className="px-4 py-3 font-bold text-[#E31E24]">{a.action}</td>
+                          <td className="px-4 py-3 font-mono font-medium">{a.target}</td>
+                          <td className="px-4 py-3 text-gray-700">{a.details}</td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

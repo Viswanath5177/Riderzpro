@@ -5,7 +5,7 @@ import { useStore, type Order } from "@/lib/store";
 import { getProduct, getVendor, inr } from "@/lib/data";
 
 export function InvoicesTab() {
-  const { orders } = useStore();
+  const { orders, userProfile } = useStore();
   const [selectedInvoice, setSelectedInvoice] = useState<Order | null>(null);
 
   const totalSpent = orders.reduce((s, o) => s + o.total, 0);
@@ -113,7 +113,7 @@ export function InvoicesTab() {
         </div>
         <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-2xs col-span-2 sm:col-span-1">
           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Billing Profile</span>
-          <p className="text-base font-bold text-gray-900 mt-1">Aakash Sharma</p>
+          <p className="text-base font-bold text-gray-900 mt-1">{userProfile.name || "Customer"}</p>
           <span className="text-[11px] text-emerald-600 font-semibold">Verified Consumer</span>
         </div>
       </div>
