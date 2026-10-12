@@ -1,27 +1,18 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
-  Home,
-  Mic,
-  Package,
-  ShoppingBag,
   ShoppingCart,
   User,
   LayoutDashboard,
   Search,
-  ShieldCheck,
-  ChevronDown,
   Menu,
   X,
-  Lock,
-  Tag,
-  Wrench,
-  Bike,
-  Compass,
+  Phone,
+  Mail,
+  MapPin,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useStore } from "@/lib/store";
 import { Logo } from "./bits";
-import { inr } from "@/lib/data";
 
 interface NavCategory {
   label: string;
@@ -46,7 +37,6 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isAccountOpen, setIsAccountOpen] = useState(false);
 
   const cartCount = cart.reduce((s, c) => s + c.qty, 0);
 
@@ -60,61 +50,58 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#F3F4F6] via-[#F8F9FB] to-[#EEF2F6] text-[#111111] pb-24 md:pb-0 font-sans relative overflow-x-hidden">
-      {/* VisionOS Ambient Spatial Glow Orbs */}
-      <div className="pointer-events-none fixed -top-40 -left-40 h-[500px] w-[500px] rounded-full bg-red-400/8 blur-[140px] z-0" />
-      <div className="pointer-events-none fixed top-1/3 -right-40 h-[450px] w-[450px] rounded-full bg-blue-400/8 blur-[140px] z-0" />
-
+    <div className="min-h-screen bg-white text-[#111111] font-sans flex flex-col antialiased">
       {/* ─────────────────────────────────────────────────────────────
-          MAIN BRAND HEADER WITH APPLE VISIONOS FROSTED GLASS
+          COMPACT PROFESSIONAL TWO-ROW HEADER
          ───────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 border-b border-white/70 bg-white/75 backdrop-blur-2xl shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
-        <div className="mx-auto flex h-18 max-w-7xl items-center gap-4 px-4 sm:px-6">
+      <header className="sticky top-0 z-40 bg-white border-b border-[#E5E7EB]">
+        {/* ROW 1: Logo, Search Bar, Cart, Account */}
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
           {/* Mobile menu toggle */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 rounded-xl text-gray-700 hover:bg-white/80 active:scale-95 transition lg:hidden"
+            className="p-2 rounded-lg text-gray-700 hover:bg-[#F7F7F8] active:scale-95 transition lg:hidden"
             aria-label="Toggle menu"
           >
-            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
 
-          {/* Official RiderzPro Logo Asset */}
-          <div className="shrink-0 py-2">
-            <Logo imgClassName="h-9 md:h-11" />
+          {/* Official RiderzPro Logo */}
+          <div className="shrink-0">
+            <Logo imgClassName="h-8 md:h-9" />
           </div>
 
-          {/* Prominent Search Bar with VisionOS Glass */}
+          {/* Product Search Bar */}
           <form
             onSubmit={handleSearchSubmit}
-            className="hidden sm:flex flex-1 max-w-xl mx-auto items-center relative"
+            className="hidden sm:flex flex-1 max-w-xl mx-4 items-center relative"
           >
-            <div className="relative w-full flex items-center vision-glass-subtle rounded-full border border-white/80 transition-all focus-within:bg-white/95 focus-within:border-white focus-within:ring-2 focus-within:ring-[#E31E24]/20 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)]">
-              <Search className="ml-4 h-4 w-4 text-[#6B7280] shrink-0" />
+            <div className="relative w-full flex items-center rounded-lg border border-[#E5E7EB] bg-white transition-all focus-within:border-[#E31E24] focus-within:ring-1 focus-within:ring-[#E31E24]">
+              <Search className="ml-3.5 h-4 w-4 text-[#6B7280] shrink-0" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search electric bikes, car accessories, 60V batteries, chargers, brake discs..."
-                className="w-full bg-transparent py-2.5 pl-3 pr-24 text-xs text-[#111111] placeholder:text-[#6B7280] focus:outline-none"
+                placeholder="Search electric bikes, accessories, batteries, spare parts..."
+                className="w-full bg-transparent py-2 pl-2.5 pr-22 text-xs sm:text-sm text-[#111111] placeholder:text-[#6B7280] focus:outline-none"
               />
               <button
                 type="submit"
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full bg-[#E31E24] px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-red-700 active:scale-95"
+                className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md bg-[#E31E24] px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-red-700 active:scale-95"
               >
                 Search
               </button>
             </div>
           </form>
 
-          {/* Right Header Controls */}
-          <div className="ml-auto flex items-center gap-2 sm:gap-3">
-            {/* Cart Button */}
+          {/* Right: Cart & Account Controls */}
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            {/* Cart Icon with Item Count */}
             <Link
               to="/cart"
               id="navbar-cart-btn"
-              aria-label="Cart"
-              className="vision-pill relative flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold text-[#111111] transition hover:border-[#E31E24] hover:text-[#E31E24] active:scale-95"
+              aria-label="Shopping Cart"
+              className="relative flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-3.5 py-2 text-xs font-semibold text-[#111111] transition hover:border-[#E31E24] hover:text-[#E31E24] active:scale-95"
             >
               <ShoppingCart className="h-4 w-4" />
               <span className="hidden sm:inline">Cart</span>
@@ -125,33 +112,48 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
               )}
             </Link>
 
-            {/* Account Menu */}
-            <div className="relative">
-              <Link
-                to="/dashboard/customer"
-                className="vision-pill flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold text-[#111111] transition hover:border-[#E31E24] active:scale-95"
-              >
-                <div className="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-tr from-gray-200 to-white text-[#111111] font-bold text-[11px] shadow-2xs">
-                  AS
-                </div>
-                <span className="hidden md:inline">{userProfile.name.split(" ")[0]}</span>
-              </Link>
-            </div>
+            {/* Customer Account / Profile Menu */}
+            <Link
+              to="/dashboard/customer"
+              aria-label="Customer Account"
+              className="flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-3.5 py-2 text-xs font-semibold text-[#111111] transition hover:border-[#E31E24] hover:text-[#E31E24] active:scale-95"
+            >
+              <User className="h-4 w-4 text-[#6B7280]" />
+              <span className="hidden sm:inline">{userProfile.name ? userProfile.name.split(" ")[0] : "Account"}</span>
+            </Link>
           </div>
         </div>
 
-        {/* ─────────────────────────────────────────────────────────────
-            3. SECONDARY CATEGORY NAVIGATION BAR (FROSTED GLASS)
-           ───────────────────────────────────────────────────────────── */}
-        <div className="hidden lg:block border-t border-white/50 bg-white/60 backdrop-blur-xl">
-          <div className="mx-auto flex h-10.5 max-w-7xl items-center justify-between px-6">
-            <nav className="flex items-center gap-1">
+        {/* Mobile Search Bar below header row */}
+        <div className="sm:hidden px-4 pb-3">
+          <form onSubmit={handleSearchSubmit} className="relative flex items-center">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search products & spares..."
+              className="h-9 w-full rounded-lg border border-[#E5E7EB] bg-white pl-9 pr-20 text-xs text-[#111111] placeholder:text-[#6B7280] focus:border-[#E31E24] focus:outline-none"
+            />
+            <Search className="absolute left-3 h-3.5 w-3.5 text-[#6B7280]" />
+            <button
+              type="submit"
+              className="absolute right-1 top-1/2 -translate-y-1/2 rounded bg-[#E31E24] px-2.5 py-1 text-[11px] font-semibold text-white"
+            >
+              Search
+            </button>
+          </form>
+        </div>
+
+        {/* ROW 2: Category Navigation */}
+        <div className="hidden lg:block border-t border-[#E5E7EB] bg-white">
+          <div className="mx-auto flex h-10.5 max-w-7xl items-center px-6">
+            <nav className="flex items-center gap-1 w-full">
               {storeCategories.map((cat) => (
                 <Link
                   key={cat.label}
                   to={cat.to}
                   search={cat.search ? ({ cat: cat.search } as any) : undefined}
-                  className="rounded-md px-3 py-1.5 text-xs font-medium text-[#6B7280] transition hover:bg-red-50 hover:text-[#E31E24]"
+                  className="rounded-md px-3.5 py-1.5 text-xs font-medium text-[#6B7280] transition hover:bg-red-50 hover:text-[#E31E24]"
                   activeProps={{ className: "!text-[#E31E24] !bg-red-50 !font-semibold" }}
                   activeOptions={{ exact: cat.to === "/" }}
                 >
@@ -159,37 +161,20 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
                 </Link>
               ))}
             </nav>
-
-            <div className="flex items-center gap-4 text-xs font-medium text-[#6B7280]">
-              <Link
-                to="/dashboard/customer"
-                className="flex items-center gap-1.5 hover:text-[#E31E24] transition"
-              >
-                <Bike className="h-3.5 w-3.5 text-[#E31E24]" />
-                <span>My Registered Garage</span>
-              </Link>
-              <span className="text-gray-300">|</span>
-              <span className="flex items-center gap-1 text-emerald-700">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                <span>100% Fitment Guarantee</span>
-              </span>
-            </div>
           </div>
         </div>
       </header>
 
-      {/* ─────────────────────────────────────────────────────────────
-          4. MOBILE DRAWER NAVIGATION
-         ───────────────────────────────────────────────────────────── */}
+      {/* MOBILE DRAWER NAVIGATION */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
           <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-xs"
+            className="fixed inset-0 bg-black/40"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <div className="relative z-10 w-4/5 max-w-sm bg-white p-5 flex flex-col h-full shadow-2xl">
-            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-              <Logo imgClassName="h-8" />
+          <div className="relative z-10 w-4/5 max-w-xs bg-white p-5 flex flex-col h-full shadow-xl">
+            <div className="flex items-center justify-between pb-4 border-b border-[#E5E7EB]">
+              <Logo imgClassName="h-7" />
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="p-1 rounded-md text-gray-500 hover:text-gray-900"
@@ -198,22 +183,7 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
               </button>
             </div>
 
-            {/* Mobile Search */}
-            <form onSubmit={handleSearchSubmit} className="mt-4">
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search auto spares & batteries..."
-                  className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-3 text-sm focus:bg-white focus:border-[#E31E24] focus:outline-none"
-                />
-                <Search className="absolute left-3 h-4 w-4 text-gray-400" />
-              </div>
-            </form>
-
-            {/* Categories list */}
-            <p className="mt-5 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+            <p className="mt-4 text-[11px] font-bold uppercase tracking-wider text-[#6B7280]">
               Categories
             </p>
             <div className="mt-2 space-y-1 overflow-y-auto flex-1">
@@ -223,133 +193,106 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
                   to={cat.to}
                   search={cat.search ? ({ cat: cat.search } as any) : undefined}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-[#E31E24]"
+                  className="block rounded-lg px-3 py-2 text-xs font-medium text-[#111111] hover:bg-red-50 hover:text-[#E31E24] transition"
+                  activeProps={{ className: "!bg-red-50 !text-[#E31E24] !font-bold" }}
+                  activeOptions={{ exact: cat.to === "/" }}
                 >
-                  <span>{cat.label}</span>
+                  {cat.label}
                 </Link>
               ))}
+            </div>
 
-              <div className="pt-4 mt-4 border-t border-gray-100 space-y-1">
-                <Link
-                  to="/dashboard/customer"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50"
-                >
-                  <User className="h-4 w-4 text-[#E31E24]" />
-                  <span>Customer Dashboard</span>
-                </Link>
-                <Link
-                  to="/dashboard/admin"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold text-[#E31E24] hover:bg-red-50"
-                >
-                  <Lock className="h-4 w-4 text-[#E31E24]" />
-                  <span>Admin Console</span>
-                </Link>
-              </div>
+            <div className="pt-4 border-t border-[#E5E7EB] space-y-2">
+              <Link
+                to="/dashboard/customer"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-2 text-xs font-semibold text-[#111111] hover:text-[#E31E24]"
+              >
+                <User className="h-4 w-4" /> Customer Dashboard
+              </Link>
+              <Link
+                to="/cart"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-2 text-xs font-semibold text-[#111111] hover:text-[#E31E24]"
+              >
+                <ShoppingCart className="h-4 w-4" /> View Cart ({cartCount})
+              </Link>
             </div>
           </div>
         </div>
       )}
 
-      {/* Main Content View */}
-      <main>{children}</main>
+      {/* Main Content */}
+      <main className="flex-1">{children}</main>
 
-      {/* Footer */}
+      {/* FOOTER */}
       <Footer />
-
-      {/* Mobile Tab Bar */}
-      <MobileTabBar count={cartCount} />
     </div>
-  );
-}
-
-function MobileTabBar({ count }: { count: number }) {
-  const tabs = [
-    { to: "/", label: "Home", Icon: Home },
-    { to: "/shop", label: "Shop", Icon: ShoppingBag },
-    { to: "/assistant", label: "Ask AI", Icon: Mic, center: true },
-    { to: "/dashboard/customer", label: "Garage", Icon: Bike },
-    { to: "/dashboard/customer", label: "Account", Icon: User },
-  ] as const;
-
-  return (
-    <nav className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-md items-center justify-around rounded-full vision-dock px-3 py-1.5 md:hidden">
-      {tabs.map((t) => (
-        <Link
-          key={t.label}
-          to={t.to}
-          activeOptions={{ exact: t.to === "/" }}
-          className="flex flex-1 flex-col items-center gap-0.5 text-[10px] font-semibold text-[#6B7280] transition hover:text-[#111111]"
-          activeProps={{ className: "!text-[#E31E24]" }}
-        >
-          {"center" in t ? (
-            <div className="relative -mt-6 flex flex-col items-center group">
-              <span className="vision-mic-orb relative grid h-13 w-13 place-items-center rounded-full text-white cursor-pointer active:scale-90">
-                <span className="vision-mic-pulse animate-mic-pulse" />
-                <Mic className="h-6 w-6 relative z-10 drop-shadow-sm" />
-              </span>
-              <span className="mt-1 text-[10px] font-bold tracking-tight text-[#E31E24]">
-                Ask AI
-              </span>
-            </div>
-          ) : (
-            <span className="relative flex flex-col items-center py-1">
-              <t.Icon className="h-5 w-5" />
-              <span>{t.label}</span>
-            </span>
-          )}
-        </Link>
-      ))}
-    </nav>
   );
 }
 
 function Footer() {
   return (
-    <footer className="mt-20 border-t border-[#E5E7EB] bg-white">
-      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-14 sm:px-6 md:grid-cols-4">
-        <div className="md:col-span-2">
-          <Logo imgClassName="h-10" />
-          <p className="mt-3 max-w-md text-sm text-[#6B7280] leading-relaxed">
-            RiderzPro is India's leading automotive marketplace for electric bikes, car and bike accessories, batteries, chargers, and verified replacement spare parts. Built with precision for riders and fleet operators.
+    <footer className="border-t border-[#E5E7EB] bg-[#F7F7F8] text-[#111111] mt-auto">
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-4">
+        {/* Brand & Summary */}
+        <div className="md:col-span-1">
+          <Logo imgClassName="h-8" />
+          <p className="mt-3 text-xs text-[#6B7280] leading-relaxed">
+            RiderzPro is an automotive e-commerce platform offering electric bikes, accessories, batteries, chargers, and verified spare parts.
           </p>
-          <div className="mt-4 flex items-center gap-4 text-xs font-semibold text-gray-700">
-            <span className="flex items-center gap-1">
-              <ShieldCheck className="h-4 w-4 text-emerald-600" />
-              Verified OEM Compatible
-            </span>
-            <span className="flex items-center gap-1">
-              <Package className="h-4 w-4 text-[#E31E24]" />
-              Express 3-Hour Delivery
-            </span>
+          <div className="mt-4 space-y-1.5 text-xs text-[#6B7280]">
+            <p className="flex items-center gap-2">
+              <MapPin className="h-3.5 w-3.5 text-[#111111]" /> MG Road, Bengaluru, Karnataka, India
+            </p>
+            <p className="flex items-center gap-2">
+              <Mail className="h-3.5 w-3.5 text-[#111111]" /> support@riderzpro.com
+            </p>
+            <p className="flex items-center gap-2">
+              <Phone className="h-3.5 w-3.5 text-[#111111]" /> +91 80 4567 8900
+            </p>
           </div>
         </div>
 
-        <div className="text-sm">
-          <p className="font-semibold text-[#111111] mb-3">Shop Departments</p>
+        {/* Product Links */}
+        <div className="text-xs">
+          <p className="font-bold text-[#111111] uppercase tracking-wider mb-3">Products</p>
           <ul className="space-y-2 text-[#6B7280]">
-            <li><Link to="/shop" className="hover:text-[#E31E24] transition">Electric Bikes</Link></li>
-            <li><Link to="/shop" className="hover:text-[#E31E24] transition">Car Accessories</Link></li>
-            <li><Link to="/shop" className="hover:text-[#E31E24] transition">Bike Accessories</Link></li>
-            <li><Link to="/shop" className="hover:text-[#E31E24] transition">Spare Parts & Brakes</Link></li>
-            <li><Link to="/shop" className="hover:text-[#E31E24] transition">Batteries & Chargers</Link></li>
+            <li><Link to="/shop" search={{ cat: "Electric Bikes" } as any} className="hover:text-[#E31E24] transition">Electric Bikes</Link></li>
+            <li><Link to="/shop" search={{ cat: "Car Accessories" } as any} className="hover:text-[#E31E24] transition">Car Accessories</Link></li>
+            <li><Link to="/shop" search={{ cat: "Bike Accessories" } as any} className="hover:text-[#E31E24] transition">Bike Accessories</Link></li>
+            <li><Link to="/shop" search={{ cat: "Riding Gear & Helmets" } as any} className="hover:text-[#E31E24] transition">Riding Gear & Helmets</Link></li>
+            <li><Link to="/shop" search={{ cat: "Spare Parts" } as any} className="hover:text-[#E31E24] transition">Spare Parts</Link></li>
+            <li><Link to="/shop" search={{ cat: "Battery" } as any} className="hover:text-[#E31E24] transition">Batteries & Chargers</Link></li>
           </ul>
         </div>
 
-        <div className="text-sm">
-          <p className="font-semibold text-[#111111] mb-3">Portals & Support</p>
+        {/* Customer Support & Orders */}
+        <div className="text-xs">
+          <p className="font-bold text-[#111111] uppercase tracking-wider mb-3">Customer Support</p>
           <ul className="space-y-2 text-[#6B7280]">
+            <li><Link to="/dashboard/customer" search={{ tab: "orders" } as any} className="hover:text-[#E31E24] transition">Track Your Order</Link></li>
             <li><Link to="/dashboard/customer" className="hover:text-[#E31E24] transition">Customer Dashboard</Link></li>
-            <li><Link to="/dashboard/admin" className="hover:text-[#E31E24] transition">Admin Operations Console</Link></li>
-            <li><Link to="/assistant" className="hover:text-[#E31E24] transition">AI Automotive Assistant</Link></li>
-            <li><Link to="/login" className="hover:text-[#E31E24] transition">Account Sign In</Link></li>
+            <li><Link to="/dashboard/customer" search={{ tab: "help" } as any} className="hover:text-[#E31E24] transition">Help & Support</Link></li>
+            <li><Link to="/login" className="hover:text-[#E31E24] transition">Account Login</Link></li>
+            <li><Link to="/cart" className="hover:text-[#E31E24] transition">View Shopping Cart</Link></li>
+          </ul>
+        </div>
+
+        {/* Policies & Legal */}
+        <div className="text-xs">
+          <p className="font-bold text-[#111111] uppercase tracking-wider mb-3">Policies & Legal</p>
+          <ul className="space-y-2 text-[#6B7280]">
+            <li><span className="text-[#6B7280]">Shipping Policy: Tracked courier delivery across India</span></li>
+            <li><span className="text-[#6B7280]">Returns Policy: Verified returns within 7 days for eligible items</span></li>
+            <li><span className="text-[#6B7280]">Privacy Policy: Compliant customer data protection</span></li>
+            <li><span className="text-[#6B7280]">Terms & Conditions: Standard automotive e-commerce terms</span></li>
           </ul>
         </div>
       </div>
 
-      <div className="border-t border-[#E5E7EB] bg-[#F5F6F8] py-4 text-center text-xs text-[#6B7280]">
-        © 2026 RiderzPro Car & Bike Accessories. All rights reserved.
+      <div className="border-t border-[#E5E7EB] bg-white py-4 text-center text-xs text-[#6B7280]">
+        © {new Date().getFullYear()} RiderzPro Automotive E-Commerce. All rights reserved.
       </div>
     </footer>
   );
