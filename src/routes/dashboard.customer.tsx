@@ -33,14 +33,7 @@ export const Route = createFileRoute("/dashboard/customer")({
 });
 
 function CustomerDashboard() {
-  const [tab, setTab] = useState<CustomerTab>(() => {
-    if (typeof window !== "undefined") {
-      const p = new URLSearchParams(window.location.search);
-      const t = p.get("tab") as CustomerTab;
-      if (t) return t;
-    }
-    return "overview";
-  });
+  const [tab, setTab] = useState<CustomerTab>("overview");
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isAddBikeOpen, setIsAddBikeOpen] = useState(false);
 
@@ -52,6 +45,7 @@ function CustomerDashboard() {
         if (t) setTab(t);
       }
     };
+    handleUrl();
     window.addEventListener("popstate", handleUrl);
     return () => window.removeEventListener("popstate", handleUrl);
   }, []);
