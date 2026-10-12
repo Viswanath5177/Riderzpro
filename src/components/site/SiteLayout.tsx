@@ -144,25 +144,7 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
           </form>
         </div>
 
-        {/* ROW 2: Category Navigation */}
-        <div className="hidden lg:block border-t border-[#E5E7EB] bg-white">
-          <div className="mx-auto flex h-10.5 max-w-7xl items-center px-6">
-            <nav className="flex items-center gap-1 w-full">
-              {storeCategories.map((cat) => (
-                <Link
-                  key={cat.label}
-                  to={cat.to}
-                  search={cat.search ? ({ cat: cat.search } as any) : undefined}
-                  className="rounded-md px-3.5 py-1.5 text-xs font-medium text-[#6B7280] transition hover:bg-red-50 hover:text-[#E31E24]"
-                  activeProps={{ className: "!text-[#E31E24] !bg-red-50 !font-semibold" }}
-                  activeOptions={{ exact: cat.to === "/" }}
-                >
-                  {cat.label}
-                </Link>
-              ))}
-            </nav>
-          </div>
-        </div>
+
       </header>
 
       {/* MOBILE DRAWER NAVIGATION */}
