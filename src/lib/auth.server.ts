@@ -169,14 +169,18 @@ export async function verifySignInCodeServer(input: string, rawCode: string): Pr
   return role;
 }
 
-export async function getCurrentRoleServer(): Promise<AppRole | null> {
+export async function getCurrentUserServer(): Promise<{ id: string; role: AppRole } | null> {
   const token = getCookie(SESSION_COOKIE);
   if (!token) return null;
-  const result = await getDatabase().query<{ role: AppRole }>(
-    "select u.role from auth_sessions s join app_users u on u.id = s.user_id where s.token_hash = $1 and s.revoked_at is null and s.expires_at > now() limit 1",
+  const result = await getDatabase().query<{ id: string; role: AppRole }>(
+    "select u.id, u.role from auth_sessions s join app_users u on u.id = s.user_id where s.token_hash = $1 and s.revoked_at is null and s.expires_at > now() limit 1",
     [await digest(token)],
   );
-  return result.rows[0]?.role ?? null;
+  return result.rows[0] ?? null;
+}
+
+export async function getCurrentRoleServer(): Promise<AppRole | null> {
+  return (await getCurrentUserServer())?.role ?? null;
 }
 
 export async function signOutServer() {

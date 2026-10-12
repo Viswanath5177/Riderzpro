@@ -35,6 +35,7 @@ import {
 import { toast } from "sonner";
 import { Logo } from "@/components/site/bits";
 import { useStore } from "@/lib/store";
+import { signOut as endServerSession } from "@/lib/auth";
 import { inr, products, type Product } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { VinSearchModal } from "./VinSearchModal";
@@ -580,8 +581,9 @@ export function CustomerLayout({
                     </div>
                     <div className="pt-1 border-t border-gray-100">
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           setIsProfileOpen(false);
+                          await endServerSession();
                           signOut();
                           toast.info("Signed out successfully");
                           navigate({ to: "/" });

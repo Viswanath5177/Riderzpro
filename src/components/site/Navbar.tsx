@@ -11,9 +11,10 @@ import {
   Lock,
   ChevronDown,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
+import { getCurrentRole, signOut as endServerSession } from "@/lib/auth";
 import { Logo } from "./bits";
 
 export interface NavCategory {
@@ -40,11 +41,21 @@ export const STORE_CATEGORIES: NavCategory[] = [
  * Contains no hardcoded or mock default details.
  */
 export function Navbar() {
-  const { cart, userProfile, isLoggedIn, signOut } = useStore();
+  const { cart, userProfile, isLoggedIn, signOut, signIn, setRole } = useStore();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    getCurrentRole().then((role) => {
+      if (!active) return;
+      if (role) { setRole(role); signIn(); }
+      else signOut();
+    }).catch(() => { if (active) signOut(); });
+    return () => { active = false; };
+  }, [setRole, signIn, signOut]);
 
   const cartCount = cart.reduce((s, c) => s + c.qty, 0);
 
@@ -77,7 +88,8 @@ export function Navbar() {
     }
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    await endServerSession();
     signOut();
     setIsAccountMenuOpen(false);
     toast.info("You have signed out successfully");
@@ -223,7 +235,7 @@ export function Navbar() {
                   </div>
                   <div className="pt-1 border-t border-gray-100">
                     <button
-                      onClick={handleSignOut}
+            onClick={() => void handleSignOut()}
                       className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition"
                     >
                       <LogOut className="h-3.5 w-3.5 text-red-500" />

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import {
+  getCurrentUserServer,
   getCurrentRoleServer,
   requestSignInCodeServer,
   signOutServer,
@@ -21,6 +22,7 @@ const verifyCode = createServerFn({ method: "POST" })
   .handler(({ data }) => verifySignInCodeServer(data.identity, data.code));
 
 const readRole = createServerFn({ method: "GET" }).handler(() => getCurrentRoleServer());
+const readCurrentUser = createServerFn({ method: "GET" }).handler(() => getCurrentUserServer());
 const endSession = createServerFn({ method: "POST" }).handler(() => signOutServer());
 
 export function sendSignInCode(identity: string) {
@@ -33,6 +35,10 @@ export function verifySignInCode(identity: string, code: string) {
 
 export function getCurrentRole() {
   return readRole();
+}
+
+export function getCurrentUser() {
+  return readCurrentUser();
 }
 
 export function signOut() {

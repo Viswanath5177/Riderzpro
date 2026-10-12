@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { ClipboardList, LayoutGrid, Repeat, ShoppingCart, Wallet, Wrench, Users, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -6,8 +6,14 @@ import { DashboardShell, Panel, Stat, StatusPill } from "@/components/site/Dashb
 import { Bars, series } from "@/components/site/Charts";
 import { bestOffer, getBike, inr, products } from "@/lib/data";
 import { useStore } from "@/lib/store";
+import { getCurrentRole } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard/workshop")({
+  beforeLoad: async () => {
+    const role = await getCurrentRole();
+    if (!role) throw redirect({ to: "/login" });
+    throw redirect({ to: role === "admin" ? "/dashboard/admin" : "/dashboard/customer" });
+  },
   head: () => ({ meta: [
     { title: "Workshop dashboard — Riderzpro" },
     { name: "description", content: "Job cards, bulk ordering and spend tracking for EV workshops and mechanics." },

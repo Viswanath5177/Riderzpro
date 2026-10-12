@@ -1,14 +1,13 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { Bike, Shield, Store, Truck, Wrench, ArrowLeft, LogOut, Sparkles, type LucideIcon } from "lucide-react";
+import { Bike, Shield, ArrowLeft, LogOut, Sparkles, type LucideIcon } from "lucide-react";
 import { Logo, ThemeToggle } from "./bits";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/lib/auth";
 
 export const ROLE_LINKS = [
   { to: "/dashboard/customer", label: "Customer", Icon: Bike },
-  { to: "/dashboard/vendor", label: "Vendor", Icon: Store },
-  { to: "/dashboard/rider", label: "Rider", Icon: Truck },
+  { to: "/dashboard/admin", label: "Admin", Icon: Shield },
 ] as const;
 
 export type Section = { id: string; label: string; Icon: LucideIcon };

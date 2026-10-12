@@ -22,6 +22,8 @@ Use UUID primary keys, UTC `timestamptz` values, integer minor currency units (p
 
 ## Auth operations
 
+The operations below are the API contract. The current web app calls the matching auth operations through TanStack Start server functions; stable public HTTP endpoints for native/mobile clients still need an adapter before Capacitor clients integrate.
+
 | Operation | Contract |
 | --- | --- |
 | `POST /api/auth/request-code` | Accept normalized email or E.164 phone; rate-limit; store only a keyed hash of the code; deliver through the configured provider. |

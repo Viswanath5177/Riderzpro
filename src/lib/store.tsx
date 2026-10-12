@@ -454,18 +454,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<CustomerNotification[]>(DEFAULT_NOTIFICATIONS);
   const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [role, setRole] = useState<Role>("customer");
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      const auth = localStorage.getItem("riderzpro_auth");
-      const user = localStorage.getItem(KEY);
-      if (user && user.includes("Aakash")) {
-        localStorage.removeItem("riderzpro_auth");
-        return false;
-      }
-      return auth === "true";
-    }
-    return false;
-  });
+  // A browser-local flag is not an authentication credential. The navbar hydrates
+  // this state from the server session cookie after the app loads.
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {

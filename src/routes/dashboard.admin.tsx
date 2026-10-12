@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import {
   LayoutDashboard,
@@ -46,8 +46,14 @@ import { getProduct, getVendor, inr, products, vendors } from "@/lib/data";
 import { ORDER_STEPS, useStore, type Order } from "@/lib/store";
 import type { NormalizedShipment, LogisticsProvider, ShipmentStatus } from "@/lib/logistics/types";
 import { cn } from "@/lib/utils";
+import { getCurrentRole } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard/admin")({
+  beforeLoad: async () => {
+    const role = await getCurrentRole();
+    if (!role) throw redirect({ to: "/login" });
+    if (role !== "admin") throw redirect({ to: "/dashboard/customer" });
+  },
   head: () => ({
     meta: [
       { title: "Operations & Admin Console — RiderzPro" },

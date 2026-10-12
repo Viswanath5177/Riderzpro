@@ -6,17 +6,16 @@ import { ROLE_LINKS } from "@/components/site/DashboardShell";
 export const Route = createFileRoute("/dashboards")({
   head: () => ({ meta: [
     { title: "Dashboards — Riderzpro" },
-    { name: "description", content: "Open the customer, workshop, vendor, rider or admin dashboard." },
+    { name: "description", content: "Open the RiderzPro customer or admin dashboard." },
     { property: "og:title", content: "Dashboards — Riderzpro" },
-    { property: "og:description", content: "One platform for every role in EV parts." },
+    { property: "og:description", content: "RiderzPro customer and admin workspaces." },
   ] }),
   component: Dashboards,
 });
 
 const desc: Record<string, string> = {
   Customer: "Garage, live deliveries, orders and technician bookings.",
-  Vendor: "Revenue, incoming orders, inventory and payouts.",
-  Rider: "Nearby jobs, multi-pickup routes and earnings.",
+  Admin: "Manage RiderzPro products, orders, customers and operations.",
 };
 
 export function RolePicker() {
