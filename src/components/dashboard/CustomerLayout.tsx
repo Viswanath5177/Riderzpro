@@ -33,7 +33,7 @@ import {
 import { toast } from "sonner";
 import { Logo } from "@/components/site/bits";
 import { useStore } from "@/lib/store";
-import { bikes, getBike, inr, products, type Product } from "@/lib/data";
+import { inr, products, type Product } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { VinSearchModal } from "./VinSearchModal";
 
@@ -67,8 +67,6 @@ export function CustomerLayout({
   const {
     userProfile,
     garage,
-    activeBikeId,
-    setActiveBikeId,
     orders,
     savedProductIds,
     serviceBookings,
@@ -85,9 +83,6 @@ export function CustomerLayout({
   const [searchQuery, setSearchQuery] = useState("");
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-
-  const activeBike = garage.find((b) => b.bikeId === activeBikeId) || garage[0];
-  const activeBikeMeta = activeBike ? getBike(activeBike.bikeId) : null;
 
   const activeOrdersCount = orders.filter((o) => o.status < 5).length;
   const liveOrder = orders.find((o) => o.status < 5);
@@ -353,29 +348,6 @@ export function CustomerLayout({
               {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>
           </div>
-
-          {/* Active Bike Pill in Sidebar */}
-          {!isCollapsed && activeBikeMeta && (
-            <div className="mx-4 mt-4 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-100 flex items-center justify-between">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary/10 text-primary shrink-0">
-                  <Bike className="h-4 w-4" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-gray-900 truncate">
-                    {activeBikeMeta.make} {activeBikeMeta.model}
-                  </p>
-                  <p className="text-[11px] text-emerald-700 font-medium">Primary EV</p>
-                </div>
-              </div>
-              <button
-                onClick={() => onTabChange("garage")}
-                className="text-[11px] font-semibold text-primary hover:underline shrink-0"
-              >
-                Switch
-              </button>
-            </div>
-          )}
 
           {/* Navigation Links */}
           <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
