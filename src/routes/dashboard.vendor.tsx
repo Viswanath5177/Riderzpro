@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AlertTriangle, Boxes, IndianRupee, LayoutGrid, PackageOpen, ShoppingBag, Star, Wallet, Check, X, ShieldCheck, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardShell, Panel, Stat, StatusPill } from "@/components/site/DashboardShell";
 import { AreaTrend, Bars, series } from "@/components/site/Charts";
 import { bikes, cars, inr, products, type Product } from "@/lib/data";
-import { ProductFormDialog } from "@/components/vendor/ProductFormDialog";
+import { ProductFormPage } from "@/components/vendor/ProductFormPage";
 
 export const Route = createFileRoute("/dashboard/vendor")({
   head: () => ({ meta: [
@@ -32,9 +32,52 @@ function VendorDash() {
   // Dynamic Products State linked to PostgreSQL schema
   const [vendorProducts, setVendorProducts] = useState<Product[]>(initialProducts);
   
-  // Dialog State
-  const [dialogOpen, setDialogOpen] = useState(false);
+  // View Mode: "list" (Table) or "form" (Full Page Add/Edit View, NOT a pop-up)
+  const [inventoryViewMode, setInventoryViewMode] = useState<"list" | "form">("list");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+  // Sync with PostgreSQL on mount
+  useEffect(() => {
+    fetch("/api/products")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const dbProducts: Product[] = res.data.map((row: any) => {
+            let primaryImg = "/src/assets/battery-1.jpg";
+            if (row.image_url) {
+              try {
+                if (row.image_url.startsWith("[")) {
+                  const arr = JSON.parse(row.image_url);
+                  primaryImg = arr[0] || primaryImg;
+                } else {
+                  primaryImg = row.image_url;
+                }
+              } catch {
+                primaryImg = row.image_url;
+              }
+            }
+
+            return {
+              id: row.id,
+              name: row.name,
+              brand: "Riderzpro Certified",
+              category: row.category_name || "Accessory",
+              image: primaryImg,
+              warrantyMonths: 24,
+              weightKg: 5,
+              fits: ["ola-s1pro", "ather-450x"],
+              description: row.description || "",
+              offers: [{ vendorId: "v1", price: Number(row.price), stock: Number(row.stock) }],
+              verificationStatus: row.verification_status || "pending_approval",
+            };
+          });
+          setVendorProducts(dbProducts);
+        }
+      })
+      .catch((err) => {
+        console.log("[DB fetch notice]:", err.message);
+      });
+  }, []);
 
   const [incoming, setIncoming] = useState([
     { id: "RZ48213", item: "VoltRide 60V 30Ah Li-ion Pack", qty: 1, amount: 59520, bike: "Ola S1 Pro 2023", status: "New" },
@@ -50,50 +93,60 @@ function VendorDash() {
 
   const handleOpenAdd = () => {
     setEditingProduct(null);
-    setDialogOpen(true);
+    setInventoryViewMode("form");
   };
 
   const handleOpenEdit = (p: Product) => {
     setEditingProduct(p);
-    setDialogOpen(true);
+    setInventoryViewMode("form");
   };
 
-  const handleSaveProduct = (savedItem: Product, sqlQuery: string) => {
+  const handleFormSuccess = (savedItem: Product) => {
     if (editingProduct) {
       // Update existing
       setVendorProducts((list) => list.map((p) => (p.id === savedItem.id ? savedItem : p)));
-      toast.success(`Product "${savedItem.name}" updated successfully!`);
     } else {
       // Add new
       setVendorProducts((list) => [savedItem, ...list]);
-      toast.success(`Product "${savedItem.name}" submitted! Sent to Support Admin for approval.`);
     }
+    // Return smoothly to list
+    setInventoryViewMode("list");
   };
 
   return (
-    <>
-      <DashboardShell title="VoltHub Indiranagar" subtitle="Vendor & dealership dashboard" sections={sections} active={tab} onSelect={setTab}>
-        {tab === "overview" && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <Stat label="Revenue (7d)" value={inr(412000)} delta="+18%" Icon={IndianRupee} />
-              <Stat label="Orders (7d)" value="46" delta="+9" Icon={ShoppingBag} />
-              <Stat label="Rating" value="4.8" Icon={Star} />
-              <Stat label="Low stock items" value="3" Icon={AlertTriangle} />
-            </div>
-            <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-              <Panel title="Revenue this week"><AreaTrend data={series([42, 58, 49, 71, 66, 88, 38].map((x) => x * 1000))} /></Panel>
-              <Panel title="New orders"><OrderList list={incoming.filter((o) => o.status === "New")} act={act} /></Panel>
-            </div>
-            <Panel title="Top sellers by units">
-              <Bars data={vendorProducts.slice(0, 6).map((p, i) => ({ name: p.brand, value: [34, 28, 21, 17, 12, 9][i] || 10 }))} />
-            </Panel>
+    <DashboardShell title="VoltHub Indiranagar" subtitle="Vendor & dealership dashboard" sections={sections} active={tab} onSelect={setTab}>
+      {tab === "overview" && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <Stat label="Revenue (7d)" value={inr(412000)} delta="+18%" Icon={IndianRupee} />
+            <Stat label="Orders (7d)" value="46" delta="+9" Icon={ShoppingBag} />
+            <Stat label="Rating" value="4.8" Icon={Star} />
+            <Stat label="Low stock items" value="3" Icon={AlertTriangle} />
           </div>
-        )}
+          <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+            <Panel title="Revenue this week"><AreaTrend data={series([42, 58, 49, 71, 66, 88, 38].map((x) => x * 1000))} /></Panel>
+            <Panel title="New orders"><OrderList list={incoming.filter((o) => o.status === "New")} act={act} /></Panel>
+          </div>
+          <Panel title="Top sellers by units">
+            <Bars data={vendorProducts.slice(0, 6).map((p, i) => ({ name: p.brand, value: [34, 28, 21, 17, 12, 9][i] || 10 }))} />
+          </Panel>
+        </div>
+      )}
 
-        {tab === "orders" && <Panel title="All orders"><OrderList list={incoming} act={act} /></Panel>}
+      {tab === "orders" && <Panel title="All orders"><OrderList list={incoming} act={act} /></Panel>}
 
-        {tab === "inventory" && (
+      {tab === "inventory" && (
+        inventoryViewMode === "form" ? (
+          // Full-Page Product Form (NO Pop-up)
+          <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-sm">
+            <ProductFormPage
+              product={editingProduct}
+              onCancel={() => setInventoryViewMode("list")}
+              onSuccess={handleFormSuccess}
+            />
+          </div>
+        ) : (
+          // Standard Inventory List View
           <Panel 
             title="Inventory & fitment" 
             action={
@@ -199,34 +252,26 @@ function VendorDash() {
               </table>
             </div>
           </Panel>
-        )}
+        )
+      )}
 
-        {tab === "payouts" && (
-          <div className="grid gap-6 lg:grid-cols-3">
-            <Stat label="Available balance" value={inr(186400)} Icon={Wallet} />
-            <Stat label="Next payout" value="Oct 12" Icon={PackageOpen} />
-            <Stat label="Paid this month" value={inr(624000)} Icon={IndianRupee} />
-            <Panel title="Payout history" className="lg:col-span-3">
-              {["Oct 05", "Sep 28", "Sep 21"].map((d, i) => (
-                <div key={d} className="flex justify-between border-b border-border py-3 last:border-0">
-                  <span>{d}</span>
-                  <span className="font-semibold">{inr([212000, 198500, 176300][i])}</span>
-                  <StatusPill s="Paid" />
-                </div>
-              ))}
-            </Panel>
-          </div>
-        )}
-      </DashboardShell>
-
-      {/* Reusable Product Form Modal (Add & Edit) */}
-      <ProductFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        product={editingProduct}
-        onSave={handleSaveProduct}
-      />
-    </>
+      {tab === "payouts" && (
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Stat label="Available balance" value={inr(186400)} Icon={Wallet} />
+          <Stat label="Next payout" value="Oct 12" Icon={PackageOpen} />
+          <Stat label="Paid this month" value={inr(624000)} Icon={IndianRupee} />
+          <Panel title="Payout history" className="lg:col-span-3">
+            {["Oct 05", "Sep 28", "Sep 21"].map((d, i) => (
+              <div key={d} className="flex justify-between border-b border-border py-3 last:border-0">
+                <span>{d}</span>
+                <span className="font-semibold">{inr([212000, 198500, 176300][i])}</span>
+                <StatusPill s="Paid" />
+              </div>
+            ))}
+          </Panel>
+        </div>
+      )}
+    </DashboardShell>
   );
 }
 
