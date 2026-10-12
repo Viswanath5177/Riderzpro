@@ -1,26 +1,18 @@
-# PostgreSQL backend setup
+# Database setup
 
-Riderzpro uses PostgreSQL directly. The app server sends parameterized SQL through the `pg` driver. SQL migrations live in `database/migrations` and can be applied with `psql` or the team's migration runner.
+Riderzpro supports SQLite for local development and direct PostgreSQL in production. Server-side queries are parameterized. The local SQLite database is a file in `database/`; do not commit it.
 
-## Runtime connection
+## Local development with SQLite
 
-The app currently deploys to Cloudflare Workers. In production, connect the Worker's server-side `pg` driver through a Cloudflare Hyperdrive binding. Hyperdrive can connect to any PostgreSQL database and keeps its connection string inside the Worker environment. For local development, set `DATABASE_URL` in `.env.local` to a local PostgreSQL instance. Do not use a `VITE_` prefix for database or auth secrets.
+1. No database server or hosting account is needed. Copy `.dev.vars.example` to `.dev.vars` and keep `DATABASE_URL=file:./database/riderzpro-dev.db`. The local Cloudflare runtime reads server bindings from `.dev.vars`.
+2. Run `npm run db:migrate:local` from the project root to create the local auth tables. The dev command loads `.dev.vars` into the local Node server and provides Nitro's Cloudflare module shim.
+3. Set `OTP_HASH_SECRET` to a random value of at least 32 characters in `.dev.vars`. Configure either Resend email or Twilio SMS there; never add `VITE_` prefixes or commit the file.
+4. Run `npm run dev` and test the sign-in screen with an email address or phone you can access.
 
-Create separate PostgreSQL databases for test and production. The production database URL and auth-provider credentials belong in the hosting platform's secret manager. Keep migration-owner credentials separate from the runtime application's restricted database role.
+The SQLite schema is `database/migrations/sqlite/001_auth.sql`. To start with a fresh local database, stop the dev server and remove `database/riderzpro-dev.db` before rerunning the migration.
 
-## Local setup
+## Production PostgreSQL (later)
 
-1. Install PostgreSQL and create a local database and user, or use an existing development instance.
-2. Copy `.env.example` to `.env.local` and set `DATABASE_URL`.
-3. Apply migrations in order, for example: `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/001_auth.sql`.
-4. Set `OTP_HASH_SECRET` to a random value. Configure Resend for email codes and Twilio for SMS codes before using those channels.
+The production app runs on Cloudflare Workers and uses the `pg` driver through a Cloudflare Hyperdrive binding. Keep the PostgreSQL URL, OTP hash secret, and email/SMS credentials in Cloudflare's secret manager. Do not reuse the local SQLite file or development credentials in production.
 
-## Cloudflare setup
-
-1. Create or select a PostgreSQL database for test and another for production.
-2. Create one Hyperdrive configuration for each database. Keep their IDs in non-secret deployment config; Hyperdrive's database connection string is not exposed to browser code.
-3. Bind the test Hyperdrive as `HYPERDRIVE` for test deployments and the production Hyperdrive for production deployments.
-4. Add `OTP_HASH_SECRET`, email/SMS provider credentials, and other secrets with the Cloudflare secret manager.
-5. Apply migrations to test first, verify access rules and auth, then apply the same ordered migrations to production.
-
-The runtime database account must not own tables or have permission to alter schemas. It should receive only the table and sequence privileges the application needs. Database ownership and migrations should use a separate operator account.
+Apply `database/migrations/001_auth.sql` to PostgreSQL with `psql` or a migration runner. Use a database owner account for migrations and a separate restricted account for app queries. Configure test and production Hyperdrive bindings separately before deployment.

@@ -1,10 +1,10 @@
-# Riderzpro PostgreSQL backend contract (draft)
+# Riderzpro SQL backend contract (SQLite locally, PostgreSQL in production)
 
 ## Backend boundary
 
-- PostgreSQL is the source of truth. Server-side code connects using `pg` and parameterized SQL.
+- PostgreSQL is the production source of truth. Local development uses SQLite; server-side code uses parameterized SQL in both environments.
 - The browser and mobile app never connect to PostgreSQL directly. All reads and writes cross authenticated server functions or server routes.
-- Production Cloudflare Workers connect through Hyperdrive; local development uses `DATABASE_URL`.
+- Production Cloudflare Workers connect through Hyperdrive; local development uses the SQLite `DATABASE_URL` file URL.
 - User ownership and role checks happen in server-side code. A client-supplied user ID or role is never authoritative.
 - V1 roles are `customer` and `admin`; admin grants are operator-only SQL updates.
 

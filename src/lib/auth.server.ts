@@ -1,6 +1,6 @@
 import { deleteCookie, getCookie, setCookie } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
-import { getDatabasePool } from "./db.server";
+import { getDatabase } from "./db.server";
 
 type AppRole = "customer" | "admin";
 type Bindings = {
@@ -82,7 +82,7 @@ async function deliverCode(identity: ReturnType<typeof normalizeIdentity>, code:
 
 export async function requestSignInCodeServer(input: string) {
   const identity = normalizeIdentity(input);
-  const pool = getDatabasePool();
+  const pool = getDatabase();
   const recent = await pool.query<{ count: string }>(
     "select count(*)::text as count from auth_otp_challenges where identity = $1 and created_at > now() - interval '15 minutes'",
     [identity.value],
@@ -114,12 +114,13 @@ export async function verifySignInCodeServer(input: string, rawCode: string): Pr
   const identity = normalizeIdentity(input);
   const code = rawCode.trim();
   if (!/^\d{6}$/.test(code)) throw new Error("Enter the six-digit sign-in code.");
-  const client = await getDatabasePool().connect();
+  const db = getDatabase();
+  const client = await db.connect();
   let token = "";
   let role: AppRole = "customer";
   let committed = false;
   try {
-    await client.query("begin");
+    if (db.dialect === "postgres") await client.query("begin");
     const result = await client.query<{ id: string; code_hash: string; attempts: number }>(
       "select id, code_hash, attempts from auth_otp_challenges where identity = $1 and consumed_at is null and expires_at > now() order by created_at desc limit 1 for update",
       [identity.value],
@@ -128,13 +129,15 @@ export async function verifySignInCodeServer(input: string, rawCode: string): Pr
     if (!challenge) throw new Error("That sign-in code is invalid or expired. Request a new one.");
     if (challenge.attempts >= 5) {
       await client.query("update auth_otp_challenges set consumed_at = now() where id = $1", [challenge.id]);
-      await client.query("commit");
+      if (db.dialect === "postgres") await client.query("commit");
+      else await client.commit?.();
       committed = true;
       throw new Error("Too many incorrect attempts. Request a new sign-in code.");
     }
     if (!constantTimeEqual(await hashOtp(identity.value, code), challenge.code_hash)) {
       await client.query("update auth_otp_challenges set attempts = attempts + 1 where id = $1", [challenge.id]);
-      await client.query("commit");
+      if (db.dialect === "postgres") await client.query("commit");
+      else await client.commit?.();
       committed = true;
       throw new Error("That sign-in code is incorrect.");
     }
@@ -147,10 +150,14 @@ export async function verifySignInCodeServer(input: string, rawCode: string): Pr
     role = account.role;
     token = randomToken();
     await client.query("insert into auth_sessions (user_id, token_hash, expires_at) values ($1, $2, now() + interval '30 days')", [account.id, await digest(token)]);
-    await client.query("commit");
+    if (db.dialect === "postgres") await client.query("commit");
+    else await client.commit?.();
     committed = true;
   } catch (error) {
-    if (!committed) await client.query("rollback").catch(() => undefined);
+    if (!committed) {
+      if (db.dialect === "postgres") await client.query("rollback").catch(() => undefined);
+      else await client.rollback?.().catch(() => undefined);
+    }
     throw error;
   } finally {
     client.release();
@@ -165,7 +172,7 @@ export async function verifySignInCodeServer(input: string, rawCode: string): Pr
 export async function getCurrentRoleServer(): Promise<AppRole | null> {
   const token = getCookie(SESSION_COOKIE);
   if (!token) return null;
-  const result = await getDatabasePool().query<{ role: AppRole }>(
+  const result = await getDatabase().query<{ role: AppRole }>(
     "select u.role from auth_sessions s join app_users u on u.id = s.user_id where s.token_hash = $1 and s.revoked_at is null and s.expires_at > now() limit 1",
     [await digest(token)],
   );
@@ -175,7 +182,7 @@ export async function getCurrentRoleServer(): Promise<AppRole | null> {
 export async function signOutServer() {
   const token = getCookie(SESSION_COOKIE);
   if (token) {
-    await getDatabasePool().query("update auth_sessions set revoked_at = now() where token_hash = $1 and revoked_at is null", [await digest(token)]);
+    await getDatabase().query("update auth_sessions set revoked_at = now() where token_hash = $1 and revoked_at is null", [await digest(token)]);
   }
   deleteCookie(SESSION_COOKIE, { path: "/" });
   return { success: true };
