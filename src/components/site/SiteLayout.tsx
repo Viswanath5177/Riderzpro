@@ -440,7 +440,7 @@ function MobileTabBar({ count, isAuthenticated }: { count: number; isAuthenticat
           ) : (
             <span className="relative">
               <t.Icon className="h-5 w-5" />
-              {t.to === "/cart" && count > 0 && (
+              {t.to === "/orders" && count > 0 && (
                 <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-[#E31E24] ring-2 ring-white" />
               )}
             </span>

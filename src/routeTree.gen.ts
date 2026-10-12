@@ -18,6 +18,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as DashboardAdminRouteImport } from './routes/dashboard.admin'
 import { Route as DashboardCustomerRouteImport } from './routes/dashboard.customer'
 import { Route as ProductIdRouteImport } from './routes/product.$id'
 import { Route as TrackIdRouteImport } from './routes/track.$id'
@@ -67,6 +68,11 @@ const SignupRoute = SignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardAdminRoute = DashboardAdminRouteImport.update({
+  id: '/dashboard/admin',
+  path: '/dashboard/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardCustomerRoute = DashboardCustomerRouteImport.update({
   id: '/dashboard/customer',
   path: '/dashboard/customer',
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
+  '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/customer': typeof DashboardCustomerRoute
   '/product/$id': typeof ProductIdRoute
   '/track/$id': typeof TrackIdRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
+  '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/customer': typeof DashboardCustomerRoute
   '/product/$id': typeof ProductIdRoute
   '/track/$id': typeof TrackIdRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
+  '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/customer': typeof DashboardCustomerRoute
   '/product/$id': typeof ProductIdRoute
   '/track/$id': typeof TrackIdRoute
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/shop'
     | '/signup'
+    | '/dashboard/admin'
     | '/dashboard/customer'
     | '/product/$id'
     | '/track/$id'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/shop'
     | '/signup'
+    | '/dashboard/admin'
     | '/dashboard/customer'
     | '/product/$id'
     | '/track/$id'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/shop'
     | '/signup'
+    | '/dashboard/admin'
     | '/dashboard/customer'
     | '/product/$id'
     | '/track/$id'
@@ -181,6 +193,7 @@ export interface RootRouteChildren {
   OrdersRoute: typeof OrdersRoute
   ShopRoute: typeof ShopRoute
   SignupRoute: typeof SignupRoute
+  DashboardAdminRoute: typeof DashboardAdminRoute
   DashboardCustomerRoute: typeof DashboardCustomerRoute
   ProductIdRoute: typeof ProductIdRoute
   TrackIdRoute: typeof TrackIdRoute
@@ -251,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/admin': {
+      id: '/dashboard/admin'
+      path: '/dashboard/admin'
+      fullPath: '/dashboard/admin'
+      preLoaderRoute: typeof DashboardAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard/customer': {
       id: '/dashboard/customer'
       path: '/dashboard/customer'
@@ -285,6 +305,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrdersRoute: OrdersRoute,
   ShopRoute: ShopRoute,
   SignupRoute: SignupRoute,
+  DashboardAdminRoute: DashboardAdminRoute,
   DashboardCustomerRoute: DashboardCustomerRoute,
   ProductIdRoute: ProductIdRoute,
   TrackIdRoute: TrackIdRoute,
