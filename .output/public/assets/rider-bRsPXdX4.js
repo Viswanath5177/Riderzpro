@@ -1,0 +1,1 @@
+var e=`/assets/rider-CxFpmyvi.jpg`;export{e as t};
