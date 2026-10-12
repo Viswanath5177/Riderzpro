@@ -52,9 +52,9 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
   return (
     <div className="min-h-screen bg-white text-[#111111] font-sans flex flex-col antialiased">
       {/* ─────────────────────────────────────────────────────────────
-          COMPACT PROFESSIONAL TWO-ROW HEADER
+          COMPACT PROFESSIONAL TWO-ROW HEADER (STATIC)
          ───────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 bg-white border-b border-[#E5E7EB]">
+      <header className="bg-white border-b border-[#E5E7EB]">
         {/* ROW 1: Logo, Search Bar, Cart, Account */}
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
           {/* Mobile menu toggle */}
@@ -144,7 +144,25 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
           </form>
         </div>
 
-
+        {/* Navigation row */}
+        <div className="hidden lg:block border-t border-[#E5E7EB] bg-white">
+          <div className="mx-auto flex h-10 max-w-7xl items-center px-4 sm:px-6">
+            <nav className="flex items-center gap-7 text-xs">
+              {storeCategories.map((cat) => (
+                <Link
+                  key={cat.label}
+                  to={cat.to}
+                  search={cat.search ? ({ cat: cat.search } as any) : undefined}
+                  className="font-medium text-[#6B7280] hover:text-[#111111] transition-colors py-2 border-b-2 border-transparent"
+                  activeProps={{ className: "!text-[#E31E24] !font-semibold !border-[#E31E24]" }}
+                  activeOptions={{ exact: cat.to === "/" }}
+                >
+                  {cat.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+        </div>
       </header>
 
       {/* MOBILE DRAWER NAVIGATION */}
