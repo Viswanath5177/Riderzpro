@@ -1,1 +1,0 @@
-import{I as e,dt as t,mt as n}from"./bits-Nf20LLOo.js";var r=n(t(),1);function i(t){let n=e();return r.useCallback(e=>n.navigate({...e,from:e.from??t?.from}),[t?.from,n])}export{i as t};
