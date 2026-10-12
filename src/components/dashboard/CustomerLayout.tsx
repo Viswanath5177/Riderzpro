@@ -321,11 +321,11 @@ export function CustomerLayout({
       )}
 
       {/* Main Container with Solid Clean Neutral Backdrop */}
-      <div className="flex flex-1 min-h-screen bg-[#F5F6F8] relative overflow-hidden">
-        {/* Desktop Left Sidebar */}
+      <div className="flex flex-1 min-h-screen bg-[#F5F6F8] relative">
+        {/* Desktop Left Sidebar (Static Container Pinned to Viewport) */}
         <aside
           className={cn(
-            "hidden md:flex flex-col bg-white border-r border-[#E5E7EB] shadow-xs transition-all duration-300 z-30 shrink-0 select-none",
+            "hidden md:flex flex-col bg-white border-r border-[#E5E7EB] shadow-xs transition-all duration-300 z-30 shrink-0 select-none sticky top-0 h-screen",
             isCollapsed ? "w-20" : "w-64"
           )}
         >
@@ -346,7 +346,7 @@ export function CustomerLayout({
               onClick={() => setIsCollapsed(!isCollapsed)}
               aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               className={cn(
-                "hidden lg:grid h-7 w-7 place-items-center rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition absolute top-1/2 -translate-y-1/2",
+                "hidden lg:grid h-7 w-7 place-items-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition absolute top-1/2 -translate-y-1/2",
                 isCollapsed ? "right-1.5" : "right-3"
               )}
             >
@@ -401,21 +401,6 @@ export function CustomerLayout({
               );
             })}
           </nav>
-
-          {/* Sidebar Footer */}
-          <div className="p-3 border-t border-[#E5E7EB]/80 space-y-1">
-            <Link
-              to="/"
-              className={cn(
-                "flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-xs font-semibold text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition",
-                isCollapsed && "justify-center px-0"
-              )}
-              title={isCollapsed ? "Back to store" : undefined}
-            >
-              <ArrowLeft className="h-4 w-4 shrink-0" />
-              {!isCollapsed && <span>Back to store</span>}
-            </Link>
-          </div>
         </aside>
 
         {/* Right Content Area */}
