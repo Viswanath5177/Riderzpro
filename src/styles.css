@@ -1,0 +1,227 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-display: "Plus Jakarta Sans", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  --font-sans: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-full: 9999px;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-hero-ink: var(--hero-ink);
+}
+
+:root {
+  --radius: 0.5rem;
+  --background: #F5F6F8;
+  --foreground: #111111;
+  --card: #FFFFFF;
+  --card-foreground: #111111;
+  --popover: #FFFFFF;
+  --popover-foreground: #111111;
+  --primary: #E31E24;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F3F4F6;
+  --secondary-foreground: #111111;
+  --muted: #F3F4F6;
+  --muted-foreground: #6B7280;
+  --accent: #FEF2F2;
+  --accent-foreground: #E31E24;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --success: #15803D;
+  --warning: #D97706;
+  --border: #E5E7EB;
+  --input: #E5E7EB;
+  --ring: #E31E24;
+  --chart-1: #E31E24;
+  --chart-2: #111111;
+  --chart-3: #E9A04B;
+  --chart-4: #6B7280;
+  --chart-5: #DC2626;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #111111;
+  --sidebar-primary: #E31E24;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #FEF2F2;
+  --sidebar-accent-foreground: #E31E24;
+  --sidebar-border: #E5E7EB;
+  --sidebar-ring: #E31E24;
+  --hero-ink: #FFFFFF;
+  --glass: rgba(255, 255, 255, 0.95);
+  --shadow-glow: 0 0 0 1px rgba(227, 30, 36, 0.25), 0 8px 24px -6px rgba(227, 30, 36, 0.2);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+
+  /* Suggested Brand Tokens */
+  --brand-primary: #E31E24;
+  --brand-dark: #111111;
+  --brand-background: #F5F6F8;
+  --surface: #FFFFFF;
+  --text-primary: #111111;
+  --text-secondary: #6B7280;
+  --brand-orange: #E9A04B;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    font-family: var(--font-sans);
+    letter-spacing: -0.011em;
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.025em;
+  }
+}
+
+@utility font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.028em;
+  font-weight: 700;
+}
+@utility glass {
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+@utility shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+@utility charge-line {
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+  animation: charge 3.2s linear infinite;
+}
+@keyframes charge {
+  0% { transform: translateX(-100%); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@utility animate-float {
+  animation: float-y 5s ease-in-out infinite;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   APPLE VISIONOS SPATIAL GLASSMORPHISM DESIGN SYSTEM
+   ───────────────────────────────────────────────────────────── */
+
+@utility vision-glass {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+}
+
+@utility vision-glass-subtle {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+}
+
+@utility vision-dock {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.12), 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+}
+
+@utility vision-card {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease-in-out;
+}
+
+@utility vision-card:hover {
+  background: #FFFFFF;
+  border-color: #D1D5DB;
+  box-shadow: 0 6px 16px -3px rgba(0, 0, 0, 0.07);
+}
+
+@utility vision-pill {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+}
+
+@utility vision-mic-orb {
+  background: radial-gradient(circle at 35% 30%, #FF5252, #E31E24 60%, #B71217 100%);
+  box-shadow: 
+    inset 0 2px 3px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -2px 3px 0 rgba(0, 0, 0, 0.3),
+    0 10px 28px -4px rgba(227, 30, 36, 0.5),
+    0 0 0 3px rgba(255, 255, 255, 0.85);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@utility vision-mic-orb:hover {
+  transform: translateY(-3px) scale(1.06);
+  box-shadow: 
+    inset 0 2.5px 3.5px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -2px 3px 0 rgba(0, 0, 0, 0.3),
+    0 14px 34px -4px rgba(227, 30, 36, 0.65),
+    0 0 0 4px rgba(255, 255, 255, 0.95);
+}
+
+@keyframes vision-mic-pulse {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.2); opacity: 0.35; }
+  100% { transform: scale(1.45); opacity: 0; }
+}
+
+@utility animate-mic-pulse {
+  animation: vision-mic-pulse 2.2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
