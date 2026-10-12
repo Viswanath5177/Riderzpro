@@ -5,8 +5,9 @@ import charger from "@/assets/charger.jpg";
 import parts from "@/assets/parts.jpg";
 
 export type Bike = { id: string; make: string; model: string; years: number[]; voltage: number; wmi: string };
+export type Car = { id: string; make: string; model: string; years: number[]; batteryKWh?: number };
 export type Vendor = { id: string; name: string; area: string; lat: number; lng: number; rating: number; prepMins: number };
-export type Category = "Battery" | "Charger" | "BMS" | "Motor" | "Controller" | "Brakes";
+export type Category = "Battery" | "Charger" | "BMS" | "Motor" | "Controller" | "Brakes" | "Accessory";
 export type Product = {
   id: string;
   name: string;
@@ -19,9 +20,18 @@ export type Product = {
   warrantyMonths: number;
   rangeKm?: number;
   weightKg: number;
-  fits: string[]; // bike ids
+  fits: string[]; // bike or car ids
   description: string;
   offers: { vendorId: string; price: number; stock: number }[];
+  vehicleType?: "bike" | "car" | "universal";
+  isAccessory?: boolean;
+  accessoryDetails?: {
+    type?: string;
+    material?: string;
+    mounting?: string;
+    powerRating?: string;
+  };
+  verificationStatus?: "pending_approval" | "approved" | "rejected";
 };
 export type Rider = { id: string; name: string; phone: string; vehicle: string; plate: string; rating: number; avatar: string };
 
@@ -34,6 +44,15 @@ export const bikes: Bike[] = [
   { id: "bajaj-chetak", make: "Bajaj", model: "Chetak", years: [2020, 2021, 2022, 2023, 2024, 2025], voltage: 60, wmi: "MD2" },
   { id: "revolt-rv400", make: "Revolt", model: "RV400", years: [2020, 2021, 2022, 2023, 2024], voltage: 72, wmi: "MCR" },
   { id: "hero-vida-v1", make: "Hero", model: "Vida V1", years: [2023, 2024, 2025], voltage: 60, wmi: "MBL" },
+];
+
+export const cars: Car[] = [
+  { id: "tata-nexon-ev", make: "Tata", model: "Nexon.ev", years: [2021, 2022, 2023, 2024, 2025], batteryKWh: 40.5 },
+  { id: "tata-tiago-ev", make: "Tata", model: "Tiago.ev", years: [2022, 2023, 2024, 2025], batteryKWh: 24 },
+  { id: "mg-zs-ev", make: "MG", model: "ZS EV", years: [2020, 2021, 2022, 2023, 2024, 2025], batteryKWh: 50.3 },
+  { id: "mahindra-xuv400", make: "Mahindra", model: "XUV400 EV", years: [2023, 2024, 2025], batteryKWh: 39.4 },
+  { id: "hyundai-ioniq5", make: "Hyundai", model: "Ioniq 5", years: [2023, 2024, 2025], batteryKWh: 72.6 },
+  { id: "byd-atto3", make: "BYD", model: "Atto 3", years: [2022, 2023, 2024, 2025], batteryKWh: 60.48 },
 ];
 
 export const vendors: Vendor[] = [
