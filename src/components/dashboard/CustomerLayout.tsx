@@ -403,18 +403,23 @@ export function CustomerLayout({
         {/* Right Content Area */}
         <div className="flex-1 flex flex-col min-w-0 min-h-screen">
           {/* Top Header (Static - Apple Glassmorphic bar that stays fixed) */}
-          <header className="sticky top-0 z-20 h-18 bg-white/70 backdrop-blur-2xl backdrop-saturate-180 border-b border-slate-200/70 px-4 md:px-8 flex items-center justify-between gap-4 shadow-[0_2px_12px_rgba(15,23,42,0.03)]">
-            {/* Left: Mobile hamburger & breadcrumbs */}
-            <div className="flex items-center gap-3 min-w-0">
+          <header className="sticky top-0 z-20 h-16 sm:h-18 bg-white/85 backdrop-blur-xl border-b border-gray-200/80 px-3.5 sm:px-6 md:px-8 flex items-center justify-between gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+            {/* Left: Mobile hamburger & Logo */}
+            <div className="flex items-center gap-2.5 min-w-0">
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="md:hidden p-2 rounded-xl text-gray-700 hover:bg-gray-100 active:scale-95 transition"
+                className="md:hidden p-1.5 -ml-1 rounded-xl text-gray-700 hover:bg-gray-100 active:scale-95 transition cursor-pointer"
                 aria-label="Open navigation menu"
               >
-                <Menu className="h-5 w-5" />
+                <Menu className="h-5.5 w-5.5" />
               </button>
 
-              <div className="hidden sm:block min-w-0">
+              <div className="md:hidden flex items-center">
+                <Logo imgClassName="h-7 w-auto" />
+              </div>
+
+              {/* Desktop Breadcrumbs */}
+              <div className="hidden md:block min-w-0">
                 <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
                   <span>Customer Portal</span>
                   <span>/</span>
