@@ -13,7 +13,6 @@ import {
   ChevronDown,
   Menu,
   X,
-  PhoneCall,
   Lock,
   Tag,
   Wrench,
@@ -64,47 +63,7 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
   return (
     <div className="min-h-screen bg-[#F5F6F8] text-[#111111] pb-20 md:pb-0 font-sans">
       {/* ─────────────────────────────────────────────────────────────
-          1. TOP UTILITY & ANNOUNCEMENT BAR
-         ───────────────────────────────────────────────────────────── */}
-      <div className="border-b border-[#E5E7EB] bg-white text-xs text-[#6B7280]">
-        <div className="mx-auto flex h-9 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1.5 font-medium text-[#111111]">
-              <span className="inline-block h-2 w-2 rounded-full bg-[#E31E24]" />
-              Official RiderzPro Store
-            </span>
-            <span className="hidden sm:inline text-gray-300">|</span>
-            <span className="hidden sm:inline">
-              Genuine EV Batteries, Car & Bike Accessories, Chargers & Spares
-            </span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-1.5 hover:text-[#111111]">
-              <PhoneCall className="h-3 w-3 text-[#E31E24]" />
-              <span>Support: +91 98765 43210</span>
-            </div>
-            <span className="hidden md:inline text-gray-300">|</span>
-            <Link
-              to="/dashboard/customer"
-              className="hover:text-[#E31E24] transition font-medium"
-            >
-              Track Order
-            </Link>
-            <span className="text-gray-300">|</span>
-            <Link
-              to="/dashboard/admin"
-              className="flex items-center gap-1 text-[#111111] font-semibold hover:text-[#E31E24] transition"
-            >
-              <Lock className="h-3 w-3 text-[#E31E24]" />
-              <span>Admin Portal</span>
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* ─────────────────────────────────────────────────────────────
-          2. MAIN BRAND HEADER WITH LOGO, PROMINENT SEARCH & ACTIONS
+          MAIN BRAND HEADER WITH LOGO, PROMINENT SEARCH & ACTIONS
          ───────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 border-b border-[#E5E7EB] bg-white shadow-2xs">
         <div className="mx-auto flex h-18 max-w-7xl items-center gap-4 px-4 sm:px-6">
