@@ -1,11 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { BadgeCheck, IndianRupee, LayoutGrid, Settings, ShieldAlert, Store, Truck, Users, Map, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardShell, Panel, Stat, StatusPill } from "@/components/site/DashboardShell";
 import { AreaTrend, Bars, series } from "@/components/site/Charts";
 import { LiveMap } from "@/components/site/LiveMap";
 import { DELIVERY_BASE, DELIVERY_PER_KM, inr, vendors } from "@/lib/data";
+import { getCurrentRole } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard/admin")({
   head: () => ({ meta: [
@@ -26,6 +27,8 @@ const sections = [
 ];
 
 function AdminDash() {
+  const navigate = useNavigate();
+  const [authorized, setAuthorized] = useState(false);
   const [tab, setTab] = useState("overview");
   const [queue, setQueue] = useState([
     { id: "a1", type: "Vendor", name: "PowerCell Electronics, HSR", status: "Pending" },
@@ -35,6 +38,24 @@ function AdminDash() {
   ]);
   const [base, setBase] = useState(DELIVERY_BASE);
   const [perKm, setPerKm] = useState(DELIVERY_PER_KM);
+  useEffect(() => {
+    let active = true;
+    getCurrentRole()
+      .then((role) => {
+        if (!active) return;
+        if (role === "admin") setAuthorized(true);
+        else void navigate({ to: role === "customer" ? "/shop" : "/login", replace: true });
+      })
+      .catch(() => {
+        if (active) void navigate({ to: "/login", replace: true });
+      });
+    return () => { active = false; };
+  }, [navigate]);
+
+  if (!authorized) {
+    return <div className="grid min-h-[50vh] place-items-center text-sm text-muted-foreground">Checking admin access…</div>;
+  }
+
   const decide = (id: string, s: string) => { setQueue((q) => q.map((x) => (x.id === id ? { ...x, status: s } : x))); toast.success(s); };
 
   return (
