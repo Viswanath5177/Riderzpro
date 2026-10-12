@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Minus,
   Plus,
@@ -41,6 +41,12 @@ function CartPage() {
   const { cart, setQty, placeOrderWithOptions, userProfile, inventoryStock, isLoggedIn } = useStore();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (isLoggedIn) {
+      navigate({ to: "/dashboard/customer", search: { tab: "orders" } as any, replace: true });
+    }
+  }, [isLoggedIn, navigate]);
+
   const [paymentMethod, setPaymentMethod] = useState<string>("UPI");
   const [couponInput, setCouponInput] = useState<string>("EVSAFE");
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>({
@@ -59,15 +65,15 @@ function CartPage() {
             <Lock className="h-8 w-8" />
           </div>
           <h1 className="mt-5 font-display text-2xl sm:text-3xl font-extrabold text-[#111111]">
-            Sign in to view your cart
+            Sign in to view orders & tracking
           </h1>
           <p className="mt-2 text-sm text-[#6B7280]">
-            Please sign in to access your saved cart items, check vendor availability, and proceed to checkout.
+            Please sign in to access your orders, live courier dispatch milestones, and tax invoices.
           </p>
           <div className="mt-6 flex flex-col gap-3">
             <Link
               to="/login"
-              search={{ redirect: "/cart" } as any}
+              search={{ redirect: "/dashboard/customer?tab=orders" } as any}
               className="inline-flex items-center justify-center rounded-lg bg-[#E31E24] px-6 py-3 text-sm font-semibold text-white shadow-xs hover:bg-red-700 transition"
             >
               Sign In to Continue

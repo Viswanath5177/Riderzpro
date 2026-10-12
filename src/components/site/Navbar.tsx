@@ -60,10 +60,10 @@ export function Navbar() {
   const handleCartClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!isLoggedIn) {
-      toast.info("Please sign in to access your shopping cart");
-      navigate({ to: "/login", search: { redirect: "/cart" } as any });
+      toast.info("Please sign in to view your orders and delivery tracking");
+      navigate({ to: "/login", search: { redirect: "/dashboard/customer?tab=orders" } as any });
     } else {
-      navigate({ to: "/cart" });
+      navigate({ to: "/dashboard/customer", search: { tab: "orders" } as any });
     }
   };
 

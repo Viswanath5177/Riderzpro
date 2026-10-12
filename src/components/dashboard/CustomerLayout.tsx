@@ -465,22 +465,27 @@ export function CustomerLayout({
                 <span className="sm:hidden font-bold">Ask AI</span>
               </Link>
 
-              {/* Shopping Cart button on top right */}
-              <Link
-                to="/cart"
+              {/* Shopping Cart button on top right -> opens Orders & Delivery Tracking */}
+              <button
+                onClick={() => onTabChange("orders")}
                 id="dashboard-header-cart-btn"
-                aria-label="Shopping Cart"
-                className="relative flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#111111] hover:border-[#E31E24] hover:text-[#E31E24] transition shadow-2xs active:scale-95"
-                title="View Shopping Cart"
+                aria-label="Shopping Cart and Orders"
+                className={cn(
+                  "relative flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition shadow-2xs active:scale-95 cursor-pointer",
+                  activeTab === "orders"
+                    ? "border-[#E31E24] bg-red-50 text-[#E31E24]"
+                    : "border-[#E5E7EB] bg-white text-[#111111] hover:border-[#E31E24] hover:text-[#E31E24]"
+                )}
+                title="View Orders & Delivery Tracking"
               >
                 <ShoppingCart className="h-3.5 w-3.5 text-[#E31E24]" />
                 <span className="hidden sm:inline">Cart</span>
-                {cartCount > 0 && (
+                {(orders.length > 0 || cartCount > 0) && (
                   <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-[#E31E24] px-1 text-[10px] font-bold text-white leading-none">
-                    {cartCount}
+                    {orders.length || cartCount}
                   </span>
                 )}
-              </Link>
+              </button>
 
               {/* Profile Avatar & Account Menu */}
               <div className="relative">
