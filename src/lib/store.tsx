@@ -11,10 +11,50 @@ import {
 } from "./data";
 
 export type CartItem = { productId: string; vendorId: string; qty: number };
-export type GarageBike = { bikeId: string; year?: number; vin?: string; nickname?: string };
+export type GarageBike = {
+  bikeId: string;
+  year?: number;
+  vin?: string;
+  nickname?: string;
+  regNo?: string;
+  odoKm?: number;
+  batteryHealth?: number;
+  nextServiceDays?: number;
+};
 export type Role = "customer" | "workshop" | "vendor" | "rider" | "admin";
 
 export const ORDER_STEPS = ["Placed", "Vendor accepted", "Rider assigned", "Picked up", "On the way", "Delivered"] as const;
+
+export type ServiceBooking = {
+  id: string;
+  bikeId: string;
+  serviceType: string;
+  slot: string;
+  location: string;
+  status: "Confirmed" | "In progress" | "Completed" | "Cancelled";
+  technician: string;
+  cost: number;
+  createdAt: number;
+};
+
+export type CustomerNotification = {
+  id: string;
+  title: string;
+  message: string;
+  time: string;
+  read: boolean;
+  type: "order" | "service" | "offer" | "system";
+  actionUrl?: string;
+};
+
+export type UserProfile = {
+  name: string;
+  phone: string;
+  email: string;
+  city: string;
+  address: string;
+  points: number;
+};
 
 export type VendorGroup = {
   vendorId: string;
@@ -77,6 +117,18 @@ type Ctx = {
   orders: Order[];
   placeOrder: (payment: string) => Order;
   advanceOrder: (id: string) => void;
+  simulateDemoOrder: () => Order;
+  savedProductIds: string[];
+  toggleSaved: (id: string) => void;
+  isSaved: (id: string) => boolean;
+  serviceBookings: ServiceBooking[];
+  bookService: (b: Omit<ServiceBooking, "id" | "createdAt">) => ServiceBooking;
+  cancelServiceBooking: (id: string) => void;
+  notifications: CustomerNotification[];
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  userProfile: UserProfile;
+  updateUserProfile: (p: Partial<UserProfile>) => void;
   role: Role;
   setRole: (r: Role) => void;
 };
@@ -84,12 +136,77 @@ type Ctx = {
 const StoreCtx = createContext<Ctx | null>(null);
 const KEY = "riderzpro-v1";
 
+const DEFAULT_PROFILE: UserProfile = {
+  name: "Aakash Sharma",
+  phone: "+91 98765 43210",
+  email: "aakash.sharma@example.com",
+  city: "Bengaluru, KA",
+  address: "Flat 402, Green Glen Layout, Bellandur, Bengaluru 560103",
+  points: 450,
+};
+
+const DEFAULT_BOOKINGS: ServiceBooking[] = [
+  {
+    id: "SB-1042",
+    bikeId: "ola-s1pro",
+    serviceType: "24-Point EV Health & BMS Diagnostic",
+    slot: "Tomorrow, 10:30 AM",
+    location: "Doorstep (Bellandur)",
+    status: "Confirmed",
+    technician: "Manoj Swamy (Certified EV Tech)",
+    cost: 299,
+    createdAt: Date.now() - 3600000,
+  },
+];
+
+const DEFAULT_NOTIFICATIONS: CustomerNotification[] = [
+  {
+    id: "notif-1",
+    title: "Technician Confirmed",
+    message: "Manoj Swamy is assigned for your doorstep BMS diagnostic tomorrow at 10:30 AM.",
+    time: "25m ago",
+    read: false,
+    type: "service",
+  },
+  {
+    id: "notif-2",
+    title: "Battery Health Alert",
+    message: "Your Ola S1 Pro battery is running optimal at 96% state of health. Regular monsoon maintenance recommended.",
+    time: "3h ago",
+    read: false,
+    type: "system",
+  },
+  {
+    id: "notif-3",
+    title: "Monsoon Exclusive Offer",
+    message: "Get ₹500 off on 60V fast chargers with code EVSAFE. Valid until Sunday.",
+    time: "1d ago",
+    read: true,
+    type: "offer",
+  },
+];
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [garage, setGarage] = useState<GarageBike[]>([{ bikeId: "ola-s1pro", year: 2023, nickname: "Daily ride" }]);
+  const [garage, setGarage] = useState<GarageBike[]>([
+    {
+      bikeId: "ola-s1pro",
+      year: 2023,
+      nickname: "Daily Ride",
+      vin: "P6R1S1PR2PN000001",
+      regNo: "KA 01 EQ 8821",
+      odoKm: 12450,
+      batteryHealth: 96,
+      nextServiceDays: 42,
+    },
+  ]);
   const [activeBikeId, setActiveBikeId] = useState<string | null>("ola-s1pro");
   const [orders, setOrders] = useState<Order[]>([]);
+  const [savedProductIds, setSavedProductIds] = useState<string[]>(["p1", "p8"]);
+  const [serviceBookings, setServiceBookings] = useState<ServiceBooking[]>(DEFAULT_BOOKINGS);
+  const [notifications, setNotifications] = useState<CustomerNotification[]>(DEFAULT_NOTIFICATIONS);
+  const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [role, setRole] = useState<Role>("customer");
   const [loaded, setLoaded] = useState(false);
 
@@ -102,6 +219,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (s.garage) setGarage(s.garage);
         if ("activeBikeId" in s) setActiveBikeId(s.activeBikeId);
         if (s.orders) setOrders(s.orders);
+        if (s.savedProductIds) setSavedProductIds(s.savedProductIds);
+        if (s.serviceBookings) setServiceBookings(s.serviceBookings);
+        if (s.notifications) setNotifications(s.notifications);
+        if (s.userProfile) setUserProfile(s.userProfile);
         if (s.role) setRole(s.role);
       }
       localStorage.removeItem("riderzpro-theme");
@@ -112,8 +233,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loaded) return;
-    localStorage.setItem(KEY, JSON.stringify({ cart, garage, activeBikeId, orders, role }));
-  }, [cart, garage, activeBikeId, orders, role, loaded]);
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({
+        cart,
+        garage,
+        activeBikeId,
+        orders,
+        savedProductIds,
+        serviceBookings,
+        notifications,
+        userProfile,
+        role,
+      }),
+    );
+  }, [cart, garage, activeBikeId, orders, savedProductIds, serviceBookings, notifications, userProfile, role, loaded]);
 
   useEffect(() => {
     document.documentElement.classList.remove("dark");
@@ -141,6 +275,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return [...c, { productId, vendorId, qty }];
     });
   }, []);
+
   const setQty = useCallback((productId: string, vendorId: string, qty: number) => {
     setCart((c) =>
       qty <= 0
@@ -159,6 +294,71 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
     [cart],
   );
+
+  const toggleSaved = useCallback((id: string) => {
+    setSavedProductIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }, []);
+
+  const isSaved = useCallback((id: string) => savedProductIds.includes(id), [savedProductIds]);
+
+  const bookService = useCallback((b: Omit<ServiceBooking, "id" | "createdAt">) => {
+    const booking: ServiceBooking = {
+      ...b,
+      id: `SB-${Math.floor(1000 + Math.random() * 9000)}`,
+      createdAt: Date.now(),
+    };
+    setServiceBookings((prev) => [booking, ...prev]);
+    return booking;
+  }, []);
+
+  const cancelServiceBooking = useCallback((id: string) => {
+    setServiceBookings((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, status: "Cancelled" as const } : b))
+    );
+  }, []);
+
+  const markNotificationRead = useCallback((id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+  }, []);
+
+  const markAllNotificationsRead = useCallback(() => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  }, []);
+
+  const updateUserProfile = useCallback((p: Partial<UserProfile>) => {
+    setUserProfile((prev) => ({ ...prev, ...p }));
+  }, []);
+
+  const simulateDemoOrder = useCallback(() => {
+    const demoOrder: Order = {
+      id: `RZ${Math.floor(100000 + Math.random() * 900000)}`,
+      createdAt: Date.now() - 12 * 60 * 1000,
+      groups: [
+        {
+          vendorId: "v1",
+          items: [{ productId: "p7", qty: 1, price: 14500 }],
+          subtotal: 14500,
+          km: 3.8,
+          fee: 86,
+          eta: 25,
+        },
+      ],
+      itemsTotal: 14500,
+      deliveryTotal: 86,
+      tax: 2610,
+      total: 17196,
+      eta: 25,
+      payment: "UPI • Google Pay",
+      status: 3,
+      riderId: riders[0].id,
+    };
+    setOrders((prev) => [demoOrder, ...prev]);
+    return demoOrder;
+  }, []);
 
   const value = useMemo<Ctx>(
     () => ({
@@ -186,10 +386,44 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               : o,
           ),
         ),
+      simulateDemoOrder,
+      savedProductIds,
+      toggleSaved,
+      isSaved,
+      serviceBookings,
+      bookService,
+      cancelServiceBooking,
+      notifications,
+      markNotificationRead,
+      markAllNotificationsRead,
+      userProfile,
+      updateUserProfile,
       role,
       setRole,
     }),
-    [theme, cart, addToCart, setQty, garage, activeBikeId, orders, placeOrder, role],
+    [
+      theme,
+      cart,
+      addToCart,
+      setQty,
+      garage,
+      activeBikeId,
+      orders,
+      placeOrder,
+      simulateDemoOrder,
+      savedProductIds,
+      toggleSaved,
+      isSaved,
+      serviceBookings,
+      bookService,
+      cancelServiceBooking,
+      notifications,
+      markNotificationRead,
+      markAllNotificationsRead,
+      userProfile,
+      updateUserProfile,
+      role,
+    ],
   );
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;
