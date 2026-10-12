@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   CUSTOMER_LOCATION,
   GST_RATE,
@@ -14,7 +22,14 @@ export type CartItem = { productId: string; vendorId: string; qty: number };
 export type GarageBike = { bikeId: string; year?: number; vin?: string; nickname?: string };
 export type Role = "customer" | "workshop" | "vendor" | "rider" | "admin";
 
-export const ORDER_STEPS = ["Placed", "Vendor accepted", "Rider assigned", "Picked up", "On the way", "Delivered"] as const;
+export const ORDER_STEPS = [
+  "Placed",
+  "Vendor accepted",
+  "Rider assigned",
+  "Picked up",
+  "On the way",
+  "Delivered",
+] as const;
 
 export type VendorGroup = {
   vendorId: string;
@@ -48,7 +63,14 @@ export function quoteCart(cart: CartItem[]) {
     if (!g) {
       const v = getVendor(c.vendorId);
       const km = Math.round(distanceKm(v, CUSTOMER_LOCATION) * 10) / 10;
-      g = { vendorId: c.vendorId, items: [], subtotal: 0, km, fee: deliveryFee(km), eta: etaMinutes(km, v.prepMins) };
+      g = {
+        vendorId: c.vendorId,
+        items: [],
+        subtotal: 0,
+        km,
+        fee: deliveryFee(km),
+        eta: etaMinutes(km, v.prepMins),
+      };
       map.set(c.vendorId, g);
     }
     g.items.push({ productId: c.productId, qty: c.qty, price: offer.price });
@@ -87,7 +109,9 @@ const KEY = "riderzpro-v1";
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [garage, setGarage] = useState<GarageBike[]>([{ bikeId: "ola-s1pro", year: 2023, nickname: "Daily ride" }]);
+  const [garage, setGarage] = useState<GarageBike[]>([
+    { bikeId: "ola-s1pro", year: 2023, nickname: "Daily ride" },
+  ]);
   const [activeBikeId, setActiveBikeId] = useState<string | null>("ola-s1pro");
   const [orders, setOrders] = useState<Order[]>([]);
   const [role, setRole] = useState<Role>("customer");
@@ -107,7 +131,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const t = localStorage.getItem("riderzpro-theme");
       if (t === "light" || t === "dark") setTheme(t);
       else setTheme(window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
-    } catch {}
+    } catch (_err) {
+      // Ignore initial localStorage parse error
+    }
     setLoaded(true);
   }, []);
 
@@ -129,7 +155,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           if (o.status >= ORDER_STEPS.length - 1) return o;
           if (Date.now() - o.createdAt < (o.status + 1) * 12000) return o;
           const status = o.status + 1;
-          return { ...o, status, riderId: status >= 2 ? o.riderId ?? riders[0].id : undefined };
+          return { ...o, status, riderId: status >= 2 ? (o.riderId ?? riders[0].id) : undefined };
         }),
       );
     }, 3000);
@@ -154,7 +180,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const placeOrder = useCallback(
     (payment: string) => {
       const q = quoteCart(cart);
-      const order: Order = { id: `RZ${Date.now().toString().slice(-6)}`, createdAt: Date.now(), payment, status: 0, ...q };
+      const order: Order = {
+        id: `RZ${Date.now().toString().slice(-6)}`,
+        createdAt: Date.now(),
+        payment,
+        status: 0,
+        ...q,
+      };
       setOrders((o) => [order, ...o]);
       setCart([]);
       return order;
@@ -184,7 +216,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setOrders((os) =>
           os.map((o) =>
             o.id === id && o.status < ORDER_STEPS.length - 1
-              ? { ...o, status: o.status + 1, riderId: o.status + 1 >= 2 ? riders[0].id : undefined }
+              ? {
+                  ...o,
+                  status: o.status + 1,
+                  riderId: o.status + 1 >= 2 ? riders[0].id : undefined,
+                }
               : o,
           ),
         ),

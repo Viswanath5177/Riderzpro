@@ -12,16 +12,22 @@ const nav = [
   { to: "/dashboards", label: "Dashboards" },
 ] as const;
 
-export function SiteLayout({ children, transparent }: { children: ReactNode; transparent?: boolean }) {
+export function SiteLayout({
+  children,
+  transparent,
+}: {
+  children: ReactNode;
+  transparent?: boolean;
+}) {
   const { cart } = useStore();
   const count = cart.reduce((s, c) => s + c.qty, 0);
   return (
-    <div className="min-h-screen pb-20 md:pb-0">
+    <div className="min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
       <header
         className={
           transparent
-            ? "absolute inset-x-0 top-0 z-40"
-            : "sticky top-0 z-40 border-b border-border glass"
+            ? "absolute inset-x-0 top-0 z-40 pt-safe"
+            : "sticky top-0 z-40 border-b border-border glass pt-safe"
         }
       >
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4 md:px-6">
@@ -40,13 +46,22 @@ export function SiteLayout({ children, transparent }: { children: ReactNode; tra
           </nav>
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle />
-            <Link to="/cart" className="relative grid h-10 w-10 place-items-center rounded-full border border-border bg-card/60 transition hover:border-primary hover:text-primary">
+            <Link
+              to="/cart"
+              aria-label="Shopping Cart"
+              className="relative grid h-11 w-11 place-items-center rounded-full border border-border bg-card/60 transition hover:border-primary hover:text-primary"
+            >
               <ShoppingCart className="h-4 w-4" />
               {count > 0 && (
-                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">{count}</span>
+                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  {count}
+                </span>
               )}
             </Link>
-            <Link to="/login" className="hidden rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground md:inline-flex">
+            <Link
+              to="/login"
+              className="hidden rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground md:inline-flex"
+            >
               Sign in
             </Link>
           </div>
@@ -68,23 +83,25 @@ function MobileTabBar({ count }: { count: number }) {
     { to: "/dashboards", label: "Me", Icon: User },
   ] as const;
   return (
-    <nav className="fixed inset-x-3 bottom-3 z-50 flex items-center justify-around rounded-2xl border border-border px-2 py-2 shadow-card glass md:hidden">
+    <nav className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] z-50 flex items-center justify-around rounded-2xl border border-border px-2 py-1.5 shadow-card glass md:hidden">
       {tabs.map((t) => (
         <Link
           key={t.to}
           to={t.to}
           activeOptions={{ exact: t.to === "/" }}
-          className="flex flex-1 flex-col items-center gap-0.5 text-[10px] font-medium text-muted-foreground"
+          className="flex min-h-[44px] flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-muted-foreground"
           activeProps={{ className: "!text-primary" }}
         >
           {"center" in t ? (
-            <span className="-mt-7 grid h-12 w-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow">
+            <span className="-mt-6 grid h-12 w-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow">
               <t.Icon className="h-5 w-5" />
             </span>
           ) : (
             <span className="relative">
               <t.Icon className="h-5 w-5" />
-              {t.to === "/orders" && count > 0 && <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-primary" />}
+              {t.to === "/orders" && count > 0 && (
+                <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-primary" />
+              )}
             </span>
           )}
           {t.label}
@@ -97,31 +114,89 @@ function MobileTabBar({ count }: { count: number }) {
 function Footer() {
   return (
     <footer className="mt-24 border-t border-border">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 md:grid-cols-4 md:px-6">
-        <div className="md:col-span-2">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:grid-cols-2 md:grid-cols-4 md:px-6">
+        <div>
           <Logo />
           <p className="mt-4 max-w-sm text-sm text-muted-foreground">
-            The marketplace for EV batteries and parts that actually fit. Compare sellers, order once, track every rider live.
+            The marketplace for EV batteries and parts that actually fit. Compare sellers, order
+            once, track every rider live.
           </p>
         </div>
         <div className="text-sm">
           <p className="mb-3 font-semibold">Marketplace</p>
           <ul className="space-y-2 text-muted-foreground">
-            <li><Link to="/shop" className="hover:text-primary">Batteries & parts</Link></li>
-            <li><Link to="/garage" className="hover:text-primary">VIN lookup</Link></li>
-            <li><Link to="/assistant" className="hover:text-primary">Voice assistant</Link></li>
+            <li>
+              <Link to="/shop" className="hover:text-primary">
+                Batteries & parts
+              </Link>
+            </li>
+            <li>
+              <Link to="/garage" className="hover:text-primary">
+                VIN lookup
+              </Link>
+            </li>
+            <li>
+              <Link to="/assistant" className="hover:text-primary">
+                Voice assistant
+              </Link>
+            </li>
           </ul>
         </div>
         <div className="text-sm">
           <p className="mb-3 font-semibold">Partners</p>
           <ul className="space-y-2 text-muted-foreground">
-            <li><Link to="/dashboard/vendor" className="hover:text-primary">Sell on Riderzpro</Link></li>
-            <li><Link to="/dashboard/rider" className="hover:text-primary">Ride with us</Link></li>
-            <li><Link to="/dashboard/workshop" className="hover:text-primary">For workshops</Link></li>
+            <li>
+              <Link to="/dashboard/vendor" className="hover:text-primary">
+                Sell on Riderzpro
+              </Link>
+            </li>
+            <li>
+              <Link to="/dashboard/rider" className="hover:text-primary">
+                Ride with us
+              </Link>
+            </li>
+            <li>
+              <Link to="/dashboard/workshop" className="hover:text-primary">
+                For workshops
+              </Link>
+            </li>
+          </ul>
+        </div>
+        <div className="text-sm">
+          <p className="mb-3 font-semibold">Legal & Support</p>
+          <ul className="space-y-2 text-muted-foreground">
+            <li>
+              <Link to="/privacy" className="hover:text-primary">
+                Privacy Policy
+              </Link>
+            </li>
+            <li>
+              <Link to="/terms" className="hover:text-primary">
+                Terms & Refunds
+              </Link>
+            </li>
+            <li>
+              <Link to="/support" className="hover:text-primary">
+                Customer Support
+              </Link>
+            </li>
           </ul>
         </div>
       </div>
-      <p className="border-t border-border py-6 text-center text-xs text-muted-foreground">© 2026 Riderzpro · Made for India's EV riders</p>
+      <div className="border-t border-border py-6 flex flex-col sm:flex-row items-center justify-between gap-3 px-4 max-w-7xl mx-auto text-xs text-muted-foreground">
+        <p>© 2026 Riderzpro · Made for India's EV riders</p>
+        <div className="flex gap-4">
+          <Link to="/privacy" className="hover:text-primary">
+            Privacy
+          </Link>
+          <Link to="/terms" className="hover:text-primary">
+            Terms
+          </Link>
+          <Link to="/support" className="hover:text-primary">
+            Help
+          </Link>
+        </div>
+      </div>
     </footer>
   );
 }
