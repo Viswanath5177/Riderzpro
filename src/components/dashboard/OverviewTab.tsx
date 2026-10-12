@@ -160,17 +160,17 @@ export function OverviewTab({
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          SECTION B: SUMMARY METRIC CARDS (4 RESPONSIVE CARDS)
+          SECTION B: SUMMARY METRIC CARDS (4 RESPONSIVE VISIONOS GLASS CARDS)
          ───────────────────────────────────────────────────────────── */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Total Orders */}
         <div
           onClick={() => onTabChange("orders")}
-          className="group rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-sm hover:border-[#E31E24] cursor-pointer transition-all flex flex-col justify-between"
+          className="group rounded-2xl vision-card p-5 cursor-pointer transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Total Orders</span>
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-gray-100 text-[#111111] group-hover:bg-red-50 group-hover:text-[#E31E24] transition">
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-gray-100 text-[#111111] group-hover:bg-red-50 group-hover:text-[#E31E24] transition shadow-2xs">
               <Package className="h-4 w-4" />
             </span>
           </div>
@@ -180,7 +180,7 @@ export function OverviewTab({
               All placed & recorded orders
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
+          <div className="mt-4 pt-3 border-t border-white/60 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
             <span>View all orders</span>
             <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
           </div>
@@ -189,11 +189,11 @@ export function OverviewTab({
         {/* Card 2: Orders Being Processed */}
         <div
           onClick={() => onTabChange("orders")}
-          className="group rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-sm hover:border-[#E31E24] cursor-pointer transition-all flex flex-col justify-between"
+          className="group rounded-2xl vision-card p-5 cursor-pointer transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Being Processed</span>
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-50 text-amber-700 group-hover:scale-105 transition">
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-amber-50 text-amber-700 group-hover:scale-105 transition shadow-2xs">
               <Clock className="h-4 w-4" />
             </span>
           </div>
@@ -203,7 +203,7 @@ export function OverviewTab({
               {processingOrdersCount > 0 ? "Supplier packing & verification" : "Zero orders awaiting processing"}
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
+          <div className="mt-4 pt-3 border-t border-white/60 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
             <span>Fulfillment queue</span>
             <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
           </div>
@@ -212,11 +212,11 @@ export function OverviewTab({
         {/* Card 3: Shipments in Transit */}
         <div
           onClick={() => onTabChange("tracking")}
-          className="group rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-sm hover:border-[#E31E24] cursor-pointer transition-all flex flex-col justify-between"
+          className="group rounded-2xl vision-card p-5 cursor-pointer transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Shipments in Transit</span>
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-red-50 text-[#E31E24] group-hover:scale-105 transition">
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-red-50 text-[#E31E24] group-hover:scale-105 transition shadow-2xs">
               <Truck className="h-4 w-4" />
             </span>
           </div>
@@ -226,7 +226,7 @@ export function OverviewTab({
               {inTransitCount > 0 ? `${inTransitCount} active courier dispatches` : "No consignments in transit"}
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
+          <div className="mt-4 pt-3 border-t border-white/60 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
             <span>Track live delivery</span>
             <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
           </div>
@@ -235,7 +235,7 @@ export function OverviewTab({
         {/* Card 4: Delivered Orders */}
         <div
           onClick={() => onTabChange("orders")}
-          className="group rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-sm hover:border-[#E31E24] cursor-pointer transition-all flex flex-col justify-between"
+          className="group rounded-2xl vision-card p-5 cursor-pointer transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Delivered Orders</span>

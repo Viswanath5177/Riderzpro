@@ -61,16 +61,20 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F6F8] text-[#111111] pb-20 md:pb-0 font-sans">
+    <div className="min-h-screen bg-gradient-to-b from-[#F3F4F6] via-[#F8F9FB] to-[#EEF2F6] text-[#111111] pb-24 md:pb-0 font-sans relative overflow-x-hidden">
+      {/* VisionOS Ambient Spatial Glow Orbs */}
+      <div className="pointer-events-none fixed -top-40 -left-40 h-[500px] w-[500px] rounded-full bg-red-400/8 blur-[140px] z-0" />
+      <div className="pointer-events-none fixed top-1/3 -right-40 h-[450px] w-[450px] rounded-full bg-blue-400/8 blur-[140px] z-0" />
+
       {/* ─────────────────────────────────────────────────────────────
-          MAIN BRAND HEADER WITH LOGO, PROMINENT SEARCH & ACTIONS
+          MAIN BRAND HEADER WITH APPLE VISIONOS FROSTED GLASS
          ───────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 border-b border-[#E5E7EB] bg-white shadow-2xs">
+      <header className="sticky top-0 z-40 border-b border-white/70 bg-white/75 backdrop-blur-2xl shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
         <div className="mx-auto flex h-18 max-w-7xl items-center gap-4 px-4 sm:px-6">
           {/* Mobile menu toggle */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-1.5 rounded-lg text-gray-700 hover:bg-gray-100 lg:hidden"
+            className="p-2 rounded-xl text-gray-700 hover:bg-white/80 active:scale-95 transition lg:hidden"
             aria-label="Toggle menu"
           >
             {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -81,23 +85,23 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
             <Logo imgClassName="h-9 md:h-11" />
           </div>
 
-          {/* Prominent Search Bar */}
+          {/* Prominent Search Bar with VisionOS Glass */}
           <form
             onSubmit={handleSearchSubmit}
             className="hidden sm:flex flex-1 max-w-xl mx-auto items-center relative"
           >
-            <div className="relative w-full flex items-center">
+            <div className="relative w-full flex items-center vision-glass-subtle rounded-full border border-white/80 transition-all focus-within:bg-white/95 focus-within:border-white focus-within:ring-2 focus-within:ring-[#E31E24]/20 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)]">
+              <Search className="ml-4 h-4 w-4 text-[#6B7280] shrink-0" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search electric bikes, car accessories, 60V batteries, chargers, brake discs..."
-                className="h-10.5 w-full rounded-lg border border-[#E5E7EB] bg-[#F5F6F8] pl-10 pr-24 text-sm text-[#111111] placeholder:text-[#6B7280] focus:border-[#E31E24] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#E31E24] transition"
+                className="w-full bg-transparent py-2.5 pl-3 pr-24 text-xs text-[#111111] placeholder:text-[#6B7280] focus:outline-none"
               />
-              <Search className="absolute left-3.5 h-4 w-4 text-[#6B7280]" />
               <button
                 type="submit"
-                className="absolute right-1 h-8.5 rounded-md bg-[#E31E24] px-3.5 text-xs font-semibold text-white transition hover:bg-red-700"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full bg-[#E31E24] px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-red-700 active:scale-95"
               >
                 Search
               </button>
@@ -106,14 +110,14 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
 
           {/* Right Header Controls */}
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
-            {/* AI Assistant Button */}
+            {/* AI Voice Assistant Pill */}
             <Link
               to="/assistant"
               id="navbar-ai-assistant-btn"
-              className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50/60 px-3 py-2 text-xs font-semibold text-[#E31E24] transition hover:bg-red-100 hover:border-red-300"
+              className="vision-pill flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-[#E31E24] transition hover:bg-red-500 hover:text-white hover:border-red-500 hover:shadow-[0_4px_16px_rgba(227,30,36,0.35)] active:scale-95 group"
             >
-              <Sparkles className="h-3.5 w-3.5 text-[#E31E24]" />
-              <span className="hidden sm:inline">AI Assistant</span>
+              <Mic className="h-3.5 w-3.5 text-[#E31E24] group-hover:text-white transition" />
+              <span className="hidden sm:inline">AI Voice</span>
             </Link>
 
             {/* Cart Button */}
@@ -121,7 +125,7 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
               to="/cart"
               id="navbar-cart-btn"
               aria-label="Cart"
-              className="relative flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-xs font-semibold text-[#111111] transition hover:border-[#E31E24] hover:text-[#E31E24]"
+              className="vision-pill relative flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold text-[#111111] transition hover:border-[#E31E24] hover:text-[#E31E24] active:scale-95"
             >
               <ShoppingCart className="h-4 w-4" />
               <span className="hidden sm:inline">Cart</span>
@@ -136,9 +140,9 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
             <div className="relative">
               <Link
                 to="/dashboard/customer"
-                className="flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-xs font-semibold text-[#111111] transition hover:border-[#E31E24]"
+                className="vision-pill flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold text-[#111111] transition hover:border-[#E31E24] active:scale-95"
               >
-                <div className="grid h-6 w-6 place-items-center rounded-full bg-gray-100 text-[#111111] font-bold text-[11px]">
+                <div className="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-tr from-gray-200 to-white text-[#111111] font-bold text-[11px] shadow-2xs">
                   AS
                 </div>
                 <span className="hidden md:inline">{userProfile.name.split(" ")[0]}</span>
@@ -148,9 +152,9 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
         </div>
 
         {/* ─────────────────────────────────────────────────────────────
-            3. SECONDARY CATEGORY NAVIGATION BAR (AUTOMOTIVE DEPARTMENTS)
+            3. SECONDARY CATEGORY NAVIGATION BAR (FROSTED GLASS)
            ───────────────────────────────────────────────────────────── */}
-        <div className="hidden lg:block border-t border-[#E5E7EB] bg-white">
+        <div className="hidden lg:block border-t border-white/50 bg-white/60 backdrop-blur-xl">
           <div className="mx-auto flex h-10.5 max-w-7xl items-center justify-between px-6">
             <nav className="flex items-center gap-1">
               {storeCategories.map((cat) => (
@@ -281,7 +285,7 @@ function MobileTabBar({ count }: { count: number }) {
   ] as const;
 
   return (
-    <nav className="fixed inset-x-3 bottom-3 z-40 mx-auto flex max-w-md items-center justify-around rounded-2xl border border-gray-200 bg-white/95 px-2 py-2 shadow-xl backdrop-blur-md md:hidden">
+    <nav className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-md items-center justify-around rounded-full vision-dock px-3 py-1.5 md:hidden">
       {tabs.map((t) => (
         <Link
           key={t.label}
@@ -291,15 +295,21 @@ function MobileTabBar({ count }: { count: number }) {
           activeProps={{ className: "!text-[#E31E24]" }}
         >
           {"center" in t ? (
-            <span className="-mt-5 grid h-11 w-11 place-items-center rounded-full bg-[#E31E24] text-white shadow-md active:scale-95 transition">
-              <t.Icon className="h-5 w-5" />
-            </span>
+            <div className="relative -mt-6 flex flex-col items-center group">
+              <span className="vision-mic-orb relative grid h-13 w-13 place-items-center rounded-full text-white cursor-pointer active:scale-90">
+                <span className="vision-mic-pulse animate-mic-pulse" />
+                <Mic className="h-6 w-6 relative z-10 drop-shadow-sm" />
+              </span>
+              <span className="mt-1 text-[10px] font-bold tracking-tight text-[#E31E24]">
+                Ask AI
+              </span>
+            </div>
           ) : (
-            <span className="relative">
+            <span className="relative flex flex-col items-center py-1">
               <t.Icon className="h-5 w-5" />
+              <span>{t.label}</span>
             </span>
           )}
-          {t.label}
         </Link>
       ))}
     </nav>
