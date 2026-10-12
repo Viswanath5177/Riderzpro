@@ -4,6 +4,7 @@ import { CustomerLayout, type CustomerTab } from "@/components/dashboard/Custome
 import { OverviewTab } from "@/components/dashboard/OverviewTab";
 import { GarageTab } from "@/components/dashboard/GarageTab";
 import { OrdersTab } from "@/components/dashboard/OrdersTab";
+import { TrackingTab } from "@/components/dashboard/TrackingTab";
 import { SavedTab } from "@/components/dashboard/SavedTab";
 import { ServiceTab } from "@/components/dashboard/ServiceTab";
 import { OffersTab } from "@/components/dashboard/OffersTab";
@@ -65,7 +66,7 @@ function CustomerDashboard() {
           />
         )}
         {tab === "orders" && <OrdersTab />}
-        {tab === "tracking" && <OrdersTab />}
+        {tab === "tracking" && <TrackingTab />}
         {tab === "saved" && <SavedTab />}
         {tab === "service" && (
           <ServiceTab onOpenBookingModal={() => setIsBookingOpen(true)} />

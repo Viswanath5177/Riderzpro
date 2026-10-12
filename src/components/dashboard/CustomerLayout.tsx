@@ -34,7 +34,7 @@ import {
 import { toast } from "sonner";
 import { Logo } from "@/components/site/bits";
 import { useStore } from "@/lib/store";
-import { bikes, getBike, inr, products, type Product } from "@/lib/data";
+import { inr, products, type Product } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { VinSearchModal } from "./VinSearchModal";
 
@@ -68,8 +68,6 @@ export function CustomerLayout({
   const {
     userProfile,
     garage,
-    activeBikeId,
-    setActiveBikeId,
     orders,
     savedProductIds,
     serviceBookings,
@@ -89,9 +87,6 @@ export function CustomerLayout({
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const activeBike = garage.find((b) => b.bikeId === activeBikeId) || garage[0];
-  const activeBikeMeta = activeBike ? getBike(activeBike.bikeId) : null;
-
   const activeOrdersCount = orders.filter((o) => o.status < 5).length;
   const liveOrder = orders.find((o) => o.status < 5);
   const unreadNotifsCount = notifications.filter((n) => !n.read).length;
@@ -110,6 +105,7 @@ export function CustomerLayout({
     );
   }, [searchQuery]);
 
+
   const navItems = [
     {
       id: "overview" as CustomerTab,
@@ -117,10 +113,9 @@ export function CustomerLayout({
       Icon: LayoutGrid,
     },
     {
-      id: "garage" as CustomerTab,
-      label: "My Garage",
-      Icon: Bike,
-      badge: `${garage.length}`,
+      id: "shop" as any,
+      label: "Shop Bikes & Parts",
+      Icon: ShoppingBag,
     },
     {
       id: "orders" as CustomerTab,
@@ -140,6 +135,12 @@ export function CustomerLayout({
       label: "Saved Items",
       Icon: Heart,
       badge: savedProductIds.length > 0 ? `${savedProductIds.length}` : undefined,
+    },
+    {
+      id: "garage" as CustomerTab,
+      label: "My Garage",
+      Icon: Bike,
+      badge: `${garage.length}`,
     },
     {
       id: "service" as CustomerTab,
@@ -177,7 +178,12 @@ export function CustomerLayout({
     },
   ];
 
-  const handleNavClick = (tabId: CustomerTab) => {
+  const handleNavClick = (tabId: CustomerTab | "shop") => {
+    if (tabId === "shop") {
+      navigate({ to: "/shop" });
+      setIsMobileMenuOpen(false);
+      return;
+    }
     onTabChange(tabId);
     setIsMobileMenuOpen(false);
   };
@@ -344,29 +350,6 @@ export function CustomerLayout({
               {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>
           </div>
-
-          {/* Active Bike Pill in Sidebar */}
-          {!isCollapsed && activeBikeMeta && (
-            <div className="mx-4 mt-4 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-100 flex items-center justify-between">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary/10 text-primary shrink-0">
-                  <Bike className="h-4 w-4" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-gray-900 truncate">
-                    {activeBikeMeta.make} {activeBikeMeta.model}
-                  </p>
-                  <p className="text-[11px] text-emerald-700 font-medium">Primary EV</p>
-                </div>
-              </div>
-              <button
-                onClick={() => onTabChange("garage")}
-                className="text-[11px] font-semibold text-primary hover:underline shrink-0"
-              >
-                Switch
-              </button>
-            </div>
-          )}
 
           {/* Navigation Links */}
           <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">

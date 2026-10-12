@@ -7,8 +7,21 @@ import {
   etaMinutes,
   getProduct,
   getVendor,
+  products,
   riders,
 } from "./data";
+import type {
+  AddressRef,
+  CreateShipmentParams,
+  NormalizedShipment,
+  ShipmentEvent,
+  ShipmentStatus,
+} from "./logistics/types";
+import {
+  createNormalizedShipment,
+  processCourierWebhookEvent,
+  type WebhookResult,
+} from "./logistics/adapters";
 
 export type CartItem = { productId: string; vendorId: string; qty: number };
 export type GarageBike = {
@@ -64,21 +77,32 @@ export type VendorGroup = {
   fee: number;
   eta: number;
 };
+
 export type Order = {
   id: string;
   createdAt: number;
   groups: VendorGroup[];
   itemsTotal: number;
   deliveryTotal: number;
+  discountTotal?: number;
+  couponCode?: string;
   tax: number;
   total: number;
   eta: number;
   payment: string;
+  paymentStatus?: "Paid" | "Pending" | "Refunded";
   status: number;
+  fulfillmentStatus?: "Awaiting Fulfillment" | "Preparing" | "Packed" | "Dispatched" | "Delivered" | "Cancelled";
   riderId?: string;
+  shippingAddress?: AddressRef;
+  customerName?: string;
+  customerPhone?: string;
+  shipmentId?: string;
+  cancelReason?: string;
+  refundReason?: string;
 };
 
-export function quoteCart(cart: CartItem[]) {
+export function quoteCart(cart: CartItem[], discount = 0) {
   const map = new Map<string, VendorGroup>();
   for (const c of cart) {
     const p = getProduct(c.productId);
@@ -97,9 +121,10 @@ export function quoteCart(cart: CartItem[]) {
   const groups = [...map.values()];
   const itemsTotal = groups.reduce((s, g) => s + g.subtotal, 0);
   const deliveryTotal = groups.reduce((s, g) => s + g.fee, 0);
-  const tax = Math.round(itemsTotal * GST_RATE);
+  const discountedSubtotal = Math.max(0, itemsTotal - discount);
+  const tax = Math.round(discountedSubtotal * GST_RATE);
   const eta = groups.reduce((m, g) => Math.max(m, g.eta), 0) + Math.max(0, groups.length - 1) * 8;
-  return { groups, itemsTotal, deliveryTotal, tax, total: itemsTotal + deliveryTotal + tax, eta };
+  return { groups, itemsTotal, deliveryTotal, tax, discountTotal: discount, total: discountedSubtotal + deliveryTotal + tax, eta };
 }
 
 type Ctx = {
@@ -116,9 +141,25 @@ type Ctx = {
   setActiveBikeId: (id: string | null) => void;
   orders: Order[];
   placeOrder: (payment: string) => Order;
+  placeOrderWithOptions: (options: {
+    payment: string;
+    shippingAddress: AddressRef;
+    couponCode?: string;
+    discount?: number;
+  }) => Order;
   advanceOrder: (id: string) => void;
   updateOrderStatus: (id: string, status: number) => void;
+  cancelOrder: (id: string, reason: string) => void;
+  refundOrder: (id: string, reason: string) => void;
   simulateDemoOrder: () => Order;
+  // Logistics & Shipments
+  shipments: NormalizedShipment[];
+  createShipment: (params: CreateShipmentParams) => NormalizedShipment;
+  updateShipmentStatus: (shipmentId: string, status: ShipmentStatus, newEvent?: ShipmentEvent) => void;
+  processWebhook: (payload: any) => WebhookResult;
+  // Inventory
+  inventoryStock: Record<string, number>;
+  updateInventoryStock: (productId: string, delta: number) => void;
   savedProductIds: string[];
   toggleSaved: (id: string) => void;
   isSaved: (id: string) => boolean;
@@ -135,7 +176,7 @@ type Ctx = {
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
-const KEY = "riderzpro-v1";
+const KEY = "riderzpro-v2";
 
 const DEFAULT_PROFILE: UserProfile = {
   name: "Aakash Sharma",
@@ -144,6 +185,15 @@ const DEFAULT_PROFILE: UserProfile = {
   city: "Bengaluru, KA",
   address: "Flat 402, Green Glen Layout, Bellandur, Bengaluru 560103",
   points: 450,
+};
+
+const DEFAULT_ADDRESS: AddressRef = {
+  name: "Aakash Sharma",
+  street: "Flat 402, Green Glen Layout, Bellandur",
+  city: "Bengaluru",
+  state: "Karnataka",
+  pincode: "560103",
+  phone: "+91 98765 43210",
 };
 
 const DEFAULT_BOOKINGS: ServiceBooking[] = [
@@ -207,8 +257,14 @@ export const DEFAULT_ORDERS: Order[] = [
     total: 17200,
     eta: 25,
     payment: "UPI · Google Pay",
+    paymentStatus: "Paid",
     status: 3, // Picked up / In transit
+    fulfillmentStatus: "Dispatched",
     riderId: "r1",
+    customerName: "Aakash Sharma",
+    customerPhone: "+91 98765 43210",
+    shippingAddress: DEFAULT_ADDRESS,
+    shipmentId: "SHP-9201-DEL",
   },
   {
     id: "RZ-793420",
@@ -229,8 +285,120 @@ export const DEFAULT_ORDERS: Order[] = [
     total: 2909,
     eta: 30,
     payment: "Credit Card (HDFC)",
+    paymentStatus: "Paid",
     status: 5, // Delivered
+    fulfillmentStatus: "Delivered",
     riderId: "r2",
+    customerName: "Aakash Sharma",
+    customerPhone: "+91 98765 43210",
+    shippingAddress: DEFAULT_ADDRESS,
+    shipmentId: "SHP-3420-BLU",
+  },
+];
+
+export const DEFAULT_SHIPMENTS: NormalizedShipment[] = [
+  {
+    shipmentId: "SHP-9201-DEL",
+    orderId: "RZ-849201",
+    provider: "Delhivery",
+    providerReference: "DEL-WAYBILL-984128471",
+    trackingNumber: "DEL984128471",
+    trackingUrl: "https://www.delhivery.com/track/package/DEL984128471",
+    pickupAddress: {
+      name: "VoltHub Indiranagar",
+      street: "100ft Road, HAL 2nd Stage",
+      city: "Bengaluru",
+      pincode: "560038",
+      phone: "+91 80 4123 9901",
+    },
+    destinationAddress: DEFAULT_ADDRESS,
+    status: "In Transit",
+    locationType: "Facility Checkpoint",
+    latestLocation: "Bommasandra Hub Facility (Bengaluru)",
+    lastEventTimestamp: "24m ago",
+    estimatedDelivery: "Today, 5:30 PM",
+    events: [
+      {
+        id: "evt-del-1",
+        timestamp: "Today, 09:15 AM",
+        status: "Manifested",
+        location: "VoltHub Indiranagar",
+        description: "Package Picked Up from Vendor Facility",
+        isGps: false,
+        facilityName: "Indiranagar Inbound Sort Hub",
+      },
+      {
+        id: "evt-del-2",
+        timestamp: "Today, 11:30 AM",
+        status: "In Transit",
+        location: "Central Sort Facility",
+        description: "Inbound Scan & Sort Completed into Mother Bag",
+        isGps: false,
+        facilityName: "Central Sort Facility (Bengaluru East)",
+      },
+      {
+        id: "evt-del-3",
+        timestamp: "Today, 01:10 PM",
+        status: "In Transit",
+        location: "Bommasandra Hub Facility",
+        description: "Bagging for Local Route Dispatch to Bellandur",
+        isGps: false,
+        facilityName: "Bommasandra Hub Facility",
+      },
+    ],
+  },
+  {
+    shipmentId: "SHP-3420-BLU",
+    orderId: "RZ-793420",
+    provider: "Bluedart",
+    providerReference: "BLU-AWB-7749021",
+    trackingNumber: "BLU7749021",
+    trackingUrl: "https://www.bluedart.com/tracking?trackNumber=BLU7749021",
+    pickupAddress: {
+      name: "EV Spares Jayanagar",
+      street: "9th Block, Jayanagar",
+      city: "Bengaluru",
+      pincode: "560069",
+      phone: "+91 80 2654 8831",
+    },
+    destinationAddress: DEFAULT_ADDRESS,
+    status: "Delivered",
+    locationType: "Facility Checkpoint",
+    latestLocation: "Bellandur Destination Facility",
+    lastEventTimestamp: "4 days ago",
+    estimatedDelivery: "Delivered on Oct 8",
+    actualDeliveryTimestamp: "Oct 8, 02:45 PM",
+    events: [
+      {
+        id: "evt-blu-1",
+        timestamp: "Oct 7, 03:00 PM",
+        status: "Manifested",
+        location: "Jayanagar Logistics Desk",
+        description: "Air/Surface Manifest Created",
+        isGps: false,
+      },
+      {
+        id: "evt-blu-2",
+        timestamp: "Oct 8, 10:00 AM",
+        status: "Out for Delivery",
+        location: "Bellandur Delivery Center",
+        description: "Out for delivery with Blue Dart Field Executive",
+        isGps: false,
+      },
+      {
+        id: "evt-blu-3",
+        timestamp: "Oct 8, 02:45 PM",
+        status: "Delivered",
+        location: "Customer Doorstep (Bellandur)",
+        description: "Delivered & Signed by Aakash Sharma. OTP Verified.",
+        isGps: false,
+      },
+    ],
+    proofOfDelivery: {
+      signedBy: "Aakash Sharma",
+      timestamp: "Oct 8, 02:45 PM",
+      otpVerified: true,
+    },
   },
 ];
 
@@ -251,6 +419,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   ]);
   const [activeBikeId, setActiveBikeId] = useState<string | null>("ola-s1pro");
   const [orders, setOrders] = useState<Order[]>(DEFAULT_ORDERS);
+  const [shipments, setShipments] = useState<NormalizedShipment[]>(DEFAULT_SHIPMENTS);
+  const [inventoryStock, setInventoryStock] = useState<Record<string, number>>(() => {
+    const initial: Record<string, number> = {};
+    products.forEach((p) => {
+      initial[p.id] = p.offers.reduce((s, o) => s + o.stock, 0) || 12;
+    });
+    return initial;
+  });
   const [savedProductIds, setSavedProductIds] = useState<string[]>(["p1", "p8"]);
   const [serviceBookings, setServiceBookings] = useState<ServiceBooking[]>(DEFAULT_BOOKINGS);
   const [notifications, setNotifications] = useState<CustomerNotification[]>(DEFAULT_NOTIFICATIONS);
@@ -267,14 +443,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (s.garage) setGarage(s.garage);
         if ("activeBikeId" in s) setActiveBikeId(s.activeBikeId);
         if (s.orders && s.orders.length > 0) setOrders(s.orders);
-        else setOrders(DEFAULT_ORDERS);
+        if (s.shipments && s.shipments.length > 0) setShipments(s.shipments);
+        if (s.inventoryStock) setInventoryStock(s.inventoryStock);
         if (s.savedProductIds) setSavedProductIds(s.savedProductIds);
         if (s.serviceBookings) setServiceBookings(s.serviceBookings);
         if (s.notifications) setNotifications(s.notifications);
         if (s.userProfile) setUserProfile(s.userProfile);
         if (s.role) setRole(s.role);
       }
-      localStorage.removeItem("riderzpro-theme");
       setTheme("light");
     } catch {}
     setLoaded(true);
@@ -289,6 +465,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         garage,
         activeBikeId,
         orders,
+        shipments,
+        inventoryStock,
         savedProductIds,
         serviceBookings,
         notifications,
@@ -296,26 +474,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         role,
       }),
     );
-  }, [cart, garage, activeBikeId, orders, savedProductIds, serviceBookings, notifications, userProfile, role, loaded]);
+  }, [cart, garage, activeBikeId, orders, shipments, inventoryStock, savedProductIds, serviceBookings, notifications, userProfile, role, loaded]);
 
   useEffect(() => {
     document.documentElement.classList.remove("dark");
   }, [theme, loaded]);
-
-  // simulate live order progress
-  useEffect(() => {
-    const t = setInterval(() => {
-      setOrders((os) =>
-        os.map((o) => {
-          if (o.status >= ORDER_STEPS.length - 1) return o;
-          if (Date.now() - o.createdAt < (o.status + 1) * 12000) return o;
-          const status = o.status + 1;
-          return { ...o, status, riderId: status >= 2 ? o.riderId ?? riders[0].id : undefined };
-        }),
-      );
-    }, 3000);
-    return () => clearInterval(t);
-  }, []);
 
   const addToCart = useCallback((productId: string, vendorId: string, qty = 1) => {
     setCart((c) => {
@@ -333,16 +496,222 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const placeOrder = useCallback(
-    (payment: string) => {
-      const q = quoteCart(cart);
-      const order: Order = { id: `RZ${Date.now().toString().slice(-6)}`, createdAt: Date.now(), payment, status: 0, ...q };
-      setOrders((o) => [order, ...o]);
+  const updateInventoryStock = useCallback((productId: string, delta: number) => {
+    setInventoryStock((prev) => ({
+      ...prev,
+      [productId]: Math.max(0, (prev[productId] ?? 10) + delta),
+    }));
+  }, []);
+
+  const createShipment = useCallback((params: CreateShipmentParams) => {
+    const newShipment = createNormalizedShipment(params);
+    setShipments((prev) => [newShipment, ...prev]);
+
+    // Link shipment to order
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === params.orderId
+          ? {
+              ...o,
+              shipmentId: newShipment.shipmentId,
+              status: Math.max(o.status, 2),
+              fulfillmentStatus: "Dispatched",
+            }
+          : o
+      )
+    );
+
+    return newShipment;
+  }, []);
+
+  const updateShipmentStatus = useCallback(
+    (shipmentId: string, status: ShipmentStatus, newEvent?: ShipmentEvent) => {
+      setShipments((prev) =>
+        prev.map((s) => {
+          if (s.shipmentId !== shipmentId) return s;
+          const updatedEvents = newEvent ? [newEvent, ...s.events] : s.events;
+          const isDelivered = status === "Delivered";
+          return {
+            ...s,
+            status,
+            events: updatedEvents,
+            latestLocation: newEvent?.location || s.latestLocation,
+            lastEventTimestamp: newEvent?.timestamp || "Just now",
+            actualDeliveryTimestamp: isDelivered ? new Date().toLocaleTimeString("en-IN") : s.actualDeliveryTimestamp,
+            isDelayed: status === "Delayed",
+          };
+        })
+      );
+
+      // Synchronize back to order status
+      const targetShipment = shipments.find((s) => s.shipmentId === shipmentId);
+      if (targetShipment) {
+        let orderNumericStatus = 3;
+        let fulfillmentStatus: Order["fulfillmentStatus"] = "Dispatched";
+        if (status === "Delivered") {
+          orderNumericStatus = 5;
+          fulfillmentStatus = "Delivered";
+        } else if (status === "Out for Delivery") {
+          orderNumericStatus = 4;
+          fulfillmentStatus = "Dispatched";
+        } else if (status === "In Transit") {
+          orderNumericStatus = 3;
+          fulfillmentStatus = "Dispatched";
+        } else if (status === "Manifested") {
+          orderNumericStatus = 2;
+          fulfillmentStatus = "Packed";
+        }
+
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === targetShipment.orderId
+              ? {
+                  ...o,
+                  status: orderNumericStatus,
+                  fulfillmentStatus,
+                }
+              : o
+          )
+        );
+      }
+    },
+    [shipments]
+  );
+
+  const processWebhook = useCallback(
+    (payload: any): WebhookResult => {
+      const res = processCourierWebhookEvent(payload);
+      if (res.success && !res.isDuplicate && res.updatedStatus) {
+        // Find matching shipment by tracking number
+        const s = shipments.find((item) => item.trackingNumber === payload.trackingNumber);
+        if (s) {
+          updateShipmentStatus(s.shipmentId, res.updatedStatus, res.newEvent);
+        }
+      }
+      return res;
+    },
+    [shipments, updateShipmentStatus]
+  );
+
+  const placeOrderWithOptions = useCallback(
+    (options: {
+      payment: string;
+      shippingAddress: AddressRef;
+      couponCode?: string;
+      discount?: number;
+    }) => {
+      const discount = options.discount || 0;
+      const q = quoteCart(cart, discount);
+      const newOrderId = `RZ-${Math.floor(100000 + Math.random() * 900000)}`;
+
+      const order: Order = {
+        id: newOrderId,
+        createdAt: Date.now(),
+        payment: options.payment,
+        paymentStatus: options.payment.includes("COD") ? "Pending" : "Paid",
+        status: 0,
+        fulfillmentStatus: "Awaiting Fulfillment",
+        shippingAddress: options.shippingAddress,
+        customerName: options.shippingAddress.name,
+        customerPhone: options.shippingAddress.phone,
+        couponCode: options.couponCode,
+        ...q,
+      };
+
+      // Decrement inventory transactional check
+      cart.forEach((c) => {
+        updateInventoryStock(c.productId, -c.qty);
+      });
+
+      // Auto-manifest initial shipment
+      const autoShipment = createNormalizedShipment({
+        orderId: newOrderId,
+        provider: "Delhivery",
+        pickupAddress: {
+          name: "RiderzPro Central Hub",
+          street: "Electronic City Phase 1",
+          city: "Bengaluru",
+          pincode: "560100",
+          phone: "+91 80 4000 1100",
+        },
+        destinationAddress: options.shippingAddress,
+        weightKg: 4.5,
+        itemDescription: `${cart.length} EV Parts & Accessories`,
+        orderValue: q.total,
+      });
+
+      order.shipmentId = autoShipment.shipmentId;
+
+      setOrders((prev) => [order, ...prev]);
+      setShipments((prev) => [autoShipment, ...prev]);
       setCart([]);
       return order;
     },
-    [cart],
+    [cart, updateInventoryStock]
   );
+
+  const placeOrder = useCallback(
+    (payment: string) => {
+      return placeOrderWithOptions({
+        payment,
+        shippingAddress: DEFAULT_ADDRESS,
+      });
+    },
+    [placeOrderWithOptions]
+  );
+
+  const updateOrderStatus = useCallback((id: string, status: number) => {
+    setOrders((os) =>
+      os.map((o) => {
+        if (o.id !== id) return o;
+        let fulfillmentStatus = o.fulfillmentStatus;
+        if (status === 1) fulfillmentStatus = "Preparing";
+        else if (status === 2) fulfillmentStatus = "Packed";
+        else if (status >= 3 && status < 5) fulfillmentStatus = "Dispatched";
+        else if (status === 5) fulfillmentStatus = "Delivered";
+
+        return {
+          ...o,
+          status,
+          fulfillmentStatus,
+          riderId: status >= 2 ? o.riderId || riders[0].id : undefined,
+        };
+      })
+    );
+  }, []);
+
+  const cancelOrder = useCallback((id: string, reason: string) => {
+    setOrders((os) =>
+      os.map((o) => {
+        if (o.id !== id) return o;
+        // Restock inventory
+        o.groups.forEach((g) => {
+          g.items.forEach((it) => {
+            updateInventoryStock(it.productId, it.qty);
+          });
+        });
+        return {
+          ...o,
+          fulfillmentStatus: "Cancelled",
+          cancelReason: reason,
+        };
+      })
+    );
+  }, [updateInventoryStock]);
+
+  const refundOrder = useCallback((id: string, reason: string) => {
+    setOrders((os) =>
+      os.map((o) =>
+        o.id === id
+          ? {
+              ...o,
+              paymentStatus: "Refunded",
+              refundReason: reason,
+            }
+          : o
+      )
+    );
+  }, []);
 
   const toggleSaved = useCallback((id: string) => {
     setSavedProductIds((prev) =>
@@ -384,8 +753,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const simulateDemoOrder = useCallback(() => {
     const demoOrder: Order = {
-      id: `RZ${Math.floor(100000 + Math.random() * 900000)}`,
-      createdAt: Date.now() - 12 * 60 * 1000,
+      id: `RZ-${Math.floor(100000 + Math.random() * 900000)}`,
+      createdAt: Date.now() - 15 * 60 * 1000,
       groups: [
         {
           vendorId: "v1",
@@ -401,11 +770,62 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       tax: 2610,
       total: 17196,
       eta: 25,
-      payment: "UPI • Google Pay",
+      payment: "UPI · Google Pay",
+      paymentStatus: "Paid",
       status: 3,
+      fulfillmentStatus: "Dispatched",
       riderId: riders[0].id,
+      customerName: "Aakash Sharma",
+      customerPhone: "+91 98765 43210",
+      shippingAddress: DEFAULT_ADDRESS,
+      shipmentId: "SHP-DEMO-FLEET",
     };
+
+    const demoShipment: NormalizedShipment = {
+      shipmentId: "SHP-DEMO-FLEET",
+      orderId: demoOrder.id,
+      provider: "RiderzPro Fleet",
+      providerReference: "FLEET-FAST-9021",
+      trackingNumber: "RZP9021334",
+      trackingUrl: `/track/${demoOrder.id}`,
+      pickupAddress: {
+        name: "VoltHub Indiranagar",
+        street: "100ft Road",
+        city: "Bengaluru",
+        pincode: "560038",
+        phone: "+91 80 4123 9901",
+      },
+      destinationAddress: DEFAULT_ADDRESS,
+      status: "In Transit",
+      locationType: "Live GPS Telemetry",
+      latestLocation: "Indiranagar 100ft Rd -> Koramangala Ring Rd",
+      lastEventTimestamp: "2m ago",
+      estimatedDelivery: "Arriving in 18 mins",
+      currentGps: { lat: 12.9554, lng: 77.625, speedKmph: 32, heading: 140 },
+      events: [
+        {
+          id: "evt-fl-1",
+          timestamp: "12m ago",
+          status: "Manifested",
+          location: "VoltHub Indiranagar",
+          description: "Rider Ravi Kumar accepted order and collected package",
+          isGps: true,
+          coordinates: { lat: 12.9784, lng: 77.6408 },
+        },
+        {
+          id: "evt-fl-2",
+          timestamp: "2m ago",
+          status: "In Transit",
+          location: "Intermediate Ring Road",
+          description: "Live GPS broadcast: En route to Bellandur doorstep",
+          isGps: true,
+          coordinates: { lat: 12.9554, lng: 77.625 },
+        },
+      ],
+    };
+
     setOrders((prev) => [demoOrder, ...prev]);
+    setShipments((prev) => [demoShipment, ...prev]);
     return demoOrder;
   }, []);
 
@@ -427,6 +847,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setActiveBikeId,
       orders,
       placeOrder,
+      placeOrderWithOptions,
       advanceOrder: (id) =>
         setOrders((os) =>
           os.map((o) =>
@@ -435,15 +856,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               : o,
           ),
         ),
-      updateOrderStatus: (id: string, status: number) =>
-        setOrders((os) =>
-          os.map((o) =>
-            o.id === id
-              ? { ...o, status, riderId: status >= 2 ? (o.riderId || riders[0].id) : undefined }
-              : o
-          )
-        ),
+      updateOrderStatus,
+      cancelOrder,
+      refundOrder,
       simulateDemoOrder,
+      shipments,
+      createShipment,
+      updateShipmentStatus,
+      processWebhook,
+      inventoryStock,
+      updateInventoryStock,
       savedProductIds,
       toggleSaved,
       isSaved,
@@ -467,7 +889,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       activeBikeId,
       orders,
       placeOrder,
+      placeOrderWithOptions,
+      updateOrderStatus,
+      cancelOrder,
+      refundOrder,
       simulateDemoOrder,
+      shipments,
+      createShipment,
+      updateShipmentStatus,
+      processWebhook,
+      inventoryStock,
+      updateInventoryStock,
       savedProductIds,
       toggleSaved,
       isSaved,

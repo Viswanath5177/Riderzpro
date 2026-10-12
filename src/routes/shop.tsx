@@ -23,6 +23,7 @@ const CATS: (Category | "All")[] = [
   "Electric Bikes",
   "Car Accessories",
   "Bike Accessories",
+  "Riding Gear & Helmets",
   "Spare Parts",
   "Battery",
   "Charger",
