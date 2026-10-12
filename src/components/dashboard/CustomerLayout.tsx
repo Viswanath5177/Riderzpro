@@ -329,13 +329,13 @@ export function CustomerLayout({
           )}
         >
           {/* Logo & Header */}
-          <div className="h-18 flex items-center justify-between px-5 border-b border-white/60">
+          <div className="relative h-18 flex items-center justify-center px-4 border-b border-white/60">
             {!isCollapsed ? (
-              <div className="flex items-center gap-2.5">
-                <Logo />
+              <div className="flex items-center justify-center">
+                <Logo className="justify-center" imgClassName="h-9 w-auto" />
               </div>
             ) : (
-              <div className="mx-auto">
+              <div className="flex items-center justify-center">
                 <span className="grid h-10 w-10 place-items-center rounded-2xl bg-primary text-white font-bold text-lg shadow-sm">
                   R
                 </span>
@@ -344,7 +344,10 @@ export function CustomerLayout({
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
               aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              className="hidden lg:grid h-7 w-7 place-items-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white/80 transition"
+              className={cn(
+                "hidden lg:grid h-7 w-7 place-items-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white/80 transition absolute top-1/2 -translate-y-1/2",
+                isCollapsed ? "right-1.5" : "right-3"
+              )}
             >
               {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>
@@ -646,11 +649,11 @@ export function CustomerLayout({
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 flex md:hidden bg-black/50 backdrop-blur-xs">
           <div className="w-72 bg-white h-full flex flex-col p-5 shadow-2xl animate-in slide-in-from-left duration-200">
-            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-              <Logo />
+            <div className="relative flex items-center justify-center pb-4 border-b border-gray-100">
+              <Logo className="justify-center" imgClassName="h-8.5 w-auto" />
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-1 rounded-lg text-gray-400 hover:text-gray-700"
+                className="absolute right-0 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-gray-400 hover:text-gray-700"
               >
                 <X className="h-5 w-5" />
               </button>
