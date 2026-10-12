@@ -45,7 +45,17 @@ function Assistant() {
   const [listening, setListening] = useState(false);
   const recRef = useRef<any>(null);
   const endRef = useRef<HTMLDivElement>(null);
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [msgs]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [msgs]);
+
+  useEffect(() => {
+    return () => {
+      try {
+        recRef.current?.stop();
+      } catch {}
+    };
+  }, []);
 
   const send = (text: string) => {
     if (!text.trim()) return;
@@ -57,45 +67,94 @@ function Assistant() {
   const toggleMic = () => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) return setMsgs((m) => [...m, { role: "bot", text: "Voice isn't supported in this browser — please type instead (Chrome works best)." }]);
-    if (listening) { recRef.current?.stop(); return; }
+    if (listening) {
+      try { recRef.current?.stop(); } catch {}
+      setListening(false);
+      return;
+    }
     const r = new SR();
     r.lang = "en-IN";
     r.interimResults = true;
     r.onresult = (e: any) => setInput(Array.from(e.results).map((x: any) => x[0].transcript).join(""));
     r.onend = () => { setListening(false); setInput((v) => { if (v) send(v); return v; }); };
     recRef.current = r;
-    r.start();
-    setListening(true);
+    try {
+      r.start();
+      setListening(true);
+    } catch {}
   };
 
   return (
     <SiteLayout>
       <div className="mx-auto flex max-w-4xl flex-col px-4 py-8 md:px-6">
         <div className="flex items-center gap-3">
-          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-glow"><Zap className="h-6 w-6" fill="currentColor" /></span>
-          <div><h1 className="font-display text-4xl leading-none md:text-5xl">Volt assistant</h1><p className="text-sm text-muted-foreground">Voice search for EV parts</p></div>
+          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-glow">
+            <Zap className="h-6 w-6" fill="currentColor" />
+          </span>
+          <div>
+            <h1 className="font-display text-3xl font-extrabold tracking-tight md:text-4xl">Volt Assistant</h1>
+            <p className="text-sm text-muted-foreground">Voice and text search for verified EV parts</p>
+          </div>
         </div>
-        <div className="mt-6 flex-1 space-y-4">
+        <div className="mt-8 flex-1 space-y-4">
           {msgs.map((m, i) => (
-            <div key={i} className={m.role === "user" ? "flex justify-end" : ""}>
-              <div className={m.role === "user" ? "max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-primary-foreground" : "max-w-full"}>
-                <p>{m.text}</p>
-                {m.items && <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">{m.items.map((p) => <ProductCard key={p.id} p={p} />)}</div>}
+            <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
+              <div
+                className={
+                  m.role === "user"
+                    ? "max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"
+                    : "max-w-full rounded-3xl border border-border/80 bg-card/85 p-5 shadow-card backdrop-blur-2xl text-foreground"
+                }
+              >
+                <p className="leading-relaxed">{m.text}</p>
+                {m.items && (
+                  <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                    {m.items.map((p) => (
+                      <ProductCard key={p.id} p={p} />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))}
           <div ref={endRef} />
         </div>
         <div className="mt-6 flex flex-wrap gap-2">
-          {suggestions.map((s) => <button key={s} onClick={() => send(s)} className="rounded-full border border-border px-3 py-1.5 text-sm hover:border-primary hover:text-primary">{s}</button>)}
+          {suggestions.map((s) => (
+            <button
+              key={s}
+              onClick={() => send(s)}
+              className="rounded-full border border-border/80 bg-card/60 px-3.5 py-1.5 text-xs font-semibold backdrop-blur-md transition hover:border-primary hover:text-primary active:scale-95"
+            >
+              {s}
+            </button>
+          ))}
         </div>
-        <div className="sticky bottom-24 mt-4 flex items-center gap-2 rounded-3xl border border-border p-2 shadow-card glass md:bottom-4">
-          <button onClick={toggleMic} aria-label="Speak" className={`relative grid h-12 w-12 shrink-0 place-items-center rounded-full ${listening ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground"}`}>
+        <div className="sticky bottom-24 mt-6 flex items-center gap-2 rounded-3xl border border-border/80 bg-card/85 p-2 shadow-2xl backdrop-blur-2xl md:bottom-6">
+          <button
+            onClick={toggleMic}
+            aria-label="Speak"
+            className={`relative grid h-12 w-12 shrink-0 place-items-center rounded-full transition-all ${
+              listening ? "bg-destructive text-destructive-foreground shadow-md" : "bg-primary text-primary-foreground shadow-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] hover:brightness-105 active:scale-95"
+            }`}
+          >
             {listening && <span className="absolute inset-0 rounded-full bg-destructive animate-pulse-ring" />}
             {listening ? <Square className="relative h-4 w-4" /> : <Mic className="h-5 w-5" />}
           </button>
-          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send(input)} placeholder={listening ? "Listening…" : "Ask for a part…"} className="h-12 flex-1 bg-transparent px-2 outline-none" />
-          <button onClick={() => send(input)} aria-label="Send" className="grid h-12 w-12 place-items-center rounded-full border border-border hover:border-primary"><Send className="h-4 w-4" /></button>
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && send(input)}
+            placeholder={listening ? "Listening…" : "Ask for a part (e.g. 60V battery for Ather 450X)…"}
+            className="h-12 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
+          />
+          <button
+            onClick={() => send(input)}
+            aria-label="Send"
+            className="grid h-12 w-12 place-items-center rounded-full border border-border/80 bg-card/60 transition hover:border-primary hover:text-primary active:scale-95"
+          >
+            <Send className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </SiteLayout>

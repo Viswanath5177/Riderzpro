@@ -85,7 +85,7 @@ const StoreCtx = createContext<Ctx | null>(null);
 const KEY = "riderzpro-v1";
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [garage, setGarage] = useState<GarageBike[]>([{ bikeId: "ola-s1pro", year: 2023, nickname: "Daily ride" }]);
   const [activeBikeId, setActiveBikeId] = useState<string | null>("ola-s1pro");
@@ -104,9 +104,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (s.orders) setOrders(s.orders);
         if (s.role) setRole(s.role);
       }
-      const t = localStorage.getItem("riderzpro-theme");
-      if (t === "light" || t === "dark") setTheme(t);
-      else setTheme(window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+      localStorage.removeItem("riderzpro-theme");
+      setTheme("light");
     } catch {}
     setLoaded(true);
   }, []);
@@ -117,8 +116,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [cart, garage, activeBikeId, orders, role, loaded]);
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    if (loaded) localStorage.setItem("riderzpro-theme", theme);
+    document.documentElement.classList.remove("dark");
   }, [theme, loaded]);
 
   // simulate live order progress
