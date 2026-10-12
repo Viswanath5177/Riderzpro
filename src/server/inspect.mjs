@@ -1,11 +1,14 @@
 import pg from 'pg';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const connectionString =
+  process.env.DATABASE_URL ||
+  `postgresql://${process.env.PGUSER || 'postgres'}:${encodeURIComponent(process.env.PGPASSWORD || 'Vsvg@db1')}@${process.env.PGHOST || 'localhost'}:${process.env.PGPORT || '5432'}/${process.env.PGDATABASE || 'riderzpro'}`;
 
 const client = new pg.Client({
-  host: 'localhost',
-  port: 5432,
-  user: 'postgres',
-  password: 'Vsvg@db1',
-  database: 'riderzpro'
+  connectionString
 });
 
 async function run() {

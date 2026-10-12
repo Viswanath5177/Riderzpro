@@ -1,12 +1,16 @@
 import type { IncomingMessage, ServerResponse } from "http";
 import pg from "pg";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const env = process.env;
+const connectionString =
+  env["DATABASE_URL"] ||
+  `postgresql://${env["PGUSER"] || "postgres"}:${encodeURIComponent(env["PGPASSWORD"] || "Vsvg@db1")}@${env["PGHOST"] || "localhost"}:${env["PGPORT"] || "5432"}/${env["PGDATABASE"] || "riderzpro"}`;
 
 const pool = new pg.Pool({
-  host: "localhost",
-  port: 5432,
-  user: "postgres",
-  password: "Vsvg@db1",
-  database: "riderzpro",
+  connectionString,
   max: 10,
 });
 
