@@ -34,7 +34,7 @@ export const Route = createFileRoute("/login")({
 
 function CustomerLogin() {
   const navigate = useNavigate();
-  const { userProfile, setRole } = useStore();
+  const { userProfile, setRole, signIn } = useStore();
 
   const [authMode, setAuthMode] = useState<"phone" | "email">("phone");
   const [phone, setPhone] = useState("+91 98765 43210");
@@ -43,28 +43,41 @@ function CustomerLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  const getRedirectTarget = () => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const redir = params.get("redirect");
+      if (redir && redir.startsWith("/")) return redir;
+    }
+    return "/dashboard/customer";
+  };
+
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     setTimeout(() => {
+      signIn();
       setRole("customer");
       toast.success(`Welcome back, ${userProfile.name.split(" ")[0]}!`, {
         description: "Successfully signed in to your customer dashboard.",
       });
-      navigate({ to: "/dashboard/customer" });
-    }, 450);
+      const target = getRedirectTarget();
+      navigate({ to: target as any });
+    }, 350);
   };
 
   const handleQuickDemoSignIn = () => {
     setIsLoading(true);
     setTimeout(() => {
+      signIn();
       setRole("customer");
       toast.success(`Welcome back, ${userProfile.name.split(" ")[0]}!`, {
         description: "One-click demo sign-in to customer dashboard.",
       });
-      navigate({ to: "/dashboard/customer" });
-    }, 300);
+      const target = getRedirectTarget();
+      navigate({ to: target as any });
+    }, 250);
   };
 
   return (

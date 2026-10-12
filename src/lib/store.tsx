@@ -173,6 +173,10 @@ type Ctx = {
   updateUserProfile: (p: Partial<UserProfile>) => void;
   role: Role;
   setRole: (r: Role) => void;
+  isLoggedIn: boolean;
+  setIsLoggedIn: (v: boolean) => void;
+  signIn: () => void;
+  signOut: () => void;
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
@@ -432,6 +436,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<CustomerNotification[]>(DEFAULT_NOTIFICATIONS);
   const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [role, setRole] = useState<Role>("customer");
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("riderzpro_auth") === "true";
+    }
+    return false;
+  });
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -747,6 +757,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   }, []);
 
+  const signIn = useCallback(() => {
+    setIsLoggedIn(true);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("riderzpro_auth", "true");
+    }
+  }, []);
+
+  const signOut = useCallback(() => {
+    setIsLoggedIn(false);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("riderzpro_auth");
+    }
+  }, []);
+
   const updateUserProfile = useCallback((p: Partial<UserProfile>) => {
     setUserProfile((prev) => ({ ...prev, ...p }));
   }, []);
@@ -879,6 +903,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       updateUserProfile,
       role,
       setRole,
+      isLoggedIn,
+      setIsLoggedIn,
+      signIn,
+      signOut,
     }),
     [
       theme,
@@ -912,6 +940,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       userProfile,
       updateUserProfile,
       role,
+      isLoggedIn,
+      signIn,
+      signOut,
     ],
   );
 

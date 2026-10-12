@@ -17,6 +17,7 @@ import {
   Tag,
   ArrowRight,
   Package,
+  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/site/SiteLayout";
@@ -37,7 +38,7 @@ export const Route = createFileRoute("/cart")({
 });
 
 function CartPage() {
-  const { cart, setQty, placeOrderWithOptions, userProfile, inventoryStock } = useStore();
+  const { cart, setQty, placeOrderWithOptions, userProfile, inventoryStock, isLoggedIn } = useStore();
   const navigate = useNavigate();
 
   const [paymentMethod, setPaymentMethod] = useState<string>("UPI");
@@ -49,6 +50,39 @@ function CartPage() {
   const [couponError, setCouponError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
+
+  if (!isLoggedIn) {
+    return (
+      <SiteLayout>
+        <div className="mx-auto max-w-md px-4 py-20 text-center">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-red-50 text-[#E31E24] shadow-xs">
+            <Lock className="h-8 w-8" />
+          </div>
+          <h1 className="mt-5 font-display text-2xl sm:text-3xl font-extrabold text-[#111111]">
+            Sign in to view your cart
+          </h1>
+          <p className="mt-2 text-sm text-[#6B7280]">
+            Please sign in to access your saved cart items, check vendor availability, and proceed to checkout.
+          </p>
+          <div className="mt-6 flex flex-col gap-3">
+            <Link
+              to="/login"
+              search={{ redirect: "/cart" } as any}
+              className="inline-flex items-center justify-center rounded-lg bg-[#E31E24] px-6 py-3 text-sm font-semibold text-white shadow-xs hover:bg-red-700 transition"
+            >
+              Sign In to Continue
+            </Link>
+            <Link
+              to="/"
+              className="inline-flex items-center justify-center rounded-lg border border-[#E5E7EB] bg-white px-6 py-3 text-sm font-semibold text-[#111111] hover:bg-gray-50 transition"
+            >
+              Back to Storefront
+            </Link>
+          </div>
+        </div>
+      </SiteLayout>
+    );
+  }
 
   // Address state prefilled from profile
   const [address, setAddress] = useState<AddressRef>({
