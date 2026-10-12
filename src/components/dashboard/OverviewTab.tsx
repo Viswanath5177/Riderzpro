@@ -23,12 +23,10 @@ import {
   AlertCircle,
   Truck,
   Heart,
-  Plus,
   CheckCircle2,
   Tag,
 } from "lucide-react";
 import { toast } from "sonner";
-import scooterImg from "@/assets/scooter.jpg";
 import { LiveMap } from "@/components/site/LiveMap";
 import { useStore, ORDER_STEPS, type Order } from "@/lib/store";
 import { getBike, getProduct, getVendor, inr, products, riders } from "@/lib/data";
@@ -38,19 +36,18 @@ import type { CustomerTab } from "./CustomerLayout";
 interface OverviewTabProps {
   onTabChange: (tab: CustomerTab) => void;
   onOpenBookingModal: () => void;
-  onOpenAddBikeModal: () => void;
+  onOpenAddBikeModal?: () => void;
 }
 
 export function OverviewTab({
   onTabChange,
   onOpenBookingModal,
-  onOpenAddBikeModal,
+  onOpenAddBikeModal: _onOpenAddBikeModal,
 }: OverviewTabProps) {
   const {
     userProfile,
     garage,
     activeBikeId,
-    setActiveBikeId,
     orders,
     shipments,
     advanceOrder,
@@ -102,7 +99,7 @@ export function OverviewTab({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 font-display">
-              Welcome back, {userProfile.name.split(" ")[0]} 👋
+              Welcome back{userProfile?.name?.trim() ? `, ${userProfile.name.trim().split(" ")[0]}` : ""} 👋
             </h1>
             <p className="text-sm text-gray-500 mt-0.5">
               Your electric vehicle command center. Track live orders, check telemetry, and book verified service.
@@ -160,17 +157,17 @@ export function OverviewTab({
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          SECTION B: SUMMARY METRIC CARDS (4 RESPONSIVE CARDS)
+          SECTION B: SUMMARY METRIC CARDS (4 RESPONSIVE SOLID WHITE CARDS)
          ───────────────────────────────────────────────────────────── */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Total Orders */}
         <div
           onClick={() => onTabChange("orders")}
-          className="group rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-sm hover:border-[#E31E24] cursor-pointer transition-all flex flex-col justify-between"
+          className="group rounded-2xl bg-white border border-[#E5E7EB] shadow-2xs hover:shadow-md hover:border-gray-300 p-5 cursor-pointer transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Total Orders</span>
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-gray-100 text-[#111111] group-hover:bg-red-50 group-hover:text-[#E31E24] transition">
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-gray-100 text-[#111111] group-hover:bg-red-50 group-hover:text-[#E31E24] transition shadow-2xs">
               <Package className="h-4 w-4" />
             </span>
           </div>
@@ -180,7 +177,7 @@ export function OverviewTab({
               All placed & recorded orders
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
+          <div className="mt-4 pt-3 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
             <span>View all orders</span>
             <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
           </div>
@@ -189,11 +186,11 @@ export function OverviewTab({
         {/* Card 2: Orders Being Processed */}
         <div
           onClick={() => onTabChange("orders")}
-          className="group rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-sm hover:border-[#E31E24] cursor-pointer transition-all flex flex-col justify-between"
+          className="group rounded-2xl bg-white border border-[#E5E7EB] shadow-2xs hover:shadow-md hover:border-gray-300 p-5 cursor-pointer transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Being Processed</span>
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-50 text-amber-700 group-hover:scale-105 transition">
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-amber-50 text-amber-700 group-hover:scale-105 transition shadow-2xs">
               <Clock className="h-4 w-4" />
             </span>
           </div>
@@ -203,7 +200,7 @@ export function OverviewTab({
               {processingOrdersCount > 0 ? "Supplier packing & verification" : "Zero orders awaiting processing"}
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
+          <div className="mt-4 pt-3 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
             <span>Fulfillment queue</span>
             <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
           </div>
@@ -212,11 +209,11 @@ export function OverviewTab({
         {/* Card 3: Shipments in Transit */}
         <div
           onClick={() => onTabChange("tracking")}
-          className="group rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-sm hover:border-[#E31E24] cursor-pointer transition-all flex flex-col justify-between"
+          className="group rounded-2xl bg-white border border-[#E5E7EB] shadow-2xs hover:shadow-md hover:border-gray-300 p-5 cursor-pointer transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Shipments in Transit</span>
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-red-50 text-[#E31E24] group-hover:scale-105 transition">
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-red-50 text-[#E31E24] group-hover:scale-105 transition shadow-2xs">
               <Truck className="h-4 w-4" />
             </span>
           </div>
@@ -226,7 +223,7 @@ export function OverviewTab({
               {inTransitCount > 0 ? `${inTransitCount} active courier dispatches` : "No consignments in transit"}
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
+          <div className="mt-4 pt-3 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
             <span>Track live delivery</span>
             <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
           </div>
@@ -235,7 +232,7 @@ export function OverviewTab({
         {/* Card 4: Delivered Orders */}
         <div
           onClick={() => onTabChange("orders")}
-          className="group rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-sm hover:border-[#E31E24] cursor-pointer transition-all flex flex-col justify-between"
+          className="group rounded-2xl bg-white border border-[#E5E7EB] shadow-2xs hover:shadow-md hover:border-gray-300 p-5 cursor-pointer transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Delivered Orders</span>
@@ -251,143 +248,14 @@ export function OverviewTab({
               Verified doorstep handovers
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
+          <div className="mt-4 pt-3 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
             <span>Delivered history</span>
             <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
           </div>
         </div>
       </section>
 
-      {/* ─────────────────────────────────────────────────────────────
-          SECTION C: MY GARAGE PREVIEW
-         ───────────────────────────────────────────────────────────── */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900 font-display">My Garage</h2>
-            <p className="text-xs text-gray-500">Your registered electric two-wheelers and fitment telemetry.</p>
-          </div>
-          <button
-            onClick={() => onTabChange("garage")}
-            className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
-          >
-            <span>All vehicles ({garage.length})</span>
-            <ArrowRight className="h-3.5 w-3.5" />
-          </button>
-        </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {garage.map((g) => {
-            const b = getBike(g.bikeId)!;
-            const isCurrentActive = activeBikeId === g.bikeId;
-            return (
-              <div
-                key={g.bikeId}
-                className={cn(
-                  "overflow-hidden rounded-3xl border bg-white shadow-2xs transition-all duration-300 hover:shadow-md flex flex-col",
-                  isCurrentActive ? "border-primary ring-1 ring-primary/20" : "border-[#E5E7EB]"
-                )}
-              >
-                <div className="relative aspect-[16/9] w-full overflow-hidden bg-gray-100">
-                  <img
-                    src={scooterImg}
-                    alt={b.model}
-                    className="h-full w-full object-cover transition duration-500 hover:scale-105"
-                  />
-                  <div className="absolute top-3 left-3 flex gap-2">
-                    {isCurrentActive && (
-                      <span className="px-2.5 py-1 rounded-full bg-primary text-white text-[10px] font-bold shadow-xs">
-                        Primary EV
-                      </span>
-                    )}
-                    <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-semibold">
-                      {b.voltage}V Architecture
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-lg font-bold text-gray-900 font-display">
-                        {b.make} {b.model}
-                      </p>
-                      <span className="text-xs font-mono font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">
-                        {g.regNo || "KA 01 EQ ••••"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {g.year ?? "2023"} · VIN: {g.vin ? `${g.vin.slice(0, 6)}••••${g.vin.slice(-4)}` : "Verified OEM"}
-                    </p>
-
-                    {/* Telemetry info */}
-                    <div className="mt-3 pt-3 border-t border-gray-100 grid grid-cols-2 gap-2 text-xs">
-                      <div>
-                        <span className="text-gray-400 block text-[10px] uppercase font-semibold">Odometer</span>
-                        <span className="font-bold text-gray-800">{g.odoKm?.toLocaleString("en-IN") ?? 12450} km</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-400 block text-[10px] uppercase font-semibold">Battery SOH</span>
-                        <span className="font-bold text-emerald-600">{g.batteryHealth ?? 96}% Optimal</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 pt-2 border-t border-gray-100">
-                    <button
-                      onClick={() => onTabChange("garage")}
-                      className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-primary/10 text-primary text-xs font-semibold hover:bg-primary hover:text-white transition"
-                    >
-                      <ShoppingBag className="h-3.5 w-3.5" />
-                      <span>Find Compatible Parts in Garage</span>
-                    </button>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={onOpenBookingModal}
-                        className="py-1.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition"
-                      >
-                        Book Service
-                      </button>
-                      <button
-                        onClick={() => {
-                          setActiveBikeId(g.bikeId);
-                          toast.success(`${b.make} ${b.model} set as primary EV`);
-                        }}
-                        disabled={isCurrentActive}
-                        className={cn(
-                          "py-1.5 rounded-xl text-xs font-semibold transition",
-                          isCurrentActive
-                            ? "bg-gray-100 text-gray-400 cursor-default"
-                            : "border border-gray-200 text-gray-700 hover:bg-gray-50"
-                        )}
-                      >
-                        {isCurrentActive ? "Active" : "Set Active"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Add Your Bike Card */}
-          <div
-            onClick={onOpenAddBikeModal}
-            className="group rounded-3xl border-2 border-dashed border-gray-200 hover:border-primary/60 bg-white/50 p-6 flex flex-col items-center justify-center text-center cursor-pointer min-h-[320px] transition-all hover:bg-emerald-50/20"
-          >
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50 text-primary group-hover:scale-110 transition shadow-2xs">
-              <Plus className="h-6 w-6" />
-            </span>
-            <p className="mt-3 text-base font-bold text-gray-900 font-display">Add Your Electric Bike</p>
-            <p className="text-xs text-gray-500 mt-1 max-w-xs">
-              Decode your 17-digit VIN or pick from Ather, Ola, TVS, Revolt, Hero Vida & Chetak to guarantee 100% fitment.
-            </p>
-            <button className="mt-4 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold shadow-xs group-hover:bg-emerald-600 transition">
-              + Decode VIN or Add
-            </button>
-          </div>
-        </div>
-      </section>
 
       {/* ─────────────────────────────────────────────────────────────
           SECTION D & E: ORDERS & LIVE TRACKING + RECENT ORDERS
@@ -806,7 +674,7 @@ export function OverviewTab({
                     className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                   />
                   <div className="absolute top-3 left-3">
-                    <span className="px-2 py-0.5 rounded-full bg-white/90 backdrop-blur-xs text-gray-800 text-[10px] font-bold shadow-2xs">
+                    <span className="px-2 py-0.5 rounded-full bg-white border border-[#E5E7EB] text-gray-800 text-[10px] font-bold shadow-2xs">
                       {p.category}
                     </span>
                   </div>
@@ -815,7 +683,7 @@ export function OverviewTab({
                       toggleSaved(p.id);
                       toast.success(saved ? "Removed from saved" : "Saved to wishlist");
                     }}
-                    className="absolute top-3 right-3 p-2 rounded-full bg-white/90 backdrop-blur-xs text-gray-600 hover:text-rose-500 shadow-2xs transition"
+                    className="absolute top-3 right-3 p-2 rounded-full bg-white border border-[#E5E7EB] text-gray-600 hover:text-rose-500 shadow-2xs transition"
                     title={saved ? "Remove from saved" : "Save for later"}
                   >
                     <Heart className={cn("h-4 w-4", saved && "fill-rose-500 text-rose-500")} />

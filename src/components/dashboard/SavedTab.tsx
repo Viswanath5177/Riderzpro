@@ -58,7 +58,7 @@ export function SavedTab() {
                 <div className="relative aspect-[4/3] bg-gray-100">
                   <img src={p.image} alt={p.name} className="h-full w-full object-cover" />
                   <div className="absolute top-3 left-3">
-                    <span className="px-2.5 py-1 rounded-full bg-white/90 text-gray-800 text-[10px] font-bold shadow-2xs">
+                    <span className="px-2.5 py-1 rounded-full bg-white border border-[#E5E7EB] text-gray-800 text-[10px] font-bold shadow-2xs">
                       {p.category}
                     </span>
                   </div>
@@ -67,7 +67,7 @@ export function SavedTab() {
                       toggleSaved(p.id);
                       toast.info(`${p.name} removed from saved`);
                     }}
-                    className="absolute top-3 right-3 p-2 rounded-full bg-white/90 text-rose-500 hover:bg-rose-50 shadow-2xs transition"
+                    className="absolute top-3 right-3 p-2 rounded-full bg-white border border-[#E5E7EB] text-rose-500 hover:bg-rose-50 shadow-2xs transition"
                     title="Remove from wishlist"
                   >
                     <Trash2 className="h-4 w-4" />

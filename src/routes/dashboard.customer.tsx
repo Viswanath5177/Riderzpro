@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CustomerLayout, type CustomerTab } from "@/components/dashboard/CustomerLayout";
 import { OverviewTab } from "@/components/dashboard/OverviewTab";
+import { ShopTab } from "@/components/dashboard/ShopTab";
 import { GarageTab } from "@/components/dashboard/GarageTab";
 import { OrdersTab } from "@/components/dashboard/OrdersTab";
 import { TrackingTab } from "@/components/dashboard/TrackingTab";
@@ -45,11 +46,31 @@ function CustomerDashboard() {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isAddBikeOpen, setIsAddBikeOpen] = useState(false);
 
+  useEffect(() => {
+    const handleUrl = () => {
+      if (typeof window !== "undefined") {
+        const p = new URLSearchParams(window.location.search);
+        const t = p.get("tab") as CustomerTab;
+        if (t) setTab(t);
+      }
+    };
+    handleUrl();
+    window.addEventListener("popstate", handleUrl);
+    return () => window.removeEventListener("popstate", handleUrl);
+  }, []);
+
   return (
     <>
       <CustomerLayout
         activeTab={tab}
-        onTabChange={setTab}
+        onTabChange={(newTab) => {
+          setTab(newTab);
+          if (typeof window !== "undefined") {
+            const url = new URL(window.location.href);
+            url.searchParams.set("tab", newTab);
+            window.history.pushState({}, "", url.toString());
+          }
+        }}
         onOpenBookingModal={() => setIsBookingOpen(true)}
       >
         {tab === "overview" && (
@@ -59,6 +80,7 @@ function CustomerDashboard() {
             onOpenAddBikeModal={() => setIsAddBikeOpen(true)}
           />
         )}
+        {tab === "shop" && <ShopTab />}
         {tab === "garage" && (
           <GarageTab
             onOpenAddBikeModal={() => setIsAddBikeOpen(true)}
@@ -71,7 +93,7 @@ function CustomerDashboard() {
         {tab === "service" && (
           <ServiceTab onOpenBookingModal={() => setIsBookingOpen(true)} />
         )}
-        {tab === "addresses" && <AddressesTab />}
+        {tab === "addresses" && <SettingsTab />}
         {tab === "offers" && <OffersTab />}
         {tab === "invoices" && <InvoicesTab />}
         {tab === "notifications" && <NotificationsTab />}
