@@ -98,7 +98,8 @@ class VoltFitApp {
 
     if (role === "customer") {
       navItems = [
-        { id: "find", label: "Find Battery", icon: "⚡" },
+        { id: "find", label: "Find Bike", icon: "🛵" },
+        { id: "accessories", label: "Car & Bike Accessories", icon: "🧰" },
         { id: "book", label: "Book Installation", icon: "📅" },
         { id: "orders", label: "My Orders", icon: "📦", count: store.orders.length },
         { id: "bikes", label: "My Garage", icon: "🛵", count: store.savedBikes.length },
@@ -135,7 +136,7 @@ class VoltFitApp {
 
         <nav class="nav-section">
           ${navItems.map(item => `
-            <a class="nav-item ${tab === item.id ? 'active' : ''}" data-tab="${item.id}">
+            <a class="nav-item ${tab === item.id || (tab === 'accessory-booking' && item.id === 'accessories') ? 'active' : ''}" data-tab="${item.id}">
               <span class="nav-icon">${item.icon}</span>
               <span>${item.label}</span>
               ${item.count ? `<span class="nav-counter">${item.count}</span>` : ''}
@@ -159,6 +160,7 @@ class VoltFitApp {
     if (role === "customer") {
       tabs = [
         { id: "find", label: "Find", icon: "⚡" },
+        { id: "accessories", label: "Shop", icon: "🧰" },
         { id: "book", label: "Book", icon: "📅" },
         { id: "orders", label: "Orders", icon: "📦" },
         { id: "bikes", label: "Garage", icon: "🛵" }
@@ -233,6 +235,17 @@ class VoltFitApp {
       const navItem = target.closest(".nav-item") || target.closest(".tab-btn");
       if (navItem && navItem.dataset.tab) {
         store.setTab(navItem.dataset.tab);
+        return;
+      }
+
+      const accessoryBookBtn = target.closest(".accessory-book-button");
+      if (accessoryBookBtn) {
+        store.selectedAccessoryId = accessoryBookBtn.dataset.accessoryId;
+        store.setTab("accessory-booking");
+        return;
+      }
+      if (target.closest("[data-accessory-back]")) {
+        store.setTab("accessories");
         return;
       }
 
@@ -664,6 +677,18 @@ class VoltFitApp {
       if (e.target.id === "select-quick-bike") {
         store.setSelectedBike(e.target.value);
         showToast("Vehicle Switched", "Showing strictly compatible batteries.", "🛵");
+      } else if (e.target.id === "catalog-bike-type") {
+        store.catalogVehicleType = e.target.value;
+        store.notify();
+      }
+    });
+
+    this.appRoot.addEventListener("submit", (e) => {
+      if (e.target.id === "catalog-search-form") {
+        e.preventDefault();
+        if (window.riderzproSearchCatalog) {
+          window.riderzproSearchCatalog();
+        }
       }
     });
   }

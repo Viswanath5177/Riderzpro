@@ -48,6 +48,104 @@
   flex-wrap: wrap;
 }
 
+.bike-icon-circle.bike-image-circle { overflow: hidden; padding: 0; }
+.bike-image-circle img { width: 100%; height: 100%; object-fit: cover; }
+.vehicle-details-card { display: grid; grid-template-columns: minmax(180px, 30%) minmax(0, 1fr); overflow: hidden; margin: -4px 0 22px; border: 1px solid var(--glass-border); border-radius: var(--radius-card); background: rgba(255,255,255,.68); box-shadow: var(--glass-shadow), var(--inner-highlight); }
+.vehicle-details-image { display: flex; align-items: center; justify-content: center; min-height: 185px; background: linear-gradient(140deg, rgba(0,122,255,.11), rgba(255,255,255,.62)); }
+.vehicle-details-image img { display: block; width: 100%; height: 100%; min-height: 185px; max-height: 250px; object-fit: contain; }
+.vehicle-details-image span { font-size: 60px; }
+.vehicle-details-content { min-width: 0; padding: 18px 20px; }
+.vehicle-details-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.vehicle-details-heading h2 { margin: 3px 0 0; font-size: 20px; line-height: 1.25; }
+.vehicle-listed-chip { flex: 0 0 auto; padding: 5px 9px; border-radius: 20px; background: var(--accent-blue-tint); color: var(--accent-blue); font-size: 11px; font-weight: 650; }
+.vehicle-facts-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.vehicle-facts-grid > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.vehicle-facts-grid strong { font-size: 14px; color: var(--text-primary); }
+.vehicle-facts-grid small { font-size: 10.5px; color: var(--text-secondary); text-transform: capitalize; }
+.vehicle-price-note { margin: 10px 0 0; font-size: 11px; line-height: 1.45; color: var(--text-secondary); }
+.vehicle-source-link { display: inline-block; margin-top: 8px; color: var(--accent-blue); font-size: 11.5px; text-decoration: none; }
+.vehicle-catalog-more { margin-top: 8px; color: var(--text-secondary); font-size: 11px; }
+.vehicle-catalog-more summary { cursor: pointer; color: var(--accent-blue); }
+.vehicle-catalog-more > div { display: grid; gap: 5px; margin-top: 8px; }
+.battery-bike-image { position: relative; height: 124px; margin: -20px -20px 14px; overflow: hidden; background: linear-gradient(140deg, rgba(0,122,255,.08), rgba(255,255,255,.7)); }
+.battery-bike-image img { width: 100%; height: 100%; object-fit: contain; }
+.battery-bike-image span { position: absolute; right: 10px; bottom: 8px; padding: 4px 8px; border-radius: 12px; background: rgba(255,255,255,.88); color: var(--text-secondary); font-size: 10px; }
+
+.catalog-toolbar { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; padding: 15px 17px; margin-bottom: 18px; border: 1px solid var(--glass-border); border-radius: 18px; background: rgba(255,255,255,.66); }
+.catalog-toolbar label { display: grid; gap: 5px; color: var(--text-secondary); font-size: 11px; font-weight: 600; }
+.catalog-search-label { flex: 1 1 240px; }
+.catalog-type-label { flex: 0 1 220px; }
+.catalog-results-count { margin: 0 auto 9px 0; color: var(--text-secondary); font-size: 12px; white-space: nowrap; }
+.catalog-search-button { margin-bottom: 1px; }
+.catalog-bike-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 18px; align-items: stretch; }
+.catalog-bike-card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; padding: 0; }
+.catalog-bike-card.is-selected { border-color: var(--accent-blue); box-shadow: 0 0 0 2px rgba(0,122,255,.14), var(--glass-shadow); }
+.catalog-bike-image { position: relative; height: 190px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: linear-gradient(145deg, rgba(0,122,255,.09), rgba(255,255,255,.72)); }
+.catalog-bike-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.catalog-bike-placeholder { font-size: 58px; opacity: .55; }
+.catalog-bike-type { position: absolute; left: 10px; bottom: 10px; padding: 5px 9px; border: 1px solid rgba(255,255,255,.8); border-radius: 20px; background: rgba(255,255,255,.88); color: var(--text-secondary); font-size: 10px; text-transform: capitalize; }
+.catalog-bike-content { display: flex; flex: 1; flex-direction: column; padding: 15px 16px 16px; }
+.catalog-bike-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.catalog-bike-title-row h2 { margin: 3px 0 0; font-size: 17px; line-height: 1.25; color: var(--text-primary); }
+.catalog-bike-title-row h2 span { font-size: 13px; font-weight: 550; color: var(--text-secondary); }
+.catalog-bike-availability { flex: 0 0 auto; padding: 4px 7px; border-radius: 15px; color: var(--accent-blue); background: var(--accent-blue-tint); font-size: 9.5px; font-weight: 650; text-transform: capitalize; }
+.catalog-bike-price { margin-top: 12px; font-size: 19px; font-weight: 750; color: var(--text-primary); }
+.catalog-bike-price small { display: block; margin-top: 2px; color: var(--text-secondary); font-size: 10px; font-weight: 500; text-transform: capitalize; }
+.catalog-bike-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-top: 12px; padding: 11px; border: 1px solid rgba(255,255,255,.8); border-radius: 12px; background: rgba(255,255,255,.47); }
+.catalog-bike-facts div { display: grid; gap: 3px; min-width: 0; }
+.catalog-bike-facts span { color: var(--text-secondary); font-size: 9.5px; text-transform: uppercase; }
+.catalog-bike-facts strong { color: var(--text-primary); font-size: 12px; line-height: 1.3; }
+.catalog-bike-note { margin: 10px 0 0; color: var(--text-secondary); font-size: 10.5px; line-height: 1.45; }
+.catalog-bike-card .vehicle-catalog-more { margin-top: auto; padding-top: 12px; }
+.catalog-bike-card .vehicle-catalog-more a { color: var(--accent-blue); text-decoration: none; }
+.catalog-selected-summary { display: flex; align-items: center; gap: 12px; margin: -4px 0 16px; padding: 12px 16px; border: 1px solid rgba(52,168,83,.25); border-radius: 16px; background: rgba(232,247,237,.86); }
+.catalog-selected-check { display: grid; place-items: center; width: 32px; height: 32px; flex: 0 0 auto; border-radius: 50%; color: #238342; background: rgba(52,168,83,.13); font-weight: 800; }
+.catalog-selected-summary > div { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.catalog-selected-summary > div span { color: var(--text-secondary); font-size: 10px; text-transform: uppercase; }
+.catalog-selected-summary > div strong { overflow: hidden; color: var(--text-primary); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.catalog-book-bike { display: flex; width: 100%; min-height: 48px; justify-content: center; align-items: center; margin-top: 12px; border-radius: 28px; background: #58c9cc; box-shadow: none; font-weight: 700; text-decoration: none; }
+
+.accessory-source-note { padding: 12px 16px; margin: -5px 0 16px; border: 1px solid rgba(0,122,255,.14); border-radius: 14px; background: rgba(255,255,255,.58); color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+.accessory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; align-items: stretch; }
+.accessory-card { display: flex; min-width: 0; flex-direction: column; overflow: hidden; padding: 0; }
+.accessory-image { position: relative; display: flex; height: 205px; align-items: center; justify-content: center; overflow: hidden; background: linear-gradient(145deg, rgba(0,122,255,.08), rgba(255,255,255,.75)); }
+.accessory-image img { display: block; width: 100%; height: 100%; object-fit: contain; padding: 12px; }
+.accessory-image.no-accessory-image::before { content: "🧰"; font-size: 58px; opacity: .5; }
+.accessory-vehicle-badge { position: absolute; bottom: 10px; left: 10px; padding: 5px 9px; border: 1px solid rgba(255,255,255,.8); border-radius: 20px; background: rgba(255,255,255,.9); color: var(--text-secondary); font-size: 10px; }
+.accessory-content { display: flex; flex: 1; flex-direction: column; padding: 15px 16px 16px; }
+.accessory-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; color: var(--text-secondary); font-size: 10px; }
+.accessory-content h2 { margin: 7px 0 0; color: var(--text-primary); font-size: 17px; line-height: 1.3; }
+.accessory-price { margin-top: 12px; color: var(--text-primary); font-size: 21px; font-weight: 750; }
+.accessory-price small { display: block; margin-top: 2px; color: var(--text-secondary); font-size: 10px; font-weight: 500; }
+.accessory-fitment { display: grid; gap: 4px; margin-top: 12px; padding: 11px; border: 1px solid rgba(255,255,255,.8); border-radius: 12px; background: rgba(255,255,255,.48); font-size: 11px; line-height: 1.45; }
+.accessory-fitment strong { color: var(--text-primary); font-size: 10px; text-transform: uppercase; }
+.accessory-fitment span { color: var(--text-secondary); }
+.accessory-card .vehicle-catalog-more { margin-top: 12px; }
+.accessory-actions { display: grid; gap: 7px; margin-top: auto; padding-top: 14px; }
+.accessory-book-button { width: 100%; min-height: 48px; border-radius: 28px; background: #58c9cc; box-shadow: none; font-weight: 700; }
+.accessory-source-link { display: flex; justify-content: center; padding: 3px; color: var(--accent-blue); font-size: 11px; text-decoration: none; }
+.accessory-checkout-header { align-items: center; }
+.accessory-checkout-layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(280px, .8fr); gap: 20px; align-items: start; }
+.accessory-booking-product { display: grid; grid-template-columns: minmax(220px, .8fr) minmax(0, 1.2fr); gap: 18px; padding: 16px; }
+.accessory-booking-image { position: relative; min-height: 260px; display: grid; place-items: center; overflow: hidden; border-radius: 15px; background: rgba(255,255,255,.75); }
+.accessory-booking-image img { width: 100%; height: 100%; min-height: 260px; object-fit: contain; padding: 12px; }
+.accessory-booking-copy { min-width: 0; padding: 4px 2px; }
+.accessory-booking-copy h2 { margin: 8px 0; font-size: 23px; }
+.accessory-booking-copy > p, .accessory-booking-summary > p { color: var(--text-secondary); font-size: 13px; line-height: 1.55; }
+.accessory-booking-summary { position: sticky; top: 18px; padding: 20px; }
+.accessory-booking-summary h2 { margin: 0 0 18px; font-size: 18px; }
+.accessory-checkout-seller, .accessory-checkout-price { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-bottom: 1px solid rgba(80,95,120,.13); font-size: 13px; }
+.accessory-checkout-seller span, .accessory-checkout-price span { color: var(--text-secondary); }
+.accessory-checkout-seller strong { text-align: right; }
+.accessory-checkout-price strong { font-size: 23px; }
+.accessory-checkout-cta, .accessory-back-link { width: 100%; justify-content: center; margin-top: 12px; min-height: 48px; border-radius: 28px; }
+.accessory-checkout-cta { background: #58c9cc; box-shadow: none; }
+.accessory-booking-empty { margin-top: 24px; padding: 36px; }
+.mode-mobile .accessory-checkout-layout, .mode-mobile .accessory-booking-product { grid-template-columns: 1fr; }
+.mode-mobile .accessory-booking-summary { position: static; }
+.mode-mobile .accessory-booking-image, .mode-mobile .accessory-booking-image img { min-height: 210px; }
+.accessory-disclaimer { margin: 18px 0 0; color: var(--text-secondary); font-size: 10px; line-height: 1.5; }
+
 /* Battery Discovery Grid */
 .battery-grid {
   display: grid;
@@ -372,10 +470,22 @@
 }
 
 @media (max-width: 900px) {
+  .accessory-grid { grid-template-columns: repeat(auto-fill, minmax(235px, 1fr)); }
+  .vehicle-details-card { grid-template-columns: 1fr; }
+  .vehicle-details-image, .vehicle-details-image img { min-height: 150px; max-height: 190px; }
+  .vehicle-facts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vehicle-details-content { padding: 15px; }
   .book-container, .order-detail-layout {
     grid-template-columns: 1fr;
   }
   .order-summary-card {
     position: static;
   }
+}
+
+@media (max-width: 520px) {
+  .accessory-grid { grid-template-columns: 1fr; }
+  .accessory-checkout-layout, .accessory-booking-product { grid-template-columns: 1fr; }
+  .accessory-booking-summary { position: static; }
+  .accessory-booking-image, .accessory-booking-image img { min-height: 210px; }
 }
