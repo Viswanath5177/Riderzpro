@@ -15,15 +15,16 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../lib/auth";
+import { AdminAuthProvider } from "../lib/adminAuth";
 import { StoreProvider } from "../lib/store";
 import { Toaster } from "../components/ui/sonner";
 
 function NotFoundComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  // Block direct URL access: any /vendor*, /admin*, /technician* route must redirect to the landing page (or 404).
+  // Block direct URL access for unhandled vendor/technician routes
   if (
-    /^\/(vendor|admin|technician|workshop|dashboards|dashboard\/(admin|vendor|rider|workshop))/i.test(
+    /^\/(vendor|technician|workshop|dashboards|dashboard\/(vendor|rider|workshop))/i.test(
       pathname
     )
   ) {
@@ -146,10 +147,12 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <AuthProvider>
-        <StoreProvider>
-          <Outlet />
-          <Toaster position="top-center" />
-        </StoreProvider>
+        <AdminAuthProvider>
+          <StoreProvider>
+            <Outlet />
+            <Toaster position="top-center" />
+          </StoreProvider>
+        </AdminAuthProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
