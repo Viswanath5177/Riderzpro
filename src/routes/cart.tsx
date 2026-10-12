@@ -91,13 +91,16 @@ function CartPage() {
   }
 
   // Address state prefilled from profile
-  const [address, setAddress] = useState<AddressRef>({
-    name: userProfile.name || "Aakash Sharma",
-    phone: userProfile.phone || "+91 98765 43210",
-    street: "Flat 402, Green Glen Layout, Bellandur",
-    city: "Bengaluru",
-    state: "Karnataka",
-    pincode: "560103",
+  const [address, setAddress] = useState<AddressRef>(() => {
+    const selectedAddr = userProfile.addresses?.find((a) => a.id === userProfile.selectedAddressId) || userProfile.addresses?.[0];
+    return {
+      name: userProfile.name || selectedAddr?.name || "",
+      phone: userProfile.phone || selectedAddr?.phone || "",
+      street: selectedAddr?.street || userProfile.address || "",
+      city: selectedAddr?.city || userProfile.city || "",
+      state: "Karnataka",
+      pincode: selectedAddr?.pincode || "",
+    };
   });
 
   const [isEditingAddress, setIsEditingAddress] = useState(false);
