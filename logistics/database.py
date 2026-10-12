@@ -27,10 +27,34 @@ def get_db():
         db.close()
 
 
+from sqlalchemy import inspect, text
+
+
+def _ensure_columns_exist():
+    """Ensure newly introduced tracking columns exist if riders table already existed in SQLite."""
+    try:
+        inspector = inspect(engine)
+        if "riders" in inspector.get_table_names():
+            columns = [c["name"] for c in inspector.get_columns("riders")]
+            with engine.connect() as conn:
+                if "last_location_timestamp" not in columns:
+                    conn.execute(text("ALTER TABLE riders ADD COLUMN last_location_timestamp DATETIME"))
+                if "accuracy_meters" not in columns:
+                    conn.execute(text("ALTER TABLE riders ADD COLUMN accuracy_meters FLOAT"))
+                if "speed_kmh" not in columns:
+                    conn.execute(text("ALTER TABLE riders ADD COLUMN speed_kmh FLOAT"))
+                if "heading_degrees" not in columns:
+                    conn.execute(text("ALTER TABLE riders ADD COLUMN heading_degrees FLOAT"))
+                conn.commit()
+    except Exception:
+        pass
+
+
 def init_db():
     """Create all tables and seed default riders if database is empty."""
     from logistics import models  # noqa: F401
     Base.metadata.create_all(bind=engine)
+    _ensure_columns_exist()
     with SessionLocal() as db:
         seed_default_riders(db)
 

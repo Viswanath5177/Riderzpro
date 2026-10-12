@@ -63,6 +63,7 @@ class Delivery(Base):
     assignments = relationship("RiderAssignment", back_populates="delivery", cascade="all, delete-orphan")
     routes = relationship("DeliveryRoute", back_populates="delivery", cascade="all, delete-orphan")
     status_history = relationship("DeliveryStatusHistory", back_populates="delivery", cascade="all, delete-orphan", order_by="DeliveryStatusHistory.created_at")
+    rider_locations = relationship("RiderLocation", back_populates="delivery")
 
     __table_args__ = (
         Index("ix_deliveries_order_status", "order_id", "status"),
@@ -84,6 +85,10 @@ class Rider(Base):
 
     current_lat = Column(Float, default=12.9716)
     current_lng = Column(Float, default=77.5946)
+    last_location_timestamp = Column(DateTime, nullable=True)
+    accuracy_meters = Column(Float, nullable=True)
+    speed_kmh = Column(Float, nullable=True)
+    heading_degrees = Column(Float, nullable=True)
 
     status = Column(String(32), default="available", index=True)  # available, busy, on_break, offline
     is_online = Column(Boolean, default=True)
@@ -98,6 +103,34 @@ class Rider(Base):
     # Relationships
     deliveries = relationship("Delivery", back_populates="assigned_rider")
     assignments = relationship("RiderAssignment", back_populates="rider")
+    locations = relationship("RiderLocation", back_populates="rider", cascade="all, delete-orphan")
+
+
+class RiderLocation(Base):
+    """Historical and active GPS coordinate record reported by a rider."""
+    __tablename__ = "rider_locations"
+
+    id = Column(String(64), primary_key=True, default=lambda: generate_id("loc"))
+    rider_id = Column(String(64), ForeignKey("riders.id"), nullable=False, index=True)
+    delivery_id = Column(String(64), ForeignKey("deliveries.id"), nullable=True, index=True)
+
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    accuracy_meters = Column(Float, nullable=True)
+    speed_kmh = Column(Float, nullable=True)
+    heading_degrees = Column(Float, nullable=True)
+
+    timestamp = Column(DateTime, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    rider = relationship("Rider", back_populates="locations")
+    delivery = relationship("Delivery", back_populates="rider_locations")
+
+    __table_args__ = (
+        Index("ix_rider_locations_rider_timestamp", "rider_id", "timestamp"),
+        Index("ix_rider_locations_delivery_timestamp", "delivery_id", "timestamp"),
+    )
 
 
 class RiderAssignment(Base):

@@ -222,3 +222,103 @@ class OptimizationBatchResultResponse(BaseModel):
     unassigned_delivery_ids: List[str]
     total_estimated_distance_km: float
     quantum_metadata: Optional[Dict[str, Any]] = None
+
+
+# ==========================================
+# Location Tracking Schemas
+# ==========================================
+
+class RiderLocationUpdate(BaseModel):
+    """Payload sent by rider device or panel reporting GPS coordinates."""
+    latitude: float = Field(..., ge=-90.0, le=90.0, description="Latitude in decimal degrees (-90 to 90)")
+    longitude: float = Field(..., ge=-180.0, le=180.0, description="Longitude in decimal degrees (-180 to 180)")
+    timestamp: Optional[datetime] = Field(None, description="ISO timestamp of GPS reading. Defaults to server time if omitted.")
+    accuracy_meters: Optional[float] = Field(None, ge=0.0, le=5000.0, description="GPS accuracy radius in meters")
+    speed_kmh: Optional[float] = Field(None, ge=0.0, le=300.0, description="Speed in km/h")
+    heading_degrees: Optional[float] = Field(None, ge=0.0, le=360.0, description="Bearing angle in degrees (0-360)")
+    delivery_id: Optional[str] = Field(None, max_length=64, description="Optional active delivery ID associated with this location update")
+    battery_soc_percent: Optional[float] = Field(None, ge=0.0, le=100.0, description="Battery state of charge percentage (0-100)")
+    battery_temperature_celsius: Optional[float] = Field(None, ge=-40.0, le=120.0, description="Battery pack temperature in Celsius")
+
+
+class RiderLocationUpdateResponse(BaseModel):
+    """Acknowledgement returned after accepting a rider location update."""
+    success: bool = True
+    rider_id: str
+    delivery_id: Optional[str] = None
+    latitude: float
+    longitude: float
+    timestamp: datetime
+    message: Optional[str] = None
+
+
+class RiderCurrentLocationResponse(BaseModel):
+    """Latest recorded location information for a specific rider."""
+    rider_id: str
+    name: str
+    has_location: bool
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    timestamp: Optional[datetime] = None
+    accuracy_meters: Optional[float] = None
+    speed_kmh: Optional[float] = None
+    heading_degrees: Optional[float] = None
+    is_stale: bool = False
+    active_delivery_id: Optional[str] = None
+    active_delivery: Optional[Dict[str, Any]] = None
+    message: Optional[str] = None
+
+
+class DeliveryTrackingRiderInfo(BaseModel):
+    """Rider details included in customer tracking view."""
+    id: str
+    name: str
+    phone: str
+    vehicle_type: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    last_updated: Optional[datetime] = None
+    heading_degrees: Optional[float] = None
+    speed_kmh: Optional[float] = None
+    accuracy_meters: Optional[float] = None
+    is_stale: bool = False
+
+
+class DeliveryTrackingResponse(BaseModel):
+    """Customer and admin facing tracking details for a specific delivery."""
+    delivery_id: str
+    order_id: str
+    status: str
+    rider: Optional[DeliveryTrackingRiderInfo] = None
+    pickup: Dict[str, Any]
+    dropoff: Dict[str, Any]
+    eta_minutes: Optional[float] = None
+    distance_km: Optional[float] = None
+    route_waypoints: Optional[List[Dict[str, Any]]] = None
+
+
+class RiderLocationHistoryItem(BaseModel):
+    """Single historical location waypoint record."""
+    id: str
+    rider_id: str
+    delivery_id: Optional[str] = None
+    latitude: float
+    longitude: float
+    accuracy_meters: Optional[float] = None
+    speed_kmh: Optional[float] = None
+    heading_degrees: Optional[float] = None
+    timestamp: datetime
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RiderLocationHistoryResponse(BaseModel):
+    """Paginated collection of historical location coordinates."""
+    rider_id: str
+    total: int
+    page: int
+    limit: int
+    total_pages: int
+    items: List[RiderLocationHistoryItem]
+

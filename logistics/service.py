@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict, Any, Callable
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
@@ -44,6 +44,19 @@ class DeliveryService:
 
     def __init__(self):
         self.route_planner = RoutePlanningService()
+        self._status_listeners: List[Callable[[str, Dict[str, Any]], None]] = []
+
+    def subscribe_to_status_events(self, callback: Callable[[str, Dict[str, Any]], None]):
+        """Register a callback for delivery lifecycle state transitions."""
+        self._status_listeners.append(callback)
+
+    def publish_status_event(self, event_name: str, payload: Dict[str, Any]):
+        """Publish delivery lifecycle event to registered subscribers."""
+        for listener in self._status_listeners:
+            try:
+                listener(event_name, payload)
+            except Exception as e:
+                logger.error(f"Error notifying delivery status listener: {e}")
 
     def create_delivery(self, db: Session, data: DeliveryCreate) -> Delivery:
         """Create a delivery task with duplicate prevention and route calculation."""
@@ -202,4 +215,13 @@ class DeliveryService:
         db.commit()
         db.refresh(delivery)
         logger.info(f"Delivery {delivery.id} transitioned: {current_status} -> {target_status}")
+
+        self.publish_status_event("DELIVERY_STATUS_CHANGED", {
+            "delivery_id": delivery.id,
+            "order_id": delivery.order_id,
+            "from_status": current_status,
+            "to_status": target_status,
+            "reason": update_data.reason
+        })
+
         return delivery

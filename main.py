@@ -1,19 +1,37 @@
 """Riderzpro Quantum Algorithm-Based E-Commerce Platform Backend Entrypoint."""
 
 import os
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from logistics.database import init_db
-from logistics.router import router as logistics_router
+from logistics.router import (
+    router as logistics_router,
+    riders_router,
+    location_service,
+    delivery_service
+)
+from logistics.realtime import (
+    realtime_router,
+    set_main_loop,
+    setup_realtime_subscribers
+)
+
+# Connect real-time event listeners
+setup_realtime_subscribers(location_service, delivery_service)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager initializing database tables on startup."""
     init_db()
+    try:
+        set_main_loop(asyncio.get_running_loop())
+    except RuntimeError:
+        pass
     yield
 
 
@@ -33,8 +51,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount Logistics & Delivery Subsystem Router
+# Mount Logistics & Delivery Subsystem Routers
 app.include_router(logistics_router)
+app.include_router(riders_router)
+app.include_router(realtime_router)
 
 
 @app.get("/health", tags=["System Health"])

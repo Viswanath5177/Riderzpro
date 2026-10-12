@@ -2,8 +2,9 @@
 
 import math
 import json
+from datetime import datetime
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Header, status
 from sqlalchemy.orm import Session
 
 from logistics.database import get_db
@@ -18,7 +19,12 @@ from logistics.schemas import (
     RouteOptimizationResultResponse,
     BatchOptimizationRequest,
     OptimizationBatchResultResponse,
-    RiderResponse
+    RiderResponse,
+    RiderLocationUpdate,
+    RiderLocationUpdateResponse,
+    RiderCurrentLocationResponse,
+    DeliveryTrackingResponse,
+    RiderLocationHistoryResponse
 )
 from logistics.service import (
     DeliveryService,
@@ -27,6 +33,16 @@ from logistics.service import (
 )
 from logistics.assignment import RiderAssignmentService, AssignmentError
 from logistics.route_planning import RoutePlanningService
+from logistics.location_service import (
+    LocationTrackingService,
+    LocationTrackingError,
+    RiderNotFoundError,
+    DeliveryNotFoundError,
+    LocationValidationError,
+    UnauthorizedLocationUpdateError,
+    InvalidDeliveryTrackingStateError,
+    ForbiddenTrackingAccessError
+)
 from logistics.optimizer import (
     ClassicalORToolsOptimizer,
     ClassicalHeuristicOptimizer,
@@ -34,8 +50,10 @@ from logistics.optimizer import (
 )
 
 router = APIRouter(prefix="/api/deliveries", tags=["Logistics & Deliveries"])
+riders_router = APIRouter(prefix="/api/riders", tags=["Rider Tracking & Fleet"])
 
 delivery_service = DeliveryService()
+location_service = LocationTrackingService()
 route_service = RoutePlanningService()
 ortools_optimizer = ClassicalORToolsOptimizer()
 heuristic_optimizer = ClassicalHeuristicOptimizer()
@@ -328,3 +346,118 @@ def optimize_batch_deliveries(
         result = ortools_optimizer.optimize(deliveries, riders)
 
     return result
+
+
+@router.get("/{delivery_id}/tracking", response_model=DeliveryTrackingResponse, tags=["Logistics & Deliveries"])
+def get_delivery_tracking_status(
+    delivery_id: str,
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
+    x_user_role: Optional[str] = Header(None, alias="X-User-Role"),
+    db: Session = Depends(get_db)
+):
+    """Retrieve real-time tracking coordinates, active rider location, ETA, and waypoints for customer view."""
+    try:
+        return location_service.get_delivery_tracking(
+            db=db,
+            delivery_id=delivery_id,
+            actor_id=x_user_id,
+            actor_role=x_user_role
+        )
+    except DeliveryNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except ForbiddenTrackingAccessError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=e.message)
+    except LocationTrackingError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
+# ==========================================
+# Rider Location Tracking Endpoints
+# ==========================================
+
+@riders_router.post("/{rider_id}/location", response_model=RiderLocationUpdateResponse)
+def report_rider_location(
+    rider_id: str,
+    payload: RiderLocationUpdate,
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
+    x_user_role: Optional[str] = Header(None, alias="X-User-Role"),
+    db: Session = Depends(get_db)
+):
+    """
+    Ingest GPS coordinates reported by rider mobile panel.
+    Enforces coordinate limits, clock bounds, active delivery assignment, and out-of-order quality protection.
+    """
+    try:
+        return location_service.record_rider_location(
+            db=db,
+            rider_id=rider_id,
+            update=payload,
+            actor_id=x_user_id,
+            actor_role=x_user_role
+        )
+    except RiderNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except DeliveryNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except LocationValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
+    except UnauthorizedLocationUpdateError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=e.message)
+    except InvalidDeliveryTrackingStateError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
+    except LocationTrackingError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
+@riders_router.get("/{rider_id}/location", response_model=RiderCurrentLocationResponse)
+def get_rider_current_location(
+    rider_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieve current / latest reported coordinates, speed, heading, and active delivery status for a rider.
+    Returns clear status if no location update has ever been received.
+    """
+    try:
+        return location_service.get_latest_rider_location(db=db, rider_id=rider_id)
+    except RiderNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except LocationTrackingError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
+@riders_router.get("/{rider_id}/locations", response_model=RiderLocationHistoryResponse)
+def get_rider_location_history(
+    rider_id: str,
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(50, ge=1, le=500, description="Items per page"),
+    start_time: Optional[datetime] = Query(None, description="Filter history starting from ISO timestamp"),
+    end_time: Optional[datetime] = Query(None, description="Filter history ending at ISO timestamp"),
+    delivery_id: Optional[str] = Query(None, description="Filter history associated with a delivery task"),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
+    x_user_role: Optional[str] = Header(None, alias="X-User-Role"),
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieve historical GPS coordinate breadcrumbs for a rider, ordered by timestamp.
+    Restricted to authorized dispatchers/admins or the rider themselves.
+    """
+    try:
+        return location_service.get_location_history(
+            db=db,
+            rider_id=rider_id,
+            page=page,
+            limit=limit,
+            start_time=start_time,
+            end_time=end_time,
+            delivery_id=delivery_id,
+            actor_id=x_user_id,
+            actor_role=x_user_role
+        )
+    except RiderNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except ForbiddenTrackingAccessError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=e.message)
+    except LocationTrackingError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
