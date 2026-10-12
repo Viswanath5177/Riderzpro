@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CustomerLayout, type CustomerTab } from "@/components/dashboard/CustomerLayout";
 import { OverviewTab } from "@/components/dashboard/OverviewTab";
+import { ShopTab } from "@/components/dashboard/ShopTab";
 import { GarageTab } from "@/components/dashboard/GarageTab";
 import { OrdersTab } from "@/components/dashboard/OrdersTab";
+import { TrackingTab } from "@/components/dashboard/TrackingTab";
 import { SavedTab } from "@/components/dashboard/SavedTab";
 import { ServiceTab } from "@/components/dashboard/ServiceTab";
 import { OffersTab } from "@/components/dashboard/OffersTab";
@@ -31,15 +33,41 @@ export const Route = createFileRoute("/dashboard/customer")({
 });
 
 function CustomerDashboard() {
-  const [tab, setTab] = useState<CustomerTab>("overview");
+  const [tab, setTab] = useState<CustomerTab>(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      const t = p.get("tab") as CustomerTab;
+      if (t) return t;
+    }
+    return "overview";
+  });
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isAddBikeOpen, setIsAddBikeOpen] = useState(false);
+
+  useEffect(() => {
+    const handleUrl = () => {
+      if (typeof window !== "undefined") {
+        const p = new URLSearchParams(window.location.search);
+        const t = p.get("tab") as CustomerTab;
+        if (t) setTab(t);
+      }
+    };
+    window.addEventListener("popstate", handleUrl);
+    return () => window.removeEventListener("popstate", handleUrl);
+  }, []);
 
   return (
     <>
       <CustomerLayout
         activeTab={tab}
-        onTabChange={setTab}
+        onTabChange={(newTab) => {
+          setTab(newTab);
+          if (typeof window !== "undefined") {
+            const url = new URL(window.location.href);
+            url.searchParams.set("tab", newTab);
+            window.history.pushState({}, "", url.toString());
+          }
+        }}
         onOpenBookingModal={() => setIsBookingOpen(true)}
       >
         {tab === "overview" && (
@@ -49,6 +77,7 @@ function CustomerDashboard() {
             onOpenAddBikeModal={() => setIsAddBikeOpen(true)}
           />
         )}
+        {tab === "shop" && <ShopTab />}
         {tab === "garage" && (
           <GarageTab
             onOpenAddBikeModal={() => setIsAddBikeOpen(true)}
@@ -56,7 +85,7 @@ function CustomerDashboard() {
           />
         )}
         {tab === "orders" && <OrdersTab />}
-        {tab === "tracking" && <OrdersTab />}
+        {tab === "tracking" && <TrackingTab />}
         {tab === "saved" && <SavedTab />}
         {tab === "service" && (
           <ServiceTab onOpenBookingModal={() => setIsBookingOpen(true)} />

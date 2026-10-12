@@ -1,30 +1,36 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  ArrowRight, Battery, BatteryCharging, Cpu, Disc, Gauge, MapPin, Mic, PackageCheck, Search,
-  ShieldCheck, Store, Truck, Wrench, Zap, Bike as BikeIcon, Star,
+  ArrowRight,
+  ShieldCheck,
+  Truck,
+  Headphones,
+  FileCheck,
+  Heart,
+  ShoppingCart,
+  ShoppingBag,
+  PackageCheck,
+  UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
-import heroBike from "@/assets/hero-bike.jpg";
-import workshopImg from "@/assets/workshop.jpg";
-import riderImg from "@/assets/rider.jpg";
 import scooterImg from "@/assets/scooter.jpg";
-import battery1 from "@/assets/battery-1.jpg";
-import chargerImg from "@/assets/charger.jpg";
-import partsImg from "@/assets/parts.jpg";
-import battery3 from "@/assets/battery-3.jpg";
 import { SiteLayout } from "@/components/site/SiteLayout";
-import { ProductCard, SectionTitle } from "@/components/site/bits";
-import { bikes, decodeVin, products } from "@/lib/data";
+import { bestOffer, inr, products, type Product } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Riderzpro — EV batteries & parts that fit your bike" },
-      { name: "description", content: "Enter your VIN or pick your EV, compare sellers, place one order across vendors and track your rider live." },
-      { property: "og:title", content: "Riderzpro — EV batteries & parts that fit your bike" },
-      { property: "og:description", content: "Compare EV battery sellers, order once, track delivery live." },
+      { title: "RiderzPro — Quality Automotive Essentials, Parts & Electric Bikes" },
+      {
+        name: "description",
+        content:
+          "Discover electric bikes, car and bike accessories, batteries, chargers, and spare parts in one convenient place.",
+      },
+      { property: "og:title", content: "RiderzPro — Your Automotive Marketplace" },
+      {
+        property: "og:description",
+        content: "Everything your ride needs: electric bikes, accessories, batteries, and spare parts.",
+      },
     ],
   }),
   component: Landing,
@@ -33,197 +39,327 @@ export const Route = createFileRoute("/")({
 function Landing() {
   return (
     <SiteLayout>
+      {/* 1. Hero Section */}
       <Hero />
-      <BrandStrip />
-      <Categories />
-      <HowItWorks />
-      <Featured />
-      <Roles />
-      <Testimonials />
-      <AppCta />
+
+      {/* 2. Featured Products Section */}
+      <FeaturedProducts />
+
+      {/* 3. Application Features Section */}
+      <AppFeatures />
+
+      {/* 4. Product Discovery Section */}
+      <ProductDiscovery />
+
+      {/* 5. Order Tracking Section */}
+      <OrderTrackingSection />
+
+      {/* 6. Trust and Service Section */}
+      <TrustServiceSection />
     </SiteLayout>
   );
 }
 
+{/* ─────────────────────────────────────────────────────────────
+    1. HERO SECTION (Minimal, White Background, Precise Alignment)
+   ───────────────────────────────────────────────────────────── */}
 function Hero() {
-  const nav = useNavigate();
-  const { addBike } = useStore();
-  const [mode, setMode] = useState<"bike" | "vin">("bike");
-  const [vin, setVin] = useState("");
-  const [bikeId, setBikeId] = useState(bikes[0].id);
-
-  const go = () => {
-    if (mode === "vin") {
-      const r = decodeVin(vin);
-      if (!r.ok || !r.bike) return toast.error(r.error);
-      addBike({ bikeId: r.bike.id, year: r.year, vin: vin.toUpperCase() });
-      toast.success(`Found ${r.bike.make} ${r.bike.model}${r.year ? ` (${r.year})` : ""}`);
-    } else addBike({ bikeId });
-    nav({ to: "/shop" });
-  };
-
   return (
-    <section className="relative isolate min-h-[92svh] overflow-hidden bg-background text-foreground">
-      <img
-        src={heroBike}
-        alt="Electric motorbike"
-        width={1920}
-        height={1088}
-        className="absolute inset-0 -z-20 h-full w-full object-cover object-[75%_center] opacity-15 filter contrast-125"
-      />
-      <div className="absolute inset-0 -z-10 bg-gradient-to-r from-background via-background/90 to-background/50" />
-      <div className="absolute inset-x-0 bottom-0 -z-10 h-36 bg-gradient-to-t from-background to-transparent" />
-
-      {/* ambient light refractions */}
-      <div className="pointer-events-none absolute -top-24 left-1/4 -z-10 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
-      <div className="pointer-events-none absolute top-1/3 right-10 -z-10 h-96 w-96 rounded-full bg-[oklch(0.65_0.15_220/8%)] blur-3xl" />
-
-      {/* charge lines */}
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden opacity-30">
-        {[22, 48, 71].map((top, i) => (
-          <div key={top} className="absolute h-px w-full overflow-hidden" style={{ top: `${top}%` }}>
-            <div className="charge-line h-px w-1/2" style={{ animationDelay: `${i * 1.1}s` }} />
-          </div>
-        ))}
-      </div>
-
-      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 pb-20 pt-16 md:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:pt-24">
-        <div>
-          <span className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-card/80 px-3.5 py-1.5 text-xs font-semibold text-foreground backdrop-blur-xl shadow-xs">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary" />
-              <span className="relative h-2 w-2 rounded-full bg-primary" />
-            </span>
-            128 riders delivering in Bengaluru now
-          </span>
-          <h1 className="mt-6 font-display text-5xl font-extrabold tracking-tight sm:text-7xl lg:text-[5.5rem] leading-[1.05] text-foreground">
-            Power your ride.<br />
-            <span className="bg-gradient-to-r from-primary via-[oklch(0.55_0.19_145)] to-[oklch(0.50_0.18_160)] bg-clip-text text-transparent">
-              Parts that fit.
-            </span>
-          </h1>
-          <p className="mt-6 max-w-xl text-lg text-muted-foreground leading-relaxed font-normal">
-            Batteries, chargers and spares for every EV — matched to your VIN, compared across sellers, delivered in one order with a rider you can track live.
-          </p>
-
-          {/* Search card */}
-          <div className="mt-8 max-w-xl rounded-3xl border border-border/80 bg-card/85 p-3 shadow-2xl backdrop-blur-2xl">
-            <div className="flex gap-1.5 p-1">
-              {(["bike", "vin"] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setMode(m)}
-                  className={`flex-1 rounded-full px-5 py-2 text-sm font-semibold transition-all ${
-                    mode === m
-                      ? "bg-primary text-primary-foreground shadow-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                  }`}
-                >
-                  {m === "bike" ? "Pick my bike" : "Enter VIN"}
-                </button>
-              ))}
-            </div>
-            <div className="flex flex-col gap-2 p-2 sm:flex-row">
-              {mode === "bike" ? (
-                <div className="flex flex-1 items-center gap-2.5 rounded-2xl border border-border/80 bg-background/80 px-4 backdrop-blur-md">
-                  <BikeIcon className="h-5 w-5 text-primary" />
-                  <select
-                    value={bikeId}
-                    onChange={(e) => setBikeId(e.target.value)}
-                    className="h-12 w-full bg-transparent text-foreground outline-none [&>option]:text-foreground [&>option]:bg-card"
-                  >
-                    {bikes.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.make} {b.model} · {b.voltage}V
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div className="flex flex-1 items-center gap-2.5 rounded-2xl border border-border/80 bg-background/80 px-4 backdrop-blur-md">
-                  <Search className="h-5 w-5 text-primary" />
-                  <input
-                    value={vin}
-                    onChange={(e) => setVin(e.target.value)}
-                    maxLength={17}
-                    placeholder="e.g. P6R1S1PR2PN000001"
-                    className="h-12 w-full bg-transparent font-mono uppercase tracking-wider text-foreground outline-none placeholder:text-muted-foreground/60"
-                  />
-                </div>
-              )}
-              <button
-                onClick={go}
-                className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-6 font-semibold text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] transition-all hover:brightness-105 active:scale-95"
+    <section className="border-b border-[#E5E7EB] bg-white py-12 md:py-18">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+          {/* Hero Text Content */}
+          <div className="max-w-2xl">
+            <p className="text-xs font-bold uppercase tracking-widest text-[#E31E24]">
+              YOUR AUTOMOTIVE MARKETPLACE
+            </p>
+            <h1 className="mt-3 text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#111111] tracking-tight leading-[1.08] font-display">
+              Everything your ride needs.
+            </h1>
+            <p className="mt-4 text-base sm:text-lg text-[#6B7280] leading-relaxed max-w-xl">
+              Discover electric bikes, car and bike accessories, batteries, chargers, and spare parts in one convenient place.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Link
+                to="/shop"
+                className="inline-flex items-center justify-center rounded-lg bg-[#E31E24] px-6 py-3 text-sm font-semibold text-white shadow-xs transition hover:bg-red-700 active:scale-95"
               >
-                Find parts <ArrowRight className="h-4 w-4" />
-              </button>
+                Explore Products
+              </Link>
+              <Link
+                to="/dashboard/customer"
+                search={{ tab: "orders" } as any}
+                className="inline-flex items-center justify-center rounded-lg border border-[#E5E7EB] bg-white px-6 py-3 text-sm font-semibold text-[#111111] shadow-2xs transition hover:bg-[#F7F7F8] active:scale-95"
+              >
+                Track My Order
+              </Link>
             </div>
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              to="/assistant"
-              className="flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-5 py-2.5 text-sm font-semibold text-primary backdrop-blur-xl transition hover:bg-primary hover:text-primary-foreground hover:shadow-glow"
-            >
-              <Mic className="h-4 w-4" /> Talk to AI assistant
-            </Link>
-            <Link
-              to="/shop"
-              className="flex items-center gap-2 rounded-full border border-border/80 bg-card/80 px-5 py-2.5 text-sm font-semibold text-foreground backdrop-blur-xl transition hover:border-primary/50"
-            >
-              Browse all parts <ArrowRight className="h-4 w-4" />
-            </Link>
+          {/* Small Contained Visual on Plain White Surface */}
+          <div className="hidden lg:flex justify-end">
+            <div className="w-full max-w-md overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-xs">
+              <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-[#F7F7F8]">
+                <img
+                  src={scooterImg}
+                  alt="RiderzPro Automotive Marketplace"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="mt-3 px-1 flex items-center justify-between text-xs">
+                <span className="font-semibold text-[#111111]">Verified Automotive Spares & EVs</span>
+                <span className="text-[#6B7280]">Direct from authorized suppliers</span>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
 
-        {/* Floating cards */}
-        <div className="relative hidden h-[520px] lg:block">
-          <div className="animate-float absolute right-0 top-4 w-76 rounded-3xl border border-border/80 bg-card/90 p-5 shadow-2xl backdrop-blur-2xl">
-            <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-              <span>Order #RZ48213</span>
-              <span className="flex items-center gap-1.5 text-primary font-semibold">
-                <span className="h-2 w-2 rounded-full bg-primary animate-pulse" /> Live
-              </span>
-            </div>
-            <p className="mt-2 font-display text-2xl font-bold tracking-tight text-foreground">Arriving in 18 min</p>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
-              <div className="h-full w-2/3 rounded-full bg-primary" />
-            </div>
-            <div className="mt-4 flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-primary font-bold text-primary-foreground shadow-sm">
-                RK
-              </span>
-              <div className="text-sm">
-                <p className="font-semibold text-foreground">Ravi Kumar</p>
-                <p className="text-xs text-muted-foreground">2 pickups · Ather Rizta</p>
-              </div>
-            </div>
-          </div>
-          <div
-            className="animate-float absolute left-4 top-56 w-64 rounded-3xl border border-border/80 bg-card/90 p-5 shadow-2xl backdrop-blur-2xl"
-            style={{ animationDelay: "1.5s" }}
-          >
-            <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-              <ShieldCheck className="h-4 w-4" /> Fitment verified
-            </div>
-            <p className="mt-2 text-sm text-foreground/80 leading-snug">
-              VoltRide 60V 30Ah fits your <b className="text-foreground">Ola S1 Pro 2023</b>
+{/* ─────────────────────────────────────────────────────────────
+    2. FEATURED PRODUCTS (Clean 4-Col Grid, Actual Catalog Data)
+   ───────────────────────────────────────────────────────────── */}
+function FeaturedProducts() {
+  // Diverse selection representing core categories
+  const featuredIds = ["p13", "p16", "p1", "p24", "p21", "p7", "p22", "p17"];
+  const featuredList = featuredIds
+    .map((id) => products.find((p) => p.id === id))
+    .filter((p): p is Product => Boolean(p));
+
+  return (
+    <section className="bg-white py-14 sm:py-18 border-b border-[#E5E7EB]">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        {/* Section Header */}
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between pb-8">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111111] font-display">
+              Featured Products
+            </h2>
+            <p className="mt-1 text-sm text-[#6B7280]">
+              Explore products for your next ride.
             </p>
           </div>
-          <div className="absolute bottom-6 right-6 grid grid-cols-2 gap-3">
-            {[
-              ["6+", "Verified sellers"],
-              ["1.2k", "Parts listed"],
-              ["38m", "Avg delivery"],
-              ["4.8★", "Rider rating"],
-            ].map(([v, l]) => (
-              <div
-                key={l}
-                className="rounded-2xl border border-border/80 bg-card/90 px-4 py-3 shadow-md backdrop-blur-xl"
-              >
-                <p className="font-display text-2xl font-bold tracking-tight text-primary">{v}</p>
-                <p className="text-xs text-muted-foreground">{l}</p>
+          <Link
+            to="/shop"
+            className="mt-3 sm:mt-0 inline-flex items-center gap-1.5 text-xs font-semibold text-[#E31E24] hover:underline"
+          >
+            <span>View All Products</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+        {/* 4-Column Responsive Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {featuredList.map((p) => (
+            <LandingProductCard key={p.id} product={p} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function LandingProductCard({ product }: { product: Product }) {
+  const { addToCart, toggleSaved, isSaved } = useStore();
+  const offer = bestOffer(product);
+  const saved = isSaved(product.id);
+
+  // Genuine discount calculated against standard base retail
+  const mrp = Math.round((offer.price * 1.15) / 100) * 100;
+  const discountPct = Math.round(((mrp - offer.price) / mrp) * 100);
+
+  return (
+    <div className="group flex flex-col overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-2xs transition-all duration-200 hover:border-gray-300 hover:shadow-xs">
+      {/* Product Image Container */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#F7F7F8]">
+        <Link to="/product/$id" params={{ id: product.id }} className="block h-full w-full">
+          <img
+            src={product.image}
+            alt={product.name}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-102"
+          />
+        </Link>
+
+        {/* Discount Badge */}
+        {discountPct > 0 && (
+          <span className="absolute left-2.5 top-2.5 rounded bg-[#E31E24] px-2 py-0.5 text-[10px] font-bold text-white shadow-2xs">
+            {discountPct}% OFF
+          </span>
+        )}
+
+        {/* Save Item Action */}
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleSaved(product.id);
+            toast.success(saved ? "Removed from saved items" : "Added to saved items");
+          }}
+          aria-label={saved ? "Remove from saved items" : "Save item"}
+          className="absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-full bg-white text-gray-400 shadow-2xs transition hover:text-[#E31E24]"
+        >
+          <Heart className={`h-3.5 w-3.5 ${saved ? "fill-[#E31E24] text-[#E31E24]" : ""}`} />
+        </button>
+      </div>
+
+      {/* Content Area */}
+      <div className="flex flex-1 flex-col p-4">
+        {/* Category & Brand */}
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#6B7280]">
+          {product.category} · {product.brand}
+        </p>
+
+        {/* Product Name Link */}
+        <Link
+          to="/product/$id"
+          params={{ id: product.id }}
+          className="mt-1 line-clamp-2 text-sm font-semibold text-[#111111] hover:text-[#E31E24] transition leading-snug"
+        >
+          {product.name}
+        </Link>
+
+        {/* Stock Availability */}
+        <div className="mt-2 flex items-center gap-1.5 text-[11px]">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <span className="font-medium text-emerald-700">
+            {offer.stock > 0 ? "In Stock" : "Available to Order"}
+          </span>
+          <span className="text-gray-300">·</span>
+          <span className="text-[#6B7280]">{product.warrantyMonths}m Warranty</span>
+        </div>
+
+        {/* Price & Add to Cart Action */}
+        <div className="mt-auto pt-4 border-t border-[#E5E7EB]">
+          <div className="flex items-baseline gap-2 mb-3">
+            <span className="text-base font-bold text-[#111111]">
+              {inr(offer.price)}
+            </span>
+            {mrp > offer.price && (
+              <span className="text-xs text-[#6B7280] line-through">
+                {inr(mrp)}
+              </span>
+            )}
+          </div>
+
+          <button
+            onClick={() => {
+              addToCart(product.id, offer.vendorId);
+              toast.success(`Added ${product.name} to cart`);
+            }}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#E31E24] py-2 text-xs font-semibold text-white transition hover:bg-red-700 active:scale-95"
+          >
+            <ShoppingCart className="h-3.5 w-3.5" />
+            <span>Add to Cart</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+{/* ─────────────────────────────────────────────────────────────
+    3. APPLICATION FEATURES SECTION (4 Informative Clean Feature Cards)
+   ───────────────────────────────────────────────────────────── */}
+function AppFeatures() {
+  const features = [
+    {
+      title: "Easy Online Shopping",
+      desc: "Browse automotive products, compare available options, and place orders through a simple online checkout.",
+      Icon: ShoppingBag,
+    },
+    {
+      title: "Product Availability",
+      desc: "Check available stock and product details before placing an order.",
+      Icon: PackageCheck,
+    },
+    {
+      title: "Order and Delivery Tracking",
+      desc: "View order progress, shipment status, tracking events, and estimated delivery information when available.",
+      Icon: Truck,
+    },
+    {
+      title: "Account and Order Management",
+      desc: "Access your order history, saved products, account details, and delivery information in one place.",
+      Icon: UserRound,
+    },
+  ];
+
+  return (
+    <section className="bg-[#F7F7F8] py-14 sm:py-18 border-b border-[#E5E7EB]">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="max-w-2xl">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111111] font-display">
+            Everything you need, in one place.
+          </h2>
+          <p className="mt-2 text-sm text-[#6B7280] leading-relaxed">
+            Shop with confidence and manage your purchases from one convenient platform.
+          </p>
+        </div>
+
+        {/* 4 Feature Cards Grid */}
+        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {features.map((feat) => (
+            <div
+              key={feat.title}
+              className="flex flex-col rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-2xs"
+            >
+              <div className="grid h-10 w-10 place-items-center rounded-lg bg-red-50 text-[#E31E24]">
+                <feat.Icon className="h-5 w-5" />
               </div>
+              <h3 className="mt-4 text-base font-bold text-[#111111]">
+                {feat.title}
+              </h3>
+              <p className="mt-2 text-xs leading-relaxed text-[#6B7280]">
+                {feat.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+{/* ─────────────────────────────────────────────────────────────
+    4. PRODUCT DISCOVERY SECTION (Compact Text Navigation Links)
+   ───────────────────────────────────────────────────────────── */}
+function ProductDiscovery() {
+  const categories = [
+    { label: "Electric Bikes", to: "/shop", search: "Electric Bikes" },
+    { label: "Car Accessories", to: "/shop", search: "Car Accessories" },
+    { label: "Bike Accessories", to: "/shop", search: "Bike Accessories" },
+    { label: "Riding Gear", to: "/shop", search: "Riding Gear & Helmets" },
+    { label: "Spare Parts", to: "/shop", search: "Spare Parts" },
+    { label: "Batteries & Chargers", to: "/shop", search: "Battery" },
+  ];
+
+  return (
+    <section className="bg-white py-12 border-b border-[#E5E7EB]">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-[#111111] font-display">
+              Explore automotive essentials.
+            </h2>
+            <p className="mt-1 text-xs sm:text-sm text-[#6B7280]">
+              Quickly navigate our verified catalog by department.
+            </p>
+          </div>
+
+          {/* Compact restrained text links */}
+          <div className="flex flex-wrap items-center gap-2">
+            {categories.map((c) => (
+              <Link
+                key={c.label}
+                to={c.to}
+                search={{ cat: c.search } as any}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-3.5 py-2 text-xs font-semibold text-[#111111] transition hover:border-[#E31E24] hover:text-[#E31E24] hover:bg-white"
+              >
+                <span>{c.label}</span>
+                <ArrowRight className="h-3 w-3 text-[#6B7280]" />
+              </Link>
             ))}
           </div>
         </div>
@@ -232,208 +368,65 @@ function Hero() {
   );
 }
 
-function BrandStrip() {
+{/* ─────────────────────────────────────────────────────────────
+    5. ORDER TRACKING SECTION (Compact Call to Action)
+   ───────────────────────────────────────────────────────────── */}
+function OrderTrackingSection() {
   return (
-    <div className="border-y border-border/70 bg-card/40 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-12 gap-y-4 px-4 py-6 font-display text-lg font-semibold tracking-wide text-muted-foreground md:justify-between">
-        {["Ather", "Ola Electric", "TVS iQube", "Bajaj Chetak", "Revolt", "Hero Vida"].map((b) => (
-          <span key={b} className="opacity-70 transition hover:text-primary hover:opacity-100">
-            {b}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Categories() {
-  const cats = [
-    { name: "Batteries", img: battery1, Icon: Battery, count: 6 },
-    { name: "Chargers", img: chargerImg, Icon: BatteryCharging, count: 2 },
-    { name: "Motors & Controllers", img: partsImg, Icon: Cpu, count: 2 },
-    { name: "Performance packs", img: battery3, Icon: Gauge, count: 2 },
-  ];
-  return (
-    <section className="mx-auto max-w-7xl px-4 pt-24 md:px-6">
-      <SectionTitle eyebrow="Shop by category" title="Everything your EV runs on" />
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {cats.map((c) => (
-          <Link
-            key={c.name}
-            to="/shop"
-            className="group relative aspect-square sm:aspect-[4/3] w-full overflow-hidden rounded-3xl border border-border/80 bg-card/70 backdrop-blur-xl shadow-card transition-all duration-500 hover:-translate-y-1.5 hover:shadow-2xl hover:border-primary/40"
-          >
-            <img
-              src={c.img}
-              alt={c.name}
-              loading="lazy"
-              width={1024}
-              height={1024}
-              className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-4 sm:p-5 text-white">
-              <div className="min-w-0 pr-2">
-                <c.Icon className="mb-2 h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                <p className="font-display text-lg font-bold leading-tight sm:text-xl lg:text-2xl">{c.name}</p>
-                <p className="mt-0.5 text-xs text-white/70">{c.count}+ products</p>
-              </div>
-              <span className="grid h-9 w-9 sm:h-10 sm:w-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm transition-transform duration-300 group-hover:rotate-[-45deg]">
-                <ArrowRight className="h-4 w-4" />
-              </span>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function HowItWorks() {
-  const steps = [
-    { Icon: Search, t: "Find", d: "Enter your VIN or pick your bike. We show only parts verified to fit." },
-    { Icon: Disc, t: "Compare", d: "See prices, stock and delivery time from every nearby seller side by side." },
-    { Icon: PackageCheck, t: "One order", d: "Mix items from many vendors. Delivery is priced per km — no surprises." },
-    { Icon: MapPin, t: "Track live", d: "Watch your rider on the map, then call or chat once they accept." },
-  ];
-  return (
-    <section className="mx-auto max-w-7xl px-4 pt-28 md:px-6">
-      <SectionTitle
-        eyebrow="How it works"
-        title="From VIN to doorstep"
-        sub="Built for riders, workshops and dealers who are tired of guessing which battery fits."
-      />
-      <div className="grid gap-4 md:grid-cols-4">
-        {steps.map((s, i) => (
-          <div
-            key={s.t}
-            className="relative rounded-3xl border border-border/80 bg-card/75 p-6 shadow-card backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:border-primary/40"
-          >
-            <span className="font-display text-4xl font-extrabold text-primary/30">0{i + 1}</span>
-            <s.Icon className="mt-3 h-7 w-7 text-primary" />
-            <p className="mt-4 font-display text-xl font-bold tracking-tight">{s.t}</p>
-            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{s.d}</p>
+    <section className="bg-[#F7F7F8] py-12 border-b border-[#E5E7EB]">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-xl border border-[#E5E7EB] bg-white p-6 sm:p-8 shadow-2xs">
+          <div>
+            <h3 className="text-lg sm:text-xl font-bold text-[#111111]">
+              Your order, within reach.
+            </h3>
+            <p className="mt-1 text-xs sm:text-sm text-[#6B7280]">
+              Check your order status and follow shipment progress from your account.
+            </p>
           </div>
-        ))}
+          <div className="shrink-0">
+            <Link
+              to="/dashboard/customer"
+              search={{ tab: "orders" } as any}
+              className="inline-flex items-center gap-2 rounded-lg bg-[#111111] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#E31E24] active:scale-95"
+            >
+              <span>View My Orders</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </div>
       </div>
     </section>
   );
 }
 
-function Featured() {
-  return (
-    <section className="mx-auto max-w-7xl px-4 pt-28 md:px-6">
-      <div className="flex items-end justify-between">
-        <SectionTitle eyebrow="Trending now" title="Top batteries this week" />
-        <Link
-          to="/shop"
-          className="mb-10 hidden items-center gap-1.5 text-sm font-semibold text-primary transition hover:underline md:flex"
-        >
-          View all <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {products
-          .filter((p) => p.category === "Battery")
-          .slice(0, 4)
-          .map((p) => (
-            <ProductCard key={p.id} p={p} />
-          ))}
-      </div>
-    </section>
-  );
-}
-
-function Roles() {
-  const roles = [
-    { t: "Riders & owners", d: "Garage, VIN fitment, live tracking.", img: scooterImg, to: "/dashboard/customer", Icon: BikeIcon },
-    { t: "Workshops & mechanics", d: "Bulk orders and job cards per vehicle.", img: workshopImg, to: "/dashboard/workshop", Icon: Wrench },
-    { t: "Vendors & dealers", d: "Inventory, fitment tags and payouts.", img: battery3, to: "/dashboard/vendor", Icon: Store },
-    { t: "Delivery riders", d: "Accept jobs, multi-pickup routes, earnings.", img: riderImg, to: "/dashboard/rider", Icon: Truck },
-  ] as const;
-  return (
-    <section className="mx-auto max-w-7xl px-4 pt-28 md:px-6">
-      <SectionTitle eyebrow="One platform, every role" title="Pick your dashboard" />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {roles.map((r) => (
-          <Link
-            key={r.t}
-            to={r.to}
-            className="group overflow-hidden rounded-3xl border border-border/80 bg-card/75 backdrop-blur-xl shadow-card transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:border-primary/50"
-          >
-            <div className="aspect-[4/3] overflow-hidden">
-              <img
-                src={r.img}
-                alt={r.t}
-                loading="lazy"
-                width={1280}
-                height={896}
-                className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
-              />
-            </div>
-            <div className="p-5">
-              <r.Icon className="h-5 w-5 text-primary" />
-              <p className="mt-3 text-base font-bold tracking-tight">{r.t}</p>
-              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{r.d}</p>
-              <p className="mt-4 flex items-center gap-1 text-xs font-semibold text-primary">
-                Open dashboard <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
-              </p>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function Testimonials() {
-  const t = [
-    { n: "Priya S.", r: "Ather 450X owner", q: "Entered my VIN and got three verified batteries in seconds. Rider showed up in 32 minutes." },
-    { n: "Manjunath Auto Works", r: "Workshop, Jayanagar", q: "We order from four vendors in one go now. Delivery charges are finally transparent." },
-    { n: "VoltHub", r: "Dealer, Indiranagar", q: "Orders come pre-matched to the customer's bike — almost zero returns this month." },
+{/* ─────────────────────────────────────────────────────────────
+    6. TRUST AND SERVICE SECTION (Compact Monochrome Row)
+   ───────────────────────────────────────────────────────────── */}
+function TrustServiceSection() {
+  const items = [
+    { title: "Secure Checkout", desc: "Verified payment gateways & protection", Icon: ShieldCheck },
+    { title: "Order Tracking", desc: "Courier telemetry & milestone updates", Icon: Truck },
+    { title: "Customer Support", desc: "Direct automotive helpdesk support", Icon: Headphones },
+    { title: "Clear Product Information", desc: "Detailed specifications & fitment notes", Icon: FileCheck },
   ];
-  return (
-    <section className="mx-auto max-w-7xl px-4 pt-28 md:px-6">
-      <SectionTitle eyebrow="Loved on the road" title="Riders trust Riderzpro" />
-      <div className="grid gap-4 md:grid-cols-3">
-        {t.map((x) => (
-          <figure
-            key={x.n}
-            className="rounded-3xl border border-border/80 bg-card/75 p-6 backdrop-blur-xl shadow-card"
-          >
-            <div className="flex gap-0.5">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star key={i} className="h-4 w-4 fill-warning text-warning" />
-              ))}
-            </div>
-            <blockquote className="mt-4 text-base leading-relaxed text-foreground/90">“{x.q}”</blockquote>
-            <figcaption className="mt-6 text-sm">
-              <b className="font-semibold">{x.n}</b> <span className="text-muted-foreground">· {x.r}</span>
-            </figcaption>
-          </figure>
-        ))}
-      </div>
-    </section>
-  );
-}
 
-function AppCta() {
   return (
-    <section className="mx-auto max-w-7xl px-4 pt-28 md:px-6">
-      <div className="relative overflow-hidden rounded-[2.5rem] border border-white/20 bg-gradient-to-br from-primary via-[oklch(0.68_0.20_145)] to-[oklch(0.58_0.19_150)] p-10 text-primary-foreground shadow-2xl backdrop-blur-2xl md:p-16">
-        <Zap className="absolute -right-10 -top-10 h-72 w-72 opacity-10" fill="currentColor" />
-        <p className="font-display text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl leading-[1.08]">
-          Install Riderzpro<br />on your phone.
-        </p>
-        <p className="mt-4 max-w-lg text-primary-foreground/90 leading-relaxed font-normal">
-          Open this site on your phone and tap “Add to Home Screen” — it works like a native app with live tracking and voice search.
-        </p>
-        <Link
-          to="/shop"
-          className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 font-semibold text-foreground shadow-lg transition hover:bg-white/90 active:scale-95"
-        >
-          Start shopping <ArrowRight className="h-4 w-4" />
-        </Link>
+    <section className="bg-white py-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {items.map((it) => (
+            <div key={it.title} className="flex items-center gap-3">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] text-[#111111]">
+                <it.Icon className="h-4.5 w-4.5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-[#111111]">{it.title}</p>
+                <p className="text-[11px] text-[#6B7280]">{it.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );

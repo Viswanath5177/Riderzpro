@@ -35,7 +35,7 @@ export function DashboardShell({
         </div>
       </aside>
       <div className="md:pl-64">
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border px-4 py-3 glass md:px-8">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border px-4 py-3 bg-white md:px-8 shadow-2xs">
           <div className="md:hidden"><Logo /></div>
           <div className="hidden md:block">
             <h1 className="font-display text-3xl leading-none">{title}</h1>
@@ -45,7 +45,7 @@ export function DashboardShell({
             {actions}
             <Link
               to="/assistant"
-              className="group flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary backdrop-blur-xl shadow-xs transition-all hover:bg-primary hover:text-primary-foreground hover:shadow-glow active:scale-95"
+              className="group flex items-center gap-1.5 rounded-full border border-primary bg-red-50 px-3.5 py-1.5 text-xs font-semibold text-primary shadow-2xs transition-all hover:bg-primary hover:text-white active:scale-95"
             >
               <Sparkles className="h-3.5 w-3.5 text-primary transition group-hover:rotate-12 group-hover:text-primary-foreground" />
               <span className="hidden sm:inline">AI Assistant</span>
@@ -59,7 +59,7 @@ export function DashboardShell({
         </div>
         <main className="p-4 md:p-8">{children}</main>
       </div>
-      <nav className="fixed inset-x-3 bottom-3 z-50 flex justify-around rounded-2xl border border-border px-1 py-2 shadow-card glass md:hidden">
+      <nav className="fixed inset-x-3 bottom-3 z-50 flex justify-around rounded-2xl border border-border px-1 py-2 shadow-card bg-white md:hidden">
         {sections.slice(0, 5).map((s) => (
           <button key={s.id} onClick={() => onSelect(s.id)} className={cn("flex flex-1 flex-col items-center gap-0.5 text-[10px] font-medium", active === s.id ? "text-primary" : "text-muted-foreground")}>
             <s.Icon className="h-5 w-5" />{s.label}

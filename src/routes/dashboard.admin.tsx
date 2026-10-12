@@ -45,6 +45,7 @@ import { toast } from "sonner";
 import { Logo } from "@/components/site/bits";
 import { getProduct, getVendor, inr, products, vendors, type Product } from "@/lib/data";
 import { ORDER_STEPS, useStore, type Order } from "@/lib/store";
+import type { NormalizedShipment, LogisticsProvider, ShipmentStatus } from "@/lib/logistics/types";
 import { cn } from "@/lib/utils";
 import { ProductFormPage } from "@/components/vendor/ProductFormPage";
 
@@ -86,29 +87,26 @@ interface AuditEntry {
   details: string;
 }
 
-interface ShipmentRecord {
-  internalId: string;
-  orderId: string;
-  courier: "Delhivery" | "Bluedart" | "Shadowfax" | "RiderzPro Fleet";
-  trackingNumber: string;
-  status: "In Transit" | "Out for Delivery" | "Delivered" | "Delayed" | "Failed Attempt";
-  locationType: "Checkpoint Facility" | "Live GPS Fleet";
-  latestLocation: string;
-  lastUpdated: string;
-  estimatedDelivery: string;
-  delayAlert?: string;
-  trackingEvents: { time: string; location: string; event: string; isGps?: boolean }[];
-}
-
 export function AdminDashboard() {
-  const { orders, updateOrderStatus, advanceOrder, placeOrder } = useStore();
+  const {
+    orders,
+    shipments,
+    createShipment,
+    updateShipmentStatus,
+    processWebhook,
+    inventoryStock,
+    updateInventoryStock,
+    updateOrderStatus,
+    cancelOrder,
+    refundOrder,
+  } = useStore();
 
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [dateRange, setDateRange] = useState<"today" | "7d" | "30d" | "ytd">("7d");
   const [searchQuery, setSearchQuery] = useState("");
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>("ALL");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [selectedShipment, setSelectedShipment] = useState<ShipmentRecord | null>(null);
+  const [selectedShipment, setSelectedShipment] = useState<NormalizedShipment | null>(null);
 
   // Dynamic Products State linked to PostgreSQL schema (No mock defaults)
   const [adminProducts, setAdminProducts] = useState<Product[]>([]);
@@ -185,14 +183,13 @@ export function AdminDashboard() {
     setProductViewMode("list");
   };
 
-  // Local inventory stock adjustments
-  const [inventoryStock, setInventoryStock] = useState<Record<string, number>>(() => {
-    const s: Record<string, number> = {};
-    products.forEach((p, idx) => {
-      s[p.id] = (idx % 4 === 0) ? 3 : 18 + (idx * 3); // some low stock
-    });
-    return s;
-  });
+  // Webhook simulator test inputs
+  const [testWebhookProvider, setTestWebhookProvider] = useState<LogisticsProvider>("Delhivery");
+  const [testWebhookTracking, setTestWebhookTracking] = useState("");
+  const [testWebhookStatus, setTestWebhookStatus] = useState("In Transit");
+  const [testWebhookLocation, setTestWebhookLocation] = useState("Whitefield Transit Hub");
+  const [lastTestEventId, setLastTestEventId] = useState("");
+  const [webhookLogs, setWebhookLogs] = useState<{ id: string; time: string; msg: string; isDup: boolean }[]>([]);
 
   // Base and Per-Km delivery pricing settings
   const [baseFee, setBaseFee] = useState(40);
@@ -226,59 +223,6 @@ export function AdminDashboard() {
     },
   ]);
 
-  // Courier shipments list mapped from genuine orders
-  const shipments: ShipmentRecord[] = useMemo(() => {
-    return [
-      {
-        internalId: "SHP-8492-DEL",
-        orderId: orders[0]?.id || "RZ-849201",
-        courier: "Delhivery",
-        trackingNumber: "DEL984128471",
-        status: "In Transit",
-        locationType: "Checkpoint Facility",
-        latestLocation: "Bommasandra Hub Facility (Bengaluru)",
-        lastUpdated: "24m ago",
-        estimatedDelivery: "Today, 5:30 PM",
-        trackingEvents: [
-          { time: "09:15 AM", location: "VoltHub Indiranagar", event: "Package Picked Up from Vendor" },
-          { time: "11:30 AM", location: "Central Sort Facility", event: "Inbound Scan & Sort Completed" },
-          { time: "01:10 PM", location: "Bommasandra Hub Facility", event: "Bagging for Local Route", isGps: false },
-        ],
-      },
-      {
-        internalId: "SHP-7934-BLU",
-        orderId: orders[1]?.id || "RZ-793420",
-        courier: "Bluedart",
-        trackingNumber: "BLU7749021",
-        status: "Delivered",
-        locationType: "Checkpoint Facility",
-        latestLocation: "Bellandur Destination Facility",
-        lastUpdated: "4 days ago",
-        estimatedDelivery: "Delivered on Oct 8",
-        trackingEvents: [
-          { time: "Oct 8, 10:00 AM", location: "Jayanagar Hub", event: "Dispatched for Delivery" },
-          { time: "Oct 8, 02:45 PM", location: "Bellandur Delivery Address", event: "Delivered & Signed by Customer" },
-        ],
-      },
-      {
-        internalId: "SHP-6610-SHD",
-        orderId: "RZ-661044",
-        courier: "Shadowfax",
-        trackingNumber: "SFX440219",
-        status: "Delayed",
-        locationType: "Checkpoint Facility",
-        latestLocation: "Whitefield Transit Hub",
-        lastUpdated: "1 hour ago",
-        estimatedDelivery: "Tomorrow, 11:00 AM",
-        delayAlert: "Severe Monsoon Traffic / Route Congestion",
-        trackingEvents: [
-          { time: "Yesterday, 04:00 PM", location: "Whitefield Hub", event: "Package Inbound" },
-          { time: "Today, 10:00 AM", location: "Whitefield Transit Hub", event: "Delayed due to rain safety protocol" },
-        ],
-      },
-    ];
-  }, [orders]);
-
   // KPI Calculations
   const totalOrdersCount = orders.length + 18; // Includes historical baseline
   const awaitingProcessingCount = orders.filter((o) => o.status === 0).length + 2;
@@ -290,10 +234,7 @@ export function AdminDashboard() {
   const lowStockProducts = adminProducts.filter((p) => (p.offers[0]?.stock ?? inventoryStock[p.id] ?? 10) < 5);
 
   const handleRestock = (productId: string) => {
-    setInventoryStock((prev) => ({
-      ...prev,
-      [productId]: (prev[productId] || 0) + 15,
-    }));
+    updateInventoryStock(productId, 15);
     toast.success("Inventory restocked (+15 units) successfully");
   };
 
@@ -320,16 +261,72 @@ export function AdminDashboard() {
   };
 
   const handleProcessRefund = (orderId: string) => {
-    toast.success(`Refund of order ${orderId} initiated via Razorpay Gateway`);
+    refundOrder(orderId, "Customer return request approved by admin");
+    toast.success(`Refund of order ${orderId} processed via payment gateway`);
     const newEntry: AuditEntry = {
       id: `aud-${Date.now()}`,
       timestamp: "Just now",
       actor: "Admin (Vikram Malhotra)",
       action: "Refund Initiated",
       target: orderId,
-      details: `Full refund authorization sent to payment gateway`,
+      details: `Full refund authorization processed & recorded`,
     };
     setAuditLogs((prev) => [newEntry, ...prev]);
+  };
+
+  const handleCancelOrder = (orderId: string, reason = "Cancelled by admin request") => {
+    cancelOrder(orderId, reason);
+    const newEntry: AuditEntry = {
+      id: `aud-${Date.now()}`,
+      timestamp: "Just now",
+      actor: "Admin (Vikram Malhotra)",
+      action: "Order Cancelled",
+      target: orderId,
+      details: `Cancelled (${reason}). Inventory automatically returned.`,
+    };
+    setAuditLogs((prev) => [newEntry, ...prev]);
+    toast.success(`Order ${orderId} cancelled. Stock units restored.`);
+    if (selectedOrder?.id === orderId) {
+      setSelectedOrder(null);
+    }
+  };
+
+  const handleCreateCourierShipment = (order: Order, courier: LogisticsProvider) => {
+    const newShp = createShipment({
+      orderId: order.id,
+      provider: courier,
+      pickupAddress: {
+        name: "RiderzPro Central Hub",
+        street: "Electronic City Phase 1",
+        city: "Bengaluru",
+        pincode: "560100",
+        phone: "+91 80 4000 1100",
+      },
+      destinationAddress: order.shippingAddress || {
+        name: order.customerName || "Customer",
+        street: "Doorstep Location",
+        city: "Bengaluru",
+        pincode: "560103",
+        phone: order.customerPhone || "+91 98765 43210",
+      },
+      weightKg: 3.5,
+      itemDescription: `EV Spares & Components`,
+      orderValue: order.total,
+    });
+
+    const newEntry: AuditEntry = {
+      id: `aud-${Date.now()}`,
+      timestamp: "Just now",
+      actor: "Admin (Vikram Malhotra)",
+      action: "Courier Manifest Created",
+      target: order.id,
+      details: `Manifested with ${courier} (AWB: ${newShp.trackingNumber})`,
+    };
+    setAuditLogs((prev) => [newEntry, ...prev]);
+    toast.success(`Shipment manifested with ${courier}! AWB: ${newShp.trackingNumber}`);
+    if (selectedOrder?.id === order.id) {
+      setSelectedOrder((prev) => (prev ? { ...prev, shipmentId: newShp.shipmentId, status: 3 } : null));
+    }
   };
 
   // Filtered orders table
@@ -862,9 +859,9 @@ export function AdminDashboard() {
                   </thead>
                   <tbody className="divide-y divide-[#E5E7EB]">
                     {shipments.map((s) => (
-                      <tr key={s.internalId} className="hover:bg-gray-50/80 transition">
-                        <td className="px-4 py-3 font-mono font-bold text-[#111111]">{s.internalId}</td>
-                        <td className="px-4 py-3 font-semibold text-gray-800">{s.courier}</td>
+                      <tr key={s.shipmentId} className="hover:bg-gray-50/80 transition">
+                        <td className="px-4 py-3 font-mono font-bold text-[#111111]">{s.shipmentId}</td>
+                        <td className="px-4 py-3 font-semibold text-gray-800">{s.provider}</td>
                         <td className="px-4 py-3 font-mono text-[#6B7280]">{s.trackingNumber}</td>
                         <td className="px-4 py-3 font-mono font-medium text-gray-800">{s.orderId}</td>
                         <td className="px-4 py-3">
@@ -884,17 +881,17 @@ export function AdminDashboard() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5">
                             <span className="rounded bg-gray-100 text-gray-600 px-1 text-[9px] font-bold">
-                              {s.locationType === "Live GPS Fleet" ? "GPS" : "FACILITY"}
+                              {s.locationType === "Live GPS Telemetry" ? "GPS" : "FACILITY"}
                             </span>
                             <span className="text-gray-800 font-medium">{s.latestLocation}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-[#6B7280]">{s.lastUpdated}</td>
+                        <td className="px-4 py-3 text-[#6B7280]">{s.lastEventTimestamp}</td>
                         <td className="px-4 py-3 text-[#6B7280]">{s.estimatedDelivery}</td>
                         <td className="px-4 py-3 text-right">
                           <button
                             onClick={() => setSelectedShipment(s)}
-                            className="rounded border border-gray-200 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-100"
+                            className="rounded border border-gray-200 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-100 cursor-pointer"
                           >
                             Timeline
                           </button>
@@ -1393,6 +1390,140 @@ export function AdminDashboard() {
                     </span>
                   </div>
                 </div>
+
+                {/* Inbound Webhook Testing & Simulation Console */}
+                <div className="lg:col-span-2 rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
+                    <div>
+                      <h3 className="font-bold text-sm text-[#111111] flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-[#E31E24]" />
+                        <span>Interactive Courier Webhook Simulator & Idempotency Testing</span>
+                      </h3>
+                      <p className="text-xs text-[#6B7280]">
+                        Simulate authenticated inbound webhook callbacks from Delhivery, Bluedart, Shadowfax & Fleet. Demonstrates duplicate event prevention.
+                      </p>
+                    </div>
+                    <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                      Sandbox Simulation Mode
+                    </span>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-4 text-xs">
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Provider Adapter</label>
+                      <select
+                        value={testWebhookProvider}
+                        onChange={(e) => setTestWebhookProvider(e.target.value as LogisticsProvider)}
+                        className="w-full h-9 rounded-lg border border-gray-300 px-2.5 text-xs bg-white"
+                      >
+                        <option value="Delhivery">Delhivery Express</option>
+                        <option value="Bluedart">Bluedart Apex</option>
+                        <option value="Shadowfax">Shadowfax Regional</option>
+                        <option value="RiderzPro Fleet">RiderzPro Fleet</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Target Tracking Number (AWB)</label>
+                      <input
+                        type="text"
+                        value={testWebhookTracking || shipments[0]?.trackingNumber || "DEL984128471"}
+                        onChange={(e) => setTestWebhookTracking(e.target.value)}
+                        placeholder="e.g. DEL984128471"
+                        className="w-full h-9 rounded-lg border border-gray-300 px-2.5 text-xs font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Simulated Status</label>
+                      <select
+                        value={testWebhookStatus}
+                        onChange={(e) => setTestWebhookStatus(e.target.value)}
+                        className="w-full h-9 rounded-lg border border-gray-300 px-2.5 text-xs bg-white"
+                      >
+                        <option value="In Transit">In Transit</option>
+                        <option value="Out for Delivery">Out for Delivery</option>
+                        <option value="Delivered">Delivered & Signed</option>
+                        <option value="Delayed">Delayed (Route Congestion)</option>
+                        <option value="Failed Attempt">Failed Delivery Attempt</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Checkpoint Location</label>
+                      <input
+                        type="text"
+                        value={testWebhookLocation}
+                        onChange={(e) => setTestWebhookLocation(e.target.value)}
+                        className="w-full h-9 rounded-lg border border-gray-300 px-2.5 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newEventId = `evt-${Date.now()}`;
+                        setLastTestEventId(newEventId);
+                        const trackingNum = testWebhookTracking || shipments[0]?.trackingNumber || "DEL984128471";
+                        const result = processWebhook({
+                          eventId: newEventId,
+                          provider: testWebhookProvider,
+                          trackingNumber: trackingNum,
+                          rawStatus: testWebhookStatus,
+                          location: testWebhookLocation,
+                        });
+                        setWebhookLogs((prev) => [
+                          { id: newEventId, time: new Date().toLocaleTimeString(), msg: result.message, isDup: result.isDuplicate },
+                          ...prev,
+                        ]);
+                        toast.success(result.message);
+                      }}
+                      className="px-4 py-2 rounded-lg bg-[#E31E24] text-white text-xs font-bold hover:bg-red-700 transition cursor-pointer"
+                    >
+                      🚀 Fire Authenticated Webhook
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={!lastTestEventId}
+                      onClick={() => {
+                        const trackingNum = testWebhookTracking || shipments[0]?.trackingNumber || "DEL984128471";
+                        const result = processWebhook({
+                          eventId: lastTestEventId,
+                          provider: testWebhookProvider,
+                          trackingNumber: trackingNum,
+                          rawStatus: testWebhookStatus,
+                          location: testWebhookLocation,
+                        });
+                        setWebhookLogs((prev) => [
+                          { id: lastTestEventId, time: new Date().toLocaleTimeString(), msg: result.message, isDup: result.isDuplicate },
+                          ...prev,
+                        ]);
+                        toast.warning(result.message);
+                      }}
+                      className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-800 text-xs font-semibold hover:bg-gray-50 transition cursor-pointer disabled:opacity-50"
+                    >
+                      🔁 Test Idempotent Repeat (Duplicate Event ID)
+                    </button>
+                  </div>
+
+                  {webhookLogs.length > 0 && (
+                    <div className="mt-3 p-3 rounded-xl bg-gray-50 border border-gray-200 text-xs space-y-1.5 max-h-40 overflow-y-auto font-mono">
+                      <p className="font-bold text-gray-700 uppercase tracking-wider text-[10px]">Webhook Execution Log:</p>
+                      {webhookLogs.map((log, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-[11px]">
+                          <span className="text-gray-400">[{log.time}]</span>
+                          <span className={log.isDup ? "text-amber-600 font-bold" : "text-emerald-700 font-bold"}>
+                            {log.isDup ? "[DUPLICATE SKIPPED]" : "[200 OK PROCESSED]"}
+                          </span>
+                          <span className="text-gray-700 truncate">{log.msg}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -1492,14 +1623,50 @@ export function AdminDashboard() {
             </div>
 
             <p className="text-xs text-[#6B7280] mt-1">
-              Placed on {new Date(selectedOrder.createdAt).toLocaleString()} · Paid via {selectedOrder.payment}
+              Placed on {new Date(selectedOrder.createdAt).toLocaleString()} · Paid via {selectedOrder.payment} ·{" "}
+              <span className="font-semibold text-emerald-700">{selectedOrder.paymentStatus || "Paid"}</span>
             </p>
 
+            {/* Shipping Address info */}
+            <div className="mt-3 p-3 rounded-xl bg-gray-50 border border-gray-100 text-xs text-[#111111]">
+              <p className="font-bold">Doorstep Delivery Destination</p>
+              <p className="text-[#6B7280] mt-0.5">
+                {selectedOrder.shippingAddress?.street || "Flat 402, Green Glen Layout, Bellandur"}, {selectedOrder.shippingAddress?.city || "Bengaluru"} - {selectedOrder.shippingAddress?.pincode || "560103"}
+              </p>
+              <p className="text-[11px] text-gray-500 mt-1">
+                Recipient: <span className="font-semibold text-gray-800">{selectedOrder.customerName || "Aakash Sharma"}</span> ({selectedOrder.customerPhone || "+91 98765 43210"})
+              </p>
+              {selectedOrder.shipmentId && (
+                <p className="mt-1 text-[11px] font-mono text-[#E31E24] font-bold">
+                  Linked Shipment: {selectedOrder.shipmentId}
+                </p>
+              )}
+            </div>
+
+            {/* Courier Dispatch Actions if not manifested */}
+            {selectedOrder.fulfillmentStatus !== "Cancelled" && (
+              <div className="mt-3 p-3 rounded-xl bg-red-50/50 border border-red-200 text-xs">
+                <p className="font-bold text-[#111111] mb-1.5">Manifest Courier Consignment:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(["Delhivery", "Bluedart", "Shadowfax", "RiderzPro Fleet"] as LogisticsProvider[]).map((cr) => (
+                    <button
+                      key={cr}
+                      type="button"
+                      onClick={() => handleCreateCourierShipment(selectedOrder, cr)}
+                      className="px-2.5 py-1 rounded-md bg-white border border-gray-300 text-[11px] font-semibold text-gray-800 hover:border-[#E31E24] hover:text-[#E31E24] transition shadow-2xs cursor-pointer"
+                    >
+                      + {cr}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Line items */}
-            <div className="mt-5 border-t border-b border-gray-100 py-4 space-y-3">
+            <div className="mt-4 border-t border-b border-gray-100 py-3 space-y-2">
               <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Items Ordered</p>
               {selectedOrder.groups.map((g) => (
-                <div key={g.vendorId} className="space-y-2">
+                <div key={g.vendorId} className="space-y-1.5">
                   <p className="text-xs font-semibold text-gray-700">Vendor: {getVendor(g.vendorId).name}</p>
                   {g.items.map((it) => {
                     const prod = getProduct(it.productId);
@@ -1517,7 +1684,7 @@ export function AdminDashboard() {
             </div>
 
             {/* Total and Fees */}
-            <div className="mt-4 space-y-1 text-xs">
+            <div className="mt-3 space-y-1 text-xs">
               <div className="flex justify-between text-gray-600">
                 <span>Items Subtotal:</span>
                 <span>{inr(selectedOrder.itemsTotal)}</span>
@@ -1526,6 +1693,12 @@ export function AdminDashboard() {
                 <span>Delivery Logistics Fee:</span>
                 <span>{inr(selectedOrder.deliveryTotal)}</span>
               </div>
+              {selectedOrder.discountTotal ? (
+                <div className="flex justify-between text-emerald-600 font-semibold">
+                  <span>Coupon Discount ({selectedOrder.couponCode || "PROMO"}):</span>
+                  <span>- {inr(selectedOrder.discountTotal)}</span>
+                </div>
+              ) : null}
               <div className="flex justify-between text-gray-600">
                 <span>GST (18%):</span>
                 <span>{inr(selectedOrder.tax)}</span>
@@ -1537,13 +1710,25 @@ export function AdminDashboard() {
             </div>
 
             {/* Action buttons */}
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-gray-100">
-              <button
-                onClick={() => handleProcessRefund(selectedOrder.id)}
-                className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50"
-              >
-                Initiate Refund
-              </button>
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-gray-100">
+              <div className="flex items-center gap-2">
+                {selectedOrder.fulfillmentStatus !== "Cancelled" && (
+                  <button
+                    onClick={() => handleCancelOrder(selectedOrder.id, "Admin cancellation with inventory rollback")}
+                    className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100"
+                  >
+                    Cancel Order
+                  </button>
+                )}
+                {selectedOrder.paymentStatus !== "Refunded" && (
+                  <button
+                    onClick={() => handleProcessRefund(selectedOrder.id)}
+                    className="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+                  >
+                    Initiate Refund
+                  </button>
+                )}
+              </div>
 
               <div className="flex items-center gap-2">
                 <button
@@ -1552,7 +1737,7 @@ export function AdminDashboard() {
                 >
                   Close
                 </button>
-                {selectedOrder.status < 5 && (
+                {selectedOrder.status < 5 && selectedOrder.fulfillmentStatus !== "Cancelled" && (
                   <button
                     onClick={() => handleAdvanceOrderStatus(selectedOrder.id, selectedOrder.status)}
                     className="rounded-lg bg-[#E31E24] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-red-700"
@@ -1581,10 +1766,10 @@ export function AdminDashboard() {
 
             <div className="flex items-center gap-2">
               <span className="font-mono text-base font-extrabold text-[#111111]">
-                {selectedShipment.internalId}
+                {selectedShipment.shipmentId}
               </span>
               <span className="rounded bg-blue-50 text-blue-700 px-2 py-0.5 text-xs font-bold">
-                {selectedShipment.courier}
+                {selectedShipment.provider}
               </span>
             </div>
 
@@ -1595,7 +1780,7 @@ export function AdminDashboard() {
             {/* Checkpoint vs GPS Notice */}
             <div className="mt-4 p-3 rounded-lg bg-gray-50 border border-gray-200 text-xs text-gray-700">
               <span className="font-bold text-gray-900">Verified Location Telemetry: </span>
-              {selectedShipment.locationType === "Live GPS Fleet"
+              {selectedShipment.locationType === "Live GPS Telemetry"
                 ? "Live GPS coordinates broadcasted by vehicle telematics OBD unit."
                 : "Official barcode scanner checkpoint verified at courier logistics sorting facility."}
             </div>
@@ -1604,11 +1789,11 @@ export function AdminDashboard() {
             <div className="mt-5 space-y-3">
               <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Tracking Events History</p>
               <div className="space-y-2 border-l-2 border-red-500 pl-3 ml-2">
-                {selectedShipment.trackingEvents.map((evt, idx) => (
-                  <div key={idx} className="relative">
+                {selectedShipment.events.map((evt, idx) => (
+                  <div key={evt.id || idx} className="relative">
                     <span className="absolute -left-[19px] top-1 h-2.5 w-2.5 rounded-full bg-[#E31E24]" />
-                    <p className="text-xs font-bold text-gray-900">{evt.event}</p>
-                    <p className="text-[11px] text-[#6B7280]">{evt.location} · {evt.time}</p>
+                    <p className="text-xs font-bold text-gray-900">{evt.description}</p>
+                    <p className="text-[11px] text-[#6B7280]">{evt.location} · {evt.timestamp}</p>
                   </div>
                 ))}
               </div>
