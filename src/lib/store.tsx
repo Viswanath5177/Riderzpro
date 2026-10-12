@@ -197,7 +197,24 @@ const DEFAULT_ADDRESS: AddressRef = {
 };
 
 const DEFAULT_BOOKINGS: ServiceBooking[] = [];
-const DEFAULT_NOTIFICATIONS: CustomerNotification[] = [];
+const DEFAULT_NOTIFICATIONS: CustomerNotification[] = [
+  {
+    id: "notif-1",
+    title: "Order Dispatch Update",
+    message: "Rider assigned for order #RZ-849201. Real-time GPS tracking is now live.",
+    time: "10 mins ago",
+    read: false,
+    type: "order",
+  },
+  {
+    id: "notif-2",
+    title: "Monsoon Health Check Reminder",
+    message: "Free 24-Point Battery & BMS Diagnostic coupon available for your EV.",
+    time: "2 hours ago",
+    read: false,
+    type: "service",
+  },
+];
 export const DEFAULT_ORDERS: Order[] = [];
 export const DEFAULT_SHIPMENTS: NormalizedShipment[] = [];
 
@@ -211,7 +228,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [inventoryStock, setInventoryStock] = useState<Record<string, number>>({});
   const [savedProductIds, setSavedProductIds] = useState<string[]>([]);
   const [serviceBookings, setServiceBookings] = useState<ServiceBooking[]>([]);
-  const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
+  const [notifications, setNotifications] = useState<CustomerNotification[]>(DEFAULT_NOTIFICATIONS);
   const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [role, setRole] = useState<Role>("customer");
   const [loaded, setLoaded] = useState(false);
@@ -229,7 +246,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (s.inventoryStock) setInventoryStock(s.inventoryStock);
         if (s.savedProductIds) setSavedProductIds(s.savedProductIds);
         if (s.serviceBookings) setServiceBookings(s.serviceBookings);
-        if (s.notifications) setNotifications(s.notifications);
+        if (s.notifications && s.notifications.length > 0) setNotifications(s.notifications);
         if (s.userProfile) setUserProfile(s.userProfile);
         if (s.role) setRole(s.role);
       }

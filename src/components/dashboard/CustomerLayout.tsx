@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Bike,
   Heart,
@@ -12,6 +12,7 @@ import {
   UserCog,
   LifeBuoy,
   ShoppingBag,
+  ShoppingCart,
   ArrowLeft,
   Sparkles,
   Mic,
@@ -104,80 +105,84 @@ export function CustomerLayout({
     );
   }, [searchQuery]);
 
-  const navItems = [
+  const navigate = useNavigate();
+  const cartCount = cart.reduce((s, c) => s + c.qty, 0);
+
+  const navItems: Array<{
+    id: CustomerTab | "assistant";
+    label: string;
+    Icon: any;
+    badge?: string;
+    badgeColor?: string;
+    to?: string;
+  }> = [
     {
-      id: "overview" as CustomerTab,
+      id: "overview",
       label: "Overview",
       Icon: LayoutGrid,
     },
     {
-      id: "shop" as CustomerTab,
+      id: "assistant",
+      label: "AI Fitment Assistant",
+      Icon: Sparkles,
+      badge: "Volt",
+      badgeColor: "bg-[#E31E24] text-white",
+      to: "/assistant",
+    },
+    {
+      id: "shop",
       label: "Shop Bikes & Parts",
       Icon: ShoppingBag,
     },
     {
-      id: "orders" as CustomerTab,
+      id: "orders",
       label: "My Orders",
       Icon: Package,
       badge: orders.length > 0 ? `${orders.length}` : undefined,
     },
     {
-      id: "tracking" as CustomerTab,
+      id: "tracking",
       label: "Track Delivery",
       Icon: Truck,
       badge: liveOrder ? "Live" : undefined,
       badgeColor: "bg-[#E31E24] text-white",
     },
     {
-      id: "saved" as CustomerTab,
-      label: "Saved Items",
-      Icon: Heart,
-      badge: savedProductIds.length > 0 ? `${savedProductIds.length}` : undefined,
-    },
-    {
-      id: "garage" as CustomerTab,
+      id: "garage",
       label: "My Garage",
       Icon: Bike,
       badge: `${garage.length}`,
     },
     {
-      id: "service" as CustomerTab,
+      id: "service",
       label: "Service & Maintenance",
       Icon: Wrench,
       badge: upcomingServicesCount > 0 ? `${upcomingServicesCount} Due` : undefined,
       badgeColor: "bg-blue-600 text-white",
     },
     {
-      id: "addresses" as CustomerTab,
-      label: "Addresses",
-      Icon: MapPin,
-    },
-    {
-      id: "invoices" as CustomerTab,
+      id: "invoices",
       label: "Payments & Invoices",
       Icon: Receipt,
     },
     {
-      id: "notifications" as CustomerTab,
-      label: "Notifications",
-      Icon: Bell,
-      badge: unreadNotifsCount > 0 ? `${unreadNotifsCount}` : undefined,
-      badgeColor: "bg-[#E31E24] text-white",
-    },
-    {
-      id: "settings" as CustomerTab,
+      id: "settings",
       label: "Profile & Settings",
       Icon: UserCog,
     },
     {
-      id: "support" as CustomerTab,
+      id: "support",
       label: "Help & Support",
       Icon: LifeBuoy,
     },
   ];
 
-  const handleNavClick = (tabId: CustomerTab) => {
-    onTabChange(tabId);
+  const handleNavClick = (item: (typeof navItems)[number]) => {
+    if (item.to) {
+      navigate({ to: item.to });
+    } else {
+      onTabChange(item.id as CustomerTab);
+    }
     setIsMobileMenuOpen(false);
   };
 
@@ -356,29 +361,32 @@ export function CustomerLayout({
               return (
                 <button
                   key={item.id}
-                  onClick={() => handleNavClick(item.id)}
+                  onClick={() => handleNavClick(item)}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition group relative",
+                    "relative flex w-full items-center gap-3.5 rounded-xl px-3.5 py-2.5 text-xs font-medium transition group",
                     isActive
-                      ? "bg-red-50 text-[#E31E24] font-bold border-l-4 border-[#E31E24] pl-2.5"
-                      : "text-[#6B7280] hover:bg-gray-100 hover:text-[#111111]",
+                      ? "bg-[#FFF0F0] text-[#E31E24] font-bold"
+                      : "text-[#4B5563] hover:bg-gray-100/70 hover:text-[#111111]",
                     isCollapsed && "justify-center px-0"
                   )}
                   title={isCollapsed ? item.label : undefined}
                 >
+                  {isActive && (
+                    <span className="absolute left-0 top-1.5 bottom-1.5 w-1.5 rounded-r-full bg-[#E31E24]" />
+                  )}
                   <item.Icon
                     className={cn(
-                      "h-4 w-4 shrink-0 transition",
+                      "h-4.5 w-4.5 shrink-0 transition",
                       isActive ? "text-[#E31E24]" : "text-[#6B7280] group-hover:text-[#111111]"
                     )}
                   />
                   {!isCollapsed && (
                     <span className="flex-1 text-left flex items-center justify-between">
-                      <span>{item.label}</span>
+                      <span className={cn(isActive && "font-bold text-[#E31E24]")}>{item.label}</span>
                       {item.badge && (
                         <span
                           className={cn(
-                            "px-2 py-0.5 rounded-full text-[10px] font-bold tracking-tight",
+                            "px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-tight",
                             isActive
                               ? "bg-red-100 text-[#E31E24]"
                               : item.badgeColor || "bg-gray-100 text-gray-700"
@@ -412,8 +420,8 @@ export function CustomerLayout({
 
         {/* Right Content Area */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Top Header */}
-          <header className="sticky top-0 z-20 h-18 bg-white border-b border-[#E5E7EB] px-4 md:px-8 flex items-center justify-between gap-4 shadow-xs">
+          {/* Top Header (Static Section) */}
+          <header className="sticky top-0 z-20 h-18 bg-white border-b border-[#E5E7EB] px-4 md:px-8 flex items-center justify-between gap-4 shadow-2xs">
             {/* Left: Mobile hamburger & breadcrumbs */}
             <div className="flex items-center gap-3 min-w-0">
               <button
@@ -428,9 +436,9 @@ export function CustomerLayout({
                 <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
                   <span>Customer Portal</span>
                   <span>/</span>
-                  <span className="text-gray-900 font-semibold truncate">{getBreadcrumbTitle()}</span>
+                  <span className="text-gray-800 font-semibold truncate">{getBreadcrumbTitle()}</span>
                 </div>
-                <h1 className="text-base font-bold text-gray-900 leading-tight">
+                <h1 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">
                   Welcome back, {userProfile.name.split(" ")[0]}
                 </h1>
               </div>
@@ -440,27 +448,27 @@ export function CustomerLayout({
             <div className="flex-1 max-w-md hidden md:block">
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="w-full flex items-center justify-between px-4 py-2 rounded-full bg-[#F5F6F8] hover:bg-white text-sm text-gray-700 transition shadow-2xs group border border-[#E5E7EB] hover:border-gray-400"
+                className="w-full flex items-center justify-between px-4 py-2 rounded-full bg-[#F5F6F8] hover:bg-white text-sm text-gray-700 transition shadow-2xs group border border-[#E5E7EB] hover:border-gray-300"
               >
                 <span className="flex items-center gap-2.5">
-                  <Search className="h-4 w-4 text-gray-500 group-hover:text-primary transition" />
-                  <span className="text-xs text-gray-600 font-medium">Search EV batteries, chargers, fitments...</span>
+                  <Search className="h-4 w-4 text-gray-400 group-hover:text-primary transition" />
+                  <span className="text-xs text-gray-500 font-normal">Search EV batteries, chargers, fitments...</span>
                 </span>
-                <kbd className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono text-gray-600 bg-white border border-[#E5E7EB] rounded-full shadow-2xs">
+                <kbd className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono text-gray-400 bg-white border border-[#E5E7EB] rounded-md shadow-2xs">
                   ⌘K
                 </kbd>
               </button>
             </div>
 
-            {/* Right: Actions, Search by VIN, AI Voice, Notifications, Avatar */}
+            {/* Right: Actions, Search by VIN, AI Assistant, Notifications, Cart, Avatar */}
             <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
               {/* Search by VIN Button in Navbar */}
               <button
                 onClick={() => setIsVinSearchOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#E5E7EB] bg-white hover:border-[#E31E24] hover:text-[#E31E24] text-xs font-semibold text-[#111111] transition active:scale-95 shadow-2xs"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-emerald-400/80 bg-white hover:bg-emerald-50 text-xs font-semibold text-emerald-700 transition active:scale-95 shadow-2xs"
                 title="Search items based on 17-digit VIN number"
               >
-                <ScanLine className="h-3.5 w-3.5 text-primary" />
+                <ScanLine className="h-3.5 w-3.5 text-emerald-600" />
                 <span className="hidden sm:inline">Search by VIN</span>
                 <span className="sm:hidden font-mono text-[11px]">VIN</span>
               </button>
@@ -474,26 +482,27 @@ export function CustomerLayout({
                 <Search className="h-5 w-5" />
               </button>
 
-              {/* AI Assistant Button with Voice Mic */}
+              {/* AI Assistant Button */}
               <Link
                 to="/assistant"
-                className="group flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#111111] hover:border-[#E31E24] hover:text-[#E31E24] transition shadow-2xs active:scale-95"
+                className="flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50/70 hover:bg-red-100/70 px-3.5 py-1.5 text-xs font-semibold text-[#E31E24] transition shadow-2xs active:scale-95"
               >
-                <Mic className="h-3.5 w-3.5 text-primary transition group-hover:scale-110" />
-                <span className="hidden sm:inline">AI Voice</span>
-                <span className="sm:hidden font-bold">Ask AI</span>
+                <Sparkles className="h-3.5 w-3.5 text-[#E31E24]" />
+                <span className="hidden sm:inline">AI Assistant</span>
+                <span className="sm:hidden font-bold">AI</span>
               </Link>
 
-              {/* Notifications Bell with Popover */}
+              {/* Notifications Button on Top Right with Badge & Popover */}
               <div className="relative">
                 <button
                   onClick={() => setIsNotifOpen(!isNotifOpen)}
-                  className="relative p-2 rounded-xl text-gray-600 hover:bg-gray-100 transition"
+                  className="relative p-2 rounded-full text-gray-700 hover:bg-gray-100 active:scale-95 transition"
                   aria-label="Notifications"
+                  title="Notifications"
                 >
-                  <Bell className="h-5 w-5" />
+                  <Bell className="h-5 w-5 text-gray-700" />
                   {unreadNotifsCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 grid h-4 w-4 place-items-center rounded-full bg-rose-500 text-[9px] font-bold text-white ring-2 ring-white">
+                    <span className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 px-1 place-items-center rounded-full bg-[#E31E24] text-[9.5px] font-bold text-white ring-2 ring-white">
                       {unreadNotifsCount}
                     </span>
                   )}
@@ -558,19 +567,34 @@ export function CustomerLayout({
                 )}
               </div>
 
+              {/* Cart Button to Open Cart */}
+              <Link
+                to="/cart"
+                className="relative p-2 rounded-full text-gray-700 hover:bg-gray-100 active:scale-95 transition"
+                aria-label="Shopping Cart"
+                title="Open Shopping Cart"
+              >
+                <ShoppingCart className="h-5 w-5 text-gray-700" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 px-1 place-items-center rounded-full bg-[#E31E24] text-[9.5px] font-bold text-white ring-2 ring-white">
+                    {cartCount}
+                  </span>
+                )}
+              </Link>
+
               {/* Profile Avatar & Account Menu */}
               <div className="relative">
                 <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center gap-2 p-1.5 rounded-full hover:bg-gray-100 transition"
+                  className="flex items-center gap-2 p-0.5 rounded-full hover:ring-2 hover:ring-red-200 transition active:scale-95"
                   aria-label="Account menu"
                 >
-                  <span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-white font-bold text-xs shadow-xs">
+                  <span className="grid h-8.5 w-8.5 place-items-center rounded-full bg-[#E31E24] text-white font-bold text-xs shadow-xs">
                     {userProfile.name
                       .split(" ")
                       .map((n) => n[0])
                       .join("")
-                      .slice(0, 2)}
+                      .slice(0, 2) || "AS"}
                   </span>
                 </button>
 
@@ -660,22 +684,25 @@ export function CustomerLayout({
                 return (
                   <button
                     key={item.id}
-                    onClick={() => handleNavClick(item.id)}
+                    onClick={() => handleNavClick(item)}
                     className={cn(
-                      "flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-medium transition",
+                      "relative flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-medium transition",
                       isActive
-                        ? "bg-red-50 text-[#E31E24] font-semibold border-l-3 border-[#E31E24] pl-2.5"
-                        : "text-[#6B7280] hover:bg-gray-50 hover:text-[#111111]"
+                        ? "bg-[#FFF0F0] text-[#E31E24] font-bold"
+                        : "text-[#4B5563] hover:bg-gray-50 hover:text-[#111111]"
                     )}
                   >
+                    {isActive && (
+                      <span className="absolute left-0 top-1.5 bottom-1.5 w-1.5 rounded-r-full bg-[#E31E24]" />
+                    )}
                     <span className="flex items-center gap-3">
-                      <item.Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-[#E31E24]" : "text-[#6B7280]")} />
-                      <span>{item.label}</span>
+                      <item.Icon className={cn("h-4.5 w-4.5 shrink-0", isActive ? "text-[#E31E24]" : "text-[#6B7280]")} />
+                      <span className={cn(isActive && "font-bold text-[#E31E24]")}>{item.label}</span>
                     </span>
                     {item.badge && (
                       <span
                         className={cn(
-                          "px-2 py-0.5 rounded-full text-[10px] font-bold",
+                          "px-2.5 py-0.5 rounded-full text-[10px] font-bold",
                           isActive ? "bg-red-100 text-[#E31E24]" : item.badgeColor || "bg-gray-100 text-gray-700"
                         )}
                       >
