@@ -16,7 +16,10 @@ import { Route as DashboardsRouteImport } from './routes/dashboards'
 import { Route as GarageRouteImport } from './routes/garage'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as OrdersRouteImport } from './routes/orders'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ShopRouteImport } from './routes/shop'
+import { Route as SupportRouteImport } from './routes/support'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard.admin'
 import { Route as DashboardCustomerRouteImport } from './routes/dashboard.customer'
 import { Route as DashboardRiderRouteImport } from './routes/dashboard.rider'
@@ -60,9 +63,24 @@ const OrdersRoute = OrdersRouteImport.update({
   path: '/orders',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShopRoute = ShopRouteImport.update({
   id: '/shop',
   path: '/shop',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardAdminRoute = DashboardAdminRouteImport.update({
@@ -109,7 +127,10 @@ export interface FileRoutesByFullPath {
   '/garage': typeof GarageRoute
   '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
+  '/privacy': typeof PrivacyRoute
   '/shop': typeof ShopRoute
+  '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/customer': typeof DashboardCustomerRoute
   '/dashboard/rider': typeof DashboardRiderRoute
@@ -126,7 +147,10 @@ export interface FileRoutesByTo {
   '/garage': typeof GarageRoute
   '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
+  '/privacy': typeof PrivacyRoute
   '/shop': typeof ShopRoute
+  '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/customer': typeof DashboardCustomerRoute
   '/dashboard/rider': typeof DashboardRiderRoute
@@ -144,7 +168,10 @@ export interface FileRoutesById {
   '/garage': typeof GarageRoute
   '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
+  '/privacy': typeof PrivacyRoute
   '/shop': typeof ShopRoute
+  '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/customer': typeof DashboardCustomerRoute
   '/dashboard/rider': typeof DashboardRiderRoute
@@ -163,7 +190,10 @@ export interface FileRouteTypes {
     | '/garage'
     | '/login'
     | '/orders'
+    | '/privacy'
     | '/shop'
+    | '/support'
+    | '/terms'
     | '/dashboard/admin'
     | '/dashboard/customer'
     | '/dashboard/rider'
@@ -180,7 +210,10 @@ export interface FileRouteTypes {
     | '/garage'
     | '/login'
     | '/orders'
+    | '/privacy'
     | '/shop'
+    | '/support'
+    | '/terms'
     | '/dashboard/admin'
     | '/dashboard/customer'
     | '/dashboard/rider'
@@ -197,7 +230,10 @@ export interface FileRouteTypes {
     | '/garage'
     | '/login'
     | '/orders'
+    | '/privacy'
     | '/shop'
+    | '/support'
+    | '/terms'
     | '/dashboard/admin'
     | '/dashboard/customer'
     | '/dashboard/rider'
@@ -215,7 +251,10 @@ export interface RootRouteChildren {
   GarageRoute: typeof GarageRoute
   LoginRoute: typeof LoginRoute
   OrdersRoute: typeof OrdersRoute
+  PrivacyRoute: typeof PrivacyRoute
   ShopRoute: typeof ShopRoute
+  SupportRoute: typeof SupportRoute
+  TermsRoute: typeof TermsRoute
   DashboardAdminRoute: typeof DashboardAdminRoute
   DashboardCustomerRoute: typeof DashboardCustomerRoute
   DashboardRiderRoute: typeof DashboardRiderRoute
@@ -276,11 +315,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/shop': {
       id: '/shop'
       path: '/shop'
       fullPath: '/shop'
       preLoaderRoute: typeof ShopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard/admin': {
@@ -343,7 +403,10 @@ const rootRouteChildren: RootRouteChildren = {
   GarageRoute: GarageRoute,
   LoginRoute: LoginRoute,
   OrdersRoute: OrdersRoute,
+  PrivacyRoute: PrivacyRoute,
   ShopRoute: ShopRoute,
+  SupportRoute: SupportRoute,
+  TermsRoute: TermsRoute,
   DashboardAdminRoute: DashboardAdminRoute,
   DashboardCustomerRoute: DashboardCustomerRoute,
   DashboardRiderRoute: DashboardRiderRoute,
