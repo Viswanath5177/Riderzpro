@@ -296,17 +296,18 @@ export function CustomerLayout({
         </div>
       )}
 
-      {/* Main Container with Solid Clean Neutral Backdrop */}
-      <div className="flex flex-1 min-h-screen bg-[#F5F6F8] relative overflow-hidden">
-        {/* Desktop Left Sidebar */}
+      {/* Main Container with Ambient Apple Glassmorphic Canvas Backdrop */}
+      <div className="flex flex-1 min-h-screen bg-[#F6F8FB] bg-[radial-gradient(circle_at_0%_0%,rgba(227,30,36,0.06),transparent_45%),radial-gradient(circle_at_0%_100%,rgba(37,99,235,0.05),transparent_45%),radial-gradient(circle_at_100%_0%,rgba(249,115,22,0.03),transparent_45%)] relative">
+        {/* Desktop Left Sidebar (Static Container with Apple Glassmorphic Theme) */}
         <aside
           className={cn(
-            "hidden md:flex flex-col bg-white border-r border-[#E5E7EB] shadow-xs transition-all duration-300 z-30 shrink-0 select-none",
+            "hidden md:flex flex-col sticky top-0 h-screen shrink-0 z-30 select-none",
+            "bg-white/65 backdrop-blur-3xl backdrop-saturate-200 border-r border-slate-200/80 shadow-[2px_0_20px_rgba(15,23,42,0.03)] transition-all duration-300",
             isCollapsed ? "w-20" : "w-64"
           )}
         >
           {/* Logo & Header */}
-          <div className="relative h-18 flex items-center justify-center px-4 border-b border-[#E5E7EB]">
+          <div className="relative h-18 shrink-0 flex items-center justify-center px-4 border-b border-slate-200/70 bg-white/50 backdrop-blur-md">
             {!isCollapsed ? (
               <div className="flex items-center justify-center">
                 <Logo className="justify-center" imgClassName="h-9 w-auto" />
@@ -322,7 +323,7 @@ export function CustomerLayout({
               onClick={() => setIsCollapsed(!isCollapsed)}
               aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               className={cn(
-                "hidden lg:grid h-7 w-7 place-items-center rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition absolute top-1/2 -translate-y-1/2",
+                "hidden lg:grid h-7 w-7 place-items-center rounded-xl text-slate-500 hover:text-slate-900 hover:bg-white hover:border hover:border-slate-200 hover:shadow-2xs transition-all duration-150 absolute top-1/2 -translate-y-1/2 cursor-pointer",
                 isCollapsed ? "right-1.5" : "right-3"
               )}
             >
@@ -330,8 +331,8 @@ export function CustomerLayout({
             </button>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+          {/* Navigation Links with Refined Apple Glassmorphic Hovers & Active State */}
+          <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5">
             {navItems.map((item) => {
               const isActive = activeTab === item.id;
               return (
@@ -339,30 +340,53 @@ export function CustomerLayout({
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition group relative",
+                    "group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-150 ease-out cursor-pointer select-none",
                     isActive
-                      ? "bg-red-50 text-[#E31E24] font-bold border-l-4 border-[#E31E24] pl-2.5"
-                      : "text-[#6B7280] hover:bg-gray-100 hover:text-[#111111]",
+                      ? "bg-red-500/10 text-[#E31E24] font-bold border border-red-500/25 shadow-xs backdrop-blur-md"
+                      : "text-slate-600 border border-transparent hover:bg-white hover:text-slate-950 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:border-slate-200/80 active:scale-[0.98]",
                     isCollapsed && "justify-center px-0"
                   )}
                   title={isCollapsed ? item.label : undefined}
                 >
+                  {/* Apple-style smooth capsule indicator on active item */}
+                  {isActive && (
+                    <span
+                      className={cn(
+                        "absolute left-1.5 top-2.5 bottom-2.5 w-1.25 rounded-full bg-[#E31E24] shadow-[0_0_8px_rgba(227,30,36,0.6)] animate-in fade-in duration-200",
+                        isCollapsed && "left-1"
+                      )}
+                    />
+                  )}
+
                   <item.Icon
                     className={cn(
-                      "h-4 w-4 shrink-0 transition",
-                      isActive ? "text-[#E31E24]" : "text-[#6B7280] group-hover:text-[#111111]"
+                      "h-4 w-4 shrink-0 transition-all duration-150 ease-out",
+                      isActive
+                        ? "text-[#E31E24] scale-110 drop-shadow-xs"
+                        : "text-slate-500 group-hover:text-[#E31E24] group-hover:scale-110"
                     )}
                   />
+
                   {!isCollapsed && (
-                    <span className="flex-1 text-left flex items-center justify-between">
-                      <span>{item.label}</span>
+                    <span className="flex-1 text-left flex items-center justify-between min-w-0">
+                      <span
+                        className={cn(
+                          "truncate transition-all duration-150",
+                          isActive
+                            ? "font-bold text-[#E31E24]"
+                            : "font-medium group-hover:text-slate-950 group-hover:translate-x-0.5 group-hover:font-semibold"
+                        )}
+                      >
+                        {item.label}
+                      </span>
                       {item.badge && (
                         <span
                           className={cn(
-                            "px-2 py-0.5 rounded-full text-[10px] font-bold tracking-tight",
+                            "px-2 py-0.5 rounded-full text-[10px] font-bold tracking-tight shrink-0 transition-all duration-150",
                             isActive
-                              ? "bg-red-100 text-[#E31E24]"
-                              : item.badgeColor || "bg-gray-100 text-gray-700"
+                              ? "bg-[#E31E24]/15 text-[#E31E24] border border-[#E31E24]/25 shadow-2xs"
+                              : item.badgeColor ||
+                                  "bg-slate-100 text-slate-700 border border-slate-200/70 group-hover:bg-slate-50 group-hover:border-slate-300 group-hover:shadow-2xs"
                           )}
                         >
                           {item.badge}
@@ -376,25 +400,25 @@ export function CustomerLayout({
           </nav>
 
           {/* Sidebar Footer */}
-          <div className="p-3 border-t border-[#E5E7EB]/80 space-y-1">
+          <div className="shrink-0 p-3 border-t border-slate-200/70 bg-white/50 backdrop-blur-md space-y-1">
             <Link
               to="/"
               className={cn(
-                "flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-xs font-semibold text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition",
+                "group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-500 border border-transparent hover:bg-white hover:text-slate-950 hover:border-slate-200/80 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all duration-150",
                 isCollapsed && "justify-center px-0"
               )}
               title={isCollapsed ? "Back to store" : undefined}
             >
-              <ArrowLeft className="h-4 w-4 shrink-0" />
+              <ArrowLeft className="h-4 w-4 shrink-0 transition-transform duration-150 group-hover:-translate-x-1 group-hover:text-[#E31E24]" />
               {!isCollapsed && <span>Back to store</span>}
             </Link>
           </div>
         </aside>
 
         {/* Right Content Area */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Top Header (Static - does not move up and down on scroll) */}
-          <header className="h-18 bg-white border-b border-[#E5E7EB] px-4 md:px-8 flex items-center justify-between gap-4 shadow-xs z-20">
+        <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+          {/* Top Header (Static - Apple Glassmorphic bar that stays fixed) */}
+          <header className="sticky top-0 z-20 h-18 bg-white/70 backdrop-blur-2xl backdrop-saturate-180 border-b border-slate-200/70 px-4 md:px-8 flex items-center justify-between gap-4 shadow-[0_2px_12px_rgba(15,23,42,0.03)]">
             {/* Left: Mobile hamburger & breadcrumbs */}
             <div className="flex items-center gap-3 min-w-0">
               <button
@@ -581,20 +605,20 @@ export function CustomerLayout({
         </div>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer with Apple Glassmorphic Styling */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden bg-black/50 backdrop-blur-xs">
-          <div className="w-72 bg-white h-full flex flex-col p-5 shadow-2xl animate-in slide-in-from-left duration-200">
-            <div className="relative flex items-center justify-center pb-4 border-b border-gray-100">
+        <div className="fixed inset-0 z-50 flex md:hidden bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-72 bg-white/85 backdrop-blur-2xl backdrop-saturate-180 h-full flex flex-col p-5 shadow-2xl border-r border-white/60 animate-in slide-in-from-left duration-200">
+            <div className="relative flex items-center justify-center pb-4 border-b border-slate-200/50">
               <Logo className="justify-center" imgClassName="h-8.5 w-auto" />
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="absolute right-0 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-gray-400 hover:text-gray-700"
+                className="absolute right-0 top-1/2 -translate-y-1/2 p-1.5 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-white/80 transition"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <nav className="flex-1 overflow-y-auto py-4 space-y-1">
+            <nav className="flex-1 overflow-y-auto py-4 space-y-1.5">
               {navItems.map((item) => {
                 const isActive = activeTab === item.id;
                 return (
@@ -602,21 +626,24 @@ export function CustomerLayout({
                     key={item.id}
                     onClick={() => handleNavClick(item.id)}
                     className={cn(
-                      "flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-medium transition",
+                      "group relative flex w-full items-center justify-between rounded-2xl px-3 py-2.5 text-xs font-medium transition-all duration-200 ease-out",
                       isActive
-                        ? "bg-red-50 text-[#E31E24] font-semibold border-l-3 border-[#E31E24] pl-2.5"
-                        : "text-[#6B7280] hover:bg-gray-50 hover:text-[#111111]"
+                        ? "bg-red-500/10 text-[#E31E24] font-bold border border-red-500/20 shadow-xs"
+                        : "text-slate-600 hover:bg-white/80 hover:text-slate-900 hover:shadow-2xs"
                     )}
                   >
+                    {isActive && (
+                      <span className="absolute left-1.5 top-2 bottom-2 w-1 rounded-full bg-[#E31E24] shadow-[0_0_8px_rgba(227,30,36,0.6)]" />
+                    )}
                     <span className="flex items-center gap-3">
-                      <item.Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-[#E31E24]" : "text-[#6B7280]")} />
-                      <span>{item.label}</span>
+                      <item.Icon className={cn("h-4 w-4 shrink-0 transition", isActive ? "text-[#E31E24]" : "text-slate-500")} />
+                      <span className={cn(isActive && "pl-1.5")}>{item.label}</span>
                     </span>
                     {item.badge && (
                       <span
                         className={cn(
                           "px-2 py-0.5 rounded-full text-[10px] font-bold",
-                          isActive ? "bg-red-100 text-[#E31E24]" : item.badgeColor || "bg-gray-100 text-gray-700"
+                          isActive ? "bg-[#E31E24]/15 text-[#E31E24] border border-[#E31E24]/20" : item.badgeColor || "bg-slate-100 text-slate-700"
                         )}
                       >
                         {item.badge}
@@ -626,10 +653,10 @@ export function CustomerLayout({
                 );
               })}
             </nav>
-            <div className="pt-4 border-t border-gray-100">
+            <div className="pt-4 border-t border-slate-200/50">
               <Link
                 to="/"
-                className="flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-primary transition"
+                className="flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-[#E31E24] transition"
               >
                 <ArrowLeft className="h-4 w-4" /> Back to store
               </Link>
