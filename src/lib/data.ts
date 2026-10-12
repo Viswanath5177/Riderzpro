@@ -46,6 +46,13 @@ export type Product = {
     powerRating?: string;
   };
   verificationStatus?: "pending_approval" | "approved" | "rejected";
+  variantModel?: string;
+  material?: string;
+  fitmentSize?: string;
+  colorOptions?: string[];
+  discountPercent?: number;
+  moq?: number;
+  supplier?: string;
 };
 export type Rider = { id: string; name: string; phone: string; vehicle: string; plate: string; rating: number; avatar: string };
 

@@ -57,18 +57,30 @@ function VendorDash() {
               }
             }
 
+            const desc = row.description || "";
+            const getMeta = (label: string) => {
+              const match = desc.match(new RegExp(`${label}:\\s*([^\\n|]+)`));
+              return match ? match[1].trim() : undefined;
+            };
+
             return {
               id: row.id,
               name: row.name,
               brand: "Riderzpro Certified",
-              category: row.category_name || "Accessory",
+              category: (row.category_name as any) || "Car Accessories",
               image: primaryImg,
               warrantyMonths: 24,
               weightKg: 5,
-              fits: ["ola-s1pro", "ather-450x"],
-              description: row.description || "",
+              fits: ["tata-nexon-ev", "ola-s1pro"],
+              description: desc,
               offers: [{ vendorId: "v1", price: Number(row.price), stock: Number(row.stock) }],
               verificationStatus: row.verification_status || "pending_approval",
+              variantModel: getMeta("Variant / Model"),
+              material: getMeta("Type / Material"),
+              fitmentSize: getMeta("Fitment / Size"),
+              moq: Number(getMeta("MOQ")) || 1,
+              supplier: getMeta("Supplier"),
+              colorOptions: getMeta("Colours")?.split(",").map((s: string) => s.trim()),
             };
           });
           setVendorProducts(dbProducts);
@@ -199,7 +211,14 @@ function VendorDash() {
                           />
                           <div>
                             <span className="font-semibold block">{p.name}</span>
-                            <span className="text-xs text-muted-foreground">{p.brand}</span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-xs text-muted-foreground">{p.brand}</span>
+                              {p.variantModel && (
+                                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.2 rounded font-medium">
+                                  {p.variantModel}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
 
