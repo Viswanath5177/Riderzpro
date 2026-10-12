@@ -109,7 +109,7 @@ export function CustomerLayout({
   const cartCount = cart.reduce((s, c) => s + c.qty, 0);
 
   const navItems: Array<{
-    id: CustomerTab | "assistant";
+    id: CustomerTab;
     label: string;
     Icon: any;
     badge?: string;
@@ -120,14 +120,6 @@ export function CustomerLayout({
       id: "overview",
       label: "Overview",
       Icon: LayoutGrid,
-    },
-    {
-      id: "assistant",
-      label: "AI Fitment Assistant",
-      Icon: Sparkles,
-      badge: "Volt",
-      badgeColor: "bg-[#E31E24] text-white",
-      to: "/assistant",
     },
     {
       id: "shop",
@@ -325,12 +317,12 @@ export function CustomerLayout({
         {/* Desktop Left Sidebar (Static Container Pinned to Viewport) */}
         <aside
           className={cn(
-            "hidden md:flex flex-col bg-white border-r border-[#E5E7EB] shadow-xs transition-all duration-300 z-30 shrink-0 select-none sticky top-0 h-screen",
+            "hidden md:flex flex-col bg-white/80 backdrop-blur-xl backdrop-saturate-150 border-r border-black/[0.06] shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 z-30 shrink-0 select-none sticky top-0 h-screen",
             isCollapsed ? "w-20" : "w-64"
           )}
         >
           {/* Logo & Header */}
-          <div className="relative h-18 flex items-center justify-center px-4 border-b border-[#E5E7EB]">
+          <div className="relative h-18 flex items-center justify-center px-4 border-b border-black/[0.06]">
             {!isCollapsed ? (
               <div className="flex items-center justify-center">
                 <Logo className="justify-center" imgClassName="h-9 w-auto" />
@@ -346,7 +338,7 @@ export function CustomerLayout({
               onClick={() => setIsCollapsed(!isCollapsed)}
               aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               className={cn(
-                "hidden lg:grid h-7 w-7 place-items-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition absolute top-1/2 -translate-y-1/2",
+                "hidden lg:grid h-7 w-7 place-items-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-black/[0.05] transition absolute top-1/2 -translate-y-1/2",
                 isCollapsed ? "right-1.5" : "right-3"
               )}
             >
@@ -363,20 +355,20 @@ export function CustomerLayout({
                   key={item.id}
                   onClick={() => handleNavClick(item)}
                   className={cn(
-                    "relative flex w-full items-center gap-3.5 rounded-xl px-3.5 py-2.5 text-xs font-medium transition group",
+                    "relative flex w-full items-center gap-3.5 rounded-xl px-3.5 py-2.5 text-xs font-medium transition-all duration-200 group active:scale-[0.98]",
                     isActive
-                      ? "bg-[#FFF0F0] text-[#E31E24] font-bold"
-                      : "text-[#4B5563] hover:bg-gray-100/70 hover:text-[#111111]",
+                      ? "bg-[#E31E24]/[0.08] text-[#E31E24] font-bold shadow-2xs backdrop-blur-sm"
+                      : "text-[#4B5563] hover:bg-black/[0.04] hover:text-[#111111]",
                     isCollapsed && "justify-center px-0"
                   )}
                   title={isCollapsed ? item.label : undefined}
                 >
                   {isActive && (
-                    <span className="absolute left-0 top-1.5 bottom-1.5 w-1.5 rounded-r-full bg-[#E31E24]" />
+                    <span className="absolute left-0 top-1.5 bottom-1.5 w-1.5 rounded-r-full bg-[#E31E24] shadow-[0_0_8px_rgba(227,30,36,0.35)]" />
                   )}
                   <item.Icon
                     className={cn(
-                      "h-4.5 w-4.5 shrink-0 transition",
+                      "h-4.5 w-4.5 shrink-0 transition-transform duration-200 group-hover:scale-105",
                       isActive ? "text-[#E31E24]" : "text-[#6B7280] group-hover:text-[#111111]"
                     )}
                   />
@@ -386,10 +378,10 @@ export function CustomerLayout({
                       {item.badge && (
                         <span
                           className={cn(
-                            "px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-tight",
+                            "px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-tight transition-colors",
                             isActive
-                              ? "bg-red-100 text-[#E31E24]"
-                              : item.badgeColor || "bg-gray-100 text-gray-700"
+                              ? "bg-[#E31E24]/15 text-[#E31E24]"
+                              : item.badgeColor || "bg-black/[0.05] text-gray-700 group-hover:bg-black/[0.08]"
                           )}
                         >
                           {item.badge}
@@ -405,13 +397,13 @@ export function CustomerLayout({
 
         {/* Right Content Area */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Top Header (Static Section) */}
-          <header className="sticky top-0 z-20 h-18 bg-white border-b border-[#E5E7EB] px-4 md:px-8 flex items-center justify-between gap-4 shadow-2xs">
+          {/* Top Header (Apple Glassmorphic Theme) */}
+          <header className="sticky top-0 z-20 h-18 bg-white/75 backdrop-blur-xl backdrop-saturate-150 border-b border-black/[0.06] px-4 md:px-8 flex items-center justify-between gap-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] transition-all">
             {/* Left: Mobile hamburger & breadcrumbs */}
             <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="md:hidden p-2 rounded-xl text-gray-700 hover:bg-gray-100 active:scale-95 transition"
+                className="md:hidden p-2 rounded-xl text-gray-700 hover:bg-black/[0.05] active:scale-95 transition"
                 aria-label="Open navigation menu"
               >
                 <Menu className="h-5 w-5" />
@@ -429,28 +421,28 @@ export function CustomerLayout({
               </div>
             </div>
 
-            {/* Center: Command Search Bar */}
+            {/* Center: Command Search Bar (Spotlight Glass) */}
             <div className="flex-1 max-w-md hidden md:block">
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="w-full flex items-center justify-between px-4 py-2 rounded-full bg-[#F5F6F8] hover:bg-white text-sm text-gray-700 transition shadow-2xs group border border-[#E5E7EB] hover:border-gray-300"
+                className="w-full flex items-center justify-between px-4 py-2 rounded-full bg-black/[0.03] hover:bg-black/[0.06] active:scale-[0.99] text-sm text-gray-700 transition-all duration-200 shadow-2xs group border border-black/[0.06] hover:border-black/[0.12]"
               >
                 <span className="flex items-center gap-2.5">
-                  <Search className="h-4 w-4 text-gray-400 group-hover:text-primary transition" />
+                  <Search className="h-4 w-4 text-gray-400 group-hover:text-[#E31E24] transition-colors" />
                   <span className="text-xs text-gray-500 font-normal">Search EV batteries, chargers, fitments...</span>
                 </span>
-                <kbd className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono text-gray-400 bg-white border border-[#E5E7EB] rounded-md shadow-2xs">
+                <kbd className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono text-gray-500 bg-white/80 border border-black/[0.08] rounded-md shadow-2xs">
                   ⌘K
                 </kbd>
               </button>
             </div>
 
-            {/* Right: Actions, Search by VIN, AI Assistant, Notifications, Cart, Avatar */}
+            {/* Right: Actions, Search by VIN, Notifications, Cart, Avatar */}
             <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-              {/* Search by VIN Button in Navbar */}
+              {/* Search by VIN Button */}
               <button
                 onClick={() => setIsVinSearchOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-emerald-400/80 bg-white hover:bg-emerald-50 text-xs font-semibold text-emerald-700 transition active:scale-95 shadow-2xs"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/[0.08] hover:bg-emerald-500/[0.16] hover:border-emerald-500/40 text-xs font-semibold text-emerald-800 transition-all duration-200 active:scale-95 shadow-2xs"
                 title="Search items based on 17-digit VIN number"
               >
                 <ScanLine className="h-3.5 w-3.5 text-emerald-600" />
@@ -461,40 +453,30 @@ export function CustomerLayout({
               {/* Mobile Search trigger */}
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="md:hidden p-2 rounded-xl text-gray-700 hover:bg-gray-100 transition"
+                className="md:hidden p-2 rounded-xl text-gray-700 hover:bg-black/[0.05] transition"
                 aria-label="Search products"
               >
                 <Search className="h-5 w-5" />
               </button>
 
-              {/* AI Assistant Button */}
-              <Link
-                to="/assistant"
-                className="flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50/70 hover:bg-red-100/70 px-3.5 py-1.5 text-xs font-semibold text-[#E31E24] transition shadow-2xs active:scale-95"
-              >
-                <Sparkles className="h-3.5 w-3.5 text-[#E31E24]" />
-                <span className="hidden sm:inline">AI Assistant</span>
-                <span className="sm:hidden font-bold">AI</span>
-              </Link>
-
               {/* Notifications Button on Top Right with Badge & Popover */}
               <div className="relative">
                 <button
                   onClick={() => setIsNotifOpen(!isNotifOpen)}
-                  className="relative p-2 rounded-full text-gray-700 hover:bg-gray-100 active:scale-95 transition"
+                  className="relative p-2.5 rounded-full bg-black/[0.03] hover:bg-black/[0.07] text-gray-700 active:scale-90 transition-all duration-200"
                   aria-label="Notifications"
                   title="Notifications"
                 >
-                  <Bell className="h-5 w-5 text-gray-700" />
+                  <Bell className="h-4.5 w-4.5 text-gray-700" />
                   {unreadNotifsCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 px-1 place-items-center rounded-full bg-[#E31E24] text-[9.5px] font-bold text-white ring-2 ring-white">
+                    <span className="absolute -top-0.5 -right-0.5 grid h-4.5 min-w-4.5 px-1 place-items-center rounded-full bg-[#E31E24] text-[9.5px] font-bold text-white shadow-xs ring-2 ring-white">
                       {unreadNotifsCount}
                     </span>
                   )}
                 </button>
 
                 {isNotifOpen && (
-                  <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-3xl bg-white border border-gray-200 shadow-2xl p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-3xl bg-white/90 backdrop-blur-2xl border border-black/[0.08] shadow-[0_20px_50px_rgba(0,0,0,0.12)] p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
                     <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                       <div>
                         <p className="text-sm font-bold text-gray-900">Notifications</p>
@@ -555,13 +537,13 @@ export function CustomerLayout({
               {/* Cart Button to Open Cart */}
               <Link
                 to="/cart"
-                className="relative p-2 rounded-full text-gray-700 hover:bg-gray-100 active:scale-95 transition"
+                className="relative p-2.5 rounded-full bg-black/[0.03] hover:bg-black/[0.07] text-gray-700 active:scale-90 transition-all duration-200"
                 aria-label="Shopping Cart"
                 title="Open Shopping Cart"
               >
-                <ShoppingCart className="h-5 w-5 text-gray-700" />
+                <ShoppingCart className="h-4.5 w-4.5 text-gray-700" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 px-1 place-items-center rounded-full bg-[#E31E24] text-[9.5px] font-bold text-white ring-2 ring-white">
+                  <span className="absolute -top-0.5 -right-0.5 grid h-4.5 min-w-4.5 px-1 place-items-center rounded-full bg-[#E31E24] text-[9.5px] font-bold text-white shadow-xs ring-2 ring-white">
                     {cartCount}
                   </span>
                 )}
@@ -571,10 +553,10 @@ export function CustomerLayout({
               <div className="relative">
                 <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center gap-2 p-0.5 rounded-full hover:ring-2 hover:ring-red-200 transition active:scale-95"
+                  className="flex items-center p-0.5 rounded-full hover:ring-2 hover:ring-[#E31E24]/30 active:scale-95 transition-all duration-200"
                   aria-label="Account menu"
                 >
-                  <span className="grid h-8.5 w-8.5 place-items-center rounded-full bg-[#E31E24] text-white font-bold text-xs shadow-xs">
+                  <span className="grid h-8.5 w-8.5 place-items-center rounded-full bg-gradient-to-tr from-[#E31E24] to-[#f43f45] text-white font-bold text-xs shadow-xs">
                     {userProfile.name
                       .split(" ")
                       .map((n) => n[0])
@@ -584,7 +566,7 @@ export function CustomerLayout({
                 </button>
 
                 {isProfileOpen && (
-                  <div className="absolute right-0 mt-2 w-64 rounded-3xl bg-white border border-gray-200 shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="absolute right-0 mt-2 w-64 rounded-3xl bg-white/90 backdrop-blur-2xl border border-black/[0.08] shadow-[0_20px_50px_rgba(0,0,0,0.12)] p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
                     <div className="px-3 py-2.5 border-b border-gray-100">
                       <p className="text-sm font-bold text-gray-900 truncate">{userProfile.name}</p>
                       <p className="text-xs text-gray-500 truncate">{userProfile.email}</p>
