@@ -170,16 +170,16 @@ function CustomerLogin() {
           </div>
 
           {/* Visual Showcase Banner */}
-          <div className="relative h-36 w-full rounded-2xl overflow-hidden bg-black mb-5 shadow-2xs">
+          <div className="relative h-36 w-full rounded-2xl overflow-hidden bg-gradient-to-br from-[#7F1D1D] via-[#991B1B] to-[#E31E24] mb-5 shadow-2xs border border-red-200/50">
             <img
               src={evShowcaseImg}
               alt="Electric Vehicle Motorcycle"
-              className="absolute inset-0 h-full w-full object-cover opacity-60"
+              className="absolute inset-0 h-full w-full object-cover opacity-55 mix-blend-luminosity"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#7F1D1D]/95 via-[#7F1D1D]/40 to-transparent" />
             <div className="relative z-10 h-full flex flex-col justify-between p-3.5">
-              <span className="self-start px-2 py-0.5 rounded-full bg-white/15 backdrop-blur-md text-[10px] font-semibold text-white flex items-center gap-1.5 border border-white/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#E31E24] animate-pulse" />
+              <span className="self-start px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-bold text-white flex items-center gap-1.5 border border-white/25">
+                <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                 EV Mobility & Service
               </span>
               <div>

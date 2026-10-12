@@ -105,74 +105,79 @@ export function OverviewTab({
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          2. VEHICLE HERO CARD (Mobile Native App Style)
+          2. VEHICLE HERO CARD (Mobile Native App Style - Matching Brand Colors)
          ───────────────────────────────────────────────────────────── */}
       {garage.length > 0 && activeBike ? (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#111317] via-[#1A1D24] to-[#0D0F12] p-4.5 sm:p-5 text-white shadow-sm border border-gray-800">
-          <div className="flex items-start justify-between gap-3">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#E31E24] via-[#DC2626] to-[#B91C1C] p-4.5 sm:p-5 text-white shadow-md">
+          {/* Subtle ambient light glow */}
+          <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10 blur-xl pointer-events-none" />
+
+          <div className="relative z-10 flex items-start justify-between gap-3">
             <div>
-              <span className="inline-block px-2 py-0.5 rounded-md bg-red-500/20 border border-red-500/30 text-[#E31E24] text-[10px] font-bold uppercase tracking-wider">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider border border-white/20">
+                <Bike className="h-3 w-3" />
                 Connected Vehicle
               </span>
-              <h2 className="text-lg sm:text-xl font-black text-white mt-1">
+              <h2 className="text-xl sm:text-2xl font-black text-white mt-1.5 tracking-tight font-display">
                 {activeBike.nickname || `${activeBikeMeta?.make} ${activeBikeMeta?.model}`}
               </h2>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <p className="text-xs text-red-100 mt-0.5 font-medium">
                 {activeBikeMeta?.voltage}V Architecture · {activeBike.odoKm ? `${activeBike.odoKm} km` : "Ready to ride"}
               </p>
             </div>
 
             <div className="text-right shrink-0">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
-                <Zap className="h-3.5 w-3.5" />
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold border border-white/25">
+                <Zap className="h-3.5 w-3.5 fill-white" />
                 {activeBike.batteryHealth || 98}% Health
               </span>
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-white/10 grid grid-cols-3 gap-2">
+          <div className="relative z-10 mt-4 pt-3 border-t border-white/20 grid grid-cols-3 gap-2">
             <button
               onClick={onOpenBookingModal}
-              className="py-2 px-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold text-center transition active:scale-95 flex items-center justify-center gap-1"
+              className="py-2 px-2.5 rounded-xl bg-white text-[#E31E24] hover:bg-red-50 text-xs font-bold text-center transition active:scale-95 flex items-center justify-center gap-1 shadow-xs cursor-pointer"
             >
-              <Wrench className="h-3.5 w-3.5 text-[#E31E24]" />
+              <Wrench className="h-3.5 w-3.5" />
               <span>Service</span>
             </button>
             <button
               onClick={() => onTabChange("shop")}
-              className="py-2 px-2.5 rounded-xl bg-[#E31E24] hover:bg-red-700 text-white text-xs font-bold text-center transition active:scale-95 flex items-center justify-center gap-1 shadow-xs"
+              className="py-2 px-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold text-center transition active:scale-95 flex items-center justify-center gap-1 border border-white/25 cursor-pointer"
             >
               <ShoppingBag className="h-3.5 w-3.5" />
               <span>Parts</span>
             </button>
             <button
               onClick={() => onTabChange("garage")}
-              className="py-2 px-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-bold text-center transition active:scale-95"
+              className="py-2 px-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold text-center transition active:scale-95 cursor-pointer"
             >
               Garage
             </button>
           </div>
         </div>
       ) : (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 to-black p-4.5 sm:p-5 text-white shadow-sm border border-gray-800">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-50 via-white to-red-50/40 p-4.5 sm:p-5 border border-red-200/90 shadow-2xs">
           <div className="flex items-center justify-between gap-4">
             <div className="space-y-1">
-              <span className="inline-block px-2 py-0.5 rounded-md bg-red-500/20 text-[#E31E24] text-[10px] font-bold uppercase tracking-wider">
-                My Garage
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-100 text-[#E31E24] text-[10px] font-bold uppercase tracking-wider">
+                <Bike className="h-3 w-3" />
+                My EV Garage
               </span>
-              <h3 className="text-base sm:text-lg font-bold text-white">
+              <h3 className="text-base sm:text-lg font-black text-gray-900 tracking-tight">
                 Add your EV scooter or bike
               </h3>
-              <p className="text-xs text-gray-400 max-w-xs">
-                Unlock 100% verified fitment spares, battery diagnostics, and doorstep care.
+              <p className="text-xs text-gray-600 max-w-xs leading-relaxed">
+                Select your vehicle to get 100% verified fitment spares, battery diagnostics, and doorstep care.
               </p>
             </div>
             <button
               onClick={handleAddBikeClick}
-              className="shrink-0 px-3.5 py-2 rounded-xl bg-[#E31E24] hover:bg-red-700 text-white text-xs font-bold transition active:scale-95 shadow-xs flex items-center gap-1"
+              className="shrink-0 px-4 py-2.5 rounded-xl bg-[#E31E24] hover:bg-red-700 text-white text-xs font-bold transition active:scale-95 shadow-xs flex items-center gap-1.5 cursor-pointer"
             >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Add EV</span>
+              <Plus className="h-4 w-4" />
+              <span>Add Vehicle</span>
             </button>
           </div>
         </div>
