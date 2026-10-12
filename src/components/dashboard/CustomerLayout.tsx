@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   Bike,
   Heart,
@@ -40,6 +40,7 @@ import { VinSearchModal } from "./VinSearchModal";
 
 export type CustomerTab =
   | "overview"
+  | "shop"
   | "garage"
   | "orders"
   | "tracking"
@@ -103,8 +104,6 @@ export function CustomerLayout({
     );
   }, [searchQuery]);
 
-  const navigate = useNavigate();
-
   const navItems = [
     {
       id: "overview" as CustomerTab,
@@ -112,7 +111,7 @@ export function CustomerLayout({
       Icon: LayoutGrid,
     },
     {
-      id: "shop" as any,
+      id: "shop" as CustomerTab,
       label: "Shop Bikes & Parts",
       Icon: ShoppingBag,
     },
@@ -177,12 +176,7 @@ export function CustomerLayout({
     },
   ];
 
-  const handleNavClick = (tabId: CustomerTab | "shop") => {
-    if (tabId === "shop") {
-      navigate({ to: "/shop" });
-      setIsMobileMenuOpen(false);
-      return;
-    }
+  const handleNavClick = (tabId: CustomerTab) => {
     onTabChange(tabId);
     setIsMobileMenuOpen(false);
   };
@@ -191,6 +185,8 @@ export function CustomerLayout({
     switch (activeTab) {
       case "overview":
         return "Dashboard Overview";
+      case "shop":
+        return "Shop Bikes & Parts";
       case "garage":
         return "My Registered EV Garage";
       case "orders":
