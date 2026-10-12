@@ -52,6 +52,7 @@ export function OverviewTab({
     activeBikeId,
     setActiveBikeId,
     orders,
+    shipments,
     advanceOrder,
     simulateDemoOrder,
     addToCart,
@@ -70,9 +71,10 @@ export function OverviewTab({
   const totalSpent = orders.reduce((s, o) => s + o.total, 0);
   const liveOrder = orders.find((o) => o.status < 5);
   const activeOrdersCount = orders.filter((o) => o.status < 5).length;
-  const upcomingServices = serviceBookings.filter(
-    (s) => s.status === "Confirmed" || s.status === "In progress"
-  );
+  const processingOrdersCount = orders.filter((o) => o.status === 0 || o.status === 1).length;
+  const inTransitCount = shipments.filter((s) => s.status === "In Transit" || s.status === "Out for Delivery").length;
+  const deliveredCount = orders.filter((o) => o.status === 5).length;
+  const activeShipment = shipments.find((s) => s.status !== "Delivered" && s.status !== "Cancelled") || shipments[0];
 
   // Recommended products verified for customer's active bike
   const compatibleProducts = products
@@ -179,26 +181,49 @@ export function OverviewTab({
             </p>
           </div>
           <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
-            <span>View order history</span>
+            <span>View all orders</span>
             <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
           </div>
         </div>
 
-        {/* Card 2: Active Shipments */}
+        {/* Card 2: Orders Being Processed */}
         <div
           onClick={() => onTabChange("orders")}
           className="group rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-sm hover:border-[#E31E24] cursor-pointer transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Active Shipments</span>
+            <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Being Processed</span>
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-50 text-amber-700 group-hover:scale-105 transition">
+              <Clock className="h-4 w-4" />
+            </span>
+          </div>
+          <div className="mt-3">
+            <p className="text-3xl font-extrabold text-amber-700 font-display leading-none">{processingOrdersCount}</p>
+            <p className="text-xs text-[#6B7280] mt-1">
+              {processingOrdersCount > 0 ? "Supplier packing & verification" : "Zero orders awaiting processing"}
+            </p>
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
+            <span>Fulfillment queue</span>
+            <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
+          </div>
+        </div>
+
+        {/* Card 3: Shipments in Transit */}
+        <div
+          onClick={() => onTabChange("tracking")}
+          className="group rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-sm hover:border-[#E31E24] cursor-pointer transition-all flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Shipments in Transit</span>
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-red-50 text-[#E31E24] group-hover:scale-105 transition">
               <Truck className="h-4 w-4" />
             </span>
           </div>
           <div className="mt-3">
-            <p className="text-3xl font-extrabold text-[#E31E24] font-display leading-none">{activeOrdersCount}</p>
+            <p className="text-3xl font-extrabold text-[#E31E24] font-display leading-none">{inTransitCount}</p>
             <p className="text-xs text-[#6B7280] mt-1">
-              {activeOrdersCount > 0 ? `${activeOrdersCount} live in courier transit` : "No shipments currently in transit"}
+              {inTransitCount > 0 ? `${inTransitCount} active courier dispatches` : "No consignments in transit"}
             </p>
           </div>
           <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
@@ -207,7 +232,7 @@ export function OverviewTab({
           </div>
         </div>
 
-        {/* Card 3: Delivered Orders */}
+        {/* Card 4: Delivered Orders */}
         <div
           onClick={() => onTabChange("orders")}
           className="group rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-sm hover:border-[#E31E24] cursor-pointer transition-all flex flex-col justify-between"
@@ -220,35 +245,14 @@ export function OverviewTab({
           </div>
           <div className="mt-3">
             <p className="text-3xl font-extrabold text-emerald-700 font-display leading-none">
-              {orders.filter((o) => o.status === 5).length}
+              {deliveredCount}
             </p>
             <p className="text-xs text-[#6B7280] mt-1">
               Verified doorstep handovers
             </p>
           </div>
           <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
-            <span>Delivered packages</span>
-            <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
-          </div>
-        </div>
-
-        {/* Card 4: Total Spending */}
-        <div
-          onClick={() => onTabChange("invoices")}
-          className="group rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-sm hover:border-[#E31E24] cursor-pointer transition-all flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Total Spending</span>
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-gray-100 text-[#111111] group-hover:bg-red-50 group-hover:text-[#E31E24] transition">
-              <Wallet className="h-4 w-4" />
-            </span>
-          </div>
-          <div className="mt-3">
-            <p className="text-3xl font-extrabold text-[#111111] font-display leading-none">{inr(totalSpent)}</p>
-            <p className="text-xs text-[#6B7280] mt-1">Lifetime spending on parts & spares</p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
-            <span>Invoices & tax receipts</span>
+            <span>Delivered history</span>
             <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
           </div>
         </div>
@@ -448,6 +452,37 @@ export function OverviewTab({
                   <span className="font-bold text-gray-900">{inr(liveOrder.total)}</span>
                 </div>
               </div>
+
+              {/* Active Shipment Telemetry & Latest Checkpoint Widget */}
+              {activeShipment && (
+                <div
+                  onClick={() => onTabChange("tracking")}
+                  className="p-3.5 rounded-2xl bg-red-50/50 border border-red-200/80 hover:bg-red-50 cursor-pointer transition flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#E31E24] text-white shrink-0">
+                      <Truck className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <p className="font-bold text-[#111111]">
+                        {activeShipment.provider} Courier · AWB {activeShipment.trackingNumber}
+                      </p>
+                      <p className="text-[11px] text-[#6B7280]">
+                        Latest Checkpoint: <span className="font-semibold text-gray-900">{activeShipment.latestLocation}</span> ({activeShipment.lastEventTimestamp})
+                      </p>
+                    </div>
+                  </div>
+                  <div className="sm:text-right shrink-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#E31E24] bg-white px-2 py-0.5 rounded border border-red-200">
+                      {activeShipment.estimatedDelivery}
+                    </span>
+                    <p className="text-[11px] font-semibold text-[#E31E24] mt-1 flex items-center sm:justify-end gap-1">
+                      <span>Inspect consignment</span>
+                      <ChevronRight className="h-3 w-3" />
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Horizontal Progress Timeline */}
               <div className="pt-2">

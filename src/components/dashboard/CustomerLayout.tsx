@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Bike,
   Heart,
@@ -107,6 +107,8 @@ export function CustomerLayout({
     );
   }, [searchQuery]);
 
+  const navigate = useNavigate();
+
   const navItems = [
     {
       id: "overview" as CustomerTab,
@@ -114,10 +116,9 @@ export function CustomerLayout({
       Icon: LayoutGrid,
     },
     {
-      id: "garage" as CustomerTab,
-      label: "My Garage",
-      Icon: Bike,
-      badge: `${garage.length}`,
+      id: "shop" as any,
+      label: "Shop Bikes & Parts",
+      Icon: ShoppingBag,
     },
     {
       id: "orders" as CustomerTab,
@@ -137,6 +138,12 @@ export function CustomerLayout({
       label: "Saved Items",
       Icon: Heart,
       badge: savedProductIds.length > 0 ? `${savedProductIds.length}` : undefined,
+    },
+    {
+      id: "garage" as CustomerTab,
+      label: "My Garage",
+      Icon: Bike,
+      badge: `${garage.length}`,
     },
     {
       id: "service" as CustomerTab,
@@ -174,7 +181,12 @@ export function CustomerLayout({
     },
   ];
 
-  const handleNavClick = (tabId: CustomerTab) => {
+  const handleNavClick = (tabId: CustomerTab | "shop") => {
+    if (tabId === "shop") {
+      navigate({ to: "/shop" });
+      setIsMobileMenuOpen(false);
+      return;
+    }
     onTabChange(tabId);
     setIsMobileMenuOpen(false);
   };

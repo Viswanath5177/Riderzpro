@@ -37,6 +37,7 @@ const storeCategories: NavCategory[] = [
   { label: "Electric Bikes", to: "/shop", search: "Electric Bikes" },
   { label: "Car Accessories", to: "/shop", search: "Car Accessories" },
   { label: "Bike Accessories", to: "/shop", search: "Bike Accessories" },
+  { label: "Riding Gear & Helmets", to: "/shop", search: "Riding Gear & Helmets" },
   { label: "Spare Parts", to: "/shop", search: "Spare Parts" },
   { label: "Batteries & Chargers", to: "/shop", search: "Battery" },
   { label: "Offers", to: "/dashboard/customer", isOffers: true },

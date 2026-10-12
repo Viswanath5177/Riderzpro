@@ -19,6 +19,7 @@ export type Category =
   | "Electric Bikes"
   | "Car Accessories"
   | "Bike Accessories"
+  | "Riding Gear & Helmets"
   | "Spare Parts";
 export type Product = {
   id: string;
@@ -85,6 +86,10 @@ const seeds: Seed[] = [
   { name: "Waterproof Handlebar Phone Mount with 15W Qi Fast Charging", brand: "Bobo Auto", category: "Bike Accessories", image: img.pt, warrantyMonths: 12, weightKg: 0.35, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "Aluminum alloy vibration damper with IP66 wireless fast-charging pad and USB-C port.", base: 2199, vendors: ["v1", "v2", "v5"] },
   { name: "Brembo Ceramic Sintered Brake Pads (Front + Rear)", brand: "Brembo", category: "Spare Parts", image: img.pt, warrantyMonths: 6, weightKg: 0.4, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "hero-vida-v1"], description: "High-friction ceramic sintered brake pads for quiet, fade-free braking.", base: 1650, vendors: ["v1", "v3", "v6"] },
   { name: "Gates Carbon Drive High-Tensile Kevlar Belt", brand: "Gates Auto", category: "Spare Parts", image: img.pt, warrantyMonths: 12, weightKg: 0.3, fits: ["ather-450x", "revolt-rv400"], description: "Polyurethane and carbon tensile cord belt designed for instantaneous EV torque.", base: 4200, vendors: ["v2", "v4", "v6"] },
+  { name: "SMK Titan Carbon ECE 22.06 Smart Bluetooth Helmet", brand: "SMK Helmets", category: "Riding Gear & Helmets", image: img.pt, warrantyMonths: 24, weightKg: 1.45, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "ECE 22.06 certified composite carbon fiber shell with integrated Sena Bluetooth speakers and pinlock visor.", base: 11999, vendors: ["v1", "v2", "v6"] },
+  { name: "Rynox Air GT4 All-Weather Armored Riding Jacket", brand: "Rynox Gear", category: "Riding Gear & Helmets", image: img.pt, warrantyMonths: 12, weightKg: 1.8, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "CE Level 2 Safe-Tech armors at shoulders, elbows and back with 3D mesh ventilation and rain liner.", base: 7250, vendors: ["v1", "v3", "v4"] },
+  { name: "ViaTerra Holeshot Carbon Knuckle Touchscreen Gloves", brand: "ViaTerra Gear", category: "Riding Gear & Helmets", image: img.pt, warrantyMonths: 6, weightKg: 0.25, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "Perforated goat skin leather with molded carbon fiber knuckle guards and capacitive smartphone touch fingertips.", base: 2899, vendors: ["v2", "v5", "v6"] },
+  { name: "Motul Motocool Expert EV Organic Coolant 1L", brand: "Motul", category: "Spare Parts", image: img.pt, warrantyMonths: 24, weightKg: 1.1, fits: ["ola-s1pro", "ather-450x"], description: "Hybrid organic coolant engineered for electric motor and stator thermal management down to -37°C.", base: 650, vendors: ["v1", "v2", "v3", "v4"] },
 ];
 
 export const products: Product[] = seeds.map((s, i) => {
