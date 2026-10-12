@@ -1,0 +1,186 @@
+/* ==========================================================================
+   VoltFit Design System Tokens - Light Apple Glassmorphism
+   ========================================================================== */
+
+:root {
+  /* Canvas & Mesh Gradient Base */
+  --bg-base: #eaf0fb;
+  --mesh-blue: #bcd6ff;
+  --mesh-peach: #ffd9c2;
+  --mesh-mint: #c9f2e0;
+  --mesh-lavender: #e3d4ff;
+
+  /* Typography */
+  --font-system: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Menlo", "Courier New", monospace;
+
+  /* Colors */
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-tertiary: #86868b;
+  --hairline: rgba(60, 60, 67, 0.12);
+  --hairline-strong: rgba(60, 60, 67, 0.20);
+  --glass-border: rgba(255, 255, 255, 0.75);
+  --glass-border-selected: rgba(0, 122, 255, 0.45);
+
+  /* Apple Accent Colors */
+  --accent-blue: #007aff;
+  --accent-blue-tint: rgba(0, 122, 255, 0.12);
+  --accent-blue-hover: #0062cc;
+
+  /* Semantic Palettes */
+  --success-green: #34c759;
+  --success-green-tint: rgba(52, 199, 89, 0.14);
+  --warning-orange: #ff9500;
+  --warning-orange-tint: rgba(255, 149, 0, 0.14);
+  --danger-red: #ff3b30;
+  --danger-red-tint: rgba(255, 59, 48, 0.14);
+  --indigo-purple: #5856d6;
+  --indigo-purple-tint: rgba(88, 86, 214, 0.14);
+  --teal: #30b0c7;
+  --teal-tint: rgba(48, 176, 199, 0.14);
+
+  /* Glass Surface Specifications */
+  --glass-bg: rgba(255, 255, 255, 0.62);
+  --glass-bg-hover: rgba(255, 255, 255, 0.75);
+  --glass-bg-selected: rgba(255, 255, 255, 0.88);
+  --glass-bg-opaque: rgba(255, 255, 255, 0.94);
+  --glass-blur: 26px;
+  --glass-saturate: 180%;
+  --glass-shadow: 0 10px 34px rgba(40, 60, 120, 0.10);
+  --glass-shadow-lg: 0 18px 48px rgba(30, 50, 110, 0.14);
+  --glass-shadow-sm: 0 4px 16px rgba(40, 60, 120, 0.06);
+  --inner-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+
+  /* Radii */
+  --radius-card: 22px;
+  --radius-modal: 26px;
+  --radius-btn: 12px;
+  --radius-input: 12px;
+  --radius-pill: 9999px;
+  --radius-tabbar: 28px;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-smooth: 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-spring: 350ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Layout Breakpoints */
+  --sidebar-width: 260px;
+  --mobile-breakpoint: 900px;
+}
+
+/* CSS Reset & Base */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  font-family: var(--font-system);
+  font-size: 15px;
+  color: var(--text-primary);
+  line-height: 1.45;
+  background-color: var(--bg-base);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Soft Pastel Mesh Gradient Canvas Background */
+.mesh-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  background-color: var(--bg-base);
+  background-image: 
+    radial-gradient(at 15% 15%, var(--mesh-blue) 0px, transparent 55%),
+    radial-gradient(at 85% 10%, var(--mesh-peach) 0px, transparent 50%),
+    radial-gradient(at 80% 85%, var(--mesh-mint) 0px, transparent 55%),
+    radial-gradient(at 10% 85%, var(--mesh-lavender) 0px, transparent 55%),
+    radial-gradient(at 50% 50%, rgba(255, 255, 255, 0.8) 0px, transparent 65%);
+  filter: blur(40px);
+  pointer-events: none;
+  transform: translateZ(0);
+}
+
+/* Fallback for browsers without backdrop-filter support */
+@supports not ((-webkit-backdrop-filter: blur(20px)) or (backdrop-filter: blur(20px))) {
+  :root {
+    --glass-bg: rgba(255, 255, 255, 0.88);
+    --glass-bg-hover: rgba(255, 255, 255, 0.94);
+    --glass-bg-selected: #ffffff;
+  }
+}
+
+/* Tabular Numerals for Currency & Timers */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Typography Hierarchy */
+h1, .text-title-large {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+h2, .text-title-medium {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+}
+
+h3, .text-section-title {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.text-body {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-caption {
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.text-caption-bold {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
