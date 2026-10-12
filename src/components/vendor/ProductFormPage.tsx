@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { 
-  ArrowLeft, Check, Database, Copy, CheckCheck, Car as CarIcon, Bike as BikeIcon, 
+  ArrowLeft, Check, Car as CarIcon, Bike as BikeIcon, 
   Sparkles, Upload, Trash2, Image as ImageIcon, Loader2, AlertCircle, ShieldCheck
 } from "lucide-react";
 import { toast } from "sonner";
@@ -52,7 +52,6 @@ export function ProductFormPage({ product, onCancel, onSuccess }: ProductFormPag
 
   // Saving State
   const [isSaving, setIsSaving] = useState(false);
-  const [copiedSql, setCopiedSql] = useState(false);
 
   // Prepopulate on edit
   useEffect(() => {
@@ -216,44 +215,10 @@ export function ProductFormPage({ product, onCancel, onSuccess }: ProductFormPag
     setFits(all);
   };
 
-  // Generate SQL statement for developer reference & visual DB transparency
   const prodId = product ? product.id : `prod_${Math.random().toString(36).substring(2, 10)}`;
   const categoryId = category === "Battery" ? "cat_batteries" : "cat_accessories";
   const primaryImageUrl = images[0]?.dataUrl || "/src/assets/battery-1.jpg";
   const allImagesJson = JSON.stringify(images.map(img => img.dataUrl));
-
-  const generatedSql = isEdit
-    ? `UPDATE products SET
-    name = '${name.replace(/'/g, "''")}',
-    description = '${description.replace(/'/g, "''")}',
-    price = ${Number(price).toFixed(2)},
-    stock = ${Number(stock)},
-    image_url = '${primaryImageUrl}',
-    verification_status = 'pending_approval',
-    updated_at = CURRENT_TIMESTAMP
-WHERE id = '${prodId}' AND seller_id = 'usr_seller_01';`
-    : `INSERT INTO products (
-    id, seller_id, category_id, name, description, 
-    price, stock, image_url, verification_status, is_active
-) VALUES (
-    '${prodId}',
-    'usr_seller_01',
-    '${categoryId}',
-    '${name.replace(/'/g, "''")}',
-    '${description.replace(/'/g, "''")}',
-    ${Number(price).toFixed(2)},
-    ${Number(stock)},
-    '${primaryImageUrl}',
-    'pending_approval',
-    TRUE
-);`;
-
-  const handleCopySql = () => {
-    navigator.clipboard.writeText(generatedSql);
-    setCopiedSql(true);
-    toast.success("PostgreSQL query copied!");
-    setTimeout(() => setCopiedSql(false), 2000);
-  };
 
   // Submit to PostgreSQL Database via API
   const handleSubmit = async (e: React.FormEvent) => {
@@ -829,26 +794,6 @@ WHERE id = '${prodId}' AND seller_id = 'usr_seller_01';`
           />
         </div>
 
-        {/* 8. Live PostgreSQL Query Sync Box */}
-        <div className="rounded-3xl border border-border bg-muted/40 p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Database className="h-4 w-4 text-primary" />
-              <span className="text-xs font-bold text-foreground">PostgreSQL 'products' SQL Sync Query</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleCopySql}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline cursor-pointer"
-            >
-              {copiedSql ? <CheckCheck className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-              {copiedSql ? "Copied SQL" : "Copy SQL Statement"}
-            </button>
-          </div>
-          <pre className="overflow-x-auto rounded-2xl bg-black/85 p-3.5 font-mono text-[11px] text-emerald-400">
-            {generatedSql}
-          </pre>
-        </div>
 
         {/* 9. Final Action Buttons */}
         <div className="flex items-center justify-end gap-4 pt-4 border-t border-border">
