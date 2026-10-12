@@ -104,10 +104,6 @@ export function CustomerLayout({
     );
   }, [searchQuery]);
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 452a5eae848bf7fc7dbad5b781bf00e286cc78d5
   const navItems = [
     {
       id: "overview" as CustomerTab,
@@ -509,50 +505,25 @@ export function CustomerLayout({
                   aria-label="Account menu"
                 >
                   <span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-white font-bold text-xs shadow-xs">
-<<<<<<< HEAD
-                    {(authUser?.name || userProfile.name)
+                    {(authUser?.name || userProfile?.name || "CP")
+                      .trim()
                       .split(" ")
                       .map((n) => n[0])
                       .join("")
                       .slice(0, 2)
                       .toUpperCase()}
-=======
-                    {userProfile?.name?.trim()
-                      ? userProfile.name
-                          .trim()
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .slice(0, 2)
-                      : "CP"}
->>>>>>> 452a5eae848bf7fc7dbad5b781bf00e286cc78d5
                   </span>
                 </button>
 
                 {isProfileOpen && (
                   <div className="absolute right-0 mt-2 w-64 rounded-3xl bg-white border border-gray-200 shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
                     <div className="px-3 py-2.5 border-b border-gray-100">
-<<<<<<< HEAD
-                      <p className="text-sm font-bold text-gray-900 truncate">{authUser?.name || userProfile.name}</p>
-                      <p className="text-xs text-gray-500 truncate">{authUser?.email || userProfile.email}</p>
+                      <p className="text-sm font-bold text-gray-900 truncate">{authUser?.name || userProfile?.name || "Customer Account"}</p>
+                      <p className="text-xs text-gray-500 truncate">{authUser?.email || userProfile?.email || ""}</p>
                       <div className="mt-2 flex items-center justify-between text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
                         <span>ProPoints Loyalty</span>
-                        <span className="font-bold">{userProfile.points} pts</span>
+                        <span className="font-bold">{userProfile?.points || 0} pts</span>
                       </div>
-=======
-                      <p className="text-sm font-bold text-gray-900 truncate">
-                        {userProfile?.name?.trim() || "Customer Account"}
-                      </p>
-                      {userProfile?.email?.trim() && (
-                        <p className="text-xs text-gray-500 truncate">{userProfile.email}</p>
-                      )}
-                      {(userProfile?.points || 0) > 0 && (
-                        <div className="mt-2 flex items-center justify-between text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
-                          <span>ProPoints Loyalty</span>
-                          <span className="font-bold">{userProfile.points} pts</span>
-                        </div>
-                      )}
->>>>>>> 452a5eae848bf7fc7dbad5b781bf00e286cc78d5
                     </div>
                     <div className="py-1 space-y-0.5">
                       <button
@@ -590,15 +561,10 @@ export function CustomerLayout({
                       <button
                         onClick={async () => {
                           setIsProfileOpen(false);
-<<<<<<< HEAD
                           await signOut();
                           toast.success("Signed out successfully", {
                             description: "You have been logged out of your customer account.",
                           });
-=======
-                          signOut();
-                          toast.info("Signed out successfully");
->>>>>>> 452a5eae848bf7fc7dbad5b781bf00e286cc78d5
                           navigate({ to: "/" });
                         }}
                         className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"

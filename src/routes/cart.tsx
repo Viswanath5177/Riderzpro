@@ -53,7 +53,7 @@ function CartPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
 
-  if (!isLoggedIn) {
+  if (!isAuthenticated) {
     return (
       <SiteLayout>
         <div className="mx-auto max-w-md px-4 py-20 text-center">
