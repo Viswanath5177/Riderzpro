@@ -7,7 +7,6 @@ import {
   ShoppingCart,
   User,
   LayoutDashboard,
-  Sparkles,
   Search,
   ShieldCheck,
   ChevronDown,
@@ -110,16 +109,6 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
 
           {/* Right Header Controls */}
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
-            {/* AI Voice Assistant Pill */}
-            <Link
-              to="/assistant"
-              id="navbar-ai-assistant-btn"
-              className="vision-pill flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-[#E31E24] transition hover:bg-red-500 hover:text-white hover:border-red-500 hover:shadow-[0_4px_16px_rgba(227,30,36,0.35)] active:scale-95 group"
-            >
-              <Mic className="h-3.5 w-3.5 text-[#E31E24] group-hover:text-white transition" />
-              <span className="hidden sm:inline">AI Voice</span>
-            </Link>
-
             {/* Cart Button */}
             <Link
               to="/cart"
