@@ -68,7 +68,7 @@ export function ShopTab() {
       {/* ─────────────────────────────────────────────────────────────
           SECTION A: HEADER BANNER WITH VEHICLE FITMENT
          ───────────────────────────────────────────────────────────── */}
-      <div className="vision-glass rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="bg-white border border-[#E5E7EB] shadow-2xs rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#E31E24]">
             <Zap className="h-3.5 w-3.5 fill-[#E31E24]" />
@@ -86,7 +86,7 @@ export function ShopTab() {
         </div>
 
         {/* Vehicle Fitment Switcher */}
-        <div className="vision-card rounded-2xl p-4 flex flex-col gap-2 shrink-0 md:min-w-[280px]">
+        <div className="bg-white border border-[#E5E7EB] shadow-2xs rounded-2xl p-4 flex flex-col gap-2 shrink-0 md:min-w-[280px]">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#6B7280] flex items-center gap-1.5">
               <Bike className="h-4 w-4 text-[#E31E24]" />
@@ -100,7 +100,7 @@ export function ShopTab() {
           <select
             value={activeBikeId ?? ""}
             onChange={(e) => setActiveBikeId(e.target.value || null)}
-            className="w-full rounded-xl bg-white/90 border border-white/80 p-2 text-xs font-semibold text-[#111111] shadow-2xs outline-none cursor-pointer focus:ring-2 focus:ring-[#E31E24]/20"
+            className="w-full rounded-xl bg-white border border-[#E5E7EB] p-2 text-xs font-semibold text-[#111111] shadow-2xs outline-none cursor-pointer focus:ring-2 focus:ring-[#E31E24]/20"
           >
             <option value="">Any Vehicle (Show all)</option>
             {bikes.map((b) => (
@@ -118,12 +118,12 @@ export function ShopTab() {
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          SECTION B: SEARCH, CATEGORY PILLS & FILTERS (VISIONOS DOCK)
+          SECTION B: SEARCH, CATEGORY PILLS & FILTERS
          ───────────────────────────────────────────────────────────── */}
-      <div className="vision-glass rounded-2xl p-4 space-y-4">
+      <div className="bg-white border border-[#E5E7EB] shadow-2xs rounded-2xl p-4 space-y-4">
         <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center">
           {/* Live Search Input */}
-          <div className="relative flex flex-1 items-center vision-glass-subtle rounded-full border border-white/80 px-4 py-2 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#E31E24]/20 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]">
+          <div className="relative flex flex-1 items-center bg-[#F5F6F8] rounded-full border border-[#E5E7EB] px-4 py-2 focus-within:bg-white focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-[#E31E24]/20 shadow-2xs">
             <Search className="h-4 w-4 text-[#6B7280] shrink-0 mr-2.5" />
             <input
               type="text"
@@ -149,7 +149,7 @@ export function ShopTab() {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="vision-pill rounded-full px-3 py-2 text-xs font-semibold text-[#111111] outline-none cursor-pointer"
+              className="rounded-full bg-white border border-[#E5E7EB] px-3 py-2 text-xs font-semibold text-[#111111] outline-none cursor-pointer shadow-2xs hover:border-gray-400"
             >
               <option value="relevance">Featured & Relevant</option>
               <option value="low">Price: Low to High</option>
@@ -169,8 +169,8 @@ export function ShopTab() {
                 className={cn(
                   "whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-semibold transition active:scale-95",
                   isActive
-                    ? "bg-[#E31E24] text-white shadow-sm"
-                    : "vision-pill text-[#6B7280] hover:text-[#111111] hover:bg-white/90"
+                    ? "bg-[#E31E24] text-white shadow-xs"
+                    : "bg-white border border-[#E5E7EB] text-[#111111] hover:border-[#111111] hover:bg-gray-50 shadow-2xs"
                 )}
               >
                 {c}
@@ -180,7 +180,7 @@ export function ShopTab() {
         </div>
 
         {/* Secondary Filter Badges */}
-        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-white/60 text-xs">
+        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-[#E5E7EB] text-xs">
           <div className="flex items-center gap-1.5 text-[#6B7280] font-medium">
             <SlidersHorizontal className="h-3.5 w-3.5" />
             <span>Voltage:</span>
@@ -190,10 +190,10 @@ export function ShopTab() {
               key={v}
               onClick={() => setVolt(volt === v ? null : v)}
               className={cn(
-                "rounded-full px-3 py-1 font-semibold transition active:scale-95",
+                "rounded-full px-3 py-1 font-semibold transition active:scale-95 shadow-2xs",
                 volt === v
                   ? "bg-[#E31E24] text-white"
-                  : "vision-pill text-[#6B7280] hover:text-[#111111]"
+                  : "bg-white border border-[#E5E7EB] text-[#111111] hover:border-[#111111]"
               )}
             >
               {v}V
@@ -201,7 +201,7 @@ export function ShopTab() {
           ))}
 
           {activeBike && (
-            <label className="ml-auto flex items-center gap-2 cursor-pointer font-semibold text-xs text-[#111111] vision-pill px-3 py-1 rounded-full">
+            <label className="ml-auto flex items-center gap-2 cursor-pointer font-semibold text-xs text-[#111111] bg-white border border-[#E5E7EB] px-3 py-1 rounded-full shadow-2xs">
               <input
                 type="checkbox"
                 checked={onlyFit}
@@ -238,7 +238,7 @@ export function ShopTab() {
         </div>
 
         {filteredProducts.length === 0 ? (
-          <div className="vision-glass rounded-3xl p-12 text-center space-y-3">
+          <div className="bg-white border border-[#E5E7EB] shadow-2xs rounded-3xl p-12 text-center space-y-3">
             <p className="text-base font-bold text-[#111111]">No products found</p>
             <p className="text-xs text-[#6B7280] max-w-md mx-auto">
               No parts match your current filter combination. Try clearing your search query or selecting "Any Vehicle".

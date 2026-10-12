@@ -170,7 +170,7 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
 
                   {isSelected && (
                     <div className="absolute bottom-3 left-3">
-                      <span className="px-2.5 py-0.5 rounded-md bg-white/95 backdrop-blur-xs text-emerald-800 text-[10px] font-bold shadow-2xs border border-emerald-200 flex items-center gap-1">
+                      <span className="px-2.5 py-0.5 rounded-md bg-white text-emerald-800 text-[10px] font-bold shadow-2xs border border-emerald-300 flex items-center gap-1">
                         <Check className="h-3 w-3 text-primary" /> Currently Viewing Spares
                       </span>
                     </div>
@@ -277,7 +277,7 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
           {/* Add Bike trigger */}
           <div
             onClick={onOpenAddBikeModal}
-            className="rounded-3xl border-2 border-dashed border-gray-300 hover:border-primary bg-white/50 p-8 flex flex-col items-center justify-center text-center cursor-pointer min-h-[360px] hover:bg-emerald-50/20 transition-all"
+            className="rounded-3xl border-2 border-dashed border-[#E5E7EB] hover:border-primary bg-white p-8 flex flex-col items-center justify-center text-center cursor-pointer min-h-[360px] hover:bg-red-50/20 transition-all shadow-2xs"
           >
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50 text-primary mb-3">
               <Plus className="h-6 w-6" />
@@ -412,7 +412,7 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
                       className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                     />
                     <div className="absolute top-3 left-3">
-                      <span className="px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-xs text-gray-800 text-[10px] font-bold shadow-2xs">
+                      <span className="px-2.5 py-1 rounded-full bg-white border border-[#E5E7EB] text-gray-800 text-[10px] font-bold shadow-2xs">
                         {p.category}
                       </span>
                     </div>
@@ -421,7 +421,7 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
                         toggleSaved(p.id);
                         toast.success(saved ? "Removed from saved" : "Saved to wishlist");
                       }}
-                      className="absolute top-3 right-3 p-2 rounded-full bg-white/90 backdrop-blur-xs text-gray-600 hover:text-rose-500 shadow-2xs transition"
+                      className="absolute top-3 right-3 p-2 rounded-full bg-white border border-[#E5E7EB] text-gray-600 hover:text-rose-500 shadow-2xs transition"
                       title={saved ? "Remove from wishlist" : "Save item"}
                     >
                       <Heart className={`h-4 w-4 ${saved ? "fill-rose-500 text-rose-500" : ""}`} />

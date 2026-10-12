@@ -315,21 +315,17 @@ export function CustomerLayout({
         </div>
       )}
 
-      {/* Main Container with Spatial Mesh Backdrop */}
-      <div className="flex flex-1 min-h-screen bg-gradient-to-br from-[#F4F6F9] via-[#F8F9FB] to-[#EDF2F7] relative overflow-hidden">
-        {/* Ambient Spatial Lighting Orbs */}
-        <div className="pointer-events-none fixed -top-40 -left-40 h-[500px] w-[500px] rounded-full bg-red-400/8 blur-[140px] z-0" />
-        <div className="pointer-events-none fixed top-1/2 -right-40 h-[450px] w-[450px] rounded-full bg-blue-400/8 blur-[140px] z-0" />
-
-        {/* Desktop Left Sidebar (VisionOS Glass) */}
+      {/* Main Container with Solid Clean Neutral Backdrop */}
+      <div className="flex flex-1 min-h-screen bg-[#F5F6F8] relative overflow-hidden">
+        {/* Desktop Left Sidebar */}
         <aside
           className={cn(
-            "hidden md:flex flex-col bg-white/75 backdrop-blur-2xl border-r border-white/70 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 z-30 shrink-0 select-none",
+            "hidden md:flex flex-col bg-white border-r border-[#E5E7EB] shadow-xs transition-all duration-300 z-30 shrink-0 select-none",
             isCollapsed ? "w-20" : "w-64"
           )}
         >
           {/* Logo & Header */}
-          <div className="relative h-18 flex items-center justify-center px-4 border-b border-white/60">
+          <div className="relative h-18 flex items-center justify-center px-4 border-b border-[#E5E7EB]">
             {!isCollapsed ? (
               <div className="flex items-center justify-center">
                 <Logo className="justify-center" imgClassName="h-9 w-auto" />
@@ -345,7 +341,7 @@ export function CustomerLayout({
               onClick={() => setIsCollapsed(!isCollapsed)}
               aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               className={cn(
-                "hidden lg:grid h-7 w-7 place-items-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white/80 transition absolute top-1/2 -translate-y-1/2",
+                "hidden lg:grid h-7 w-7 place-items-center rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition absolute top-1/2 -translate-y-1/2",
                 isCollapsed ? "right-1.5" : "right-3"
               )}
             >
@@ -364,8 +360,8 @@ export function CustomerLayout({
                   className={cn(
                     "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition group relative",
                     isActive
-                      ? "vision-pill text-[#E31E24] font-bold shadow-[0_2px_10px_rgba(227,30,36,0.08)] border-l-4 border-[#E31E24] pl-2.5 bg-white/90"
-                      : "text-[#6B7280] hover:bg-white/70 hover:text-[#111111]",
+                      ? "bg-red-50 text-[#E31E24] font-bold border-l-4 border-[#E31E24] pl-2.5"
+                      : "text-[#6B7280] hover:bg-gray-100 hover:text-[#111111]",
                     isCollapsed && "justify-center px-0"
                   )}
                   title={isCollapsed ? item.label : undefined}
@@ -384,7 +380,7 @@ export function CustomerLayout({
                           className={cn(
                             "px-2 py-0.5 rounded-full text-[10px] font-bold tracking-tight",
                             isActive
-                              ? "bg-white/20 text-white"
+                              ? "bg-red-100 text-[#E31E24]"
                               : item.badgeColor || "bg-gray-100 text-gray-700"
                           )}
                         >
@@ -416,13 +412,13 @@ export function CustomerLayout({
 
         {/* Right Content Area */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Top Header with VisionOS Frosted Glass */}
-          <header className="sticky top-0 z-20 h-18 bg-white/75 backdrop-blur-2xl border-b border-white/70 px-4 md:px-8 flex items-center justify-between gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+          {/* Top Header */}
+          <header className="sticky top-0 z-20 h-18 bg-white border-b border-[#E5E7EB] px-4 md:px-8 flex items-center justify-between gap-4 shadow-xs">
             {/* Left: Mobile hamburger & breadcrumbs */}
             <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="md:hidden p-2 rounded-xl text-gray-600 hover:bg-white/80 active:scale-95 transition"
+                className="md:hidden p-2 rounded-xl text-gray-700 hover:bg-gray-100 active:scale-95 transition"
                 aria-label="Open navigation menu"
               >
                 <Menu className="h-5 w-5" />
@@ -440,17 +436,17 @@ export function CustomerLayout({
               </div>
             </div>
 
-            {/* Center: Command Search Bar (VisionOS Glass Pill) */}
+            {/* Center: Command Search Bar */}
             <div className="flex-1 max-w-md hidden md:block">
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="w-full flex items-center justify-between px-4 py-2 rounded-full vision-glass-subtle hover:bg-white/95 text-sm text-gray-500 transition shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] group border border-white/80"
+                className="w-full flex items-center justify-between px-4 py-2 rounded-full bg-[#F5F6F8] hover:bg-white text-sm text-gray-700 transition shadow-2xs group border border-[#E5E7EB] hover:border-gray-400"
               >
                 <span className="flex items-center gap-2.5">
-                  <Search className="h-4 w-4 text-gray-400 group-hover:text-primary transition" />
-                  <span className="text-xs text-gray-500 font-medium">Search EV batteries, chargers, fitments...</span>
+                  <Search className="h-4 w-4 text-gray-500 group-hover:text-primary transition" />
+                  <span className="text-xs text-gray-600 font-medium">Search EV batteries, chargers, fitments...</span>
                 </span>
-                <kbd className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono text-gray-500 bg-white/80 border border-white/90 rounded-full shadow-2xs">
+                <kbd className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono text-gray-600 bg-white border border-[#E5E7EB] rounded-full shadow-2xs">
                   ⌘K
                 </kbd>
               </button>
@@ -461,7 +457,7 @@ export function CustomerLayout({
               {/* Search by VIN Button in Navbar */}
               <button
                 onClick={() => setIsVinSearchOpen(true)}
-                className="vision-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full hover:bg-primary hover:text-white hover:border-primary text-xs font-semibold text-emerald-800 transition active:scale-95"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#E5E7EB] bg-white hover:border-[#E31E24] hover:text-[#E31E24] text-xs font-semibold text-[#111111] transition active:scale-95 shadow-2xs"
                 title="Search items based on 17-digit VIN number"
               >
                 <ScanLine className="h-3.5 w-3.5 text-primary" />
@@ -472,7 +468,7 @@ export function CustomerLayout({
               {/* Mobile Search trigger */}
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="md:hidden p-2 rounded-xl text-gray-600 hover:bg-white/80 transition"
+                className="md:hidden p-2 rounded-xl text-gray-700 hover:bg-gray-100 transition"
                 aria-label="Search products"
               >
                 <Search className="h-5 w-5" />
@@ -481,9 +477,9 @@ export function CustomerLayout({
               {/* AI Assistant Button with Voice Mic */}
               <Link
                 to="/assistant"
-                className="vision-pill group flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold text-primary transition-all hover:bg-primary hover:text-white hover:shadow-[0_4px_16px_rgba(227,30,36,0.35)] active:scale-95"
+                className="group flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#111111] hover:border-[#E31E24] hover:text-[#E31E24] transition shadow-2xs active:scale-95"
               >
-                <Mic className="h-3.5 w-3.5 text-primary transition group-hover:text-white" />
+                <Mic className="h-3.5 w-3.5 text-primary transition group-hover:scale-110" />
                 <span className="hidden sm:inline">AI Voice</span>
                 <span className="sm:hidden font-bold">Ask AI</span>
               </Link>
@@ -680,7 +676,7 @@ export function CustomerLayout({
                       <span
                         className={cn(
                           "px-2 py-0.5 rounded-full text-[10px] font-bold",
-                          isActive ? "bg-white/20 text-white" : item.badgeColor || "bg-gray-100 text-gray-700"
+                          isActive ? "bg-red-100 text-[#E31E24]" : item.badgeColor || "bg-gray-100 text-gray-700"
                         )}
                       >
                         {item.badge}

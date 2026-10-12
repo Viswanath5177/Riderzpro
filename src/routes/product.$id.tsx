@@ -70,7 +70,7 @@ function ProductPage() {
             <h2 className="mt-8 font-display text-3xl">Sellers near you</h2>
             <div className="mt-3 space-y-3">
               {offers.map((o, i) => (
-                <div key={o.vendorId} className={`flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center ${i === 0 ? "border-primary bg-accent/30" : "border-border bg-card"}`}>
+                <div key={o.vendorId} className={`flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center ${i === 0 ? "border-[#E31E24] bg-red-50/60 shadow-2xs" : "border-[#E5E7EB] bg-white shadow-2xs"}`}>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold">{o.v.name}</p>

@@ -103,7 +103,7 @@ function Assistant() {
                 className={
                   m.role === "user"
                     ? "max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"
-                    : "max-w-full rounded-3xl border border-border/80 bg-card/85 p-5 shadow-card backdrop-blur-2xl text-foreground"
+                    : "max-w-full rounded-3xl border border-[#E5E7EB] bg-white p-5 shadow-2xs text-[#111111]"
                 }
               >
                 <p className="leading-relaxed">{m.text}</p>
@@ -124,13 +124,13 @@ function Assistant() {
             <button
               key={s}
               onClick={() => send(s)}
-              className="rounded-full border border-border/80 bg-card/60 px-3.5 py-1.5 text-xs font-semibold backdrop-blur-md transition hover:border-primary hover:text-primary active:scale-95"
+              className="rounded-full border border-[#E5E7EB] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#111111] shadow-2xs transition hover:border-[#111111] hover:text-[#E31E24] active:scale-95"
             >
               {s}
             </button>
           ))}
         </div>
-        <div className="sticky bottom-24 mt-6 flex items-center gap-2 rounded-3xl border border-border/80 bg-card/85 p-2 shadow-2xl backdrop-blur-2xl md:bottom-6">
+        <div className="sticky bottom-24 mt-6 flex items-center gap-2 rounded-3xl border border-[#E5E7EB] bg-white p-2 shadow-lg md:bottom-6">
           <button
             onClick={toggleMic}
             aria-label="Speak"

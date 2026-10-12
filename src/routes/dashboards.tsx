@@ -26,7 +26,7 @@ export function RolePicker() {
         <Link
           key={r.to}
           to={r.to}
-          className="group rounded-3xl border border-border/80 bg-card/85 p-6 shadow-card backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:border-primary/50"
+          className="group rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-[#111111]"
         >
           <span className="grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary shadow-xs transition group-hover:bg-primary group-hover:text-primary-foreground">
             <r.Icon className="h-6 w-6" />

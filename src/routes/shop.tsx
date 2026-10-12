@@ -126,7 +126,7 @@ function Shop() {
         </div>
 
         {/* Filters and Search Bar */}
-        <div className="sticky top-18 z-30 -mx-4 mt-6 border-y md:border border-[#E5E7EB] bg-white px-4 py-3.5 md:mx-0 md:rounded-xl shadow-2xs">
+        <div className="mt-6 border border-[#E5E7EB] bg-white px-4 py-3.5 rounded-xl shadow-2xs">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             {/* Live Search */}
             <div className="relative flex flex-1 items-center">

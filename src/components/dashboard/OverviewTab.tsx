@@ -157,13 +157,13 @@ export function OverviewTab({
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          SECTION B: SUMMARY METRIC CARDS (4 RESPONSIVE VISIONOS GLASS CARDS)
+          SECTION B: SUMMARY METRIC CARDS (4 RESPONSIVE SOLID WHITE CARDS)
          ───────────────────────────────────────────────────────────── */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Total Orders */}
         <div
           onClick={() => onTabChange("orders")}
-          className="group rounded-2xl vision-card p-5 cursor-pointer transition-all flex flex-col justify-between"
+          className="group rounded-2xl bg-white border border-[#E5E7EB] shadow-2xs hover:shadow-md hover:border-gray-300 p-5 cursor-pointer transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Total Orders</span>
@@ -177,7 +177,7 @@ export function OverviewTab({
               All placed & recorded orders
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-white/60 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
+          <div className="mt-4 pt-3 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
             <span>View all orders</span>
             <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
           </div>
@@ -186,7 +186,7 @@ export function OverviewTab({
         {/* Card 2: Orders Being Processed */}
         <div
           onClick={() => onTabChange("orders")}
-          className="group rounded-2xl vision-card p-5 cursor-pointer transition-all flex flex-col justify-between"
+          className="group rounded-2xl bg-white border border-[#E5E7EB] shadow-2xs hover:shadow-md hover:border-gray-300 p-5 cursor-pointer transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Being Processed</span>
@@ -200,7 +200,7 @@ export function OverviewTab({
               {processingOrdersCount > 0 ? "Supplier packing & verification" : "Zero orders awaiting processing"}
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-white/60 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
+          <div className="mt-4 pt-3 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
             <span>Fulfillment queue</span>
             <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
           </div>
@@ -209,7 +209,7 @@ export function OverviewTab({
         {/* Card 3: Shipments in Transit */}
         <div
           onClick={() => onTabChange("tracking")}
-          className="group rounded-2xl vision-card p-5 cursor-pointer transition-all flex flex-col justify-between"
+          className="group rounded-2xl bg-white border border-[#E5E7EB] shadow-2xs hover:shadow-md hover:border-gray-300 p-5 cursor-pointer transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Shipments in Transit</span>
@@ -223,7 +223,7 @@ export function OverviewTab({
               {inTransitCount > 0 ? `${inTransitCount} active courier dispatches` : "No consignments in transit"}
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-white/60 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
+          <div className="mt-4 pt-3 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
             <span>Track live delivery</span>
             <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
           </div>
@@ -232,7 +232,7 @@ export function OverviewTab({
         {/* Card 4: Delivered Orders */}
         <div
           onClick={() => onTabChange("orders")}
-          className="group rounded-2xl vision-card p-5 cursor-pointer transition-all flex flex-col justify-between"
+          className="group rounded-2xl bg-white border border-[#E5E7EB] shadow-2xs hover:shadow-md hover:border-gray-300 p-5 cursor-pointer transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Delivered Orders</span>
@@ -248,7 +248,7 @@ export function OverviewTab({
               Verified doorstep handovers
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
+          <div className="mt-4 pt-3 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
             <span>Delivered history</span>
             <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
           </div>
@@ -674,7 +674,7 @@ export function OverviewTab({
                     className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                   />
                   <div className="absolute top-3 left-3">
-                    <span className="px-2 py-0.5 rounded-full bg-white/90 backdrop-blur-xs text-gray-800 text-[10px] font-bold shadow-2xs">
+                    <span className="px-2 py-0.5 rounded-full bg-white border border-[#E5E7EB] text-gray-800 text-[10px] font-bold shadow-2xs">
                       {p.category}
                     </span>
                   </div>
@@ -683,7 +683,7 @@ export function OverviewTab({
                       toggleSaved(p.id);
                       toast.success(saved ? "Removed from saved" : "Saved to wishlist");
                     }}
-                    className="absolute top-3 right-3 p-2 rounded-full bg-white/90 backdrop-blur-xs text-gray-600 hover:text-rose-500 shadow-2xs transition"
+                    className="absolute top-3 right-3 p-2 rounded-full bg-white border border-[#E5E7EB] text-gray-600 hover:text-rose-500 shadow-2xs transition"
                     title={saved ? "Remove from saved" : "Save for later"}
                   >
                     <Heart className={cn("h-4 w-4", saved && "fill-rose-500 text-rose-500")} />

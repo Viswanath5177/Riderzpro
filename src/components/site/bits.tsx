@@ -26,7 +26,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       onClick={toggleTheme}
       aria-label="Toggle theme"
       className={cn(
-        "grid h-10 w-10 place-items-center rounded-full border border-border/80 bg-card/60 backdrop-blur-xl text-foreground transition-all hover:bg-card hover:border-primary/50 hover:text-primary active:scale-95",
+        "grid h-10 w-10 place-items-center rounded-full border border-[#E5E7EB] bg-white text-[#111111] shadow-2xs transition-all hover:border-[#111111] active:scale-95",
         className,
       )}
     >
@@ -98,7 +98,7 @@ export function ProductCard({ p }: { p: Product }) {
             </span>
           )}
           {activeBikeId && (
-            <FitmentBadge fit={fit} className="bg-white/95 text-gray-800 shadow-2xs backdrop-blur-xs text-[10px]" />
+            <FitmentBadge fit={fit} className="bg-white border border-[#E5E7EB] text-gray-800 shadow-2xs text-[10px]" />
           )}
         </div>
 
@@ -112,7 +112,7 @@ export function ProductCard({ p }: { p: Product }) {
           }}
           aria-label={saved ? "Remove from saved items" : "Save item"}
           className={cn(
-            "absolute right-2.5 top-2.5 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/90 shadow-xs backdrop-blur-xs transition hover:scale-110",
+            "absolute right-2.5 top-2.5 z-10 grid h-8 w-8 place-items-center rounded-full bg-white border border-[#E5E7EB] shadow-2xs transition hover:scale-110",
             saved ? "text-[#E31E24]" : "text-gray-500 hover:text-[#E31E24]"
           )}
         >
@@ -121,7 +121,7 @@ export function ProductCard({ p }: { p: Product }) {
 
         {/* Voltage or Specs Tag */}
         {p.voltage && (
-          <span className="absolute right-2.5 bottom-2.5 rounded-md bg-black/75 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-xs">
+          <span className="absolute right-2.5 bottom-2.5 rounded-md bg-[#111111] px-2 py-0.5 text-[10px] font-bold text-white shadow-2xs">
             {p.voltage}V
           </span>
         )}
