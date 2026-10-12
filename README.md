@@ -1,96 +1,102 @@
-# ⚡ Riderzpro — EV Bike Battery & Certified Installation Ecosystem
+# ⚡ Riderzpro — EV Bike Battery & Certified Installation Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20Android%20%7C%20iOS%20%7C%20Desktop-orange.svg)](#)
-[![Design](https://img.shields.io/badge/Design-Light%20Apple%20Glassmorphism-9cf.svg)](#)
+[![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20FastAPI%20%7C%20React%2019-orange.svg)](#)
+[![Stack](https://img.shields.io/badge/Stack-FastAPI%20%2B%20TanStack%20Start%20%2B%20TailwindCSS-9cf.svg)](#)
 
-> **Riderzpro** is a unified cross-platform platform for discovering guaranteed compatible EV bike batteries with bundled certified doorstep or service center installation, atomic zero-conflict slot booking, real-time technician dispatch & live GPS tracking, interactive diagnostic checklists, and digital warranty certificates.
-
----
-
-## 🚀 Key Value Propositions
-
-1. **Guaranteed Fitment Engine**: Strictly matches EV batteries against vehicle brand, model, and manufacturing year (e.g. Ather 450X, Ola S1 Pro, TVS iQube, Revolt RV400, Hero Vida V1, Bajaj Chetak). Incompatible batteries are never displayed.
-2. **Unified 4-Step Booking**:
-   - **Installation Type**: Doorstep Home Visit (+₹499) or Certified Service Center (+₹299).
-   - **Date & Slot Grid**: 7-day horizontal date strip with dynamic slot capacity. Booked/closed slots are disabled with strikethrough. Shows 90-min duration with exact *"Ready by HH:MM"* completion timestamp.
-   - **Old Battery Exchange**: 1-tap rebate toggle deducting ₹2,500 instant credit.
-   - **Transparent Breakdown**: Battery + Installation + Travel + Taxes - Credit = Total. Single atomic booking confirmation.
-3. **Multi-Role Orchestration**:
-   - **Customer**: Find, Book, Order Timeline, Live Technician GPS Map, Tax Invoices, Digital Warranty Certificates, EV Garage.
-   - **Vendor**: KPI command center, order triage (Accept/Decline), technician dispatch, battery catalog & stock steppers, weekly interactive slot matrix (1-tap open/close toggle), and payouts ledger.
-   - **Technician**: Online/Offline toggle, assigned job queue, 6-step diagnostic checklist, photo verification uploaders, and customer digital signature canvas.
-4. **Light Apple Glassmorphism**: Soft pastel mesh gradient (`#bcd6ff`, `#ffd9c2`, `#c9f2e0`, `#e3d4ff` over `#eaf0fb`), `26px` backdrop-filter blur, `180%` saturation, 1px white border, and inner top satin highlights.
-5. **Dev Bypass Toolbar**: 1-click role switcher (`Customer`, `Vendor`, `Technician`) and viewport preview switcher (`1440px`, `768px`, `390px`).
+> **Riderzpro** is an integrated e-commerce and logistics ecosystem for EV two-wheeler batteries, certified installation bookings, and real-time delivery tracking powered by a Python FastAPI backend and a modern React/TanStack Start frontend.
 
 ---
 
-## 🛠️ Tech Stack & Architecture
+## 🏗️ Architecture Overview
 
-- **Frontend**: Responsive Web, Flutter/Dart ready (Riverpod state notifier architecture, `go_router` navigation).
-- **Styling**: Vanilla CSS Design System with Apple Glassmorphic surface primitives (`tokens.css`, `components.css`).
-- **Interactive Widgets**:
-  - Live animated Canvas Map with route interpolation and moving technician GPS beacon.
-  - HTML5 Canvas Digital Signature Pad with touch/mouse capture.
-- **Backend Architecture**: Python FastAPI, PostgreSQL async SQLAlchemy models, atomic `SELECT ... FOR UPDATE` slot reservation, WebSocket live broadcasting.
+The repository unifies two core layers:
+
+1. **Logistics & Delivery Backend (`/logistics`, `main.py`)**:
+   - **FastAPI** REST and WebSocket endpoints.
+   - Real-time rider GPS tracking, spatial queries, and telemetry ingestion (`POST /api/riders/{id}/location`).
+   - Live delivery streaming via WebSocket (`/ws/deliveries/{id}/tracking`).
+   - Automated rider dispatch engine with workload balancing.
+   - Multi-provider route planning (Haversine, OSRM, Google Maps) with OR-Tools & Quantum optimization hooks.
+   - Model Context Protocol (MCP) tool integration.
+
+2. **Modern Web UI (`/src`, `/public`)**:
+   - **TanStack Start**, **React 19**, and **TypeScript**.
+   - **Tailwind CSS v4** and Radix UI accessible components.
+   - Interactive Live Map and live tracking dashboards (`src/components/site/LiveMap.tsx`, `src/routes/track.$id.tsx`).
+   - Customer, Vendor, Rider, and Workshop dashboards.
+   - EV Garage, vehicle battery fitment finder, and cart/checkout workflows.
 
 ---
 
-## 📂 Project Directory Structure
+## 📂 Project Structure
 
 ```
 .
-├── web/
-│   ├── index.html               # Main entry point with pastel mesh canvas
-│   ├── css/
-│   │   ├── tokens.css           # Design tokens, mesh gradient, glass effects, typography
-│   │   ├── components.css       # GlassCard, GlassSidebar, GlassTabBar, Segmented, Pills, Modals, Timelines
-│   │   ├── customer.css         # Customer Find, Book 4-step, Orders, Map, Garage
-│   │   ├── vendor.css           # Vendor KPIs, Orders triage, Catalog, Slot Matrix, Techs, Payouts
-│   │   ├── technician.css       # Tech Jobs, Diagnostic Checklist, Camera/Signature, Earnings
-│   │   └── dev-toolbar.css      # Dev Bypass role switch bar, Viewport simulator
-│   └── js/
-│       ├── state/
-│       │   ├── store.js         # Reactive central state management (Riverpod notifier pattern)
-│       │   └── mock_data.js     # Seed data (Bikes, Batteries, Fitments, Slots, Orders, Techs)
-│       ├── components/
-│       │   ├── glass_ui.js      # Reusable Glass UI components, Modal & Toast manager
-│       │   ├── map_view.js      # Interactive Canvas Live Map widget
-│       │   └── signature.js     # Digital Signature pad canvas
-│       ├── views/
-│       │   ├── customer_view.js # Customer Find, Book, Order Detail, Tracking, Garage
-│       │   ├── vendor_view.js   # Overview, Orders Triage, Catalog Matrix, Slots Calendar, Payouts
-│       │   └── technician_view.js # Queue, Active Checklist, Diagnostic Upload, Earnings
-│       └── app.js               # Application router, role switcher, bypass auth
-└── README.md
+├── logistics/                  # FastAPI Logistics & Dispatch Subsystem
+│   ├── models.py               # Delivery, Rider, Location, Route SQLAlchemy models
+│   ├── service.py              # Delivery lifecycle & state machine
+│   ├── location_service.py     # Rider GPS telemetry & proximity filtering
+│   ├── realtime.py             # WebSocket connection manager & broadcast hub
+│   ├── router.py               # REST & WebSocket API router
+│   ├── assignment.py           # Rider dispatch scoring engine
+│   ├── route_planning.py       # Multi-provider routing (OSRM, Google Maps)
+│   ├── optimizer.py            # Route optimization bridge
+│   └── mcp_tools.py            # AI assistant logistics tools
+├── main.py                     # FastAPI application entrypoint (port 8000)
+├── tests/                      # Automated test suite (42 pytest tests)
+│   ├── test_delivery_backend.py
+│   ├── test_rider_location_tracking.py
+│   └── test_realtime_tracking.py
+├── src/                        # Modern Frontend (React 19 + TanStack Start)
+│   ├── routes/                 # File-based routes (index, shop, track, dashboards)
+│   ├── components/             # Reusable UI & dashboard components (LiveMap, etc.)
+│   └── lib/                    # State management & logistics adapters
+├── public/                     # Static assets & logos
+├── web/                        # Lightweight prototype / static fallback UI
+├── package.json                # Frontend scripts and dependencies
+├── requirements.txt            # Python dependencies
+└── vite.config.ts              # Vite configuration
 ```
 
 ---
 
 ## 🏃 Running Locally
 
-To run the web app locally
-
+### 1. Backend (FastAPI)
 ```bash
-# Start local HTTP server
-python -m http.server 3000 --directory web
-```
+# Install Python dependencies
+pip install -r requirements.txt
 
-Then open **`http://localhost:3000/`** in your browser.
+# Start backend server
+python main.py
+```
+- API & WebSocket: `http://localhost:8000`
+- Interactive Swagger Docs: `http://localhost:8000/docs`
+
+### 2. Frontend (React / Vite)
+```bash
+# Install Node dependencies
+npm install
+
+# Start Vite dev server
+npm run dev
+```
 
 ---
 
-## 🧪 Acceptance Checks
+## 🧪 Testing
 
-- [x] **Strict Fitment**: Find screen strictly displays batteries matching the active bike.
-- [x] **Slot Booking Guard**: Confirm button disabled until slot is chosen; disabled slots unselectable.
-- [x] **Live Slot Toggle**: Vendor toggling slot closed immediately disables it for customers.
-- [x] **Technician Reveal Guard**: Technician card and contact shortcuts appear only from `technician_assigned` status onward.
-- [x] **Pricing Integrity**: Cost displayed equals exact line-item breakdown (Battery + Install + Travel + Taxes - Credit).
-- [x] **Responsive Excellence**: Scales seamlessly across Desktop (1440px), Tablet (768px), and Mobile (390px).
+```bash
+# Run backend test suite
+pytest tests/ -v
+
+# Run frontend tests
+npm run test
+```
 
 ---
 
 ## 📄 License
 
-MIT © 2026 VoltFit Technologies
+MIT © 2026 Riderzpro Technologies
