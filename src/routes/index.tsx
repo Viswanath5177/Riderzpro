@@ -162,32 +162,47 @@ function FeaturedProducts() {
 }
 
 function LandingProductCard({ product }: { product: Product }) {
-  const { addToCart, toggleSaved, isSaved } = useStore();
+  const { addToCart, toggleSaved, isSaved, inventoryStock } = useStore();
   const offer = bestOffer(product);
   const saved = isSaved(product.id);
 
-  // Genuine discount calculated against standard base retail
-  const mrp = Math.round((offer.price * 1.15) / 100) * 100;
-  const discountPct = Math.round(((mrp - offer.price) / mrp) * 100);
+  const offerPrice = offer?.price || 0;
+  const mrp = product.mrp || (offerPrice > 0 ? Math.round((offerPrice * 1.15) / 100) * 100 : 0);
+  const discountPct =
+    product.discountPercent || (mrp > offerPrice && offerPrice > 0 ? Math.round(((mrp - offerPrice) / mrp) * 100) : 0);
+
+  const currentStock = inventoryStock?.[product.id] ?? offer?.stock ?? product.offers?.[0]?.stock ?? 0;
+  const isLowStock = currentStock < 5;
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-2xs transition-all duration-200 hover:border-gray-300 hover:shadow-xs">
+    <div className="group flex flex-col overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-2xs transition-all duration-200 hover:border-gray-300 hover:shadow-md hover:-translate-y-0.5">
       {/* Product Image Container */}
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#F7F7F8]">
         <Link to="/product/$id" params={{ id: product.id }} className="block h-full w-full">
           <img
             src={product.image}
             alt={product.name}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-102"
+            loading="lazy"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "/src/assets/parts.jpg";
+            }}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         </Link>
 
-        {/* Discount Badge */}
-        {discountPct > 0 && (
-          <span className="absolute left-2.5 top-2.5 rounded bg-[#E31E24] px-2 py-0.5 text-[10px] font-bold text-white shadow-2xs">
-            {discountPct}% OFF
-          </span>
-        )}
+        {/* Top Badges */}
+        <div className="absolute left-2.5 top-2.5 flex flex-col gap-1 items-start z-10 pointer-events-none">
+          {discountPct > 0 && (
+            <span className="rounded bg-[#E31E24] px-2 py-0.5 text-[10px] font-bold text-white shadow-2xs">
+              {discountPct}% OFF
+            </span>
+          )}
+          {isLowStock && (
+            <span className="rounded bg-amber-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-2xs">
+              Hurry limited Stock
+            </span>
+          )}
+        </div>
 
         {/* Save Item Action */}
         <button
@@ -207,7 +222,7 @@ function LandingProductCard({ product }: { product: Product }) {
       {/* Content Area */}
       <div className="flex flex-1 flex-col p-4">
         {/* Category & Brand */}
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#6B7280]">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#6B7280] truncate">
           {product.category} · {product.brand}
         </p>
 
@@ -222,10 +237,22 @@ function LandingProductCard({ product }: { product: Product }) {
 
         {/* Stock Availability */}
         <div className="mt-2 flex items-center gap-1.5 text-[11px]">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          <span className="font-medium text-emerald-700">
-            {offer.stock > 0 ? "In Stock" : "Available to Order"}
-          </span>
+          {isLowStock ? (
+            <>
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+              <span className="font-bold text-amber-700">Hurry limited Stock</span>
+              {currentStock > 0 && (
+                <span className="text-amber-600 font-semibold">({currentStock} left)</span>
+              )}
+            </>
+          ) : (
+            <>
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span className="font-medium text-emerald-700">
+                {currentStock > 0 ? "In Stock" : "Available to Order"}
+              </span>
+            </>
+          )}
           <span className="text-gray-300">·</span>
           <span className="text-[#6B7280]">{product.warrantyMonths}m Warranty</span>
         </div>
@@ -233,12 +260,16 @@ function LandingProductCard({ product }: { product: Product }) {
         {/* Price & Add to Cart Action */}
         <div className="mt-auto pt-4 border-t border-[#E5E7EB]">
           <div className="flex items-baseline gap-2 mb-3">
-            <span className="text-base font-bold text-[#111111]">
-              {inr(offer.price)}
-            </span>
-            {mrp > offer.price && (
-              <span className="text-xs text-[#6B7280] line-through">
-                {inr(mrp)}
+            {offerPrice > 0 ? (
+              <>
+                <span className="text-base font-bold text-[#111111]">{inr(offerPrice)}</span>
+                {mrp > offerPrice && (
+                  <span className="text-xs text-[#6B7280] line-through">{inr(mrp)}</span>
+                )}
+              </>
+            ) : (
+              <span className="text-xs font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
+                Price on Request
               </span>
             )}
           </div>
@@ -248,12 +279,27 @@ function LandingProductCard({ product }: { product: Product }) {
               addToCart(product.id, offer.vendorId);
               toast.success(`Added ${product.name} to cart`);
             }}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#E31E24] py-2 text-xs font-semibold text-white transition hover:bg-red-700 active:scale-95"
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#E31E24] py-2 text-xs font-semibold text-white transition hover:bg-red-700 active:scale-95 cursor-pointer shadow-2xs"
           >
             <ShoppingCart className="h-3.5 w-3.5" />
             <span>Add to Cart</span>
           </button>
         </div>
+
+        {/* Low Stock Indicator Below Card */}
+        {isLowStock && (
+          <div className="mt-3 -mx-4 -mb-4 bg-amber-50 border-t border-amber-200/90 px-3.5 py-1.5 flex items-center justify-between text-[11px] font-bold text-amber-800">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping shrink-0" />
+              <span className="tracking-tight">Hurry limited Stock</span>
+            </span>
+            {currentStock > 0 && (
+              <span className="text-[10px] font-bold text-amber-700 bg-amber-200/70 px-1.5 py-0.5 rounded">
+                Only {currentStock} left
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

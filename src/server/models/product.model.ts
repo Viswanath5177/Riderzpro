@@ -34,6 +34,20 @@ export interface ProductRecord {
   category_name?: string;
   seller_name?: string;
   store_name?: string;
+  vehicle_type?: string | null;
+  department?: string | null;
+  price_type?: string | null;
+  availability?: string | null;
+  installation_price?: number | null;
+  installation_time?: string | null;
+  delivery_time?: string | null;
+  rating?: number | null;
+  reviews_count?: number | null;
+  is_bestseller?: boolean;
+  image_2?: string | null;
+  additional_specs?: string | null;
+  missing_details?: string | null;
+  listing_status?: string | null;
 }
 
 export interface CreateProductDTO {
@@ -62,6 +76,20 @@ export interface CreateProductDTO {
   image_url?: string;
   verification_status?: "approved" | "pending_approval" | "rejected";
   is_active?: boolean;
+  vehicle_type?: string;
+  department?: string;
+  price_type?: string;
+  availability?: string;
+  installation_price?: number;
+  installation_time?: string;
+  delivery_time?: string;
+  rating?: number;
+  reviews_count?: number;
+  is_bestseller?: boolean;
+  image_2?: string;
+  additional_specs?: string;
+  missing_details?: string;
+  listing_status?: string;
 }
 
 export interface UpdateProductDTO extends Partial<CreateProductDTO> {}

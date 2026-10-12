@@ -115,7 +115,16 @@ function ProductPage() {
         </Link>
         <div className="mt-4 grid gap-10 lg:grid-cols-2">
           <div className="overflow-hidden rounded-3xl border border-border bg-muted">
-            <img src={p.image} alt={p.name} width={1024} height={1024} className="aspect-square w-full object-cover" />
+            <img
+              src={p.image}
+              alt={p.name}
+              width={1024}
+              height={1024}
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = "/src/assets/parts.jpg";
+              }}
+              className="aspect-square w-full object-cover"
+            />
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-primary">{p.category} · {p.brand}</p>
@@ -168,9 +177,16 @@ function ProductPage() {
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />~{o.eta} min
                         </span>
-                        <span className={o.stock > 0 ? "text-emerald-700 font-semibold" : "text-destructive"}>
-                          {o.stock > 0 ? `${o.stock} in stock` : "Out of stock"}
-                        </span>
+                        {o.stock > 0 && o.stock < 5 ? (
+                          <span className="text-amber-700 font-bold flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                            Hurry limited Stock ({o.stock} left)
+                          </span>
+                        ) : (
+                          <span className={o.stock >= 5 ? "text-emerald-700 font-semibold" : "text-destructive"}>
+                            {o.stock >= 5 ? `${o.stock} in stock` : "Out of stock"}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">

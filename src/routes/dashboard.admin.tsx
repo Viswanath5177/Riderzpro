@@ -67,7 +67,6 @@ type AdminTab =
   | "shipments"
   | "products"
   | "categories"
-  | "inventory"
   | "customers"
   | "payments"
   | "returns"
@@ -112,10 +111,15 @@ export function AdminDashboard() {
   const [adminProducts, setAdminProducts] = useState<Product[]>([]);
   const [productViewMode, setProductViewMode] = useState<"list" | "form">("list");
   const [editingAdminProduct, setEditingAdminProduct] = useState<Product | null>(null);
+  const [productSearch, setProductSearch] = useState("");
+  const [productStatusFilter, setProductStatusFilter] = useState<"all" | "approved" | "pending_approval">("all");
+  const [productPage, setProductPage] = useState(1);
+  const [dbCategories, setDbCategories] = useState<any[]>([]);
+  const [categorySearch, setCategorySearch] = useState("");
 
   // Sync with PostgreSQL on mount & on updates
   const fetchAdminProducts = () => {
-    fetch("/api/products")
+    fetch("/api/products?all=true")
       .then((r) => r.json())
       .then((res) => {
         if (res.success && Array.isArray(res.data)) {
@@ -128,9 +132,42 @@ export function AdminDashboard() {
       });
   };
 
+  const fetchDbCategories = () => {
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setDbCategories(res.data);
+        }
+      })
+      .catch((err) => {
+        console.log("[DB fetch categories notice]:", err.message);
+      });
+  };
+
   useEffect(() => {
     fetchAdminProducts();
+    fetchDbCategories();
   }, []);
+
+  const handleQuickApproveProduct = async (productId: string) => {
+    try {
+      const res = await fetch(`/api/products/${productId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ verification_status: "approved", is_active: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Product approved and published to Customer Shop!");
+        fetchAdminProducts();
+      } else {
+        toast.error(data.error || "Failed to approve product");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Network error");
+    }
+  };
 
   const handleOpenAddProduct = () => {
     setEditingAdminProduct(null);
@@ -296,7 +333,6 @@ export function AdminDashboard() {
     { id: "shipments" as AdminTab, label: "Shipments & Tracking", Icon: Truck, badge: `${inTransitCount}` },
     { id: "products" as AdminTab, label: "Products", Icon: Box },
     { id: "categories" as AdminTab, label: "Categories", Icon: Layers },
-    { id: "inventory" as AdminTab, label: "Inventory", Icon: Archive, badge: lowStockProducts.length > 0 ? `${lowStockProducts.length} Low` : undefined },
     { id: "customers" as AdminTab, label: "Customers", Icon: Users },
     { id: "payments" as AdminTab, label: "Payments & Refunds", Icon: CreditCard },
     { id: "returns" as AdminTab, label: "Returns & Cancellations", Icon: RotateCcw },
@@ -554,7 +590,7 @@ export function AdminDashboard() {
                 {/* 8. Low-Stock Products */}
                 <div
                   onClick={() => {
-                    setActiveTab("inventory");
+                    setActiveTab("products");
                   }}
                   className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-2xs cursor-pointer hover:border-[#E31E24] hover:shadow-sm transition"
                 >
@@ -893,83 +929,222 @@ export function AdminDashboard() {
               </div>
             ) : (
               <div className="space-y-5">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <h1 className="font-display text-2xl font-extrabold text-[#111111]">Product Catalog</h1>
-                    <p className="text-xs text-[#6B7280]">Manage automotive parts, electric bikes, and retail pricing.</p>
+                    <p className="text-xs text-[#6B7280]">
+                      Manage all {adminProducts.length} automotive parts & retail catalogue items synchronized with PostgreSQL.
+                    </p>
                   </div>
-                  <button
-                    onClick={handleOpenAddProduct}
-                    className="flex items-center gap-1.5 rounded-lg bg-[#E31E24] px-3.5 py-2 text-xs font-bold text-white hover:bg-red-700 transition cursor-pointer shadow-sm active:scale-95"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Add Product</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleOpenAddProduct}
+                      className="flex items-center gap-1.5 rounded-lg bg-[#E31E24] px-3.5 py-2 text-xs font-bold text-white hover:bg-red-700 transition cursor-pointer shadow-sm active:scale-95"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Add Product</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-[#E5E7EB] bg-white shadow-2xs">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-[#F5F6F8] border-b border-[#E5E7EB] text-[#6B7280] font-semibold uppercase tracking-wider text-[10px]">
-                      <tr>
-                        <th className="px-4 py-3">Product Name</th>
-                        <th className="px-4 py-3">Brand</th>
-                        <th className="px-4 py-3">Category</th>
-                        <th className="px-4 py-3">Base Price</th>
-                        <th className="px-4 py-3">Warranty</th>
-                        <th className="px-4 py-3">Stock Units</th>
-                        <th className="px-4 py-3 text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#E5E7EB]">
-                      {adminProducts.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                            <div className="flex flex-col items-center justify-center space-y-3">
-                              <Package className="h-10 w-10 text-gray-300 stroke-[1.5]" />
-                              <div>
-                                <p className="text-sm font-semibold text-gray-800">No products in database</p>
-                                <p className="text-xs text-gray-500 mt-0.5">All default products removed. Click &quot;+ Add Product&quot; to publish your first genuine product to PostgreSQL.</p>
-                              </div>
-                              <button
-                                onClick={handleOpenAddProduct}
-                                className="mt-2 flex items-center gap-1.5 rounded-lg bg-[#E31E24] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-red-700 transition cursor-pointer shadow-sm active:scale-95"
-                              >
-                                <Plus className="h-4 w-4" />
-                                <span>Add Product</span>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : (
-                        adminProducts.map((p) => {
-                          const stock = p.offers[0]?.stock ?? inventoryStock[p.id] ?? 12;
-                          return (
-                            <tr key={p.id} className="hover:bg-gray-50/80 transition">
-                              <td className="px-4 py-3 font-semibold text-gray-900">{p.name}</td>
-                              <td className="px-4 py-3 text-[#6B7280]">{p.brand}</td>
-                              <td className="px-4 py-3">
-                                <span className="rounded bg-gray-100 text-gray-700 px-2 py-0.5 text-[10px] font-medium">
-                                  {p.category}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 font-bold text-[#111111]">{inr(p.offers[0]?.price || 0)}</td>
-                              <td className="px-4 py-3 text-[#6B7280]">{p.warrantyMonths || 12} Months</td>
-                              <td className="px-4 py-3 font-semibold">{stock}</td>
-                              <td className="px-4 py-3 text-right">
-                                <button
-                                  onClick={() => handleOpenEditProduct(p)}
-                                  className="text-xs text-[#E31E24] font-semibold hover:underline cursor-pointer"
-                                >
-                                  Edit
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
+                {/* Search & Filter Toolbar */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-2xs">
+                  {/* Status Pills */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                    {(
+                      [
+                        { id: "all", label: "All Products", count: adminProducts.length },
+                        {
+                          id: "approved",
+                          label: "Approved & Live",
+                          count: adminProducts.filter((p) => (p.verificationStatus || "approved") === "approved").length,
+                        },
+                        {
+                          id: "pending_approval",
+                          label: "Pending Review",
+                          count: adminProducts.filter((p) => p.verificationStatus === "pending_approval").length,
+                        },
+                      ] as const
+                    ).map((f) => (
+                      <button
+                        key={f.id}
+                        onClick={() => {
+                          setProductStatusFilter(f.id);
+                          setProductPage(1);
+                        }}
+                        className={cn(
+                          "whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer",
+                          productStatusFilter === f.id
+                            ? "bg-[#111111] text-white shadow-2xs"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        )}
+                      >
+                        <span>{f.label}</span>
+                        <span className={cn(
+                          "text-[10px] px-1.5 py-0.2 rounded-full",
+                          productStatusFilter === f.id ? "bg-white/20 text-white" : "bg-white text-gray-800"
+                        )}>
+                          {f.count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Search Input */}
+                  <div className="relative max-w-xs w-full">
+                    <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={productSearch}
+                      onChange={(e) => {
+                        setProductSearch(e.target.value);
+                        setProductPage(1);
+                      }}
+                      placeholder="Search name, SKU, brand..."
+                      className="w-full pl-9 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-lg outline-none focus:bg-white focus:border-[#E31E24]"
+                    />
+                  </div>
                 </div>
+
+                {/* Products Table */}
+                {(() => {
+                  const filtered = adminProducts.filter((p) => {
+                    const matchesStatus =
+                      productStatusFilter === "all" ||
+                      (p.verificationStatus || "approved") === productStatusFilter;
+                    const query = productSearch.toLowerCase().trim();
+                    const matchesSearch =
+                      !query ||
+                      `${p.name} ${p.brand} ${p.category} ${p.sku || ""} ${p.id}`
+                        .toLowerCase()
+                        .includes(query);
+                    return matchesStatus && matchesSearch;
+                  });
+
+                  const PAGE_SIZE = 50;
+                  const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
+                  const currentPage = Math.min(productPage, totalPages);
+                  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+                  return (
+                    <div className="space-y-3">
+                      <div className="overflow-x-auto rounded-xl border border-[#E5E7EB] bg-white shadow-2xs">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-[#F5F6F8] border-b border-[#E5E7EB] text-[#6B7280] font-semibold uppercase tracking-wider text-[10px]">
+                            <tr>
+                              <th className="px-4 py-3">Product Name & ID</th>
+                              <th className="px-4 py-3">Brand</th>
+                              <th className="px-4 py-3">Category</th>
+                              <th className="px-4 py-3">Price</th>
+                              <th className="px-4 py-3">Status</th>
+                              <th className="px-4 py-3">Stock Units</th>
+                              <th className="px-4 py-3 text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#E5E7EB]">
+                            {filtered.length === 0 ? (
+                              <tr>
+                                <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                                  <div className="flex flex-col items-center justify-center space-y-3">
+                                    <Package className="h-10 w-10 text-gray-300 stroke-[1.5]" />
+                                    <div>
+                                      <p className="text-sm font-semibold text-gray-800">No matching products found</p>
+                                      <p className="text-xs text-gray-500 mt-0.5">Try adjusting your search query or status filter.</p>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            ) : (
+                              paginated.map((p) => {
+                                const stock = p.offers[0]?.stock ?? inventoryStock[p.id] ?? 0;
+                                const isApproved = (p.verificationStatus || "approved") === "approved";
+                                const priceVal = p.offers[0]?.price || 0;
+
+                                return (
+                                  <tr key={p.id} className="hover:bg-gray-50/80 transition">
+                                    <td className="px-4 py-3">
+                                      <div className="font-semibold text-gray-900 line-clamp-1">{p.name}</div>
+                                      <div className="text-[10px] font-mono text-gray-400">{p.id} {p.sku ? `· ${p.sku}` : ""}</div>
+                                    </td>
+                                    <td className="px-4 py-3 text-[#6B7280] whitespace-nowrap">{p.brand}</td>
+                                    <td className="px-4 py-3">
+                                      <span className="rounded bg-gray-100 text-gray-700 px-2 py-0.5 text-[10px] font-medium whitespace-nowrap">
+                                        {p.category}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 font-bold text-[#111111] whitespace-nowrap">
+                                      {priceVal > 0 ? inr(priceVal) : <span className="text-[10px] text-gray-500 font-normal">On Request</span>}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                      {isApproved ? (
+                                        <span className="inline-flex items-center gap-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold">
+                                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                          Approved
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1 rounded bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 text-[10px] font-bold">
+                                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                                          Pending
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 font-semibold">{stock}</td>
+                                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                                      <div className="flex items-center justify-end gap-2">
+                                        {!isApproved && (
+                                          <button
+                                            onClick={() => handleQuickApproveProduct(p.id)}
+                                            className="text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 rounded shadow-2xs transition cursor-pointer"
+                                          >
+                                            Approve
+                                          </button>
+                                        )}
+                                        <button
+                                          onClick={() => handleOpenEditProduct(p)}
+                                          className="text-xs text-[#E31E24] font-semibold hover:underline cursor-pointer px-1 py-0.5"
+                                        >
+                                          Edit
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination Bar */}
+                      {filtered.length > PAGE_SIZE && (
+                        <div className="flex items-center justify-between text-xs text-gray-500 px-2 py-2">
+                          <span>
+                            Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length} products
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              disabled={currentPage <= 1}
+                              onClick={() => setProductPage((prev) => Math.max(1, prev - 1))}
+                              className="px-2.5 py-1 rounded border border-gray-200 bg-white text-gray-700 font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 cursor-pointer"
+                            >
+                              Previous
+                            </button>
+                            <span className="px-2 font-bold text-gray-800">
+                              {currentPage} / {totalPages}
+                            </span>
+                            <button
+                              disabled={currentPage >= totalPages}
+                              onClick={() => setProductPage((prev) => Math.min(totalPages, prev + 1))}
+                              className="px-2.5 py-1 rounded border border-gray-200 bg-white text-gray-700 font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 cursor-pointer"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )
           )}
@@ -977,99 +1152,62 @@ export function AdminDashboard() {
           {/* TAB 5: CATEGORIES */}
           {activeTab === "categories" && (
             <div className="space-y-5">
-              <h1 className="font-display text-2xl font-extrabold text-[#111111]">Category Architecture</h1>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {[
-                  { name: "Electric Bikes", desc: "Certified high-speed & commuter electric motorbikes & scooters" },
-                  { name: "Car Accessories", desc: "Dashcams, tire inflators, level-2 wallbox chargers" },
-                  { name: "Bike Accessories", desc: "All-weather covers, alarm disc locks, wireless phone mounts" },
-                  { name: "Spare Parts", desc: "Brembo rotors, ceramic pads, Gates kevlar drive belts" },
-                  { name: "Battery Packs", desc: "48V, 60V, 72V NMC and LiFePO4 packs with smart BMS" },
-                  { name: "Fast Chargers", desc: "3.3kW Type-2 AC chargers and portable home units" },
-                ].map((cat) => {
-                  const dynamicCount = adminProducts.filter((p) =>
-                    p.category.toLowerCase().includes(cat.name.toLowerCase().split(" ")[0]) ||
-                    cat.name.toLowerCase().includes(p.category.toLowerCase().split(" ")[0])
-                  ).length;
-                  return (
-                    <div key={cat.name} className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-2xs">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-bold text-sm text-[#111111]">{cat.name}</h3>
-                        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-700">
-                          {dynamicCount} items
-                        </span>
-                      </div>
-                      <p className="mt-2 text-xs text-[#6B7280]">{cat.desc}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 6: INVENTORY */}
-          {activeTab === "inventory" && (
-            <div className="space-y-5">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h1 className="font-display text-2xl font-extrabold text-[#111111]">Inventory & Stock Control</h1>
-                  <p className="text-xs text-[#6B7280]">Reorder thresholds, warehouse levels, and supply restocking.</p>
+                  <h1 className="font-display text-2xl font-extrabold text-[#111111]">Category Architecture</h1>
+                  <p className="text-xs text-[#6B7280]">
+                    Total {dbCategories.length > 0 ? dbCategories.length : 93} categories synchronized with PostgreSQL database.
+                  </p>
+                </div>
+                <div className="relative max-w-xs w-full">
+                  <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={categorySearch}
+                    onChange={(e) => setCategorySearch(e.target.value)}
+                    placeholder="Search categories..."
+                    className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-[#E31E24]"
+                  />
                 </div>
               </div>
 
-              <div className="overflow-x-auto rounded-xl border border-[#E5E7EB] bg-white shadow-2xs">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#F5F6F8] border-b border-[#E5E7EB] text-[#6B7280] font-semibold uppercase tracking-wider text-[10px]">
-                    <tr>
-                      <th className="px-4 py-3">Product</th>
-                      <th className="px-4 py-3">Category</th>
-                      <th className="px-4 py-3">Available Stock</th>
-                      <th className="px-4 py-3">Reorder Point</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3 text-right">Restock Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#E5E7EB]">
-                    {adminProducts.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-8 text-center text-xs text-gray-400">
-                          No products in inventory yet. Default products removed.
-                        </td>
-                      </tr>
-                    ) : (
-                      adminProducts.map((p) => {
-                        const stock = p.offers[0]?.stock ?? inventoryStock[p.id] ?? 10;
-                        const isLow = stock < 5;
-                        return (
-                          <tr key={p.id} className="hover:bg-gray-50/80 transition">
-                            <td className="px-4 py-3 font-semibold text-gray-900">{p.name}</td>
-                            <td className="px-4 py-3 text-[#6B7280]">{p.category}</td>
-                            <td className="px-4 py-3 font-mono font-bold text-base text-[#111111]">{stock}</td>
-                            <td className="px-4 py-3 text-[#6B7280]">5 units</td>
-                            <td className="px-4 py-3">
-                              <span
-                                className={cn(
-                                  "rounded px-2 py-0.5 text-[10px] font-bold",
-                                  isLow ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"
-                                )}
-                              >
-                                {isLow ? "Low Stock Alert" : "Healthy Stock"}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <button
-                                onClick={() => handleRestock(p.id)}
-                                className="rounded bg-[#E31E24] px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700 cursor-pointer"
-                              >
-                                + Restock 15 Units
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {(dbCategories.length > 0
+                  ? dbCategories.filter((c) =>
+                      !categorySearch ||
+                      c.name.toLowerCase().includes(categorySearch.toLowerCase()) ||
+                      (c.department && c.department.toLowerCase().includes(categorySearch.toLowerCase()))
+                    )
+                  : [
+                      { name: "Electric Bikes", slug: "electric-bikes", department: "Vehicles" },
+                      { name: "Car Accessories", slug: "car-accessories", department: "Interior" },
+                      { name: "Bike Accessories", slug: "bike-accessories", department: "Accessories" },
+                      { name: "Spare Parts", slug: "spare-parts", department: "Spares" },
+                      { name: "Battery Packs", slug: "ev-batteries", department: "Electronics" },
+                      { name: "Fast Chargers", slug: "smart-chargers", department: "Multimedia" },
+                    ]
+                ).map((cat: any) => {
+                  const dynamicCount = adminProducts.filter((p) =>
+                    p.category.toLowerCase().includes(cat.name.toLowerCase()) ||
+                    cat.name.toLowerCase().includes(p.category.toLowerCase())
+                  ).length;
+                  return (
+                    <div key={cat.id || cat.slug} className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-2xs hover:shadow-xs transition">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="font-bold text-xs text-[#111111] line-clamp-1">{cat.name}</h3>
+                        <span className="rounded bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-700 shrink-0">
+                          {dynamicCount} items
+                        </span>
+                      </div>
+                      {cat.department && (
+                        <span className="mt-2 inline-block rounded bg-red-50 text-[#E31E24] px-1.5 py-0.5 text-[9px] font-semibold">
+                          {cat.department}
+                        </span>
+                      )}
+                      <p className="mt-1 text-[11px] text-[#6B7280] font-mono">slug: {cat.slug}</p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

@@ -102,6 +102,25 @@ export async function initializeDatabaseSchema() {
       CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
       CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active);
       CREATE INDEX IF NOT EXISTS idx_products_compatible_vehicles ON products USING gin(compatible_vehicles);
+
+      -- Ensure extended catalogue columns exist
+      ALTER TABLE categories ADD COLUMN IF NOT EXISTS department VARCHAR(128);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS vehicle_type VARCHAR(64);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS department VARCHAR(128);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS price_type VARCHAR(64);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS availability VARCHAR(64);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS installation_price NUMERIC(12, 2);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS installation_time VARCHAR(64);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS delivery_time VARCHAR(64);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS rating NUMERIC(3, 2);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS reviews_count INT DEFAULT 0;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS is_bestseller BOOLEAN DEFAULT FALSE;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS image_2 TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS additional_specs TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS missing_details TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS listing_status VARCHAR(64);
+      ALTER TABLE products ALTER COLUMN price DROP NOT NULL;
+      ALTER TABLE products ALTER COLUMN price SET DEFAULT 0.00;
     `);
 
     // 4. Customer Garage Table

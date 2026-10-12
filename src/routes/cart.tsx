@@ -340,27 +340,33 @@ function CartPage() {
                     <div className="divide-y divide-[#E5E7EB]">
                       {g.items.map((it) => {
                         const p = getProduct(it.productId)!;
-                        const availableStock = inventoryStock[it.productId] ?? 10;
-                        const isStockLow = availableStock <= 3;
+                        const availableStock = inventoryStock[it.productId] ?? p?.offers?.[0]?.stock ?? 10;
+                        const isStockLow = availableStock < 5;
                         return (
                           <div key={it.productId} className="flex items-center gap-3 py-3">
                             <img
-                              src={p.image}
-                              alt={p.name}
+                              src={p?.image}
+                              alt={p?.name}
                               loading="lazy"
                               width={70}
                               height={70}
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).src = "/src/assets/parts.jpg";
+                              }}
                               className="h-14 w-14 rounded-xl object-cover border border-[#E5E7EB] shrink-0"
                             />
                             <div className="flex-1 min-w-0">
                               <p className="font-bold text-xs text-[#111111] leading-tight truncate">
-                                {p.name}
+                                {p?.name}
                               </p>
                               <div className="mt-0.5 flex items-center gap-2 text-[11px] text-[#6B7280]">
                                 <span>{inr(it.price)} each</span>
                                 <span>·</span>
                                 {isStockLow ? (
-                                  <span className="text-amber-600 font-semibold">Only {availableStock} left in stock</span>
+                                  <span className="text-amber-700 font-bold flex items-center gap-1">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                    Hurry limited Stock ({availableStock} left)
+                                  </span>
                                 ) : (
                                   <span className="text-emerald-600 font-semibold">In Stock ({availableStock})</span>
                                 )}

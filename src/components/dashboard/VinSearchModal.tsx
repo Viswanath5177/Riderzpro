@@ -201,6 +201,10 @@ export function VinSearchModal({ isOpen, onClose, onViewInGarage }: VinSearchMod
                       <img
                         src={p.image}
                         alt={p.name}
+                        loading="lazy"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = "/src/assets/parts.jpg";
+                        }}
                         className="h-20 w-20 rounded-xl object-cover bg-gray-100 border border-gray-200 shrink-0"
                       />
                       <div className="flex-1 min-w-0 flex flex-col justify-between">
@@ -225,6 +229,12 @@ export function VinSearchModal({ isOpen, onClose, onViewInGarage }: VinSearchMod
                           <p className="text-[11px] text-gray-500">
                             {p.category} · {p.brand} · {p.warrantyMonths}m warranty
                           </p>
+                          {offer.stock < 5 && (
+                            <p className="text-[10px] font-bold text-amber-700 flex items-center gap-1 mt-0.5">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                              Hurry limited Stock ({offer.stock} left)
+                            </p>
+                          )}
                         </div>
 
                         <div className="pt-2 flex items-center justify-between">

@@ -89,6 +89,14 @@ export function ShopTab() {
     return list;
   }, [dbProducts, q, cat, volt, onlyFit, activeBikeId, sort]);
 
+  const availableCategories = useMemo(() => {
+    const set = new Set<string>();
+    dbProducts.forEach((p) => {
+      if (p.category && p.category !== "All") set.add(p.category);
+    });
+    return ["All", ...Array.from(set).sort()];
+  }, [dbProducts]);
+
   const activeBike = activeBikeId ? getBike(activeBikeId) : null;
 
   return (
@@ -188,7 +196,7 @@ export function ShopTab() {
 
         {/* Category Filter Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          {SHOP_CATEGORIES.map((c) => {
+          {availableCategories.map((c) => {
             const isActive = cat === c;
             return (
               <button

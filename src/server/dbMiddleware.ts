@@ -70,16 +70,19 @@ export function pgApiMiddleware() {
               const category = queryParams.get("category") || undefined;
               const sellerId = queryParams.get("seller_id") || undefined;
               const search = queryParams.get("q") || queryParams.get("search") || undefined;
+              const all = queryParams.get("all") === "true";
+              const status = queryParams.get("status") || undefined;
 
               const products = await ProductModel.findAll({
                 fit_vehicle: fitVehicle,
                 category: category,
                 seller_id: sellerId,
                 search: search,
-                is_active: true,
+                verification_status: status as any,
+                is_active: all ? undefined : true,
               });
 
-              return sendJson(res, 200, { success: true, data: products });
+              return sendJson(res, 200, { success: true, data: products, total: products.length });
             }
 
             // POST /api/products (Publish product)

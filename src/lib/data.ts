@@ -148,7 +148,7 @@ export const getVendor = (id: string) =>
 export const getProduct = (id: string) => products.find((p) => p.id === id);
 
 export function mapDbProductToProduct(row: any): Product {
-  let primaryImg = "/src/assets/parts.jpg";
+  let primaryImg = parts;
   if (row.image_url) {
     try {
       if (typeof row.image_url === "string" && row.image_url.startsWith("[")) {
@@ -199,7 +199,12 @@ export function mapDbProductToProduct(row: any): Product {
 }
 
 export const getBike = (id: string) => bikes.find((b) => b.id === id);
-export const bestOffer = (p: Product) => [...p.offers].sort((a, b) => a.price - b.price)[0];
+export const bestOffer = (p: Product) =>
+  [...(p.offers || [])].sort((a, b) => a.price - b.price)[0] || {
+    vendorId: "v1",
+    price: 0,
+    stock: 0,
+  };
 
 export const inr = (n: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
