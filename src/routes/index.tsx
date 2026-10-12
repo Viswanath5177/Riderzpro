@@ -32,7 +32,7 @@ export const Route = createFileRoute("/")({
 
 function Landing() {
   return (
-    <SiteLayout transparent>
+    <SiteLayout>
       <Hero />
       <BrandStrip />
       <Categories />
@@ -63,12 +63,23 @@ function Hero() {
   };
 
   return (
-    <section className="relative isolate min-h-[100svh] overflow-hidden text-hero-ink">
-      <img src={heroBike} alt="Electric motorbike with glowing battery at night" width={1920} height={1088} className="absolute inset-0 -z-20 h-full w-full object-cover object-[70%_center]" />
-      <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[oklch(0.12_0.01_260)] via-[oklch(0.12_0.01_260/0.75)] to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 -z-10 h-40 bg-gradient-to-t from-background to-transparent" />
+    <section className="relative isolate min-h-[92svh] overflow-hidden bg-background text-foreground">
+      <img
+        src={heroBike}
+        alt="Electric motorbike"
+        width={1920}
+        height={1088}
+        className="absolute inset-0 -z-20 h-full w-full object-cover object-[75%_center] opacity-15 filter contrast-125"
+      />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-r from-background via-background/90 to-background/50" />
+      <div className="absolute inset-x-0 bottom-0 -z-10 h-36 bg-gradient-to-t from-background to-transparent" />
+
+      {/* ambient light refractions */}
+      <div className="pointer-events-none absolute -top-24 left-1/4 -z-10 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
+      <div className="pointer-events-none absolute top-1/3 right-10 -z-10 h-96 w-96 rounded-full bg-[oklch(0.65_0.15_220/8%)] blur-3xl" />
+
       {/* charge lines */}
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden opacity-70">
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden opacity-30">
         {[22, 48, 71].map((top, i) => (
           <div key={top} className="absolute h-px w-full overflow-hidden" style={{ top: `${top}%` }}>
             <div className="charge-line h-px w-1/2" style={{ animationDelay: `${i * 1.1}s` }} />
@@ -76,54 +87,90 @@ function Hero() {
         ))}
       </div>
 
-      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 pb-24 pt-28 md:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:pt-36">
+      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 pb-20 pt-16 md:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:pt-24">
         <div>
-          <span className="inline-flex items-center gap-2 rounded-full border border-[oklch(1_0_0/0.15)] bg-[oklch(1_0_0/0.06)] px-3 py-1.5 text-xs font-semibold backdrop-blur">
-            <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary" /><span className="relative h-2 w-2 rounded-full bg-primary" /></span>
+          <span className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-card/80 px-3.5 py-1.5 text-xs font-semibold text-foreground backdrop-blur-xl shadow-xs">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary" />
+              <span className="relative h-2 w-2 rounded-full bg-primary" />
+            </span>
             128 riders delivering in Bengaluru now
           </span>
-          <h1 className="mt-6 font-display text-[clamp(3.5rem,10vw,8.5rem)] leading-[0.85]">
+          <h1 className="mt-6 font-display text-5xl font-extrabold tracking-tight sm:text-7xl lg:text-[5.5rem] leading-[1.05] text-foreground">
             Power your ride.<br />
-            <span className="bg-gradient-to-r from-primary to-[oklch(0.85_0.17_160)] bg-clip-text text-transparent">Parts that fit.</span>
+            <span className="bg-gradient-to-r from-primary via-[oklch(0.55_0.19_145)] to-[oklch(0.50_0.18_160)] bg-clip-text text-transparent">
+              Parts that fit.
+            </span>
           </h1>
-          <p className="mt-6 max-w-xl text-lg text-[oklch(0.98_0_0/0.75)]">
+          <p className="mt-6 max-w-xl text-lg text-muted-foreground leading-relaxed font-normal">
             Batteries, chargers and spares for every EV — matched to your VIN, compared across sellers, delivered in one order with a rider you can track live.
           </p>
 
           {/* Search card */}
-          <div className="mt-8 max-w-xl rounded-3xl border border-[oklch(1_0_0/0.12)] bg-[oklch(0.15_0.01_260/0.65)] p-2 shadow-glow backdrop-blur-xl">
-            <div className="flex gap-1 p-1">
+          <div className="mt-8 max-w-xl rounded-3xl border border-border/80 bg-card/85 p-3 shadow-2xl backdrop-blur-2xl">
+            <div className="flex gap-1.5 p-1">
               {(["bike", "vin"] as const).map((m) => (
-                <button key={m} onClick={() => setMode(m)} className={`flex-1 rounded-2xl px-4 py-2 text-sm font-semibold transition ${mode === m ? "bg-primary text-primary-foreground" : "text-[oklch(1_0_0/0.7)] hover:text-hero-ink"}`}>
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className={`flex-1 rounded-full px-5 py-2 text-sm font-semibold transition-all ${
+                    mode === m
+                      ? "bg-primary text-primary-foreground shadow-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                  }`}
+                >
                   {m === "bike" ? "Pick my bike" : "Enter VIN"}
                 </button>
               ))}
             </div>
             <div className="flex flex-col gap-2 p-2 sm:flex-row">
               {mode === "bike" ? (
-                <div className="flex flex-1 items-center gap-2 rounded-2xl bg-[oklch(1_0_0/0.08)] px-4">
+                <div className="flex flex-1 items-center gap-2.5 rounded-2xl border border-border/80 bg-background/80 px-4 backdrop-blur-md">
                   <BikeIcon className="h-5 w-5 text-primary" />
-                  <select value={bikeId} onChange={(e) => setBikeId(e.target.value)} className="h-12 w-full bg-transparent text-hero-ink outline-none [&>option]:text-[oklch(0.2_0_0)]">
-                    {bikes.map((b) => <option key={b.id} value={b.id}>{b.make} {b.model} · {b.voltage}V</option>)}
+                  <select
+                    value={bikeId}
+                    onChange={(e) => setBikeId(e.target.value)}
+                    className="h-12 w-full bg-transparent text-foreground outline-none [&>option]:text-foreground [&>option]:bg-card"
+                  >
+                    {bikes.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.make} {b.model} · {b.voltage}V
+                      </option>
+                    ))}
                   </select>
                 </div>
               ) : (
-                <div className="flex flex-1 items-center gap-2 rounded-2xl bg-[oklch(1_0_0/0.08)] px-4">
+                <div className="flex flex-1 items-center gap-2.5 rounded-2xl border border-border/80 bg-background/80 px-4 backdrop-blur-md">
                   <Search className="h-5 w-5 text-primary" />
-                  <input value={vin} onChange={(e) => setVin(e.target.value)} maxLength={17} placeholder="e.g. P6R1S1PR2PN000001" className="h-12 w-full bg-transparent font-mono uppercase tracking-wider text-hero-ink outline-none placeholder:text-[oklch(1_0_0/0.4)]" />
+                  <input
+                    value={vin}
+                    onChange={(e) => setVin(e.target.value)}
+                    maxLength={17}
+                    placeholder="e.g. P6R1S1PR2PN000001"
+                    className="h-12 w-full bg-transparent font-mono uppercase tracking-wider text-foreground outline-none placeholder:text-muted-foreground/60"
+                  />
                 </div>
               )}
-              <button onClick={go} className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-6 font-semibold text-primary-foreground transition hover:opacity-90">
+              <button
+                onClick={go}
+                className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-6 font-semibold text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] transition-all hover:brightness-105 active:scale-95"
+              >
                 Find parts <ArrowRight className="h-4 w-4" />
               </button>
             </div>
           </div>
 
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link to="/assistant" className="flex items-center gap-2 rounded-full border border-[oklch(1_0_0/0.2)] px-5 py-3 text-sm font-semibold backdrop-blur transition hover:border-primary hover:text-primary">
+            <Link
+              to="/assistant"
+              className="flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-5 py-2.5 text-sm font-semibold text-primary backdrop-blur-xl transition hover:bg-primary hover:text-primary-foreground hover:shadow-glow"
+            >
               <Mic className="h-4 w-4" /> Talk to AI assistant
             </Link>
-            <Link to="/shop" className="flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-[oklch(1_0_0/0.8)] hover:text-primary">
+            <Link
+              to="/shop"
+              className="flex items-center gap-2 rounded-full border border-border/80 bg-card/80 px-5 py-2.5 text-sm font-semibold text-foreground backdrop-blur-xl transition hover:border-primary/50"
+            >
               Browse all parts <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -131,24 +178,51 @@ function Hero() {
 
         {/* Floating cards */}
         <div className="relative hidden h-[520px] lg:block">
-          <div className="animate-float absolute right-0 top-4 w-72 rounded-3xl border border-[oklch(1_0_0/0.12)] bg-[oklch(0.15_0.01_260/0.7)] p-5 backdrop-blur-xl">
-            <div className="flex items-center justify-between text-xs text-[oklch(1_0_0/0.6)]"><span>Order #RZ48213</span><span className="text-primary">● Live</span></div>
-            <p className="mt-2 font-display text-3xl">Arriving in 18 min</p>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-[oklch(1_0_0/0.1)]"><div className="h-full w-2/3 rounded-full bg-primary" /></div>
+          <div className="animate-float absolute right-0 top-4 w-76 rounded-3xl border border-border/80 bg-card/90 p-5 shadow-2xl backdrop-blur-2xl">
+            <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
+              <span>Order #RZ48213</span>
+              <span className="flex items-center gap-1.5 text-primary font-semibold">
+                <span className="h-2 w-2 rounded-full bg-primary animate-pulse" /> Live
+              </span>
+            </div>
+            <p className="mt-2 font-display text-2xl font-bold tracking-tight text-foreground">Arriving in 18 min</p>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
+              <div className="h-full w-2/3 rounded-full bg-primary" />
+            </div>
             <div className="mt-4 flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-primary font-bold text-primary-foreground">RK</span>
-              <div className="text-sm"><p className="font-semibold">Ravi Kumar</p><p className="text-[oklch(1_0_0/0.6)]">2 pickups · Ather Rizta</p></div>
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-primary font-bold text-primary-foreground shadow-sm">
+                RK
+              </span>
+              <div className="text-sm">
+                <p className="font-semibold text-foreground">Ravi Kumar</p>
+                <p className="text-xs text-muted-foreground">2 pickups · Ather Rizta</p>
+              </div>
             </div>
           </div>
-          <div className="animate-float absolute left-4 top-56 w-60 rounded-3xl border border-[oklch(1_0_0/0.12)] bg-[oklch(0.15_0.01_260/0.7)] p-5 backdrop-blur-xl" style={{ animationDelay: "1.5s" }}>
-            <div className="flex items-center gap-2 text-sm font-semibold text-primary"><ShieldCheck className="h-4 w-4" /> Fitment verified</div>
-            <p className="mt-2 text-sm text-[oklch(1_0_0/0.75)]">VoltRide 60V 30Ah fits your <b className="text-hero-ink">Ola S1 Pro 2023</b></p>
+          <div
+            className="animate-float absolute left-4 top-56 w-64 rounded-3xl border border-border/80 bg-card/90 p-5 shadow-2xl backdrop-blur-2xl"
+            style={{ animationDelay: "1.5s" }}
+          >
+            <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+              <ShieldCheck className="h-4 w-4" /> Fitment verified
+            </div>
+            <p className="mt-2 text-sm text-foreground/80 leading-snug">
+              VoltRide 60V 30Ah fits your <b className="text-foreground">Ola S1 Pro 2023</b>
+            </p>
           </div>
           <div className="absolute bottom-6 right-6 grid grid-cols-2 gap-3">
-            {[["6+", "Verified sellers"], ["1.2k", "Parts listed"], ["38m", "Avg delivery"], ["4.8★", "Rider rating"]].map(([v, l]) => (
-              <div key={l} className="rounded-2xl border border-[oklch(1_0_0/0.12)] bg-[oklch(0.15_0.01_260/0.6)] px-4 py-3 backdrop-blur-xl">
-                <p className="font-display text-3xl text-primary">{v}</p>
-                <p className="text-xs text-[oklch(1_0_0/0.65)]">{l}</p>
+            {[
+              ["6+", "Verified sellers"],
+              ["1.2k", "Parts listed"],
+              ["38m", "Avg delivery"],
+              ["4.8★", "Rider rating"],
+            ].map(([v, l]) => (
+              <div
+                key={l}
+                className="rounded-2xl border border-border/80 bg-card/90 px-4 py-3 shadow-md backdrop-blur-xl"
+              >
+                <p className="font-display text-2xl font-bold tracking-tight text-primary">{v}</p>
+                <p className="text-xs text-muted-foreground">{l}</p>
               </div>
             ))}
           </div>
@@ -160,9 +234,13 @@ function Hero() {
 
 function BrandStrip() {
   return (
-    <div className="border-y border-border bg-card/40">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-12 gap-y-4 px-4 py-6 font-display text-2xl text-muted-foreground md:justify-between">
-        {["Ather", "Ola Electric", "TVS iQube", "Bajaj Chetak", "Revolt", "Hero Vida"].map((b) => <span key={b} className="opacity-70 transition hover:text-primary hover:opacity-100">{b}</span>)}
+    <div className="border-y border-border/70 bg-card/40 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-12 gap-y-4 px-4 py-6 font-display text-lg font-semibold tracking-wide text-muted-foreground md:justify-between">
+        {["Ather", "Ola Electric", "TVS iQube", "Bajaj Chetak", "Revolt", "Hero Vida"].map((b) => (
+          <span key={b} className="opacity-70 transition hover:text-primary hover:opacity-100">
+            {b}
+          </span>
+        ))}
       </div>
     </div>
   );
@@ -179,17 +257,30 @@ function Categories() {
     <section className="mx-auto max-w-7xl px-4 pt-24 md:px-6">
       <SectionTitle eyebrow="Shop by category" title="Everything your EV runs on" />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {cats.map((c, i) => (
-          <Link key={c.name} to="/shop" className={`group relative overflow-hidden rounded-3xl border border-border bg-card ${i === 0 ? "lg:row-span-2" : ""}`}>
-            <img src={c.img} alt={c.name} loading="lazy" width={1024} height={1024} className={`w-full object-cover transition duration-700 group-hover:scale-105 ${i === 0 ? "aspect-square lg:aspect-auto lg:h-full" : "aspect-[4/3]"}`} />
-            <div className="absolute inset-0 bg-gradient-to-t from-[oklch(0.1_0_0/0.85)] via-transparent to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-5 text-hero-ink">
-              <div>
-                <c.Icon className="mb-2 h-6 w-6 text-primary" />
-                <p className="font-display text-2xl leading-none md:text-3xl">{c.name}</p>
-                <p className="text-xs opacity-70">{c.count}+ products</p>
+        {cats.map((c) => (
+          <Link
+            key={c.name}
+            to="/shop"
+            className="group relative aspect-square sm:aspect-[4/3] w-full overflow-hidden rounded-3xl border border-border/80 bg-card/70 backdrop-blur-xl shadow-card transition-all duration-500 hover:-translate-y-1.5 hover:shadow-2xl hover:border-primary/40"
+          >
+            <img
+              src={c.img}
+              alt={c.name}
+              loading="lazy"
+              width={1024}
+              height={1024}
+              className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-4 sm:p-5 text-white">
+              <div className="min-w-0 pr-2">
+                <c.Icon className="mb-2 h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                <p className="font-display text-lg font-bold leading-tight sm:text-xl lg:text-2xl">{c.name}</p>
+                <p className="mt-0.5 text-xs text-white/70">{c.count}+ products</p>
               </div>
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-primary text-primary-foreground transition group-hover:rotate-[-45deg]"><ArrowRight className="h-4 w-4" /></span>
+              <span className="grid h-9 w-9 sm:h-10 sm:w-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm transition-transform duration-300 group-hover:rotate-[-45deg]">
+                <ArrowRight className="h-4 w-4" />
+              </span>
             </div>
           </Link>
         ))}
@@ -207,14 +298,21 @@ function HowItWorks() {
   ];
   return (
     <section className="mx-auto max-w-7xl px-4 pt-28 md:px-6">
-      <SectionTitle eyebrow="How it works" title="From VIN to doorstep" sub="Built for riders, workshops and dealers who are tired of guessing which battery fits." />
+      <SectionTitle
+        eyebrow="How it works"
+        title="From VIN to doorstep"
+        sub="Built for riders, workshops and dealers who are tired of guessing which battery fits."
+      />
       <div className="grid gap-4 md:grid-cols-4">
         {steps.map((s, i) => (
-          <div key={s.t} className="relative rounded-3xl border border-border bg-card p-6 shadow-card">
-            <span className="font-display text-6xl text-primary/20">0{i + 1}</span>
-            <s.Icon className="mt-2 h-7 w-7 text-primary" />
-            <p className="mt-4 font-display text-3xl">{s.t}</p>
-            <p className="mt-2 text-sm text-muted-foreground">{s.d}</p>
+          <div
+            key={s.t}
+            className="relative rounded-3xl border border-border/80 bg-card/75 p-6 shadow-card backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:border-primary/40"
+          >
+            <span className="font-display text-4xl font-extrabold text-primary/30">0{i + 1}</span>
+            <s.Icon className="mt-3 h-7 w-7 text-primary" />
+            <p className="mt-4 font-display text-xl font-bold tracking-tight">{s.t}</p>
+            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{s.d}</p>
           </div>
         ))}
       </div>
@@ -227,10 +325,20 @@ function Featured() {
     <section className="mx-auto max-w-7xl px-4 pt-28 md:px-6">
       <div className="flex items-end justify-between">
         <SectionTitle eyebrow="Trending now" title="Top batteries this week" />
-        <Link to="/shop" className="mb-8 hidden items-center gap-1 text-sm font-semibold text-primary md:flex">View all <ArrowRight className="h-4 w-4" /></Link>
+        <Link
+          to="/shop"
+          className="mb-10 hidden items-center gap-1.5 text-sm font-semibold text-primary transition hover:underline md:flex"
+        >
+          View all <ArrowRight className="h-4 w-4" />
+        </Link>
       </div>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {products.filter((p) => p.category === "Battery").slice(0, 4).map((p) => <ProductCard key={p.id} p={p} />)}
+        {products
+          .filter((p) => p.category === "Battery")
+          .slice(0, 4)
+          .map((p) => (
+            <ProductCard key={p.id} p={p} />
+          ))}
       </div>
     </section>
   );
@@ -248,13 +356,28 @@ function Roles() {
       <SectionTitle eyebrow="One platform, every role" title="Pick your dashboard" />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {roles.map((r) => (
-          <Link key={r.t} to={r.to} className="group overflow-hidden rounded-3xl border border-border bg-card shadow-card transition hover:border-primary/60">
-            <div className="aspect-[4/3] overflow-hidden"><img src={r.img} alt={r.t} loading="lazy" width={1280} height={896} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" /></div>
+          <Link
+            key={r.t}
+            to={r.to}
+            className="group overflow-hidden rounded-3xl border border-border/80 bg-card/75 backdrop-blur-xl shadow-card transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:border-primary/50"
+          >
+            <div className="aspect-[4/3] overflow-hidden">
+              <img
+                src={r.img}
+                alt={r.t}
+                loading="lazy"
+                width={1280}
+                height={896}
+                className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+              />
+            </div>
             <div className="p-5">
               <r.Icon className="h-5 w-5 text-primary" />
-              <p className="mt-3 text-lg font-bold">{r.t}</p>
-              <p className="text-sm text-muted-foreground">{r.d}</p>
-              <p className="mt-4 flex items-center gap-1 text-sm font-semibold text-primary">Open dashboard <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></p>
+              <p className="mt-3 text-base font-bold tracking-tight">{r.t}</p>
+              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{r.d}</p>
+              <p className="mt-4 flex items-center gap-1 text-xs font-semibold text-primary">
+                Open dashboard <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
+              </p>
             </div>
           </Link>
         ))}
@@ -274,10 +397,19 @@ function Testimonials() {
       <SectionTitle eyebrow="Loved on the road" title="Riders trust Riderzpro" />
       <div className="grid gap-4 md:grid-cols-3">
         {t.map((x) => (
-          <figure key={x.n} className="rounded-3xl border border-border bg-card p-6 shadow-card">
-            <div className="flex gap-0.5">{Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-4 w-4 fill-warning text-warning" />)}</div>
-            <blockquote className="mt-4 text-lg leading-relaxed">“{x.q}”</blockquote>
-            <figcaption className="mt-6 text-sm"><b>{x.n}</b> <span className="text-muted-foreground">· {x.r}</span></figcaption>
+          <figure
+            key={x.n}
+            className="rounded-3xl border border-border/80 bg-card/75 p-6 backdrop-blur-xl shadow-card"
+          >
+            <div className="flex gap-0.5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star key={i} className="h-4 w-4 fill-warning text-warning" />
+              ))}
+            </div>
+            <blockquote className="mt-4 text-base leading-relaxed text-foreground/90">“{x.q}”</blockquote>
+            <figcaption className="mt-6 text-sm">
+              <b className="font-semibold">{x.n}</b> <span className="text-muted-foreground">· {x.r}</span>
+            </figcaption>
           </figure>
         ))}
       </div>
@@ -288,11 +420,20 @@ function Testimonials() {
 function AppCta() {
   return (
     <section className="mx-auto max-w-7xl px-4 pt-28 md:px-6">
-      <div className="relative overflow-hidden rounded-[2rem] bg-primary p-10 text-primary-foreground md:p-16">
+      <div className="relative overflow-hidden rounded-[2.5rem] border border-white/20 bg-gradient-to-br from-primary via-[oklch(0.68_0.20_145)] to-[oklch(0.58_0.19_150)] p-10 text-primary-foreground shadow-2xl backdrop-blur-2xl md:p-16">
         <Zap className="absolute -right-10 -top-10 h-72 w-72 opacity-10" fill="currentColor" />
-        <p className="font-display text-5xl leading-none md:text-7xl">Install Riderzpro<br />on your phone.</p>
-        <p className="mt-4 max-w-lg opacity-80">Open this site on your phone and tap “Add to Home Screen” — it works like a native app with live tracking and voice search.</p>
-        <Link to="/shop" className="mt-8 inline-flex items-center gap-2 rounded-full bg-primary-foreground px-6 py-3 font-semibold text-primary">Start shopping <ArrowRight className="h-4 w-4" /></Link>
+        <p className="font-display text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl leading-[1.08]">
+          Install Riderzpro<br />on your phone.
+        </p>
+        <p className="mt-4 max-w-lg text-primary-foreground/90 leading-relaxed font-normal">
+          Open this site on your phone and tap “Add to Home Screen” — it works like a native app with live tracking and voice search.
+        </p>
+        <Link
+          to="/shop"
+          className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 font-semibold text-foreground shadow-lg transition hover:bg-white/90 active:scale-95"
+        >
+          Start shopping <ArrowRight className="h-4 w-4" />
+        </Link>
       </div>
     </section>
   );
