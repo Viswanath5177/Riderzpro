@@ -90,7 +90,7 @@ function CustomerDashboard() {
         {tab === "service" && (
           <ServiceTab onOpenBookingModal={() => setIsBookingOpen(true)} />
         )}
-        {tab === "addresses" && <AddressesTab />}
+        {tab === "addresses" && <SettingsTab />}
         {tab === "offers" && <OffersTab />}
         {tab === "invoices" && <InvoicesTab />}
         {tab === "notifications" && <NotificationsTab />}

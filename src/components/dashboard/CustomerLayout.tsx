@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Bike,
   Heart,
@@ -30,6 +30,7 @@ import {
   ScanLine,
   Truck,
   MapPin,
+  ShoppingCart,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/site/bits";
@@ -73,22 +74,20 @@ export function CustomerLayout({
     savedProductIds,
     serviceBookings,
     notifications,
-    markNotificationRead,
-    markAllNotificationsRead,
     cart,
+    signOut,
   } = useStore();
+  const navigate = useNavigate();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isVinSearchOpen, setIsVinSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const activeOrdersCount = orders.filter((o) => o.status < 5).length;
+  const cartCount = cart.reduce((s, c) => s + c.qty, 0);
   const liveOrder = orders.find((o) => o.status < 5);
-  const unreadNotifsCount = notifications.filter((n) => !n.read).length;
   const upcomingServicesCount = serviceBookings.filter(
     (s) => s.status === "Confirmed" || s.status === "In progress"
   ).length;
@@ -129,12 +128,6 @@ export function CustomerLayout({
       badgeColor: "bg-[#E31E24] text-white",
     },
     {
-      id: "saved" as CustomerTab,
-      label: "Saved Items",
-      Icon: Heart,
-      badge: savedProductIds.length > 0 ? `${savedProductIds.length}` : undefined,
-    },
-    {
       id: "garage" as CustomerTab,
       label: "My Garage",
       Icon: Bike,
@@ -148,25 +141,13 @@ export function CustomerLayout({
       badgeColor: "bg-blue-600 text-white",
     },
     {
-      id: "addresses" as CustomerTab,
-      label: "Addresses",
-      Icon: MapPin,
-    },
-    {
       id: "invoices" as CustomerTab,
       label: "Payments & Invoices",
       Icon: Receipt,
     },
     {
-      id: "notifications" as CustomerTab,
-      label: "Notifications",
-      Icon: Bell,
-      badge: unreadNotifsCount > 0 ? `${unreadNotifsCount}` : undefined,
-      badgeColor: "bg-[#E31E24] text-white",
-    },
-    {
       id: "settings" as CustomerTab,
-      label: "Profile & Settings",
+      label: "Profile & Addresses",
       Icon: UserCog,
     },
     {
@@ -412,8 +393,8 @@ export function CustomerLayout({
 
         {/* Right Content Area */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Top Header */}
-          <header className="sticky top-0 z-20 h-18 bg-white border-b border-[#E5E7EB] px-4 md:px-8 flex items-center justify-between gap-4 shadow-xs">
+          {/* Top Header (Static - does not move up and down on scroll) */}
+          <header className="h-18 bg-white border-b border-[#E5E7EB] px-4 md:px-8 flex items-center justify-between gap-4 shadow-xs z-20">
             {/* Left: Mobile hamburger & breadcrumbs */}
             <div className="flex items-center gap-3 min-w-0">
               <button
@@ -452,7 +433,7 @@ export function CustomerLayout({
               </button>
             </div>
 
-            {/* Right: Actions, Search by VIN, AI Voice, Notifications, Avatar */}
+            {/* Right: Actions, Search by VIN, AI Voice, Cart, Avatar */}
             <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
               {/* Search by VIN Button in Navbar */}
               <button
@@ -484,79 +465,22 @@ export function CustomerLayout({
                 <span className="sm:hidden font-bold">Ask AI</span>
               </Link>
 
-              {/* Notifications Bell with Popover */}
-              <div className="relative">
-                <button
-                  onClick={() => setIsNotifOpen(!isNotifOpen)}
-                  className="relative p-2 rounded-xl text-gray-600 hover:bg-gray-100 transition"
-                  aria-label="Notifications"
-                >
-                  <Bell className="h-5 w-5" />
-                  {unreadNotifsCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 grid h-4 w-4 place-items-center rounded-full bg-rose-500 text-[9px] font-bold text-white ring-2 ring-white">
-                      {unreadNotifsCount}
-                    </span>
-                  )}
-                </button>
-
-                {isNotifOpen && (
-                  <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-3xl bg-white border border-gray-200 shadow-2xl p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
-                    <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                      <div>
-                        <p className="text-sm font-bold text-gray-900">Notifications</p>
-                        <p className="text-xs text-gray-500">{unreadNotifsCount} unread alerts</p>
-                      </div>
-                      {unreadNotifsCount > 0 && (
-                        <button
-                          onClick={markAllNotificationsRead}
-                          className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
-                        >
-                          <CheckCheck className="h-3.5 w-3.5" /> Mark all read
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-72 overflow-y-auto divide-y divide-gray-50 py-1">
-                      {notifications.length === 0 ? (
-                        <p className="py-6 text-center text-xs text-gray-500">No notifications yet.</p>
-                      ) : (
-                        notifications.slice(0, 5).map((notif) => (
-                          <div
-                            key={notif.id}
-                            onClick={() => markNotificationRead(notif.id)}
-                            className={cn(
-                              "py-3 px-2 rounded-xl cursor-pointer transition flex items-start gap-3",
-                              notif.read ? "opacity-75 hover:bg-gray-50" : "bg-emerald-50/50 hover:bg-emerald-50"
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                "h-2 w-2 rounded-full mt-1.5 shrink-0",
-                                notif.read ? "bg-gray-300" : "bg-primary"
-                              )}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold text-gray-900">{notif.title}</p>
-                              <p className="text-xs text-gray-600 line-clamp-2 mt-0.5">{notif.message}</p>
-                              <span className="text-[10px] text-gray-400 mt-1 inline-block">{notif.time}</span>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    <div className="pt-2 border-t border-gray-100 text-center">
-                      <button
-                        onClick={() => {
-                          setIsNotifOpen(false);
-                          onTabChange("notifications");
-                        }}
-                        className="text-xs font-semibold text-primary hover:underline"
-                      >
-                        View all notifications →
-                      </button>
-                    </div>
-                  </div>
+              {/* Shopping Cart button on top right */}
+              <Link
+                to="/cart"
+                id="dashboard-header-cart-btn"
+                aria-label="Shopping Cart"
+                className="relative flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#111111] hover:border-[#E31E24] hover:text-[#E31E24] transition shadow-2xs active:scale-95"
+                title="View Shopping Cart"
+              >
+                <ShoppingCart className="h-3.5 w-3.5 text-[#E31E24]" />
+                <span className="hidden sm:inline">Cart</span>
+                {cartCount > 0 && (
+                  <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-[#E31E24] px-1 text-[10px] font-bold text-white leading-none">
+                    {cartCount}
+                  </span>
                 )}
-              </div>
+              </Link>
 
               {/* Profile Avatar & Account Menu */}
               <div className="relative">
@@ -613,14 +537,16 @@ export function CustomerLayout({
                         className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 rounded-xl transition"
                       >
                         <UserCog className="h-4 w-4 text-gray-400" />
-                        <span>Profile & Settings</span>
+                        <span>Profile & Delivery Addresses</span>
                       </button>
                     </div>
                     <div className="pt-1 border-t border-gray-100">
                       <button
                         onClick={() => {
                           setIsProfileOpen(false);
-                          toast.info("Signed out from customer session");
+                          signOut();
+                          toast.info("Signed out successfully");
+                          navigate({ to: "/" });
                         }}
                         className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-xl transition"
                       >

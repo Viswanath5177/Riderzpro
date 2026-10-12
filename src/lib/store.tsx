@@ -60,6 +60,16 @@ export type CustomerNotification = {
   actionUrl?: string;
 };
 
+export type UserAddress = {
+  id: string;
+  tag: string;
+  name: string;
+  phone: string;
+  street: string;
+  city: string;
+  pincode: string;
+};
+
 export type UserProfile = {
   name: string;
   phone: string;
@@ -67,6 +77,8 @@ export type UserProfile = {
   city: string;
   address: string;
   points: number;
+  addresses?: UserAddress[];
+  selectedAddressId?: string;
 };
 
 export type VendorGroup = {
@@ -177,18 +189,52 @@ type Ctx = {
   setIsLoggedIn: (v: boolean) => void;
   signIn: () => void;
   signOut: () => void;
+  selectAddress: (id: string) => void;
+  addAddress: (addr: Omit<UserAddress, "id">) => void;
+  updateAddress: (id: string, updated: Partial<UserAddress>) => void;
+  removeAddress: (id: string) => void;
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
 const KEY = "riderzpro-v2";
 
-const DEFAULT_PROFILE: UserProfile = {
+export const DEFAULT_PROFILE: UserProfile = {
   name: "Aakash Sharma",
   phone: "+91 98765 43210",
   email: "aakash.sharma@example.com",
   city: "Bengaluru, KA",
   address: "Flat 402, Green Glen Layout, Bellandur, Bengaluru 560103",
   points: 450,
+  selectedAddressId: "addr-1",
+  addresses: [
+    {
+      id: "addr-1",
+      tag: "Home (Primary)",
+      name: "Aakash Sharma",
+      phone: "+91 98765 43210",
+      street: "Flat 402, Green Glen Layout, Bellandur",
+      city: "Bengaluru, KA",
+      pincode: "560103",
+    },
+    {
+      id: "addr-2",
+      tag: "Office / Tech Park",
+      name: "Aakash Sharma",
+      phone: "+91 98765 43210",
+      street: "Tower B, Prestige Tech Cloud, Outer Ring Road",
+      city: "Bengaluru, KA",
+      pincode: "560103",
+    },
+    {
+      id: "addr-3",
+      tag: "Workshop Garage",
+      name: "Aakash Sharma",
+      phone: "+91 98765 43210",
+      street: "Plot 18, Electronic City Phase 1",
+      city: "Bengaluru, KA",
+      pincode: "560100",
+    },
+  ],
 };
 
 const DEFAULT_ADDRESS: AddressRef = {
@@ -458,7 +504,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (s.savedProductIds) setSavedProductIds(s.savedProductIds);
         if (s.serviceBookings) setServiceBookings(s.serviceBookings);
         if (s.notifications) setNotifications(s.notifications);
-        if (s.userProfile) setUserProfile(s.userProfile);
+        if (s.userProfile) {
+          setUserProfile({
+            ...DEFAULT_PROFILE,
+            ...s.userProfile,
+            addresses:
+              s.userProfile.addresses && s.userProfile.addresses.length > 0
+                ? s.userProfile.addresses
+                : DEFAULT_PROFILE.addresses,
+            selectedAddressId:
+              s.userProfile.selectedAddressId || DEFAULT_PROFILE.selectedAddressId,
+          });
+        }
         if (s.role) setRole(s.role);
       }
       setTheme("light");
@@ -775,6 +832,66 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setUserProfile((prev) => ({ ...prev, ...p }));
   }, []);
 
+  const selectAddress = useCallback((id: string) => {
+    setUserProfile((prev) => {
+      const target = (prev.addresses || DEFAULT_PROFILE.addresses || []).find((a) => a.id === id);
+      if (!target) return prev;
+      return {
+        ...prev,
+        selectedAddressId: id,
+        address: target.street,
+        city: `${target.city} - ${target.pincode}`,
+      };
+    });
+  }, []);
+
+  const addAddress = useCallback((addr: Omit<UserAddress, "id">) => {
+    const newAddr: UserAddress = {
+      ...addr,
+      id: `addr-${Date.now()}`,
+    };
+    setUserProfile((prev) => {
+      const currentList = prev.addresses || DEFAULT_PROFILE.addresses || [];
+      return {
+        ...prev,
+        addresses: [...currentList, newAddr],
+        selectedAddressId: newAddr.id,
+        address: newAddr.street,
+        city: `${newAddr.city} - ${newAddr.pincode}`,
+      };
+    });
+  }, []);
+
+  const updateAddress = useCallback((id: string, updated: Partial<UserAddress>) => {
+    setUserProfile((prev) => {
+      const currentList = prev.addresses || DEFAULT_PROFILE.addresses || [];
+      const newList = currentList.map((a) => (a.id === id ? { ...a, ...updated } : a));
+      const target = newList.find((a) => a.id === id);
+      const isCurrentlySelected = prev.selectedAddressId === id;
+      return {
+        ...prev,
+        addresses: newList,
+        address: isCurrentlySelected && target ? target.street : prev.address,
+        city: isCurrentlySelected && target ? `${target.city} - ${target.pincode}` : prev.city,
+      };
+    });
+  }, []);
+
+  const removeAddress = useCallback((id: string) => {
+    setUserProfile((prev) => {
+      const currentList = prev.addresses || DEFAULT_PROFILE.addresses || [];
+      const newList = currentList.filter((a) => a.id !== id);
+      const fallback = newList[0];
+      return {
+        ...prev,
+        addresses: newList,
+        selectedAddressId: prev.selectedAddressId === id ? (fallback?.id || "") : prev.selectedAddressId,
+        address: prev.selectedAddressId === id && fallback ? fallback.street : prev.address,
+        city: prev.selectedAddressId === id && fallback ? `${fallback.city} - ${fallback.pincode}` : prev.city,
+      };
+    });
+  }, []);
+
   const simulateDemoOrder = useCallback(() => {
     const demoOrder: Order = {
       id: `RZ-${Math.floor(100000 + Math.random() * 900000)}`,
@@ -907,6 +1024,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setIsLoggedIn,
       signIn,
       signOut,
+      selectAddress,
+      addAddress,
+      updateAddress,
+      removeAddress,
     }),
     [
       theme,
@@ -943,6 +1064,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       isLoggedIn,
       signIn,
       signOut,
+      selectAddress,
+      addAddress,
+      updateAddress,
+      removeAddress,
     ],
   );
 
