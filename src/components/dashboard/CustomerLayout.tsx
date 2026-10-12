@@ -444,15 +444,14 @@ export function CustomerLayout({
 
             {/* Right: Actions, Search by VIN, AI Voice, Cart, Avatar */}
             <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-              {/* Search by VIN Button in Navbar */}
+              {/* Search by VIN Button in Navbar (desktop/tablet only) */}
               <button
                 onClick={() => setIsVinSearchOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#E5E7EB] bg-white hover:border-[#E31E24] hover:text-[#E31E24] text-xs font-semibold text-[#111111] transition active:scale-95 shadow-2xs"
+                className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#E5E7EB] bg-white hover:border-[#E31E24] hover:text-[#E31E24] text-xs font-semibold text-[#111111] transition active:scale-95 shadow-2xs"
                 title="Search items based on 17-digit VIN number"
               >
                 <ScanLine className="h-3.5 w-3.5 text-primary" />
-                <span className="hidden sm:inline">Search by VIN</span>
-                <span className="sm:hidden font-mono text-[11px]">VIN</span>
+                <span>Search by VIN</span>
               </button>
 
               {/* Mobile Search trigger */}
@@ -464,30 +463,29 @@ export function CustomerLayout({
                 <Search className="h-5 w-5" />
               </button>
 
-              {/* AI Assistant Button with Voice Mic */}
+              {/* AI Assistant Button with Voice Mic (desktop/tablet only) */}
               <Link
                 to="/assistant"
-                className="group flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#111111] hover:border-[#E31E24] hover:text-[#E31E24] transition shadow-2xs active:scale-95"
+                className="hidden sm:flex group items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#111111] hover:border-[#E31E24] hover:text-[#E31E24] transition shadow-2xs active:scale-95"
               >
                 <Mic className="h-3.5 w-3.5 text-primary transition group-hover:scale-110" />
-                <span className="hidden sm:inline">AI Voice</span>
-                <span className="sm:hidden font-bold">Ask AI</span>
+                <span>AI Voice</span>
               </Link>
 
-              {/* Shopping Cart button on top right -> opens Orders & Delivery Tracking */}
+              {/* Shopping Cart button on top right */}
               <button
                 onClick={() => onTabChange("orders")}
                 id="dashboard-header-cart-btn"
                 aria-label="Shopping Cart and Orders"
                 className={cn(
-                  "relative flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition shadow-2xs active:scale-95 cursor-pointer",
+                  "relative flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition shadow-2xs active:scale-95 cursor-pointer",
                   activeTab === "orders"
                     ? "border-[#E31E24] bg-red-50 text-[#E31E24]"
                     : "border-[#E5E7EB] bg-white text-[#111111] hover:border-[#E31E24] hover:text-[#E31E24]"
                 )}
                 title="View Orders & Delivery Tracking"
               >
-                <ShoppingCart className="h-3.5 w-3.5 text-[#E31E24]" />
+                <ShoppingCart className="h-4 w-4 text-[#E31E24]" />
                 <span className="hidden sm:inline">Cart</span>
                 {(orders.length > 0 || cartCount > 0) && (
                   <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-[#E31E24] px-1 text-[10px] font-bold text-white leading-none">
@@ -500,10 +498,10 @@ export function CustomerLayout({
               <div className="relative">
                 <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center gap-2 p-1.5 rounded-full hover:bg-gray-100 transition"
+                  className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition"
                   aria-label="Account menu"
                 >
-                  <span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-white font-bold text-xs shadow-xs">
+                  <span className="grid h-8.5 w-8.5 place-items-center rounded-full bg-primary text-white font-bold text-xs shadow-xs">
                     {userProfile?.name?.trim()
                       ? userProfile.name
                           .trim()
@@ -583,8 +581,8 @@ export function CustomerLayout({
             </div>
           </header>
 
-          {/* Main Dashboard Body */}
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-8">
+          {/* Main Dashboard Body with Safe Bottom Padding */}
+          <main className="flex-1 p-3.5 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-28 md:pb-8">
             {children}
           </main>
         </div>
@@ -593,7 +591,7 @@ export function CustomerLayout({
       {/* Mobile Drawer with Apple Glassmorphic Styling */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 flex md:hidden bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-72 bg-white/85 backdrop-blur-2xl backdrop-saturate-180 h-full flex flex-col p-5 shadow-2xl border-r border-white/60 animate-in slide-in-from-left duration-200">
+          <div className="w-72 bg-white/90 backdrop-blur-2xl backdrop-saturate-180 h-full flex flex-col p-5 shadow-2xl border-r border-white/60 animate-in slide-in-from-left duration-200">
             <div className="relative flex items-center justify-center pb-4 border-b border-slate-200/50">
               <Logo className="justify-center" imgClassName="h-8.5 w-auto" />
               <button
@@ -642,69 +640,69 @@ export function CustomerLayout({
         </div>
       )}
 
-      {/* Apple VisionOS Floating Glass Dock with Central AI Assistant Mic */}
-      <nav className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-md items-center justify-around rounded-full vision-dock px-3 py-1.5 md:hidden">
-        {/* Tab 1: Overview */}
+      {/* Native Mobile Bottom Navigation Bar */}
+      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-200/90 px-2 py-2 flex items-center justify-around md:hidden shadow-[0_-2px_10px_rgba(0,0,0,0.05)] safe-area-bottom">
+        {/* Tab 1: Home */}
         <button
           onClick={() => onTabChange("overview")}
           className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[10px] font-semibold transition active:scale-95",
-            activeTab === "overview" ? "text-[#E31E24] font-bold" : "text-[#6B7280] hover:text-[#111111]"
+            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[11px] font-semibold transition active:scale-95 cursor-pointer",
+            activeTab === "overview" ? "text-[#E31E24]" : "text-gray-500 hover:text-gray-900"
           )}
         >
-          <LayoutGrid className={cn("h-5 w-5", activeTab === "overview" && "stroke-[2.5]")} />
-          <span>Overview</span>
+          <LayoutGrid className={cn("h-5 w-5", activeTab === "overview" ? "stroke-[2.5]" : "stroke-[1.75]")} />
+          <span>Home</span>
         </button>
 
-        {/* Tab 2: Garage */}
+        {/* Tab 2: Shop */}
+        <button
+          onClick={() => onTabChange("shop")}
+          className={cn(
+            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[11px] font-semibold transition active:scale-95 cursor-pointer",
+            activeTab === "shop" ? "text-[#E31E24]" : "text-gray-500 hover:text-gray-900"
+          )}
+        >
+          <ShoppingBag className={cn("h-5 w-5", activeTab === "shop" ? "stroke-[2.5]" : "stroke-[1.75]")} />
+          <span>Shop</span>
+        </button>
+
+        {/* Tab 3: Garage */}
         <button
           onClick={() => onTabChange("garage")}
           className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[10px] font-semibold transition active:scale-95",
-            activeTab === "garage" ? "text-[#E31E24] font-bold" : "text-[#6B7280] hover:text-[#111111]"
+            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[11px] font-semibold transition active:scale-95 cursor-pointer",
+            activeTab === "garage" ? "text-[#E31E24]" : "text-gray-500 hover:text-gray-900"
           )}
         >
-          <Bike className={cn("h-5 w-5", activeTab === "garage" && "stroke-[2.5]")} />
+          <Bike className={cn("h-5 w-5", activeTab === "garage" ? "stroke-[2.5]" : "stroke-[1.75]")} />
           <span>Garage</span>
         </button>
 
-        {/* CENTER ELEVATED AI ASSISTANT MIC ORB */}
-        <Link
-          to="/assistant"
-          aria-label="Voice AI Assistant"
-          className="relative -mt-6 flex flex-col items-center group px-1"
-        >
-          <span className="vision-mic-orb relative grid h-13 w-13 place-items-center rounded-full text-white cursor-pointer active:scale-90 shadow-xl">
-            <span className="vision-mic-pulse animate-mic-pulse" />
-            <Mic className="h-6 w-6 relative z-10 drop-shadow-sm" />
-          </span>
-          <span className="mt-1 text-[10px] font-bold tracking-tight text-[#E31E24]">
-            Ask AI
-          </span>
-        </Link>
-
-        {/* Tab 3: Orders */}
+        {/* Tab 4: Orders */}
         <button
           onClick={() => onTabChange("orders")}
           className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[10px] font-semibold transition active:scale-95",
-            activeTab === "orders" ? "text-[#E31E24] font-bold" : "text-[#6B7280] hover:text-[#111111]"
+            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[11px] font-semibold transition active:scale-95 cursor-pointer relative",
+            activeTab === "orders" ? "text-[#E31E24]" : "text-gray-500 hover:text-gray-900"
           )}
         >
-          <Package className={cn("h-5 w-5", activeTab === "orders" && "stroke-[2.5]")} />
+          <Package className={cn("h-5 w-5", activeTab === "orders" ? "stroke-[2.5]" : "stroke-[1.75]")} />
           <span>Orders</span>
+          {orders.length > 0 && (
+            <span className="absolute top-1 right-[28%] h-2 w-2 rounded-full bg-[#E31E24]" />
+          )}
         </button>
 
-        {/* Tab 4: Track Delivery */}
+        {/* Tab 5: Account */}
         <button
-          onClick={() => onTabChange("tracking")}
+          onClick={() => onTabChange("settings")}
           className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[10px] font-semibold transition active:scale-95",
-            activeTab === "tracking" ? "text-[#E31E24] font-bold" : "text-[#6B7280] hover:text-[#111111]"
+            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[11px] font-semibold transition active:scale-95 cursor-pointer",
+            activeTab === "settings" ? "text-[#E31E24]" : "text-gray-500 hover:text-gray-900"
           )}
         >
-          <Truck className={cn("h-5 w-5", activeTab === "tracking" && "stroke-[2.5]")} />
-          <span>Tracking</span>
+          <UserCog className={cn("h-5 w-5", activeTab === "settings" ? "stroke-[2.5]" : "stroke-[1.75]")} />
+          <span>Account</span>
         </button>
       </nav>
 
