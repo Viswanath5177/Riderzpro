@@ -7,12 +7,12 @@
 @theme inline {
   --font-display: "Plus Jakarta Sans", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
   --font-sans: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --radius-sm: calc(var(--radius) - 6px);
-  --radius-md: calc(var(--radius) - 3px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 16px);
+  --radius-3xl: calc(var(--radius) + 12px);
   --radius-full: 9999px;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -53,48 +53,54 @@
 }
 
 :root {
-  --radius: 1.15rem;
-  --background: oklch(0.985 0.003 240);
-  --foreground: oklch(0.18 0.01 260);
-  --card: oklch(1 0 0 / 72%);
-  --card-foreground: oklch(0.18 0.01 260);
-  --popover: oklch(1 0 0 / 82%);
-  --popover-foreground: oklch(0.18 0.01 260);
-  --primary: oklch(0.60 0.19 145);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.95 0.006 240 / 70%);
-  --secondary-foreground: oklch(0.2 0.01 260);
-  --muted: oklch(0.94 0.006 240 / 60%);
-  --muted-foreground: oklch(0.48 0.01 260);
-  --accent: oklch(0.92 0.06 145 / 50%);
-  --accent-foreground: oklch(0.28 0.08 145);
-  --destructive: oklch(0.6 0.22 27);
-  --destructive-foreground: oklch(0.99 0 0);
-  --success: oklch(0.62 0.18 145);
-  --warning: oklch(0.72 0.16 70);
-  --border: oklch(0 0 0 / 8%);
-  --input: oklch(0 0 0 / 8%);
-  --ring: oklch(0.60 0.19 145);
-  --chart-1: oklch(0.60 0.19 145);
-  --chart-2: oklch(0.62 0.14 220);
-  --chart-3: oklch(0.72 0.16 65);
-  --chart-4: oklch(0.58 0.18 300);
-  --chart-5: oklch(0.66 0.2 25);
-  --sidebar: oklch(0.98 0.004 240 / 75%);
-  --sidebar-foreground: oklch(0.18 0.01 260);
-  --sidebar-primary: oklch(0.60 0.19 145);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.93 0.05 145 / 50%);
-  --sidebar-accent-foreground: oklch(0.25 0.06 145);
-  --sidebar-border: oklch(0 0 0 / 7%);
-  --sidebar-ring: oklch(0.60 0.19 145);
-  --hero-ink: oklch(0.99 0 0);
-  --glass: oklch(1 0 0 / 70%);
-  --shadow-glow: 0 0 0 1px oklch(0.60 0.19 145 / 35%),
-    0 16px 45px -12px oklch(0.60 0.19 145 / 35%);
-  --shadow-card: 0 2px 8px -2px oklch(0 0 0 / 4%),
-    0 12px 32px -8px oklch(0 0 0 / 8%),
-    inset 0 1px 0 0 oklch(1 0 0 / 90%);
+  --radius: 0.5rem;
+  --background: #F5F6F8;
+  --foreground: #111111;
+  --card: #FFFFFF;
+  --card-foreground: #111111;
+  --popover: #FFFFFF;
+  --popover-foreground: #111111;
+  --primary: #E31E24;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F3F4F6;
+  --secondary-foreground: #111111;
+  --muted: #F3F4F6;
+  --muted-foreground: #6B7280;
+  --accent: #FEF2F2;
+  --accent-foreground: #E31E24;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --success: #15803D;
+  --warning: #D97706;
+  --border: #E5E7EB;
+  --input: #E5E7EB;
+  --ring: #E31E24;
+  --chart-1: #E31E24;
+  --chart-2: #111111;
+  --chart-3: #E9A04B;
+  --chart-4: #6B7280;
+  --chart-5: #DC2626;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #111111;
+  --sidebar-primary: #E31E24;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #FEF2F2;
+  --sidebar-accent-foreground: #E31E24;
+  --sidebar-border: #E5E7EB;
+  --sidebar-ring: #E31E24;
+  --hero-ink: #FFFFFF;
+  --glass: rgba(255, 255, 255, 0.95);
+  --shadow-glow: 0 0 0 1px rgba(227, 30, 36, 0.25), 0 8px 24px -6px rgba(227, 30, 36, 0.2);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+
+  /* Suggested Brand Tokens */
+  --brand-primary: #E31E24;
+  --brand-dark: #111111;
+  --brand-background: #F5F6F8;
+  --surface: #FFFFFF;
+  --text-primary: #111111;
+  --text-secondary: #6B7280;
+  --brand-orange: #E9A04B;
 }
 
 @layer base {
@@ -109,11 +115,6 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     -webkit-font-smoothing: antialiased;
-    background-image:
-      radial-gradient(ellipse 70% 50% at 50% -10%, color-mix(in oklab, var(--primary) 10%, transparent), transparent 70%),
-      radial-gradient(ellipse 50% 40% at 90% 30%, color-mix(in oklab, var(--chart-2) 6%, transparent), transparent 60%),
-      radial-gradient(ellipse 50% 40% at 10% 70%, color-mix(in oklab, var(--primary) 5%, transparent), transparent 60%);
-    background-attachment: fixed;
     min-height: 100vh;
   }
   h1, h2, h3, h4, h5, h6 {
@@ -128,8 +129,8 @@
 }
 @utility glass {
   background: var(--glass);
-  backdrop-filter: blur(28px) saturate(190%);
-  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 @utility shadow-glow {
   box-shadow: var(--shadow-glow);
@@ -148,15 +149,8 @@
 }
 @keyframes float-y {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+  50% { transform: translateY(-4px); }
 }
 @utility animate-float {
   animation: float-y 5s ease-in-out infinite;
-}
-@keyframes pulse-ring {
-  0% { transform: scale(0.8); opacity: 0.8; }
-  100% { transform: scale(2.2); opacity: 0; }
-}
-@utility animate-pulse-ring {
-  animation: pulse-ring 1.6s ease-out infinite;
 }

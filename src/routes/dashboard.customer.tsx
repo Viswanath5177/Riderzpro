@@ -11,6 +11,7 @@ import { InvoicesTab } from "@/components/dashboard/InvoicesTab";
 import { NotificationsTab } from "@/components/dashboard/NotificationsTab";
 import { SettingsTab } from "@/components/dashboard/SettingsTab";
 import { SupportTab } from "@/components/dashboard/SupportTab";
+import { AddressesTab } from "@/components/dashboard/AddressesTab";
 import { BookingModal } from "@/components/dashboard/BookingModal";
 import { AddBikeModal } from "@/components/dashboard/AddBikeModal";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -64,10 +65,12 @@ function CustomerDashboard() {
           />
         )}
         {tab === "orders" && <OrdersTab />}
+        {tab === "tracking" && <OrdersTab />}
         {tab === "saved" && <SavedTab />}
         {tab === "service" && (
           <ServiceTab onOpenBookingModal={() => setIsBookingOpen(true)} />
         )}
+        {tab === "addresses" && <AddressesTab />}
         {tab === "offers" && <OffersTab />}
         {tab === "invoices" && <InvoicesTab />}
         {tab === "notifications" && <NotificationsTab />}

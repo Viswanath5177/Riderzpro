@@ -117,6 +117,7 @@ type Ctx = {
   orders: Order[];
   placeOrder: (payment: string) => Order;
   advanceOrder: (id: string) => void;
+  updateOrderStatus: (id: string, status: number) => void;
   simulateDemoOrder: () => Order;
   savedProductIds: string[];
   toggleSaved: (id: string) => void;
@@ -186,6 +187,53 @@ const DEFAULT_NOTIFICATIONS: CustomerNotification[] = [
   },
 ];
 
+export const DEFAULT_ORDERS: Order[] = [
+  {
+    id: "RZ-849201",
+    createdAt: Date.now() - 48 * 60 * 1000,
+    groups: [
+      {
+        vendorId: "v1",
+        items: [{ productId: "p7", qty: 1, price: 14500 }],
+        subtotal: 14500,
+        km: 4.2,
+        fee: 90,
+        eta: 25,
+      },
+    ],
+    itemsTotal: 14500,
+    deliveryTotal: 90,
+    tax: 2610,
+    total: 17200,
+    eta: 25,
+    payment: "UPI · Google Pay",
+    status: 3, // Picked up / In transit
+    riderId: "r1",
+  },
+  {
+    id: "RZ-793420",
+    createdAt: Date.now() - 4 * 24 * 60 * 60 * 1000,
+    groups: [
+      {
+        vendorId: "v3",
+        items: [{ productId: "p12", qty: 1, price: 2400 }],
+        subtotal: 2400,
+        km: 3.1,
+        fee: 77,
+        eta: 30,
+      },
+    ],
+    itemsTotal: 2400,
+    deliveryTotal: 77,
+    tax: 432,
+    total: 2909,
+    eta: 30,
+    payment: "Credit Card (HDFC)",
+    status: 5, // Delivered
+    riderId: "r2",
+  },
+];
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -202,7 +250,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
   ]);
   const [activeBikeId, setActiveBikeId] = useState<string | null>("ola-s1pro");
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[]>(DEFAULT_ORDERS);
   const [savedProductIds, setSavedProductIds] = useState<string[]>(["p1", "p8"]);
   const [serviceBookings, setServiceBookings] = useState<ServiceBooking[]>(DEFAULT_BOOKINGS);
   const [notifications, setNotifications] = useState<CustomerNotification[]>(DEFAULT_NOTIFICATIONS);
@@ -218,7 +266,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (s.cart) setCart(s.cart);
         if (s.garage) setGarage(s.garage);
         if ("activeBikeId" in s) setActiveBikeId(s.activeBikeId);
-        if (s.orders) setOrders(s.orders);
+        if (s.orders && s.orders.length > 0) setOrders(s.orders);
+        else setOrders(DEFAULT_ORDERS);
         if (s.savedProductIds) setSavedProductIds(s.savedProductIds);
         if (s.serviceBookings) setServiceBookings(s.serviceBookings);
         if (s.notifications) setNotifications(s.notifications);
@@ -385,6 +434,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               ? { ...o, status: o.status + 1, riderId: o.status + 1 >= 2 ? riders[0].id : undefined }
               : o,
           ),
+        ),
+      updateOrderStatus: (id: string, status: number) =>
+        setOrders((os) =>
+          os.map((o) =>
+            o.id === id
+              ? { ...o, status, riderId: status >= 2 ? (o.riderId || riders[0].id) : undefined }
+              : o
+          )
         ),
       simulateDemoOrder,
       savedProductIds,
