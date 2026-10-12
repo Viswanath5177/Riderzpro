@@ -257,13 +257,11 @@ function Categories() {
     <section className="mx-auto max-w-7xl px-4 pt-24 md:px-6">
       <SectionTitle eyebrow="Shop by category" title="Everything your EV runs on" />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {cats.map((c, i) => (
+        {cats.map((c) => (
           <Link
             key={c.name}
             to="/shop"
-            className={`group relative overflow-hidden rounded-3xl border border-border/80 bg-card/70 backdrop-blur-xl shadow-card transition-all duration-500 hover:-translate-y-1.5 hover:shadow-2xl hover:border-primary/40 ${
-              i === 0 ? "lg:row-span-2" : ""
-            }`}
+            className="group relative aspect-square sm:aspect-[4/3] w-full overflow-hidden rounded-3xl border border-border/80 bg-card/70 backdrop-blur-xl shadow-card transition-all duration-500 hover:-translate-y-1.5 hover:shadow-2xl hover:border-primary/40"
           >
             <img
               src={c.img}
@@ -271,18 +269,16 @@ function Categories() {
               loading="lazy"
               width={1024}
               height={1024}
-              className={`w-full object-cover transition duration-700 group-hover:scale-105 ${
-                i === 0 ? "aspect-square lg:aspect-auto lg:h-full" : "aspect-[4/3]"
-              }`}
+              className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-5 text-white">
-              <div>
-                <c.Icon className="mb-2 h-6 w-6 text-primary" />
-                <p className="font-display text-xl font-bold leading-tight md:text-2xl">{c.name}</p>
-                <p className="text-xs text-white/70">{c.count}+ products</p>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-4 sm:p-5 text-white">
+              <div className="min-w-0 pr-2">
+                <c.Icon className="mb-2 h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                <p className="font-display text-lg font-bold leading-tight sm:text-xl lg:text-2xl">{c.name}</p>
+                <p className="mt-0.5 text-xs text-white/70">{c.count}+ products</p>
               </div>
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm transition group-hover:rotate-[-45deg]">
+              <span className="grid h-9 w-9 sm:h-10 sm:w-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm transition-transform duration-300 group-hover:rotate-[-45deg]">
                 <ArrowRight className="h-4 w-4" />
               </span>
             </div>

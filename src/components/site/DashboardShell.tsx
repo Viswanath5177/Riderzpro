@@ -6,10 +6,8 @@ import { cn } from "@/lib/utils";
 
 export const ROLE_LINKS = [
   { to: "/dashboard/customer", label: "Customer", Icon: Bike },
-  { to: "/dashboard/workshop", label: "Workshop", Icon: Wrench },
   { to: "/dashboard/vendor", label: "Vendor", Icon: Store },
   { to: "/dashboard/rider", label: "Rider", Icon: Truck },
-  { to: "/dashboard/admin", label: "Admin", Icon: Shield },
 ] as const;
 
 export type Section = { id: string; label: string; Icon: LucideIcon };

@@ -6,7 +6,6 @@ import { Logo } from "./bits";
 
 const nav = [
   { to: "/shop", label: "Shop" },
-  { to: "/assistant", label: "AI Assistant" },
   { to: "/garage", label: "My Garage" },
   { to: "/orders", label: "Orders" },
   { to: "/dashboards", label: "Dashboards" },
@@ -132,7 +131,6 @@ function Footer() {
           <ul className="space-y-2.5 text-muted-foreground">
             <li><Link to="/dashboard/vendor" className="hover:text-primary transition-colors">Sell on Riderzpro</Link></li>
             <li><Link to="/dashboard/rider" className="hover:text-primary transition-colors">Ride with us</Link></li>
-            <li><Link to="/dashboard/workshop" className="hover:text-primary transition-colors">For workshops</Link></li>
           </ul>
         </div>
       </div>
