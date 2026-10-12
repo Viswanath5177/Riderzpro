@@ -212,9 +212,34 @@ export function ProductFormPage({ product, onCancel, onSuccess }: ProductFormPag
     const prodId = product ? product.id : `prod_${Math.random().toString(36).substring(2, 10)}`;
     
     // Compatible vehicles list based on fitment type
-    const compatibleList = fitmentType === "universal"
-      ? ["universal", "ola-s1pro", "ather-450x", "tata-nexon-ev", "tvs-iqube", "bajaj-chetak"]
-      : [`${selectedMake.toLowerCase()}-${selectedModel.toLowerCase().replace(/\s+/g, "-")}`];
+    let compatibleList: string[] = [];
+    if (fitmentType === "universal") {
+      compatibleList = [
+        "universal",
+        "ola-s1pro",
+        "ather-450x",
+        "tata-nexon-ev",
+        "tvs-iqube",
+        "bajaj-chetak",
+        "revolt-rv400",
+        "hero-vida-v1",
+        "tata-tiago-ev",
+        "mg-zs-ev",
+        "mahindra-xuv400",
+      ];
+    } else {
+      const cleanMake = selectedMake.toLowerCase().trim();
+      const cleanModelNoSpecial = selectedModel.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const cleanModelHyphen = selectedModel.toLowerCase().replace(/[^a-z0-9]/g, "-");
+      compatibleList = Array.from(new Set([
+        `${cleanMake}-${cleanModelNoSpecial}`,
+        `${cleanMake}-${cleanModelHyphen}`,
+        cleanMake,
+        cleanModelHyphen,
+        cleanModelNoSpecial,
+        fitmentType === "vin" && vin ? `vin:${vin.toUpperCase().trim()}` : null,
+      ].filter(Boolean) as string[]));
+    }
 
     const categoryMap: Record<string, string> = {
       "Accessories": "cat_accessories",
@@ -229,7 +254,10 @@ export function ProductFormPage({ product, onCancel, onSuccess }: ProductFormPag
 
     const allImages = secondaryImageUrl ? [primaryImageUrl, secondaryImageUrl] : [primaryImageUrl];
 
-    const fullDescription = `${description}\n\nKey Features:\n${keyFeatures}\n\nVehicle Type: ${vehicleType} | Department: ${department} | SKU: ${sku} | Warranty: ${warranty} | Delivery: ${deliveryDetails}${dimensions ? ` | Dimensions: ${dimensions}` : ""}`;
+    const fitmentNote = fitmentType === "universal" 
+      ? "Universal fit for all electric bikes and cars" 
+      : `Compatible with ${selectedMake} ${selectedModel}${vin ? ` (VIN: ${vin})` : ""}`;
+    const fullDescription = `${description}\n\nKey Features:\n${keyFeatures}\n\nFitment: ${fitmentNote} | Vehicle Type: ${vehicleType} | Department: ${department} | SKU: ${sku} | Warranty: ${warranty} | Delivery: ${deliveryDetails}${dimensions ? ` | Dimensions: ${dimensions}` : ""}`;
 
     const payload = {
       id: prodId,

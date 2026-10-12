@@ -51,13 +51,13 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
   const activeBike = garage.find((b) => b.bikeId === selectedBikeId) || garage[0];
   const activeBikeMeta = activeBike ? getBike(activeBike.bikeId) : null;
 
-  const [dbProducts, setDbProducts] = useState<Product[]>(products);
+  const [dbProducts, setDbProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     fetch("/api/products")
       .then((r) => r.json())
       .then((res) => {
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           const mapped: Product[] = res.data.map((row: any) => {
             let primaryImg = "/src/assets/battery-1.jpg";
             if (row.image_url) {
@@ -72,7 +72,7 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
               }
             }
 
-            let fitsArr: string[] = ["ola-s1pro", "ather-450x", "tata-nexon-ev"];
+            let fitsArr: string[] = ["universal"];
             if (row.compatible_vehicles) {
               fitsArr = Array.isArray(row.compatible_vehicles) 
                 ? row.compatible_vehicles 
@@ -85,7 +85,7 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
               brand: row.brand || "Riderz Armor",
               category: (row.category_name as any) || "Car Accessories",
               image: primaryImg,
-              warrantyMonths: 24,
+              warrantyMonths: row.warranty?.includes("year") ? 12 : 6,
               weightKg: Number(row.weight_kg) || 4.5,
               fits: fitsArr,
               description: row.description || "",

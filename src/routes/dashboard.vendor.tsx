@@ -24,24 +24,22 @@ const sections = [
   { id: "payouts", label: "Payouts", Icon: Wallet },
 ];
 
-const initialProducts = products.filter((p) => p.offers.some((o) => o.vendorId === "v1"));
-
 function VendorDash() {
   const [tab, setTab] = useState("overview");
   
-  // Dynamic Products State linked to PostgreSQL schema
-  const [vendorProducts, setVendorProducts] = useState<Product[]>(initialProducts);
+  // Dynamic Products State linked to PostgreSQL schema (No mock defaults)
+  const [vendorProducts, setVendorProducts] = useState<Product[]>([]);
   
   // View Mode: "list" (Table) or "form" (Full Page Add/Edit View, NOT a pop-up)
   const [inventoryViewMode, setInventoryViewMode] = useState<"list" | "form">("list");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
-  // Sync with PostgreSQL on mount
-  useEffect(() => {
+  // Sync with PostgreSQL on mount & on update
+  const fetchProductsFromDb = () => {
     fetch("/api/products")
       .then((r) => r.json())
       .then((res) => {
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           const dbProducts: Product[] = res.data.map((row: any) => {
             let primaryImg = "/src/assets/battery-1.jpg";
             if (row.image_url) {
@@ -58,37 +56,43 @@ function VendorDash() {
             }
 
             const desc = row.description || "";
-            const getMeta = (label: string) => {
-              const match = desc.match(new RegExp(`${label}:\\s*([^\\n|]+)`));
-              return match ? match[1].trim() : undefined;
-            };
+            let fitsArr: string[] = ["universal"];
+            if (row.compatible_vehicles) {
+              fitsArr = Array.isArray(row.compatible_vehicles)
+                ? row.compatible_vehicles
+                : [row.compatible_vehicles];
+            }
 
             return {
               id: row.id,
               name: row.name,
-              brand: "Riderzpro Certified",
+              brand: row.brand || "Riderzpro Certified",
               category: (row.category_name as any) || "Car Accessories",
               image: primaryImg,
-              warrantyMonths: 24,
-              weightKg: 5,
-              fits: ["tata-nexon-ev", "ola-s1pro"],
+              warrantyMonths: row.warranty?.includes("year") ? 12 : 6,
+              weightKg: Number(row.weight_kg) || 5,
+              fits: fitsArr,
               description: desc,
               offers: [{ vendorId: "v1", price: Number(row.price), stock: Number(row.stock) }],
-              verificationStatus: row.verification_status || "pending_approval",
-              variantModel: getMeta("Variant / Model"),
-              material: getMeta("Type / Material"),
-              fitmentSize: getMeta("Fitment / Size"),
-              moq: Number(getMeta("MOQ")) || 1,
-              supplier: getMeta("Supplier"),
-              colorOptions: getMeta("Colours")?.split(",").map((s: string) => s.trim()),
+              verificationStatus: row.verification_status || "approved",
+              variantModel: row.variant_model,
+              material: row.material,
+              fitmentSize: row.fitment_size,
+              moq: Number(row.moq) || 1,
+              supplier: row.supplier,
+              colorOptions: Array.isArray(row.color_options) ? row.color_options : [],
             };
           });
           setVendorProducts(dbProducts);
         }
       })
       .catch((err) => {
-        console.log("[DB fetch notice]:", err.message);
+        console.log("[DB fetch notice vendor]:", err.message);
       });
+  };
+
+  useEffect(() => {
+    fetchProductsFromDb();
   }, []);
 
   const [incoming, setIncoming] = useState([
@@ -114,14 +118,7 @@ function VendorDash() {
   };
 
   const handleFormSuccess = (savedItem: Product) => {
-    if (editingProduct) {
-      // Update existing
-      setVendorProducts((list) => list.map((p) => (p.id === savedItem.id ? savedItem : p)));
-    } else {
-      // Add new
-      setVendorProducts((list) => [savedItem, ...list]);
-    }
-    // Return smoothly to list
+    fetchProductsFromDb();
     setInventoryViewMode("list");
   };
 
@@ -184,11 +181,18 @@ function VendorDash() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {vendorProducts.map((p) => { 
-                    const o = p.offers?.find((x) => x.vendorId === "v1") || p.offers?.[0] || { price: 50000, stock: 10 };
-                    
-                    // Format fitment labels
-                    const fitLabels = p.fits.map((f) => {
+                  {vendorProducts.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-muted-foreground text-sm">
+                        No vendor products found in database. Click &quot;+ Product&quot; to add your first product.
+                      </td>
+                    </tr>
+                  ) : (
+                    vendorProducts.map((p) => { 
+                      const o = p.offers?.find((x) => x.vendorId === "v1") || p.offers?.[0] || { price: 50000, stock: 10 };
+                      
+                      // Format fitment labels
+                      const fitLabels = p.fits.map((f) => {
                       const b = bikes.find((x) => x.id === f);
                       if (b) return `${b.make} ${b.model}`;
                       const c = cars.find((x) => x.id === f);
@@ -266,8 +270,9 @@ function VendorDash() {
                         </td>
                       </tr>
                     ); 
-                  })}
-                </tbody>
+                  })
+                )}
+              </tbody>
               </table>
             </div>
           </Panel>

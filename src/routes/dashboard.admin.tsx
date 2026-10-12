@@ -110,19 +110,19 @@ export function AdminDashboard() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [selectedShipment, setSelectedShipment] = useState<ShipmentRecord | null>(null);
 
-  // Dynamic Products State linked to PostgreSQL schema
-  const [adminProducts, setAdminProducts] = useState<Product[]>(products);
+  // Dynamic Products State linked to PostgreSQL schema (No mock defaults)
+  const [adminProducts, setAdminProducts] = useState<Product[]>([]);
   const [productViewMode, setProductViewMode] = useState<"list" | "form">("list");
   const [editingAdminProduct, setEditingAdminProduct] = useState<Product | null>(null);
 
-  // Sync with PostgreSQL on mount
-  useEffect(() => {
+  // Sync with PostgreSQL on mount & on updates
+  const fetchAdminProducts = () => {
     fetch("/api/products")
       .then((r) => r.json())
       .then((res) => {
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           const dbProducts: Product[] = res.data.map((row: any) => {
-            let primaryImg = "/src/assets/battery-1.jpg";
+            let primaryImg = "/src/assets/parts.jpg";
             if (row.image_url) {
               try {
                 if (row.image_url.startsWith("[")) {
@@ -136,30 +136,38 @@ export function AdminDashboard() {
               }
             }
             const desc = row.description || "";
+            let fitsArr: string[] = ["universal"];
+            if (row.compatible_vehicles) {
+              fitsArr = Array.isArray(row.compatible_vehicles)
+                ? row.compatible_vehicles
+                : [row.compatible_vehicles];
+            }
             return {
               id: row.id,
               name: row.name,
               brand: row.brand || "Riderzpro Certified",
               category: (row.category_name as any) || "Car Accessories",
               image: primaryImg,
-              warrantyMonths: 24,
-              weightKg: 5,
-              fits: ["tata-nexon-ev", "ola-s1pro"],
+              warrantyMonths: row.warranty?.includes("year") ? 12 : 6,
+              weightKg: Number(row.weight_kg) || 2,
+              fits: fitsArr,
               description: desc,
               offers: [{ vendorId: "v1", price: Number(row.price), stock: Number(row.stock) }],
-              verificationStatus: row.verification_status || "verified",
+              verificationStatus: row.verification_status || "approved",
+              sku: row.sku,
+              variantModel: row.variant_model,
             };
           });
-          setAdminProducts((prev) => {
-            const ids = new Set(dbProducts.map((p) => p.id));
-            const remaining = prev.filter((p) => !ids.has(p.id));
-            return [...dbProducts, ...remaining];
-          });
+          setAdminProducts(dbProducts);
         }
       })
       .catch((err) => {
         console.log("[DB fetch notice admin]:", err.message);
       });
+  };
+
+  useEffect(() => {
+    fetchAdminProducts();
   }, []);
 
   const handleOpenAddProduct = () => {
@@ -173,11 +181,7 @@ export function AdminDashboard() {
   };
 
   const handleProductFormSuccess = (savedItem: Product) => {
-    if (editingAdminProduct) {
-      setAdminProducts((list) => list.map((p) => (p.id === savedItem.id ? savedItem : p)));
-    } else {
-      setAdminProducts((list) => [savedItem, ...list]);
-    }
+    fetchAdminProducts();
     setProductViewMode("list");
   };
 
@@ -283,7 +287,7 @@ export function AdminDashboard() {
   const deliveredCount = orders.filter((o) => o.status === 5).length + 14;
   const delayedOrFailedCount = 1;
   const totalSales = orders.reduce((s, o) => s + o.total, 0) + 184500;
-  const lowStockProducts = products.filter((p) => (inventoryStock[p.id] ?? 10) < 5);
+  const lowStockProducts = adminProducts.filter((p) => (p.offers[0]?.stock ?? inventoryStock[p.id] ?? 10) < 5);
 
   const handleRestock = (productId: string) => {
     setInventoryStock((prev) => ({
@@ -958,31 +962,52 @@ export function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#E5E7EB]">
-                      {adminProducts.map((p) => {
-                        const stock = p.offers[0]?.stock ?? inventoryStock[p.id] ?? 12;
-                        return (
-                          <tr key={p.id} className="hover:bg-gray-50/80 transition">
-                            <td className="px-4 py-3 font-semibold text-gray-900">{p.name}</td>
-                            <td className="px-4 py-3 text-[#6B7280]">{p.brand}</td>
-                            <td className="px-4 py-3">
-                              <span className="rounded bg-gray-100 text-gray-700 px-2 py-0.5 text-[10px] font-medium">
-                                {p.category}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 font-bold text-[#111111]">{inr(p.offers[0]?.price || 0)}</td>
-                            <td className="px-4 py-3 text-[#6B7280]">{p.warrantyMonths || 12} Months</td>
-                            <td className="px-4 py-3 font-semibold">{stock}</td>
-                            <td className="px-4 py-3 text-right">
+                      {adminProducts.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                            <div className="flex flex-col items-center justify-center space-y-3">
+                              <Package className="h-10 w-10 text-gray-300 stroke-[1.5]" />
+                              <div>
+                                <p className="text-sm font-semibold text-gray-800">No products in database</p>
+                                <p className="text-xs text-gray-500 mt-0.5">All default products removed. Click &quot;+ Add Product&quot; to publish your first genuine product to PostgreSQL.</p>
+                              </div>
                               <button
-                                onClick={() => handleOpenEditProduct(p)}
-                                className="text-xs text-[#E31E24] font-semibold hover:underline cursor-pointer"
+                                onClick={handleOpenAddProduct}
+                                className="mt-2 flex items-center gap-1.5 rounded-lg bg-[#E31E24] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-red-700 transition cursor-pointer shadow-sm active:scale-95"
                               >
-                                Edit
+                                <Plus className="h-4 w-4" />
+                                <span>Add Product</span>
                               </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        adminProducts.map((p) => {
+                          const stock = p.offers[0]?.stock ?? inventoryStock[p.id] ?? 12;
+                          return (
+                            <tr key={p.id} className="hover:bg-gray-50/80 transition">
+                              <td className="px-4 py-3 font-semibold text-gray-900">{p.name}</td>
+                              <td className="px-4 py-3 text-[#6B7280]">{p.brand}</td>
+                              <td className="px-4 py-3">
+                                <span className="rounded bg-gray-100 text-gray-700 px-2 py-0.5 text-[10px] font-medium">
+                                  {p.category}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 font-bold text-[#111111]">{inr(p.offers[0]?.price || 0)}</td>
+                              <td className="px-4 py-3 text-[#6B7280]">{p.warrantyMonths || 12} Months</td>
+                              <td className="px-4 py-3 font-semibold">{stock}</td>
+                              <td className="px-4 py-3 text-right">
+                                <button
+                                  onClick={() => handleOpenEditProduct(p)}
+                                  className="text-xs text-[#E31E24] font-semibold hover:underline cursor-pointer"
+                                >
+                                  Edit
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -1040,36 +1065,44 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5E7EB]">
-                    {products.map((p) => {
-                      const stock = inventoryStock[p.id] ?? 10;
-                      const isLow = stock < 5;
-                      return (
-                        <tr key={p.id} className="hover:bg-gray-50/80 transition">
-                          <td className="px-4 py-3 font-semibold text-gray-900">{p.name}</td>
-                          <td className="px-4 py-3 text-[#6B7280]">{p.category}</td>
-                          <td className="px-4 py-3 font-mono font-bold text-base text-[#111111]">{stock}</td>
-                          <td className="px-4 py-3 text-[#6B7280]">5 units</td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={cn(
-                                "rounded px-2 py-0.5 text-[10px] font-bold",
-                                isLow ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"
-                              )}
-                            >
-                              {isLow ? "Low Stock Alert" : "Healthy Stock"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => handleRestock(p.id)}
-                              className="rounded bg-[#E31E24] px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700"
-                            >
-                              + Restock 15 Units
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {adminProducts.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-8 text-center text-xs text-gray-400">
+                          No products in inventory yet. Default products removed.
+                        </td>
+                      </tr>
+                    ) : (
+                      adminProducts.map((p) => {
+                        const stock = p.offers[0]?.stock ?? inventoryStock[p.id] ?? 10;
+                        const isLow = stock < 5;
+                        return (
+                          <tr key={p.id} className="hover:bg-gray-50/80 transition">
+                            <td className="px-4 py-3 font-semibold text-gray-900">{p.name}</td>
+                            <td className="px-4 py-3 text-[#6B7280]">{p.category}</td>
+                            <td className="px-4 py-3 font-mono font-bold text-base text-[#111111]">{stock}</td>
+                            <td className="px-4 py-3 text-[#6B7280]">5 units</td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={cn(
+                                  "rounded px-2 py-0.5 text-[10px] font-bold",
+                                  isLow ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"
+                                )}
+                              >
+                                {isLow ? "Low Stock Alert" : "Healthy Stock"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <button
+                                onClick={() => handleRestock(p.id)}
+                                className="rounded bg-[#E31E24] px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700 cursor-pointer"
+                              >
+                                + Restock 15 Units
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>

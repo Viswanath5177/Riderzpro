@@ -171,12 +171,19 @@ function GaragePage() {
   // Filter products compatible with the customer's active garage vehicle
   const compatibleProducts = useMemo(() => {
     if (!activeVehicle) return dbProducts;
-    const vId = activeVehicle.vehicle_id;
+    const vId = activeVehicle.vehicle_id.toLowerCase();
+    const vMake = activeVehicle.make.toLowerCase();
+    const vModel = activeVehicle.model.toLowerCase();
     return dbProducts.filter((p) => {
       if (p.fits.includes("universal")) return true;
-      if (p.fits.includes(vId)) return true;
-      if (p.description.toLowerCase().includes(activeVehicle.make.toLowerCase()) || 
-          p.description.toLowerCase().includes(activeVehicle.model.toLowerCase())) {
+      if (p.fits.some((f) => {
+        const lf = f.toLowerCase();
+        return lf === vId || lf === vMake || lf === vModel || vId.includes(lf) || lf.includes(vId);
+      })) return true;
+      if (p.description.toLowerCase().includes(vMake) || 
+          p.description.toLowerCase().includes(vModel) ||
+          p.name.toLowerCase().includes(vMake) ||
+          p.name.toLowerCase().includes(vModel)) {
         return true;
       }
       return false;
