@@ -34,7 +34,6 @@ npm run dev
 python -m http.server 3000 --directory web
 ```
 Then visit:
-- **Seller Landing**: `http://localhost:3000/seller-landing.html`
 - **Schema Visualizer**: `http://localhost:3000/schema-visualizer.html`
 - **Main App**: `http://localhost:3000/`
 
