@@ -55,6 +55,7 @@ export type Product = {
   moq?: number;
   supplier?: string;
   sku?: string;
+  mrp?: number;
 };
 export type Rider = { id: string; name: string; phone: string; vehicle: string; plate: string; rating: number; avatar: string };
 
@@ -134,8 +135,69 @@ export const riders: Rider[] = [
   { id: "r2", name: "Salma Begum", phone: "+91 99000 54321", vehicle: "TVS iQube", plate: "KA 03 EV 1180", rating: 4.8, avatar: "SB" },
 ];
 
-export const getVendor = (id: string) => vendors.find((v) => v.id === id)!;
+export const getVendor = (id: string) =>
+  vendors.find((v) => v.id === id) || {
+    id: id || "v1",
+    name: "Riderzpro Certified",
+    area: "Bengaluru",
+    lat: 12.9784,
+    lng: 77.6408,
+    rating: 4.9,
+    prepMins: 15,
+  };
 export const getProduct = (id: string) => products.find((p) => p.id === id);
+
+export function mapDbProductToProduct(row: any): Product {
+  let primaryImg = "/src/assets/parts.jpg";
+  if (row.image_url) {
+    try {
+      if (typeof row.image_url === "string" && row.image_url.startsWith("[")) {
+        const arr = JSON.parse(row.image_url);
+        primaryImg = arr[0] || primaryImg;
+      } else if (typeof row.image_url === "string") {
+        primaryImg = row.image_url;
+      }
+    } catch {
+      primaryImg = row.image_url;
+    }
+  }
+
+  let fitsArr: string[] = ["universal"];
+  if (row.compatible_vehicles) {
+    fitsArr = Array.isArray(row.compatible_vehicles)
+      ? row.compatible_vehicles
+      : [row.compatible_vehicles];
+  }
+
+  const offerPrice = Number(row.price) || 0;
+  const mrpPrice = Number(row.mrp) || Math.round(offerPrice * 1.15);
+  const voltMatch = row.description?.match(/(\d+)V/i)?.[1];
+
+  return {
+    id: row.id,
+    name: row.name,
+    brand: row.brand || "Riderzpro Certified",
+    category: (row.category_name as any) || "Car Accessories",
+    image: primaryImg,
+    warrantyMonths: row.warranty?.includes("year") ? 12 : 6,
+    weightKg: Number(row.weight_kg) || 2,
+    fits: fitsArr,
+    description: row.description || "",
+    voltage: voltMatch ? Number(voltMatch) : undefined,
+    mrp: mrpPrice,
+    offers: [
+      {
+        vendorId: row.seller_id || "v1",
+        price: offerPrice,
+        stock: Number(row.stock) || 0,
+      },
+    ],
+    verificationStatus: row.verification_status || "approved",
+    sku: row.sku,
+    variantModel: row.variant_model,
+  };
+}
+
 export const getBike = (id: string) => bikes.find((b) => b.id === id);
 export const bestOffer = (p: Product) => [...p.offers].sort((a, b) => a.price - b.price)[0];
 

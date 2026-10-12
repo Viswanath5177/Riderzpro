@@ -4,7 +4,7 @@ import { AlertTriangle, Boxes, IndianRupee, LayoutGrid, PackageOpen, ShoppingBag
 import { toast } from "sonner";
 import { DashboardShell, Panel, Stat, StatusPill } from "@/components/site/DashboardShell";
 import { AreaTrend, Bars, series } from "@/components/site/Charts";
-import { bikes, cars, inr, products, type Product } from "@/lib/data";
+import { bikes, cars, inr, products, mapDbProductToProduct, type Product } from "@/lib/data";
 import { ProductFormPage } from "@/components/vendor/ProductFormPage";
 
 export const Route = createFileRoute("/dashboard/vendor")({
@@ -40,49 +40,7 @@ function VendorDash() {
       .then((r) => r.json())
       .then((res) => {
         if (res.success && Array.isArray(res.data)) {
-          const dbProducts: Product[] = res.data.map((row: any) => {
-            let primaryImg = "/src/assets/battery-1.jpg";
-            if (row.image_url) {
-              try {
-                if (row.image_url.startsWith("[")) {
-                  const arr = JSON.parse(row.image_url);
-                  primaryImg = arr[0] || primaryImg;
-                } else {
-                  primaryImg = row.image_url;
-                }
-              } catch {
-                primaryImg = row.image_url;
-              }
-            }
-
-            const desc = row.description || "";
-            let fitsArr: string[] = ["universal"];
-            if (row.compatible_vehicles) {
-              fitsArr = Array.isArray(row.compatible_vehicles)
-                ? row.compatible_vehicles
-                : [row.compatible_vehicles];
-            }
-
-            return {
-              id: row.id,
-              name: row.name,
-              brand: row.brand || "Riderzpro Certified",
-              category: (row.category_name as any) || "Car Accessories",
-              image: primaryImg,
-              warrantyMonths: row.warranty?.includes("year") ? 12 : 6,
-              weightKg: Number(row.weight_kg) || 5,
-              fits: fitsArr,
-              description: desc,
-              offers: [{ vendorId: "v1", price: Number(row.price), stock: Number(row.stock) }],
-              verificationStatus: row.verification_status || "approved",
-              variantModel: row.variant_model,
-              material: row.material,
-              fitmentSize: row.fitment_size,
-              moq: Number(row.moq) || 1,
-              supplier: row.supplier,
-              colorOptions: Array.isArray(row.color_options) ? row.color_options : [],
-            };
-          });
+          const dbProducts: Product[] = res.data.map((row: any) => mapDbProductToProduct(row));
           setVendorProducts(dbProducts);
         }
       })

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { SlidersHorizontal, Search, Bike, Check, X, ShieldCheck } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { ProductCard } from "@/components/site/bits";
-import { bestOffer, bikes, getBike, products, type Category } from "@/lib/data";
+import { bestOffer, bikes, getBike, mapDbProductToProduct, type Product, type Category } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/shop")({
@@ -36,6 +36,7 @@ const CATS: (Category | "All")[] = [
 function Shop() {
   const { activeBikeId, setActiveBikeId } = useStore();
 
+  const [dbProducts, setDbProducts] = useState<Product[]>([]);
   const [q, setQ] = useState(() => {
     if (typeof window !== "undefined") {
       const p = new URLSearchParams(window.location.search);
@@ -58,6 +59,17 @@ function Shop() {
   const [sort, setSort] = useState("relevance");
 
   useEffect(() => {
+    fetch("/api/products")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setDbProducts(res.data.map((row: any) => mapDbProductToProduct(row)));
+        }
+      })
+      .catch((err) => console.log("Shop fetch error:", err));
+  }, []);
+
+  useEffect(() => {
     const handleUrl = () => {
       if (typeof window !== "undefined") {
         const p = new URLSearchParams(window.location.search);
@@ -73,17 +85,17 @@ function Shop() {
   }, []);
 
   const list = useMemo(() => {
-    let l = products.filter(
+    let l = dbProducts.filter(
       (p) =>
-        (cat === "All" || p.category === cat) &&
+        (cat === "All" || p.category.toLowerCase().includes(cat.toLowerCase()) || cat.toLowerCase().includes(p.category.toLowerCase())) &&
         (!volt || p.voltage === volt) &&
-        (!onlyFit || !activeBikeId || p.fits.includes(activeBikeId)) &&
+        (!onlyFit || !activeBikeId || p.fits.includes("universal") || p.fits.includes(activeBikeId)) &&
         (q === "" || `${p.name} ${p.brand} ${p.category} ${p.description}`.toLowerCase().includes(q.toLowerCase())),
     );
     if (sort === "low") l = [...l].sort((a, b) => bestOffer(a).price - bestOffer(b).price);
     if (sort === "high") l = [...l].sort((a, b) => bestOffer(b).price - bestOffer(a).price);
     return l;
-  }, [q, cat, volt, onlyFit, activeBikeId, sort]);
+  }, [dbProducts, q, cat, volt, onlyFit, activeBikeId, sort]);
 
   const bike = activeBikeId ? getBike(activeBikeId) : null;
 

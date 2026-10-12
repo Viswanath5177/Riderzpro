@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Bike,
   Search,
@@ -8,41 +8,69 @@ import {
   X,
   Sparkles,
   Zap,
+  Loader2,
 } from "lucide-react";
 import { ProductCard } from "@/components/site/bits";
-import { bestOffer, bikes, getBike, products, type Category } from "@/lib/data";
+import { bestOffer, bikes, getBike, mapDbProductToProduct, type Product, type Category } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
-const SHOP_CATEGORIES: (Category | "All")[] = [
+const SHOP_CATEGORIES = [
   "All",
-  "Electric Bikes",
+  "Vehicle Accessories & Mounts",
+  "Smart Chargers & Converters",
+  "EV Batteries (Lithium & LFP)",
+  "Battery Management Systems (BMS)",
+  "Braking & Safety Parts",
+  "Spare Parts & OEM Components",
+  "Electric Scooters & Bikes",
   "Car Accessories",
   "Bike Accessories",
-  "Riding Gear & Helmets",
-  "Spare Parts",
-  "Battery",
-  "Charger",
-  "BMS",
-  "Motor",
-  "Controller",
-  "Brakes",
 ];
 
 export function ShopTab() {
   const { activeBikeId, setActiveBikeId, garage } = useStore();
 
+  const [dbProducts, setDbProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [q, setQ] = useState("");
-  const [cat, setCat] = useState<(typeof SHOP_CATEGORIES)[number]>("All");
+  const [cat, setCat] = useState<string>("All");
   const [volt, setVolt] = useState<number | null>(null);
   const [onlyFit, setOnlyFit] = useState(false);
   const [sort, setSort] = useState("relevance");
 
+  // Fetch only products published to PostgreSQL database
+  useEffect(() => {
+    setIsLoading(true);
+    fetch("/api/products")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          const mapped: Product[] = res.data.map((row: any) => mapDbProductToProduct(row));
+          setDbProducts(mapped);
+        }
+      })
+      .catch((err) => {
+        console.error("ShopTab fetch error:", err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, []);
+
   const filteredProducts = useMemo(() => {
-    let list = products.filter((p) => {
-      const matchesCat = cat === "All" || p.category === cat;
+    let list = dbProducts.filter((p) => {
+      const matchesCat =
+        cat === "All" ||
+        p.category.toLowerCase().includes(cat.toLowerCase()) ||
+        cat.toLowerCase().includes(p.category.toLowerCase());
       const matchesVolt = !volt || p.voltage === volt;
-      const matchesFit = !onlyFit || !activeBikeId || p.fits.includes(activeBikeId);
+      const matchesFit =
+        !onlyFit ||
+        !activeBikeId ||
+        p.fits.includes("universal") ||
+        p.fits.includes(activeBikeId);
       const queryLower = q.toLowerCase().trim();
       const matchesQuery =
         !queryLower ||
@@ -59,7 +87,7 @@ export function ShopTab() {
       list = [...list].sort((a, b) => bestOffer(b).price - bestOffer(a).price);
     }
     return list;
-  }, [q, cat, volt, onlyFit, activeBikeId, sort]);
+  }, [dbProducts, q, cat, volt, onlyFit, activeBikeId, sort]);
 
   const activeBike = activeBikeId ? getBike(activeBikeId) : null;
 
@@ -237,11 +265,17 @@ export function ShopTab() {
           )}
         </div>
 
-        {filteredProducts.length === 0 ? (
+        {isLoading ? (
+          <div className="bg-white border border-[#E5E7EB] shadow-2xs rounded-3xl p-16 text-center space-y-3">
+            <Loader2 className="h-8 w-8 animate-spin text-[#E31E24] mx-auto" />
+            <p className="text-sm font-semibold text-[#111111]">Loading published products from database...</p>
+            <p className="text-xs text-[#6B7280]">Connecting to PostgreSQL table riderzpro.products</p>
+          </div>
+        ) : filteredProducts.length === 0 ? (
           <div className="bg-white border border-[#E5E7EB] shadow-2xs rounded-3xl p-12 text-center space-y-3">
             <p className="text-base font-bold text-[#111111]">No products found</p>
             <p className="text-xs text-[#6B7280] max-w-md mx-auto">
-              No parts match your current filter combination. Try clearing your search query or selecting "Any Vehicle".
+              No products match your current filter combination.
             </p>
             <button
               onClick={() => {

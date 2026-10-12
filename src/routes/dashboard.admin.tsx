@@ -43,7 +43,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/site/bits";
-import { getProduct, getVendor, inr, products, vendors, type Product } from "@/lib/data";
+import { getProduct, getVendor, inr, products, vendors, mapDbProductToProduct, type Product } from "@/lib/data";
 import { ORDER_STEPS, useStore, type Order } from "@/lib/store";
 import type { NormalizedShipment, LogisticsProvider, ShipmentStatus } from "@/lib/logistics/types";
 import { cn } from "@/lib/utils";
@@ -119,43 +119,7 @@ export function AdminDashboard() {
       .then((r) => r.json())
       .then((res) => {
         if (res.success && Array.isArray(res.data)) {
-          const dbProducts: Product[] = res.data.map((row: any) => {
-            let primaryImg = "/src/assets/parts.jpg";
-            if (row.image_url) {
-              try {
-                if (row.image_url.startsWith("[")) {
-                  const arr = JSON.parse(row.image_url);
-                  primaryImg = arr[0] || primaryImg;
-                } else {
-                  primaryImg = row.image_url;
-                }
-              } catch {
-                primaryImg = row.image_url;
-              }
-            }
-            const desc = row.description || "";
-            let fitsArr: string[] = ["universal"];
-            if (row.compatible_vehicles) {
-              fitsArr = Array.isArray(row.compatible_vehicles)
-                ? row.compatible_vehicles
-                : [row.compatible_vehicles];
-            }
-            return {
-              id: row.id,
-              name: row.name,
-              brand: row.brand || "Riderzpro Certified",
-              category: (row.category_name as any) || "Car Accessories",
-              image: primaryImg,
-              warrantyMonths: row.warranty?.includes("year") ? 12 : 6,
-              weightKg: Number(row.weight_kg) || 2,
-              fits: fitsArr,
-              description: desc,
-              offers: [{ vendorId: "v1", price: Number(row.price), stock: Number(row.stock) }],
-              verificationStatus: row.verification_status || "approved",
-              sku: row.sku,
-              variantModel: row.variant_model,
-            };
-          });
+          const dbProducts: Product[] = res.data.map((row: any) => mapDbProductToProduct(row));
           setAdminProducts(dbProducts);
         }
       })
