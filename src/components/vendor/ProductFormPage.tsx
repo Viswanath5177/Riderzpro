@@ -481,23 +481,55 @@ export function ProductFormPage({ product, onCancel, onSuccess }: ProductFormPag
     );
 
     const prodId = product ? product.id : `prod_${Math.random().toString(36).substring(2, 10)}`;
-    const categoryId = category === "Battery" ? "cat_batteries" : "cat_accessories";
+    const categoryIdMap: Record<string, string> = {
+      "Battery": "cat_batteries",
+      "Charger": "cat_chargers",
+      "Car Accessories": "cat_accessories",
+      "Bike Accessories": "cat_accessories",
+      "BMS": "cat_bms",
+      "Motor": "cat_motors",
+      "Controller": "cat_controllers",
+      "Brakes": "cat_brakes",
+      "Spare Parts": "cat_parts",
+      "Electric Bikes": "cat_vehicles",
+    };
+    const categoryId = categoryIdMap[category] || "cat_accessories";
     const primaryImg = images[0]?.dataUrl || "/src/assets/parts.jpg";
     const allImagesPayload = images.length ? JSON.stringify(images.map((x) => x.dataUrl)) : primaryImg;
 
     // Detailed description compiled with spreadsheet specs
     const fullDescription = `${description}\n\nVariant / Model: ${variantModel || name}\nType / Material: ${material}\nFitment / Size: ${fitmentSize}\nColours: ${selectedColors.join(", ") || "Universal"}\nKey Features: ${keyFeatures}\nSKU: ${sku} | MOQ: ${moq} | Supplier: ${supplier} | HSN: ${hsnCode} | Origin: ${countryOfOrigin} | Dimensions: ${dimensionLength}x${dimensionWidth}x${dimensionHeight} cm`;
 
+    // Compatible vehicles list (fits ola-s1pro, ather-450x, tata-nexon-ev etc.)
+    const compatibleList = fitmentType === "universal" 
+      ? ["universal", "ola-s1pro", "ather-450x", "tata-nexon-ev", "tvs-iqube", "bajaj-chetak", "revolt-rv400"]
+      : (selectedBikes.length ? selectedBikes : [vehicleModel.toLowerCase().replace(/\s+/g, "-")]);
+
     const payload = {
       id: prodId,
       seller_id: "usr_seller_01",
       category_id: categoryId,
       name,
+      brand,
+      sku,
       description: fullDescription,
       price: Number(sellingPrice),
+      mrp: Number(mrp),
+      discount_percent: discountPercent,
       stock: Number(stock),
+      moq: Number(moq),
+      supplier,
+      variant_model: variantModel,
+      material,
+      fitment_size: fitmentSize,
+      fitment_type: fitmentType,
+      compatible_vehicles: compatibleList,
+      color_options: selectedColors,
+      key_features: keyFeatures,
+      warranty,
+      weight_kg: Number(weightKg) || 4.5,
       image_url: allImagesPayload,
-      verification_status: "pending_approval",
+      verification_status: isDraft ? "pending_approval" : "approved",
     };
 
     try {

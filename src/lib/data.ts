@@ -53,6 +53,7 @@ export type Product = {
   discountPercent?: number;
   moq?: number;
   supplier?: string;
+  sku?: string;
 };
 export type Rider = { id: string; name: string; phone: string; vehicle: string; plate: string; rating: number; avatar: string };
 

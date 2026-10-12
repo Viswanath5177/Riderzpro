@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Bike,
@@ -51,10 +51,64 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
   const activeBike = garage.find((b) => b.bikeId === selectedBikeId) || garage[0];
   const activeBikeMeta = activeBike ? getBike(activeBike.bikeId) : null;
 
+  const [dbProducts, setDbProducts] = useState<Product[]>(products);
+
+  useEffect(() => {
+    fetch("/api/products")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped: Product[] = res.data.map((row: any) => {
+            let primaryImg = "/src/assets/battery-1.jpg";
+            if (row.image_url) {
+              try {
+                if (row.image_url.startsWith("[")) {
+                  primaryImg = JSON.parse(row.image_url)[0] || primaryImg;
+                } else {
+                  primaryImg = row.image_url;
+                }
+              } catch {
+                primaryImg = row.image_url;
+              }
+            }
+
+            let fitsArr: string[] = ["ola-s1pro", "ather-450x", "tata-nexon-ev"];
+            if (row.compatible_vehicles) {
+              fitsArr = Array.isArray(row.compatible_vehicles) 
+                ? row.compatible_vehicles 
+                : [row.compatible_vehicles];
+            }
+
+            return {
+              id: row.id,
+              name: row.name,
+              brand: row.brand || "Riderz Armor",
+              category: (row.category_name as any) || "Car Accessories",
+              image: primaryImg,
+              warrantyMonths: 24,
+              weightKg: Number(row.weight_kg) || 4.5,
+              fits: fitsArr,
+              description: row.description || "",
+              offers: [{ vendorId: "v1", price: Number(row.price), stock: Number(row.stock) }],
+              variantModel: row.variant_model,
+              material: row.material,
+              fitmentSize: row.fitment_size,
+              moq: row.moq,
+              supplier: row.supplier,
+              colorOptions: Array.isArray(row.color_options) ? row.color_options : [],
+              discountPercent: row.discount_percent,
+            };
+          });
+          setDbProducts(mapped);
+        }
+      })
+      .catch((err) => console.log("GarageTab DB sync notice:", err.message));
+  }, []);
+
   // Filter parts compatible with the chosen bike
   const compatibleProducts = useMemo(() => {
     if (!activeBike) return [];
-    let items = products.filter((p) => p.fits.includes(activeBike.bikeId));
+    let items = dbProducts.filter((p) => p.fits.includes("universal") || p.fits.includes(activeBike.bikeId));
 
     if (selectedCategory !== "All") {
       items = items.filter((p) => {
@@ -76,7 +130,7 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
     }
 
     return items;
-  }, [activeBike, selectedCategory, partsSearch]);
+  }, [activeBike, selectedCategory, partsSearch, dbProducts]);
 
   const categories = [
     "All",
