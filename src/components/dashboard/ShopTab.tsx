@@ -10,6 +10,7 @@ import {
   Zap,
 } from "lucide-react";
 import { ProductCard } from "@/components/site/bits";
+import { CarAccessoriesCatalog } from "@/components/site/CarAccessoriesCatalog";
 import { bestOffer, bikes, getBike, products, type Category } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -62,6 +63,7 @@ export function ShopTab() {
   }, [q, cat, volt, onlyFit, activeBikeId, sort]);
 
   const activeBike = activeBikeId ? getBike(activeBikeId) : null;
+  const accessoryVehicleType = cat === "Car Accessories" ? "car" : cat === "Bike Accessories" ? "bike" : null;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -214,9 +216,10 @@ export function ShopTab() {
         </div>
       </div>
 
-      {/* ─────────────────────────────────────────────────────────────
-          SECTION C: PRODUCTS GRID
-         ───────────────────────────────────────────────────────────── */}
+      {accessoryVehicleType ? (
+        <CarAccessoriesCatalog key={accessoryVehicleType} vehicleType={accessoryVehicleType} />
+      ) : (
+      /* Products grid for the standard shop categories. */
       <div>
         <div className="flex items-center justify-between mb-4">
           <p className="text-xs font-bold text-[#6B7280] uppercase tracking-wider">
@@ -263,6 +266,7 @@ export function ShopTab() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
