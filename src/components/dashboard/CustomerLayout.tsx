@@ -26,24 +26,30 @@ import {
   Phone,
   LogOut,
   Calendar,
+  ScanLine,
+  Truck,
+  MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/site/bits";
 import { useStore } from "@/lib/store";
 import { bikes, getBike, inr, products, type Product } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { VinSearchModal } from "./VinSearchModal";
 
 export type CustomerTab =
   | "overview"
   | "garage"
   | "orders"
+  | "tracking"
   | "saved"
   | "service"
-  | "offers"
+  | "addresses"
   | "invoices"
   | "notifications"
   | "settings"
-  | "support";
+  | "support"
+  | "offers";
 
 interface CustomerLayoutProps {
   activeTab: CustomerTab;
@@ -75,6 +81,7 @@ export function CustomerLayout({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isVinSearchOpen, setIsVinSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -83,6 +90,7 @@ export function CustomerLayout({
   const activeBikeMeta = activeBike ? getBike(activeBike.bikeId) : null;
 
   const activeOrdersCount = orders.filter((o) => o.status < 5).length;
+  const liveOrder = orders.find((o) => o.status < 5);
   const unreadNotifsCount = notifications.filter((n) => !n.read).length;
   const upcomingServicesCount = serviceBookings.filter(
     (s) => s.status === "Confirmed" || s.status === "In progress"
@@ -112,18 +120,17 @@ export function CustomerLayout({
       badge: `${garage.length}`,
     },
     {
-      id: "shop-link",
-      label: "Shop Parts",
-      Icon: ShoppingBag,
-      isExternal: true,
-      href: "/shop",
+      id: "orders" as CustomerTab,
+      label: "My Orders",
+      Icon: Package,
+      badge: orders.length > 0 ? `${orders.length}` : undefined,
     },
     {
-      id: "orders" as CustomerTab,
-      label: "Orders & Tracking",
-      Icon: Package,
-      badge: activeOrdersCount > 0 ? `${activeOrdersCount} Live` : undefined,
-      badgeColor: "bg-primary text-white",
+      id: "tracking" as CustomerTab,
+      label: "Track Delivery",
+      Icon: Truck,
+      badge: liveOrder ? "Live" : undefined,
+      badgeColor: "bg-[#E31E24] text-white",
     },
     {
       id: "saved" as CustomerTab,
@@ -136,14 +143,12 @@ export function CustomerLayout({
       label: "Service & Maintenance",
       Icon: Wrench,
       badge: upcomingServicesCount > 0 ? `${upcomingServicesCount} Due` : undefined,
-      badgeColor: "bg-emerald-600 text-white",
+      badgeColor: "bg-blue-600 text-white",
     },
     {
-      id: "offers" as CustomerTab,
-      label: "Offers & Rewards",
-      Icon: Tag,
-      badge: "2 New",
-      badgeColor: "bg-amber-500 text-white",
+      id: "addresses" as CustomerTab,
+      label: "Addresses",
+      Icon: MapPin,
     },
     {
       id: "invoices" as CustomerTab,
@@ -155,7 +160,7 @@ export function CustomerLayout({
       label: "Notifications",
       Icon: Bell,
       badge: unreadNotifsCount > 0 ? `${unreadNotifsCount}` : undefined,
-      badgeColor: "bg-rose-500 text-white",
+      badgeColor: "bg-[#E31E24] text-white",
     },
     {
       id: "settings" as CustomerTab,
@@ -169,9 +174,8 @@ export function CustomerLayout({
     },
   ];
 
-  const handleNavClick = (item: (typeof navItems)[number]) => {
-    if (item.isExternal) return;
-    onTabChange(item.id as CustomerTab);
+  const handleNavClick = (tabId: CustomerTab) => {
+    onTabChange(tabId);
     setIsMobileMenuOpen(false);
   };
 
@@ -182,21 +186,23 @@ export function CustomerLayout({
       case "garage":
         return "My Registered EV Garage";
       case "orders":
-        return "Order History & Live Tracking";
+        return "My Orders";
+      case "tracking":
+        return "Track Delivery & Courier Shipments";
       case "saved":
-        return "Saved Parts & Wishlist";
+        return "Saved Items & Wishlist";
       case "service":
-        return "Service, Maintenance & Reminders";
-      case "offers":
-        return "Exclusive Offers & ProPoints";
+        return "Service & Doorstep Maintenance";
+      case "addresses":
+        return "Saved Delivery Addresses";
       case "invoices":
         return "Payments, Tax Invoices & Receipts";
       case "notifications":
         return "Notifications & Alerts";
       case "settings":
-        return "Account & Vehicle Preferences";
+        return "Profile & Preferences";
       case "support":
-        return "24/7 Roadside & Helpline Support";
+        return "Help & Dedicated Support";
       default:
         return "Customer Dashboard";
     }
@@ -246,6 +252,21 @@ export function CustomerLayout({
                       )
                     )}
                   </div>
+                  <button
+                    onClick={() => {
+                      setIsSearchOpen(false);
+                      setIsVinSearchOpen(true);
+                    }}
+                    className="mt-5 w-full p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800 flex items-center justify-between hover:bg-emerald-100 transition"
+                  >
+                    <span className="flex items-center gap-2">
+                      <ScanLine className="h-4 w-4 text-primary" />
+                      <span>Know your 17-digit VIN? Search verified parts directly by VIN</span>
+                    </span>
+                    <span className="text-[10px] bg-primary text-white px-2 py-0.5 rounded-md font-bold">
+                      VIN Lookup →
+                    </span>
+                  </button>
                 </div>
               ) : filteredSearchResults.length === 0 ? (
                 <div className="py-10 text-center text-sm text-gray-500">
@@ -348,37 +369,15 @@ export function CustomerLayout({
           <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
             {navItems.map((item) => {
               const isActive = activeTab === item.id;
-              if (item.isExternal) {
-                return (
-                  <Link
-                    key={item.id}
-                    to={item.href!}
-                    className={cn(
-                      "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition text-gray-600 hover:bg-gray-100 hover:text-gray-900 group",
-                      isCollapsed && "justify-center px-0"
-                    )}
-                    title={isCollapsed ? item.label : undefined}
-                  >
-                    <item.Icon className="h-4 w-4 text-gray-500 group-hover:text-primary transition shrink-0" />
-                    {!isCollapsed && (
-                      <span className="flex-1 flex items-center justify-between">
-                        <span>{item.label}</span>
-                        <ExternalLink className="h-3 w-3 text-gray-400" />
-                      </span>
-                    )}
-                  </Link>
-                );
-              }
-
               return (
                 <button
                   key={item.id}
-                  onClick={() => handleNavClick(item)}
+                  onClick={() => handleNavClick(item.id)}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition group relative",
+                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-xs font-medium transition group relative",
                     isActive
-                      ? "bg-primary text-white shadow-sm font-semibold"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                      ? "bg-red-50 text-[#E31E24] font-semibold border-l-3 border-[#E31E24] pl-2.5"
+                      : "text-[#6B7280] hover:bg-gray-100 hover:text-[#111111]",
                     isCollapsed && "justify-center px-0"
                   )}
                   title={isCollapsed ? item.label : undefined}
@@ -386,7 +385,7 @@ export function CustomerLayout({
                   <item.Icon
                     className={cn(
                       "h-4 w-4 shrink-0 transition",
-                      isActive ? "text-white" : "text-gray-500 group-hover:text-gray-900"
+                      isActive ? "text-[#E31E24]" : "text-[#6B7280] group-hover:text-[#111111]"
                     )}
                   />
                   {!isCollapsed && (
@@ -469,8 +468,19 @@ export function CustomerLayout({
               </button>
             </div>
 
-            {/* Right: Actions, AI Assistant, Notifications, Avatar */}
-            <div className="flex items-center gap-2.5 shrink-0">
+            {/* Right: Actions, Search by VIN, AI Assistant, Notifications, Avatar */}
+            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+              {/* Search by VIN Button in Navbar */}
+              <button
+                onClick={() => setIsVinSearchOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-emerald-300 bg-emerald-50/80 hover:bg-primary hover:text-white hover:border-primary text-xs font-semibold text-emerald-800 shadow-2xs transition active:scale-95"
+                title="Search items based on 17-digit VIN number"
+              >
+                <ScanLine className="h-3.5 w-3.5 text-primary" />
+                <span className="hidden sm:inline">Search by VIN</span>
+                <span className="sm:hidden font-mono text-[11px]">VIN</span>
+              </button>
+
               {/* Mobile Search trigger */}
               <button
                 onClick={() => setIsSearchOpen(true)}
@@ -663,34 +673,19 @@ export function CustomerLayout({
             <nav className="flex-1 overflow-y-auto py-4 space-y-1">
               {navItems.map((item) => {
                 const isActive = activeTab === item.id;
-                if (item.isExternal) {
-                  return (
-                    <Link
-                      key={item.id}
-                      to={item.href!}
-                      className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
-                    >
-                      <span className="flex items-center gap-3">
-                        <item.Icon className="h-4 w-4 text-gray-400" />
-                        <span>{item.label}</span>
-                      </span>
-                      <ExternalLink className="h-3 w-3 text-gray-400" />
-                    </Link>
-                  );
-                }
                 return (
                   <button
                     key={item.id}
-                    onClick={() => handleNavClick(item)}
+                    onClick={() => handleNavClick(item.id)}
                     className={cn(
-                      "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition",
+                      "flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-medium transition",
                       isActive
-                        ? "bg-primary text-white font-semibold"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                        ? "bg-red-50 text-[#E31E24] font-semibold border-l-3 border-[#E31E24] pl-2.5"
+                        : "text-[#6B7280] hover:bg-gray-50 hover:text-[#111111]"
                     )}
                   >
                     <span className="flex items-center gap-3">
-                      <item.Icon className="h-4 w-4 shrink-0" />
+                      <item.Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-[#E31E24]" : "text-[#6B7280]")} />
                       <span>{item.label}</span>
                     </span>
                     {item.badge && (
@@ -747,6 +742,12 @@ export function CustomerLayout({
           <span>AI Volt</span>
         </Link>
       </nav>
+
+      {/* Global VIN Search Modal */}
+      <VinSearchModal
+        isOpen={isVinSearchOpen}
+        onClose={() => setIsVinSearchOpen(false)}
+      />
     </div>
   );
 }

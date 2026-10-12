@@ -4,9 +4,22 @@ import battery3 from "@/assets/battery-3.jpg";
 import charger from "@/assets/charger.jpg";
 import parts from "@/assets/parts.jpg";
 
+import heroBike from "@/assets/hero-bike.jpg";
+import scooterImg from "@/assets/scooter.jpg";
+
 export type Bike = { id: string; make: string; model: string; years: number[]; voltage: number; wmi: string };
 export type Vendor = { id: string; name: string; area: string; lat: number; lng: number; rating: number; prepMins: number };
-export type Category = "Battery" | "Charger" | "BMS" | "Motor" | "Controller" | "Brakes";
+export type Category =
+  | "Battery"
+  | "Charger"
+  | "BMS"
+  | "Motor"
+  | "Controller"
+  | "Brakes"
+  | "Electric Bikes"
+  | "Car Accessories"
+  | "Bike Accessories"
+  | "Spare Parts";
 export type Product = {
   id: string;
   name: string;
@@ -61,6 +74,17 @@ const seeds: Seed[] = [
   { name: "QS 3000W 72V Hub Motor", brand: "QS Motor", category: "Motor", image: img.pt, voltage: 72, warrantyMonths: 18, weightKg: 9, fits: ["revolt-rv400"], description: "Brushless hub motor rated 3kW continuous with hall sensors.", base: 28000, vendors: ["v4", "v5"] },
   { name: "Kelly 72V 80A Controller", brand: "Kelly", category: "Controller", image: img.pt, voltage: 72, warrantyMonths: 12, weightKg: 1.6, fits: ["revolt-rv400"], description: "Programmable sinusoidal controller with regen braking.", base: 9500, vendors: ["v2", "v4"] },
   { name: "Wave Disc Brake Rotor 220mm", brand: "Brembo", category: "Brakes", image: img.pt, warrantyMonths: 6, weightKg: 0.8, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "Stainless wave rotor for improved heat dissipation.", base: 2400, vendors: ["v1", "v3", "v6"] },
+  { name: "Ather 450X Gen 3 Smart Electric Scooter", brand: "Ather Energy", category: "Electric Bikes", image: scooterImg, voltage: 48, capacityAh: 78, chemistry: "Li-ion", warrantyMonths: 36, rangeKm: 150, weightKg: 108, fits: ["ather-450x"], description: "Flagship 450X with Warp Mode, 7-inch TFT touchscreen and IP67 battery pack.", base: 145000, vendors: ["v1", "v6"] },
+  { name: "Revolt RV400 Electric Motorcycle", brand: "Revolt Motors", category: "Electric Bikes", image: heroBike, voltage: 72, capacityAh: 60, chemistry: "Li-ion", warrantyMonths: 36, rangeKm: 150, weightKg: 115, fits: ["revolt-rv400"], description: "AI-enabled electric performance motorcycle with MyRevolt connectivity and 85 km/h top speed.", base: 139000, vendors: ["v4", "v6"] },
+  { name: "Ola S1 Pro Gen 2 Hyperdrive Scooter", brand: "Ola Electric", category: "Electric Bikes", image: scooterImg, voltage: 60, capacityAh: 68, chemistry: "NMC", warrantyMonths: 36, rangeKm: 195, weightKg: 116, fits: ["ola-s1pro"], description: "11kW peak power, 120 km/h top speed, MoveOS 4 navigation and cruise control.", base: 129000, vendors: ["v2", "v5"] },
+  { name: "70mai 4K Dual HDR Smart Dashcam with GPS & ADAS", brand: "70mai", category: "Car Accessories", image: img.pt, warrantyMonths: 12, weightKg: 0.6, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "Ultra 4K front & 1080P rear HDR dashcam with parking surveillance and night owl vision.", base: 8999, vendors: ["v1", "v2", "v3"] },
+  { name: "Digital Fast Tire Inflator 150PSI Auto Cut-Off", brand: "Michelin Auto", category: "Car Accessories", image: img.pt, warrantyMonths: 18, weightKg: 0.8, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "High-precision digital tire inflator for cars, e-bikes and motorcycles with LED torch.", base: 3499, vendors: ["v2", "v4", "v6"] },
+  { name: "ChargeMax Level-2 Home EV Wallbox 7.4kW Type-2 AC", brand: "ChargeMax", category: "Car Accessories", image: img.ch, voltage: 230, warrantyMonths: 36, weightKg: 4.5, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "7.4kW single-phase fast wall charger compatible with all Type-2 electric cars and high-capacity e-scooters.", base: 28500, vendors: ["v1", "v3", "v6"] },
+  { name: "All-Weather Heavy Duty EV Scooter Cover", brand: "Riderz Armor", category: "Bike Accessories", image: img.pt, warrantyMonths: 12, weightKg: 1.1, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "100% waterproof heat-resistant cover with double-stitched seams and anti-theft lock holes.", base: 1299, vendors: ["v1", "v4", "v5"] },
+  { name: "Anti-Theft Disc Brake Lock with 110dB Siren Alarm", brand: "Kovix Security", category: "Bike Accessories", image: img.pt, warrantyMonths: 24, weightKg: 0.5, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "Hardened stainless alloy body with motion vibration sensor and waterproof 110dB alarm.", base: 1850, vendors: ["v2", "v3", "v6"] },
+  { name: "Waterproof Handlebar Phone Mount with 15W Qi Fast Charging", brand: "Bobo Auto", category: "Bike Accessories", image: img.pt, warrantyMonths: 12, weightKg: 0.35, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "Aluminum alloy vibration damper with IP66 wireless fast-charging pad and USB-C port.", base: 2199, vendors: ["v1", "v2", "v5"] },
+  { name: "Brembo Ceramic Sintered Brake Pads (Front + Rear)", brand: "Brembo", category: "Spare Parts", image: img.pt, warrantyMonths: 6, weightKg: 0.4, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "hero-vida-v1"], description: "High-friction ceramic sintered brake pads for quiet, fade-free braking.", base: 1650, vendors: ["v1", "v3", "v6"] },
+  { name: "Gates Carbon Drive High-Tensile Kevlar Belt", brand: "Gates Auto", category: "Spare Parts", image: img.pt, warrantyMonths: 12, weightKg: 0.3, fits: ["ather-450x", "revolt-rv400"], description: "Polyurethane and carbon tensile cord belt designed for instantaneous EV torque.", base: 4200, vendors: ["v2", "v4", "v6"] },
 ];
 
 export const products: Product[] = seeds.map((s, i) => {

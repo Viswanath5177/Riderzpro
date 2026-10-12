@@ -24,6 +24,7 @@ import {
   Truck,
   Heart,
   Plus,
+  CheckCircle2,
   Tag,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -108,49 +109,49 @@ export function OverviewTab({
           <div className="flex items-center gap-2.5 shrink-0">
             <Link
               to="/shop"
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-primary text-white text-xs font-semibold shadow-xs hover:bg-emerald-600 active:scale-95 transition"
+              className="inline-flex items-center justify-center gap-2 px-4.5 py-2.5 rounded-lg bg-[#E31E24] text-white text-xs font-semibold shadow-2xs hover:bg-red-700 active:scale-95 transition"
             >
               <ShoppingBag className="h-4 w-4" />
-              <span>Shop Parts</span>
+              <span>Shop Products</span>
             </Link>
             <button
-              onClick={onOpenBookingModal}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-300 bg-white text-gray-700 text-xs font-semibold hover:bg-gray-50 hover:border-gray-400 active:scale-95 transition"
+              onClick={() => onTabChange("orders")}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111111] text-xs font-semibold hover:bg-gray-50 hover:border-gray-300 active:scale-95 transition shadow-2xs"
             >
-              <Wrench className="h-4 w-4 text-emerald-600" />
-              <span>Book a Service</span>
+              <Truck className="h-4 w-4 text-[#E31E24]" />
+              <span>Track Order</span>
             </button>
           </div>
         </div>
 
         {/* Monsoon EV Care Campaign Banner */}
-        <div className="relative overflow-hidden rounded-3xl border border-emerald-200/80 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="relative overflow-hidden rounded-xl border border-[#E5E7EB] bg-white p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
           <div className="flex items-start sm:items-center gap-3.5">
-            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-primary text-white shadow-xs shrink-0">
+            <span className="grid h-10 w-10 place-items-center rounded-lg bg-[#E31E24] text-white shadow-2xs shrink-0">
               <Zap className="h-5 w-5" />
             </span>
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full bg-primary/20 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
+                <span className="px-2 py-0.5 rounded-md bg-red-50 text-[#E31E24] text-[10px] font-bold uppercase tracking-wider">
                   Monsoon Special
                 </span>
-                <span className="text-xs font-bold text-gray-900">Free 24-Point Battery & BMS Diagnostic</span>
+                <span className="text-xs font-bold text-[#111111]">Free 24-Point Battery & BMS Diagnostic</span>
               </div>
-              <p className="text-xs text-gray-600 mt-0.5">
+              <p className="text-xs text-[#6B7280] mt-0.5">
                 Protect your EV against monsoon humidity and thermal imbalance. Free with any parts order above ₹5,000.
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-            <div className="flex items-center border border-dashed border-emerald-300 bg-white/80 rounded-xl px-2.5 py-1 text-xs font-mono font-bold text-emerald-800">
+            <div className="flex items-center border border-dashed border-red-300 bg-red-50/50 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-[#E31E24]">
               EVSAFE
             </div>
             <button
               onClick={() => copyCoupon("EVSAFE")}
-              className="p-1.5 rounded-xl bg-white border border-gray-200 text-gray-600 hover:text-primary transition"
+              className="p-1.5 rounded-lg bg-white border border-[#E5E7EB] text-gray-600 hover:text-[#E31E24] transition"
               title="Copy promo code"
             >
-              {copiedCode === "EVSAFE" ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
+              {copiedCode === "EVSAFE" ? <Check className="h-4 w-4 text-[#E31E24]" /> : <Copy className="h-4 w-4" />}
             </button>
           </div>
         </div>
@@ -160,100 +161,94 @@ export function OverviewTab({
           SECTION B: SUMMARY METRIC CARDS (4 RESPONSIVE CARDS)
          ───────────────────────────────────────────────────────────── */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: My Bikes */}
-        <div
-          onClick={() => onTabChange("garage")}
-          className="group rounded-3xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-md hover:border-primary/40 cursor-pointer transition-all duration-200 flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">My Bikes</span>
-            <span className="grid h-9 w-9 place-items-center rounded-2xl bg-emerald-50 text-primary group-hover:scale-105 transition">
-              <Bike className="h-5 w-5" />
-            </span>
-          </div>
-          <div className="mt-3">
-            <p className="text-3xl font-extrabold text-gray-900 font-display leading-none">{garage.length}</p>
-            <p className="text-xs text-gray-500 mt-1 truncate">
-              {activeBikeMeta ? `Active: ${activeBikeMeta.make} ${activeBikeMeta.model}` : "No bikes registered"}
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-primary">
-            <span>Manage garage</span>
-            <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
-          </div>
-        </div>
-
-        {/* Card 2: Orders */}
+        {/* Card 1: Total Orders */}
         <div
           onClick={() => onTabChange("orders")}
-          className="group rounded-3xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-md hover:border-primary/40 cursor-pointer transition-all duration-200 flex flex-col justify-between"
+          className="group rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-sm hover:border-[#E31E24] cursor-pointer transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Orders</span>
-            <span className="grid h-9 w-9 place-items-center rounded-2xl bg-blue-50 text-blue-600 group-hover:scale-105 transition">
-              <Package className="h-5 w-5" />
+            <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Total Orders</span>
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-gray-100 text-[#111111] group-hover:bg-red-50 group-hover:text-[#E31E24] transition">
+              <Package className="h-4 w-4" />
             </span>
           </div>
           <div className="mt-3">
-            <p className="text-3xl font-extrabold text-gray-900 font-display leading-none">{orders.length}</p>
-            <p className="text-xs text-gray-500 mt-1">
-              {activeOrdersCount > 0 ? (
-                <span className="text-emerald-600 font-medium">{activeOrdersCount} live in transit</span>
-              ) : (
-                "All previous orders completed"
-              )}
+            <p className="text-3xl font-extrabold text-[#111111] font-display leading-none">{orders.length}</p>
+            <p className="text-xs text-[#6B7280] mt-1">
+              All placed & recorded orders
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-primary">
+          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
             <span>View order history</span>
             <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
           </div>
         </div>
 
-        {/* Card 3: Total Spent */}
+        {/* Card 2: Active Shipments */}
         <div
-          onClick={() => onTabChange("invoices")}
-          className="group rounded-3xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-md hover:border-primary/40 cursor-pointer transition-all duration-200 flex flex-col justify-between"
+          onClick={() => onTabChange("orders")}
+          className="group rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-sm hover:border-[#E31E24] cursor-pointer transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Spent</span>
-            <span className="grid h-9 w-9 place-items-center rounded-2xl bg-amber-50 text-amber-600 group-hover:scale-105 transition">
-              <Wallet className="h-5 w-5" />
+            <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Active Shipments</span>
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-red-50 text-[#E31E24] group-hover:scale-105 transition">
+              <Truck className="h-4 w-4" />
             </span>
           </div>
           <div className="mt-3">
-            <p className="text-3xl font-extrabold text-gray-900 font-display leading-none">{inr(totalSpent)}</p>
-            <p className="text-xs text-gray-500 mt-1">All-time parts & doorstep delivery</p>
+            <p className="text-3xl font-extrabold text-[#E31E24] font-display leading-none">{activeOrdersCount}</p>
+            <p className="text-xs text-[#6B7280] mt-1">
+              {activeOrdersCount > 0 ? `${activeOrdersCount} live in courier transit` : "No shipments currently in transit"}
+            </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-primary">
-            <span>Invoices & receipts</span>
+          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
+            <span>Track live delivery</span>
             <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
           </div>
         </div>
 
-        {/* Card 4: Upcoming Services */}
+        {/* Card 3: Delivered Orders */}
         <div
-          onClick={() => onTabChange("service")}
-          className="group rounded-3xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-md hover:border-primary/40 cursor-pointer transition-all duration-200 flex flex-col justify-between"
+          onClick={() => onTabChange("orders")}
+          className="group rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-sm hover:border-[#E31E24] cursor-pointer transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Upcoming Services</span>
-            <span className="grid h-9 w-9 place-items-center rounded-2xl bg-purple-50 text-purple-600 group-hover:scale-105 transition">
-              <CalendarCheck className="h-5 w-5" />
+            <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Delivered Orders</span>
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 text-emerald-700 group-hover:scale-105 transition">
+              <CheckCircle2 className="h-4 w-4" />
             </span>
           </div>
           <div className="mt-3">
-            <p className="text-3xl font-extrabold text-gray-900 font-display leading-none">
-              {upcomingServices.length}
+            <p className="text-3xl font-extrabold text-emerald-700 font-display leading-none">
+              {orders.filter((o) => o.status === 5).length}
             </p>
-            <p className="text-xs text-gray-500 mt-1 truncate">
-              {upcomingServices.length > 0
-                ? `${upcomingServices[0].serviceType.slice(0, 26)}...`
-                : "No pending appointments"}
+            <p className="text-xs text-[#6B7280] mt-1">
+              Verified doorstep handovers
             </p>
           </div>
-          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-primary">
-            <span>Schedule technician</span>
+          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
+            <span>Delivered packages</span>
+            <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
+          </div>
+        </div>
+
+        {/* Card 4: Total Spending */}
+        <div
+          onClick={() => onTabChange("invoices")}
+          className="group rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:shadow-sm hover:border-[#E31E24] cursor-pointer transition-all flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Total Spending</span>
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-gray-100 text-[#111111] group-hover:bg-red-50 group-hover:text-[#E31E24] transition">
+              <Wallet className="h-4 w-4" />
+            </span>
+          </div>
+          <div className="mt-3">
+            <p className="text-3xl font-extrabold text-[#111111] font-display leading-none">{inr(totalSpent)}</p>
+            <p className="text-xs text-[#6B7280] mt-1">Lifetime spending on parts & spares</p>
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
+            <span>Invoices & tax receipts</span>
             <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
           </div>
         </div>
@@ -335,13 +330,13 @@ export function OverviewTab({
                   </div>
 
                   <div className="space-y-2 pt-2 border-t border-gray-100">
-                    <Link
-                      to="/shop"
+                    <button
+                      onClick={() => onTabChange("garage")}
                       className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-primary/10 text-primary text-xs font-semibold hover:bg-primary hover:text-white transition"
                     >
                       <ShoppingBag className="h-3.5 w-3.5" />
-                      <span>Find Compatible Parts</span>
-                    </Link>
+                      <span>Find Compatible Parts in Garage</span>
+                    </button>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={onOpenBookingModal}
@@ -541,12 +536,12 @@ export function OverviewTab({
                 When you order batteries, chargers, or replacement components, real-time rider tracking and ETA countdowns will appear here.
               </p>
               <div className="mt-5 flex items-center gap-3">
-                <Link
-                  to="/shop"
+                <button
+                  onClick={() => onTabChange("garage")}
                   className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold shadow-xs hover:bg-emerald-600 transition"
                 >
-                  Shop EV Parts
-                </Link>
+                  View Garage Spares
+                </button>
                 <button
                   onClick={() => {
                     simulateDemoOrder();
@@ -582,13 +577,13 @@ export function OverviewTab({
               <div className="py-12 text-center text-xs text-gray-400">
                 <Package className="h-8 w-8 mx-auto text-gray-300 mb-2" />
                 <p className="font-medium text-gray-600">No orders placed yet</p>
-                <p className="text-gray-400 mt-0.5">Browse certified EV batteries & chargers to get started.</p>
-                <Link
-                  to="/shop"
+                <p className="text-gray-400 mt-0.5">Browse certified EV batteries & chargers in your garage to get started.</p>
+                <button
+                  onClick={() => onTabChange("garage")}
                   className="mt-3 inline-block px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-semibold text-xs hover:bg-primary hover:text-white transition"
                 >
-                  Explore Shop
-                </Link>
+                  Explore Garage Spares
+                </button>
               </div>
             ) : (
               orders.slice(0, 5).map((o) => (
@@ -751,13 +746,13 @@ export function OverviewTab({
               Only verified components matching your voltage, frame geometry, and connector pinouts.
             </p>
           </div>
-          <Link
-            to="/shop"
+          <button
+            onClick={() => onTabChange("garage")}
             className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
           >
-            <span>Browse Full Catalog</span>
+            <span>All Garage Spares</span>
             <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+          </button>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

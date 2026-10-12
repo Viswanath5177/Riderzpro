@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { SlidersHorizontal, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { SlidersHorizontal, Search, Bike, Check, X, ShieldCheck } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { ProductCard } from "@/components/site/bits";
 import { bestOffer, bikes, getBike, products, type Category } from "@/lib/data";
@@ -9,24 +9,67 @@ import { useStore } from "@/lib/store";
 export const Route = createFileRoute("/shop")({
   head: () => ({
     meta: [
-      { title: "Shop EV batteries & parts — Riderzpro" },
-      { name: "description", content: "Filter EV batteries, chargers, motors and BMS by voltage, capacity, chemistry and fitment." },
-      { property: "og:title", content: "Shop EV batteries & parts — Riderzpro" },
-      { property: "og:description", content: "Compare EV parts from multiple sellers." },
+      { title: "Automotive Store & Spares — RiderzPro" },
+      { name: "description", content: "Electric bikes, car & bike accessories, batteries, fast chargers, and verified spare parts." },
+      { property: "og:title", content: "Automotive Store & Spares — RiderzPro" },
+      { property: "og:description", content: "Compare automotive parts and accessories from authorized suppliers." },
     ],
   }),
   component: Shop,
 });
 
-const CATS: (Category | "All")[] = ["All", "Battery", "Charger", "BMS", "Motor", "Controller", "Brakes"];
+const CATS: (Category | "All")[] = [
+  "All",
+  "Electric Bikes",
+  "Car Accessories",
+  "Bike Accessories",
+  "Spare Parts",
+  "Battery",
+  "Charger",
+  "BMS",
+  "Motor",
+  "Controller",
+  "Brakes",
+];
 
 function Shop() {
   const { activeBikeId, setActiveBikeId } = useStore();
-  const [q, setQ] = useState("");
-  const [cat, setCat] = useState<(typeof CATS)[number]>("All");
+
+  const [q, setQ] = useState(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      return p.get("q") || "";
+    }
+    return "";
+  });
+
+  const [cat, setCat] = useState<(typeof CATS)[number]>(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      const c = p.get("cat");
+      if (c && CATS.includes(c as any)) return c as any;
+    }
+    return "All";
+  });
+
   const [volt, setVolt] = useState<number | null>(null);
-  const [onlyFit, setOnlyFit] = useState(true);
+  const [onlyFit, setOnlyFit] = useState(false);
   const [sort, setSort] = useState("relevance");
+
+  useEffect(() => {
+    const handleUrl = () => {
+      if (typeof window !== "undefined") {
+        const p = new URLSearchParams(window.location.search);
+        const urlQ = p.get("q");
+        const urlCat = p.get("cat");
+        if (urlQ !== null) setQ(urlQ);
+        if (urlCat !== null && CATS.includes(urlCat as any)) setCat(urlCat as any);
+      }
+    };
+    handleUrl();
+    window.addEventListener("popstate", handleUrl);
+    return () => window.removeEventListener("popstate", handleUrl);
+  }, []);
 
   const list = useMemo(() => {
     let l = products.filter(
@@ -34,7 +77,7 @@ function Shop() {
         (cat === "All" || p.category === cat) &&
         (!volt || p.voltage === volt) &&
         (!onlyFit || !activeBikeId || p.fits.includes(activeBikeId)) &&
-        (q === "" || `${p.name} ${p.brand} ${p.category}`.toLowerCase().includes(q.toLowerCase())),
+        (q === "" || `${p.name} ${p.brand} ${p.category} ${p.description}`.toLowerCase().includes(q.toLowerCase())),
     );
     if (sort === "low") l = [...l].sort((a, b) => bestOffer(a).price - bestOffer(b).price);
     if (sort === "high") l = [...l].sort((a, b) => bestOffer(b).price - bestOffer(a).price);
@@ -45,53 +88,173 @@ function Shop() {
 
   return (
     <SiteLayout>
-      <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+        {/* Header Breadcrumbs & Title */}
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-primary">Marketplace</p>
-            <h1 className="font-display text-5xl md:text-7xl">Batteries & parts</h1>
-          </div>
-          <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2">
-            <span className="text-xs text-muted-foreground">Shopping for</span>
-            <select value={activeBikeId ?? ""} onChange={(e) => setActiveBikeId(e.target.value || null)} className="bg-transparent font-semibold outline-none">
-              <option value="">Any bike</option>
-              {bikes.map((b) => <option key={b.id} value={b.id}>{b.make} {b.model}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div className="sticky top-16 z-30 -mx-4 mt-6 border-b border-border px-4 py-3 glass md:mx-0 md:rounded-2xl md:border">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <div className="flex flex-1 items-center gap-2 rounded-xl bg-muted px-3">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search 60V battery, charger, BMS…" className="h-10 w-full bg-transparent outline-none" />
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#E31E24]">
+              <span>Official Catalog</span>
+              <span>·</span>
+              <span className="text-[#6B7280]">Automotive Retail</span>
             </div>
-            <div className="flex gap-2 overflow-x-auto pb-1 lg:pb-0">
-              {CATS.map((c) => (
-                <button key={c} onClick={() => setCat(c)} className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition ${cat === c ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary"}`}>{c}</button>
+            <h1 className="mt-1 font-display text-3xl font-extrabold text-[#111111] sm:text-4xl">
+              {cat === "All" ? "All Products & Spares" : cat}
+            </h1>
+            <p className="mt-1 text-sm text-[#6B7280]">
+              Browse high-grade electric bikes, genuine spares, accessories, and certified fast chargers.
+            </p>
+          </div>
+
+          {/* Active vehicle filter pill */}
+          <div className="flex items-center gap-2.5 rounded-xl border border-[#E5E7EB] bg-white px-3.5 py-2 shadow-2xs">
+            <Bike className="h-4 w-4 text-[#E31E24]" />
+            <span className="text-xs text-[#6B7280]">Vehicle Fitment:</span>
+            <select
+              value={activeBikeId ?? ""}
+              onChange={(e) => setActiveBikeId(e.target.value || null)}
+              className="bg-transparent text-xs font-semibold text-[#111111] outline-none cursor-pointer"
+            >
+              <option value="">Any Vehicle (Show all)</option>
+              {bikes.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.make} {b.model} ({b.voltage}V)
+                </option>
               ))}
-            </div>
-          </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-            <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-            {[48, 60, 72].map((v) => (
-              <button key={v} onClick={() => setVolt(volt === v ? null : v)} className={`rounded-lg border px-3 py-1 font-display text-lg leading-none ${volt === v ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>{v}V</button>
-            ))}
-            <label className="ml-2 flex items-center gap-2"><input type="checkbox" checked={onlyFit} onChange={(e) => setOnlyFit(e.target.checked)} className="accent-[var(--primary)]" /> Only parts that fit {bike ? `${bike.make} ${bike.model}` : ""}</label>
-            <select value={sort} onChange={(e) => setSort(e.target.value)} className="ml-auto rounded-lg border border-border bg-card px-2 py-1">
-              <option value="relevance">Relevance</option><option value="low">Price: low → high</option><option value="high">Price: high → low</option>
             </select>
           </div>
         </div>
 
-        <p className="mt-6 text-sm text-muted-foreground">{list.length} results</p>
+        {/* Filters and Search Bar */}
+        <div className="sticky top-18 z-30 -mx-4 mt-6 border-y md:border border-[#E5E7EB] bg-white px-4 py-3.5 md:mx-0 md:rounded-xl shadow-2xs">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            {/* Live Search */}
+            <div className="relative flex flex-1 items-center">
+              <Search className="absolute left-3.5 h-4 w-4 text-[#6B7280]" />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search across all automotive items..."
+                className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-[#F5F6F8] pl-10 pr-8 text-sm text-[#111111] placeholder:text-[#6B7280] focus:border-[#E31E24] focus:bg-white focus:outline-none"
+              />
+              {q && (
+                <button
+                  onClick={() => setQ("")}
+                  className="absolute right-3 text-gray-400 hover:text-gray-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Department Category Pills */}
+            <div className="flex gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+              {CATS.map((c) => {
+                const isActive = cat === c;
+                return (
+                  <button
+                    key={c}
+                    onClick={() => setCat(c)}
+                    className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                      isActive
+                        ? "bg-[#E31E24] text-white font-semibold shadow-2xs"
+                        : "border border-[#E5E7EB] bg-white text-[#6B7280] hover:border-gray-300 hover:text-[#111111]"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Sub Filters: Voltage, Fitment, Sorting */}
+          <div className="mt-3 flex flex-wrap items-center gap-2 pt-3 border-t border-gray-100 text-xs">
+            <SlidersHorizontal className="h-3.5 w-3.5 text-[#6B7280]" />
+            <span className="text-[#6B7280] font-medium">Voltage:</span>
+            {[48, 60, 72].map((v) => (
+              <button
+                key={v}
+                onClick={() => setVolt(volt === v ? null : v)}
+                className={`rounded-md border px-2.5 py-1 font-semibold leading-none ${
+                  volt === v
+                    ? "border-[#E31E24] bg-red-50 text-[#E31E24]"
+                    : "border-[#E5E7EB] bg-white text-[#6B7280] hover:text-[#111111]"
+                }`}
+              >
+                {v}V
+              </button>
+            ))}
+
+            {bike && (
+              <label className="ml-3 flex items-center gap-1.5 cursor-pointer font-medium text-[#111111]">
+                <input
+                  type="checkbox"
+                  checked={onlyFit}
+                  onChange={(e) => setOnlyFit(e.target.checked)}
+                  className="rounded border-gray-300 accent-[#E31E24]"
+                />
+                <span>Only compatible with {bike.make} {bike.model}</span>
+              </label>
+            )}
+
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-[#6B7280]">Sort by:</span>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="rounded-md border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs font-medium text-[#111111] outline-none"
+              >
+                <option value="relevance">Relevance</option>
+                <option value="low">Price: Low → High</option>
+                <option value="high">Price: High → Low</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Results Count */}
+        <div className="mt-5 flex items-center justify-between text-xs text-[#6B7280]">
+          <p>Showing <span className="font-semibold text-[#111111]">{list.length}</span> products</p>
+          {(cat !== "All" || q || volt !== null || onlyFit) && (
+            <button
+              onClick={() => {
+                setCat("All");
+                setQ("");
+                setVolt(null);
+                setOnlyFit(false);
+              }}
+              className="font-medium text-[#E31E24] hover:underline"
+            >
+              Reset all filters
+            </button>
+          )}
+        </div>
+
+        {/* Product Cards Grid */}
         {list.length === 0 ? (
-          <div className="mt-10 rounded-3xl border border-dashed border-border p-16 text-center">
-            <p className="font-display text-3xl">No parts match</p>
-            <p className="mt-2 text-muted-foreground">Try turning off “Only parts that fit” or clearing filters.</p>
+          <div className="mt-8 rounded-2xl border border-dashed border-[#E5E7EB] bg-white p-12 text-center">
+            <p className="font-display text-xl font-bold text-[#111111]">No matching products found</p>
+            <p className="mt-2 text-sm text-[#6B7280]">
+              Try clearing filters or search query to explore the full inventory.
+            </p>
+            <button
+              onClick={() => {
+                setCat("All");
+                setQ("");
+                setVolt(null);
+                setOnlyFit(false);
+              }}
+              className="mt-4 rounded-lg bg-[#E31E24] px-4 py-2 text-xs font-semibold text-white hover:bg-red-700"
+            >
+              View All Products
+            </button>
           </div>
         ) : (
-          <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">{list.map((p) => <ProductCard key={p.id} p={p} />)}</div>
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {list.map((p) => (
+              <ProductCard key={p.id} p={p} />
+            ))}
+          </div>
         )}
       </div>
     </SiteLayout>

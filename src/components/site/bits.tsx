@@ -1,18 +1,20 @@
 import { Link } from "@tanstack/react-router";
-import { Moon, Sun, Zap, CheckCircle2, XCircle, HelpCircle, Star } from "lucide-react";
+import { Moon, Sun, Zap, CheckCircle2, XCircle, HelpCircle, Star, Heart, ShoppingCart } from "lucide-react";
+import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { bestOffer, fitmentFor, getVendor, inr, type Fitment, type Product } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
-export function Logo({ className }: { className?: string }) {
+import logoImg from "@/assets/riderzpro-logo.png";
+
+export function Logo({ className, imgClassName }: { className?: string; imgClassName?: string }) {
   return (
-    <Link to="/" className={cn("group flex items-center gap-2.5", className)}>
-      <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground shadow-glow transition group-hover:scale-105">
-        <Zap className="h-5 w-5" fill="currentColor" />
-      </span>
-      <span className="font-display text-xl font-extrabold tracking-tight">
-        RIDERZ<span className="text-primary">PRO</span>
-      </span>
+    <Link to="/" className={cn("group inline-flex items-center", className)}>
+      <img
+        src={logoImg}
+        alt="RiderzPro - Car & Bike Accessories"
+        className={cn("h-8 md:h-9.5 w-auto object-contain transition-transform group-hover:scale-[1.02]", imgClassName)}
+      />
     </Link>
   );
 }
@@ -35,18 +37,18 @@ export function ThemeToggle({ className }: { className?: string }) {
 
 const fitMeta: Record<Fitment, { label: string; cls: string; Icon: typeof CheckCircle2 }> = {
   compatible: {
-    label: "Fits your bike",
-    cls: "bg-success/15 text-success border-success/30 backdrop-blur-md",
+    label: "Verified Fit",
+    cls: "bg-emerald-50 text-emerald-800 border-emerald-200",
     Icon: CheckCircle2,
   },
   incompatible: {
     label: "Doesn't fit",
-    cls: "bg-destructive/15 text-destructive border-destructive/30 backdrop-blur-md",
+    cls: "bg-rose-50 text-rose-700 border-rose-200",
     Icon: XCircle,
   },
   unknown: {
-    label: "Fitment unknown",
-    cls: "bg-muted/70 text-muted-foreground border-border/70 backdrop-blur-md",
+    label: "Universal Fit",
+    cls: "bg-gray-100 text-gray-700 border-gray-200",
     Icon: HelpCircle,
   },
 };
@@ -56,72 +58,130 @@ export function FitmentBadge({ fit, className }: { fit: Fitment; className?: str
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold backdrop-blur-xl shadow-sm",
+        "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold shadow-2xs",
         m.cls,
         className,
       )}
     >
-      <m.Icon className="h-3.5 w-3.5" /> {m.label}
+      <m.Icon className="h-3 w-3 shrink-0" /> {m.label}
     </span>
   );
 }
 
 export function ProductCard({ p }: { p: Product }) {
-  const { activeBikeId, addToCart } = useStore();
+  const { activeBikeId, addToCart, toggleSaved, isSaved } = useStore();
   const offer = bestOffer(p);
   const fit = fitmentFor(p, activeBikeId);
+  const mrp = Math.round((offer.price * 1.14) / 100) * 100;
+  const discountPct = Math.round(((mrp - offer.price) / mrp) * 100);
+  const saved = isSaved(p.id);
+
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-3xl border border-border/80 bg-card/75 backdrop-blur-2xl shadow-card transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:border-primary/40">
-      <Link to="/product/$id" params={{ id: p.id }} className="relative block aspect-square overflow-hidden bg-muted/40">
-        <img
-          src={p.image}
-          alt={p.name}
-          loading="lazy"
-          width={1024}
-          height={1024}
-          className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
-        />
-        <div className="absolute left-3 top-3">
-          <FitmentBadge fit={fit} className="glass border-white/20 dark:border-white/10" />
+    <div className="group relative flex flex-col overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-2xs transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-gray-300">
+      {/* Product Image Area */}
+      <div className="relative block aspect-square overflow-hidden bg-[#F5F6F8]">
+        <Link to="/product/$id" params={{ id: p.id }} className="block h-full w-full">
+          <img
+            src={p.image}
+            alt={p.name}
+            loading="lazy"
+            width={600}
+            height={600}
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          />
+        </Link>
+        {/* Top Badges */}
+        <div className="absolute left-2.5 top-2.5 flex flex-col gap-1 items-start z-10 pointer-events-none">
+          {discountPct > 0 && (
+            <span className="rounded-md bg-[#E31E24] px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
+              {discountPct}% OFF
+            </span>
+          )}
+          {activeBikeId && (
+            <FitmentBadge fit={fit} className="bg-white/95 text-gray-800 shadow-2xs backdrop-blur-xs text-[10px]" />
+          )}
         </div>
+
+        {/* Save Item Heart Button */}
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleSaved(p.id);
+            toast.success(saved ? "Removed from saved items" : "Added to saved items");
+          }}
+          aria-label={saved ? "Remove from saved items" : "Save item"}
+          className={cn(
+            "absolute right-2.5 top-2.5 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/90 shadow-xs backdrop-blur-xs transition hover:scale-110",
+            saved ? "text-[#E31E24]" : "text-gray-500 hover:text-[#E31E24]"
+          )}
+        >
+          <Heart className={cn("h-4 w-4", saved && "fill-current")} />
+        </button>
+
+        {/* Voltage or Specs Tag */}
         {p.voltage && (
-          <span className="absolute right-3 top-3 rounded-full border border-white/20 bg-background/80 px-2.5 py-1 font-display text-xs font-bold leading-none text-foreground backdrop-blur-md">
+          <span className="absolute right-2.5 bottom-2.5 rounded-md bg-black/75 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-xs">
             {p.voltage}V
           </span>
         )}
-      </Link>
-      <div className="flex flex-1 flex-col gap-2 p-5">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="font-medium uppercase tracking-wider">
+      </div>
+
+      {/* Card Content Area */}
+      <div className="flex flex-1 flex-col p-4">
+        <div className="flex items-center justify-between text-[11px] text-[#6B7280]">
+          <span className="font-semibold uppercase tracking-wider truncate max-w-[140px]">
             {p.category} · {p.brand}
           </span>
-          <span className="flex items-center gap-1 font-semibold">
-            <Star className="h-3 w-3 fill-warning text-warning" />
+          <span className="flex items-center gap-1 font-semibold text-gray-700 shrink-0">
+            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
             {getVendor(offer.vendorId).rating}
           </span>
         </div>
+
         <Link
           to="/product/$id"
           params={{ id: p.id }}
-          className="line-clamp-2 font-semibold text-base leading-snug tracking-tight transition-colors hover:text-primary"
+          className="mt-1 line-clamp-2 font-semibold text-sm leading-snug text-[#111111] transition-colors hover:text-[#E31E24]"
         >
           {p.name}
         </Link>
-        {p.capacityAh && (
-          <p className="text-xs text-muted-foreground">
-            {p.capacityAh}Ah · {p.chemistry} · ~{p.rangeKm} km range
-          </p>
-        )}
-        <div className="mt-auto flex items-end justify-between pt-3">
+
+        {/* Availability status */}
+        <div className="mt-2 flex items-center gap-1.5 text-[11px]">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <span className="text-emerald-700 font-medium">In Stock</span>
+          <span className="text-gray-400">·</span>
+          <span className="text-[#6B7280]">{p.warrantyMonths}m Warranty</span>
+        </div>
+
+        {/* Price and Add to Cart Area */}
+        <div className="mt-auto pt-3 border-t border-gray-100 flex items-end justify-between gap-2">
           <div>
-            <p className="text-[11px] text-muted-foreground">{p.offers.length} sellers from</p>
-            <p className="font-display text-xl font-bold tracking-tight">{inr(offer.price)}</p>
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-display text-lg font-extrabold text-[#111111]">
+                {inr(offer.price)}
+              </span>
+              <span className="text-xs text-gray-400 line-through">
+                {inr(mrp)}
+              </span>
+            </div>
+            <p className="text-[10px] text-[#6B7280]">
+              From {getVendor(offer.vendorId).name}
+            </p>
           </div>
+
           <button
-            onClick={() => addToCart(p.id, offer.vendorId)}
-            className="rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] transition-all hover:brightness-105 active:scale-95"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              addToCart(p.id, offer.vendorId);
+              toast.success(`Added ${p.name} to cart`);
+            }}
+            className="flex items-center gap-1.5 rounded-lg bg-[#E31E24] px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-700 active:scale-95 shadow-2xs"
           >
-            Add
+            <ShoppingCart className="h-3.5 w-3.5" />
+            <span>Add</span>
           </button>
         </div>
       </div>
