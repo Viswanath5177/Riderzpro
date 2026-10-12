@@ -99,7 +99,7 @@ export function OverviewTab({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 font-display">
-              Welcome back, {userProfile.name.split(" ")[0]} 👋
+              Welcome back{userProfile?.name?.trim() ? `, ${userProfile.name.trim().split(" ")[0]}` : ""} 👋
             </h1>
             <p className="text-sm text-gray-500 mt-0.5">
               Your electric vehicle command center. Track live orders, check telemetry, and book verified service.

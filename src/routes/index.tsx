@@ -719,7 +719,7 @@ function GarageAccessSection() {
 
             <h3 className="mt-3 text-2xl sm:text-3xl font-extrabold text-[#111111] font-display">
               {isLoggedIn
-                ? `Welcome back, ${userProfile.name.split(" ")[0]}!`
+                ? `Welcome back${userProfile?.name?.trim() ? `, ${userProfile.name.trim().split(" ")[0]}` : ""}!`
                 : "Own a Car or Electric Two-Wheeler?"}
             </h3>
 

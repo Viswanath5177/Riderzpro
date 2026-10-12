@@ -412,7 +412,7 @@ export function CustomerLayout({
                   <span className="text-gray-900 font-semibold truncate">{getBreadcrumbTitle()}</span>
                 </div>
                 <h1 className="text-base font-bold text-gray-900 leading-tight">
-                  Welcome back, {userProfile.name.split(" ")[0]}
+                  Welcome back{userProfile?.name?.trim() ? `, ${userProfile.name.trim().split(" ")[0]}` : ""}
                 </h1>
               </div>
             </div>
@@ -490,23 +490,32 @@ export function CustomerLayout({
                   aria-label="Account menu"
                 >
                   <span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-white font-bold text-xs shadow-xs">
-                    {userProfile.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .slice(0, 2)}
+                    {userProfile?.name?.trim()
+                      ? userProfile.name
+                          .trim()
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .slice(0, 2)
+                      : "CP"}
                   </span>
                 </button>
 
                 {isProfileOpen && (
                   <div className="absolute right-0 mt-2 w-64 rounded-3xl bg-white border border-gray-200 shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
                     <div className="px-3 py-2.5 border-b border-gray-100">
-                      <p className="text-sm font-bold text-gray-900 truncate">{userProfile.name}</p>
-                      <p className="text-xs text-gray-500 truncate">{userProfile.email}</p>
-                      <div className="mt-2 flex items-center justify-between text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
-                        <span>ProPoints Loyalty</span>
-                        <span className="font-bold">{userProfile.points} pts</span>
-                      </div>
+                      <p className="text-sm font-bold text-gray-900 truncate">
+                        {userProfile?.name?.trim() || "Customer Account"}
+                      </p>
+                      {userProfile?.email?.trim() && (
+                        <p className="text-xs text-gray-500 truncate">{userProfile.email}</p>
+                      )}
+                      {(userProfile?.points || 0) > 0 && (
+                        <div className="mt-2 flex items-center justify-between text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
+                          <span>ProPoints Loyalty</span>
+                          <span className="font-bold">{userProfile.points} pts</span>
+                        </div>
+                      )}
                     </div>
                     <div className="py-1 space-y-0.5">
                       <button

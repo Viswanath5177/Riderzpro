@@ -37,20 +37,17 @@ export function SettingsTab() {
   const [phone, setPhone] = useState(userProfile.phone);
 
   // Address list & selection
-  const addresses: UserAddress[] =
-    userProfile.addresses && userProfile.addresses.length > 0
-      ? userProfile.addresses
-      : DEFAULT_PROFILE.addresses || [];
+  const addresses: UserAddress[] = Array.isArray(userProfile.addresses) ? userProfile.addresses : [];
   const selectedAddressId = userProfile.selectedAddressId || addresses[0]?.id;
 
   // New address form state
   const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [newTag, setNewTag] = useState("Home");
-  const [newName, setNewName] = useState(userProfile.name);
-  const [newPhone, setNewPhone] = useState(userProfile.phone);
+  const [newName, setNewName] = useState(userProfile.name || "");
+  const [newPhone, setNewPhone] = useState(userProfile.phone || "");
   const [newStreet, setNewStreet] = useState("");
-  const [newCity, setNewCity] = useState("Bengaluru, Karnataka");
-  const [newPincode, setNewPincode] = useState("560066");
+  const [newCity, setNewCity] = useState(userProfile.city || "");
+  const [newPincode, setNewPincode] = useState("");
 
   // Editing address state
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
@@ -350,8 +347,30 @@ export function SettingsTab() {
           </form>
         )}
 
+        {/* EMPTY STATE IF NO ADDRESSES */}
+        {addresses.length === 0 && !isAddingAddress && (
+          <div className="py-8 text-center rounded-2xl border-2 border-dashed border-[#E5E7EB] bg-gray-50/50 p-6 space-y-3">
+            <MapPin className="h-8 w-8 text-gray-400 mx-auto" />
+            <div>
+              <p className="text-sm font-bold text-gray-900">No Delivery Addresses Added</p>
+              <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
+                Add your delivery destination to receive parts, accessories, and doorstep maintenance services.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsAddingAddress(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#E31E24] px-4 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-red-700 transition active:scale-95"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Add Your Address</span>
+            </button>
+          </div>
+        )}
+
         {/* LIST OF ADDRESS CARDS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {addresses.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {addresses.map((addr) => {
             const isSelected = addr.id === selectedAddressId;
             const isEditing = editingAddressId === addr.id;
@@ -540,6 +559,7 @@ export function SettingsTab() {
             );
           })}
         </div>
+        )}
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
@@ -557,11 +577,13 @@ export function SettingsTab() {
                 Your legal name and primary contact details for billing and GST tax invoices.
               </p>
             </div>
-            <div className="text-right">
-              <span className="inline-block rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 border border-emerald-200">
-                {userProfile.points} ProPoints
-              </span>
-            </div>
+            {(userProfile?.points || 0) > 0 && (
+              <div className="text-right">
+                <span className="inline-block rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 border border-emerald-200">
+                  {userProfile.points} ProPoints
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

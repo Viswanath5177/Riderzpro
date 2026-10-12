@@ -59,7 +59,8 @@ function CustomerLogin() {
     setTimeout(() => {
       signIn();
       setRole("customer");
-      toast.success(`Welcome back, ${userProfile.name.split(" ")[0]}!`, {
+      const welcomeName = userProfile?.name?.trim() ? userProfile.name.trim().split(" ")[0] : "Customer";
+      toast.success(`Welcome back, ${welcomeName}!`, {
         description: "Successfully signed in to your customer dashboard.",
       });
       const target = getRedirectTarget();
@@ -72,7 +73,8 @@ function CustomerLogin() {
     setTimeout(() => {
       signIn();
       setRole("customer");
-      toast.success(`Welcome back, ${userProfile.name.split(" ")[0]}!`, {
+      const welcomeName = userProfile?.name?.trim() ? userProfile.name.trim().split(" ")[0] : "Customer";
+      toast.success(`Welcome back, ${welcomeName}!`, {
         description: "One-click demo sign-in to customer dashboard.",
       });
       const target = getRedirectTarget();

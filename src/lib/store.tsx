@@ -199,51 +199,23 @@ const StoreCtx = createContext<Ctx | null>(null);
 const KEY = "riderzpro-v2";
 
 export const DEFAULT_PROFILE: UserProfile = {
-  name: "Aakash Sharma",
-  phone: "+91 98765 43210",
-  email: "aakash.sharma@example.com",
-  city: "Bengaluru, KA",
-  address: "Flat 402, Green Glen Layout, Bellandur, Bengaluru 560103",
-  points: 450,
-  selectedAddressId: "addr-1",
-  addresses: [
-    {
-      id: "addr-1",
-      tag: "Home (Primary)",
-      name: "Aakash Sharma",
-      phone: "+91 98765 43210",
-      street: "Flat 402, Green Glen Layout, Bellandur",
-      city: "Bengaluru, KA",
-      pincode: "560103",
-    },
-    {
-      id: "addr-2",
-      tag: "Office / Tech Park",
-      name: "Aakash Sharma",
-      phone: "+91 98765 43210",
-      street: "Tower B, Prestige Tech Cloud, Outer Ring Road",
-      city: "Bengaluru, KA",
-      pincode: "560103",
-    },
-    {
-      id: "addr-3",
-      tag: "Workshop Garage",
-      name: "Aakash Sharma",
-      phone: "+91 98765 43210",
-      street: "Plot 18, Electronic City Phase 1",
-      city: "Bengaluru, KA",
-      pincode: "560100",
-    },
-  ],
+  name: "",
+  phone: "",
+  email: "",
+  city: "",
+  address: "",
+  points: 0,
+  selectedAddressId: "",
+  addresses: [],
 };
 
 const DEFAULT_ADDRESS: AddressRef = {
-  name: "Aakash Sharma",
-  street: "Flat 402, Green Glen Layout, Bellandur",
-  city: "Bengaluru",
-  state: "Karnataka",
-  pincode: "560103",
-  phone: "+91 98765 43210",
+  name: "",
+  street: "",
+  city: "",
+  state: "",
+  pincode: "",
+  phone: "",
 };
 
 const DEFAULT_BOOKINGS: ServiceBooking[] = [
@@ -484,7 +456,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role>("customer");
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("riderzpro_auth") === "true";
+      const auth = localStorage.getItem("riderzpro_auth");
+      const user = localStorage.getItem(KEY);
+      if (user && user.includes("Aakash")) {
+        localStorage.removeItem("riderzpro_auth");
+        return false;
+      }
+      return auth === "true";
     }
     return false;
   });
@@ -505,16 +483,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (s.serviceBookings) setServiceBookings(s.serviceBookings);
         if (s.notifications) setNotifications(s.notifications);
         if (s.userProfile) {
-          setUserProfile({
-            ...DEFAULT_PROFILE,
-            ...s.userProfile,
-            addresses:
-              s.userProfile.addresses && s.userProfile.addresses.length > 0
-                ? s.userProfile.addresses
-                : DEFAULT_PROFILE.addresses,
-            selectedAddressId:
-              s.userProfile.selectedAddressId || DEFAULT_PROFILE.selectedAddressId,
-          });
+          const isMock =
+            s.userProfile.name === "Aakash Sharma" ||
+            s.userProfile.email === "aakash.sharma@example.com";
+          if (!isMock) {
+            setUserProfile({
+              ...DEFAULT_PROFILE,
+              ...s.userProfile,
+              addresses: Array.isArray(s.userProfile.addresses) ? s.userProfile.addresses : [],
+              selectedAddressId: s.userProfile.selectedAddressId || "",
+            });
+          } else {
+            setUserProfile(DEFAULT_PROFILE);
+          }
         }
         if (s.role) setRole(s.role);
       }
