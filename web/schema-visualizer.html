@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Riderzpro — Visual PostgreSQL Schema & Real-Time Telemetry Radar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/components.css">
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --card-dark: rgba(18, 24, 38, 0.85);
+      --border-dark: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(0, 122, 255, 0.4);
+      --accent-cyan: #00d2ff;
+      --accent-green: #10b981;
+      --accent-purple: #8b5cf6;
+      --accent-amber: #f59e0b;
+      --accent-pink: #ec4899;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: radial-gradient(circle at 15% 15%, #131b2e 0%, #070a12 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 24px;
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 24px;
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border-dark);
+      border-radius: 16px;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #007aff, #00d2ff);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: #fff;
+      font-size: 20px;
+      box-shadow: 0 0 20px rgba(0, 210, 255, 0.4);
+    }
+
+    .brand-text h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .brand-text p {
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+
+    /* Nav Filter Pills */
+    .filter-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    .filter-btn {
+      padding: 8px 18px;
+      border-radius: 9999px;
+      border: 1px solid var(--border-dark);
+      background: rgba(30, 41, 59, 0.6);
+      color: #94a3b8;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filter-btn:hover {
+      background: rgba(51, 65, 85, 0.8);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .filter-btn.active {
+      background: #007aff;
+      color: #fff;
+      border-color: #00d2ff;
+      box-shadow: 0 0 15px rgba(0, 122, 255, 0.4);
+    }
+
+    /* Live Telemetry Radar Banner */
+    .telemetry-radar-card {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.7) 100%);
+      border: 1px solid rgba(0, 210, 255, 0.3);
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 32px;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .telemetry-radar-card::before {
+      content: '';
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(0, 210, 255, 0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .radar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .radar-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .pulse-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.8; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); opacity: 0.8; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    .radar-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .radar-grid { grid-template-columns: 1fr; }
+    }
+
+    .canvas-container {
+      position: relative;
+      background: #090d16;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      overflow: hidden;
+      height: 280px;
+    }
+
+    canvas#radarMap {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .telemetry-table-wrap {
+      background: #090d16;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .telemetry-table-wrap h4 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .live-stream-log {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      overflow-y: auto;
+      max-height: 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .log-item {
+      padding: 8px 12px;
+      background: rgba(30, 41, 59, 0.4);
+      border-radius: 8px;
+      border-left: 3px solid #00d2ff;
+      display: flex;
+      justify-content: space-between;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ERD Grid Layout */
+    .erd-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 24px;
+    }
+
+    .schema-card {
+      background: var(--card-dark);
+      border: 1px solid var(--border-dark);
+      border-radius: 18px;
+      overflow: hidden;
+      transition: all 0.25s ease;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      position: relative;
+    }
+
+    .schema-card:hover {
+      border-color: var(--border-glow);
+      transform: translateY(-3px);
+      box-shadow: 0 15px 35px rgba(0, 122, 255, 0.2);
+    }
+
+    .card-header {
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .card-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .domain-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 9999px;
+    }
+
+    .tag-identity { background: rgba(0, 122, 255, 0.2); color: #60a5fa; }
+    .tag-catalog { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .tag-orders { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .tag-logistics { background: rgba(0, 210, 255, 0.2); color: #38bdf8; }
+    .tag-proof { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
+    .tag-quantum { background: rgba(236, 72, 153, 0.2); color: #f472b6; }
+
+    .columns-list {
+      padding: 8px 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+    }
+
+    .col-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 18px;
+      transition: background 0.15s ease;
+      border-bottom: 1px solid rgba(255,255,255,0.02);
+    }
+
+    .col-row:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .col-name-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-pk {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: #e11d48;
+      color: #fff;
+    }
+
+    .badge-fk {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: #2563eb;
+      color: #fff;
+    }
+
+    .col-name {
+      color: #cbd5e1;
+    }
+
+    .col-type {
+      color: #64748b;
+      font-size: 0.75rem;
+    }
+
+    .card-footer {
+      padding: 10px 18px;
+      background: rgba(0,0,0,0.2);
+      border-top: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.75rem;
+      color: #94a3b8;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Role Connectivity Explorer Bar */
+    .role-connectivity {
+      margin-top: 40px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-dark);
+      border-radius: 20px;
+      padding: 24px;
+    }
+
+    .role-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .role-box {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .role-box:hover, .role-box.active {
+      border-color: #00d2ff;
+      background: rgba(30, 41, 59, 0.9);
+      transform: translateY(-2px);
+    }
+
+    .role-box h3 {
+      font-size: 0.95rem;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .role-box p {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-logo">⚡</div>
+      <div class="brand-text">
+        <h1>Riderzpro Database Schema Visualizer</h1>
+        <p>PostgreSQL 14+ Architecture & Real-Time GPS Telemetry Engine</p>
+      </div>
+    </div>
+    <div>
+      <a href="index.html" class="filter-btn" style="text-decoration: none;">
+        <span>← Back to App</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Live Telemetry Simulator & State Machine Banner -->
+  <div class="telemetry-radar-card">
+    <div class="radar-header">
+      <div class="radar-title">
+        <div class="pulse-dot"></div>
+        <h2 style="font-size: 1.1rem; color: #fff;">Live Geolocation Telemetry Radar & Status Pipeline</h2>
+      </div>
+      <span style="font-size: 0.8rem; color: #38bdf8; font-family: 'JetBrains Mono', monospace;">
+        STREAM: rider_telemetry_logs (3-5s Ping)
+      </span>
+    </div>
+
+    <div class="radar-grid">
+      <!-- Live Animated Canvas Map -->
+      <div class="canvas-container">
+        <canvas id="radarMap"></canvas>
+        <div style="position: absolute; bottom: 12px; left: 16px; background: rgba(15,23,42,0.85); padding: 6px 12px; border-radius: 8px; font-family: 'JetBrains Mono'; font-size: 0.75rem; color: #38bdf8; border: 1px solid rgba(255,255,255,0.1);">
+          🛵 Ramesh Kumar (VF-2026-7732) | Status: <span style="color:#10b981;">IN_TRANSIT</span>
+        </div>
+      </div>
+
+      <!-- Live Stream Table Feed -->
+      <div class="telemetry-table-wrap">
+        <h4>
+          <span>Real-Time Ingestion Feed</span>
+          <span id="pingCount">Pings: 0</span>
+        </h4>
+        <div class="live-stream-log" id="telemetryLog">
+          <!-- Dynamically appended by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Domain Navigation Filters -->
+  <div class="filter-bar">
+    <button class="filter-btn active" data-domain="all">⚡ All Tables (7)</button>
+    <button class="filter-btn" data-domain="identity">👥 Users (All Roles)</button>
+    <button class="filter-btn" data-domain="catalog">📦 Products & Categories</button>
+    <button class="filter-btn" data-domain="orders">🛒 Orders & Items</button>
+    <button class="filter-btn" data-domain="logistics">🛵 Deliveries & GPS</button>
+    <button class="filter-btn" data-domain="support">🎧 Support Tickets</button>
+  </div>
+
+  <!-- ERD Tables Grid -->
+  <main class="erd-container" id="erdGrid">
+    <!-- Populated by JavaScript below -->
+  </main>
+
+  <!-- Interactive Role Connectivity Section -->
+  <section class="role-connectivity">
+    <h2 style="font-size: 1.15rem; color: #fff;">Multi-Dashboard Database Connectivity</h2>
+    <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 4px;">
+      All roles (Customer, Seller, Rider, Support Admin, Admin) live in ONE unified <code>users</code> table.
+    </p>
+
+    <div class="role-grid">
+      <div class="role-box" onclick="highlightRole('customer')">
+        <h3>🧑 Customer App</h3>
+        <p><strong>Reads:</strong> Approved products, order status, rider delivery tracking.<br><strong>Writes:</strong> Places orders, creates support tickets.</p>
+      </div>
+
+      <div class="role-box" onclick="highlightRole('seller')">
+        <h3>🏪 Seller Portal</h3>
+        <p><strong>Reads:</strong> Store products, stock levels, incoming orders.<br><strong>Writes:</strong> Creates products (pending verification), accepts orders, marks ready for pickup.</p>
+      </div>
+
+      <div class="role-box" onclick="highlightRole('rider')">
+        <h3>🛵 Rider App</h3>
+        <p><strong>Reads:</strong> Assigned delivery task, pickup and dropoff addresses.<br><strong>Writes:</strong> Updates status (picked_up, in_transit, delivered), streams live GPS location.</p>
+      </div>
+
+      <div class="role-box" onclick="highlightRole('support_admin')">
+        <h3>🎧 Support Admin</h3>
+        <p><strong>Reads:</strong> Pending products submitted by sellers, open customer tickets.<br><strong>Writes:</strong> Approves/rejects products with notes, resolves support tickets.</p>
+      </div>
+
+      <div class="role-box" onclick="highlightRole('admin')">
+        <h3>🛡️ Super Admin</h3>
+        <p><strong>Reads:</strong> Platform-wide overview: all users, sellers, riders, orders, and products.<br><strong>Writes:</strong> User activation/deactivation, global configurations.</p>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // Exact 7 Unified Tables
+    const SCHEMA_TABLES = [
+      {
+        id: "users",
+        name: "users",
+        domain: "identity",
+        domainName: "Unified Users Hub",
+        tagClass: "tag-identity",
+        desc: "All roles in ONE table: customer, seller, rider, admin, support_admin",
+        columns: [
+          { name: "id", type: "VARCHAR(64)", pk: true },
+          { name: "email", type: "VARCHAR(255) UNIQUE" },
+          { name: "phone", type: "VARCHAR(32) UNIQUE" },
+          { name: "password_hash", type: "VARCHAR(255)" },
+          { name: "full_name", type: "VARCHAR(128)" },
+          { name: "role", type: "user_role_enum" },
+          { name: "address", type: "TEXT" },
+          { name: "city", type: "VARCHAR(64)" },
+          { name: "store_name", type: "VARCHAR(128) (Seller)" },
+          { name: "vehicle_number", type: "VARCHAR(32) (Rider)" },
+          { name: "duty_status", type: "rider_duty_enum (Rider)" },
+          { name: "current_lat", type: "DOUBLE PRECISION" },
+          { name: "current_lng", type: "DOUBLE PRECISION" },
+          { name: "is_active", type: "BOOLEAN" }
+        ],
+        roles: ["customer", "seller", "rider", "support_admin", "admin"]
+      },
+      {
+        id: "categories",
+        name: "categories",
+        domain: "catalog",
+        domainName: "Categories",
+        tagClass: "tag-catalog",
+        desc: "Product categories (EV Batteries, Chargers & Accessories)",
+        columns: [
+          { name: "id", type: "VARCHAR(64)", pk: true },
+          { name: "name", type: "VARCHAR(64)" },
+          { name: "slug", type: "VARCHAR(64) UNIQUE" },
+          { name: "created_at", type: "TIMESTAMPTZ" }
+        ],
+        roles: ["customer", "seller", "admin"]
+      },
+      {
+        id: "products",
+        name: "products",
+        domain: "catalog",
+        domainName: "Catalog & Approval",
+        tagClass: "tag-catalog",
+        desc: "Seller creates -> Support Admin approves -> Customer buys",
+        columns: [
+          { name: "id", type: "VARCHAR(64)", pk: true },
+          { name: "seller_id", type: "VARCHAR(64)", fk: "users.id (Seller)" },
+          { name: "category_id", type: "VARCHAR(64)", fk: "categories.id" },
+          { name: "name", type: "VARCHAR(255)" },
+          { name: "description", type: "TEXT" },
+          { name: "price", type: "NUMERIC(12,2)" },
+          { name: "stock", type: "INT" },
+          { name: "image_url", type: "TEXT" },
+          { name: "verification_status", type: "product_status_enum" },
+          { name: "verified_by", type: "VARCHAR(64)", fk: "users.id (Support Admin)" },
+          { name: "verified_at", type: "TIMESTAMPTZ" },
+          { name: "rejection_reason", type: "TEXT" },
+          { name: "is_active", type: "BOOLEAN" }
+        ],
+        roles: ["customer", "seller", "support_admin", "admin"]
+      },
+      {
+        id: "orders",
+        name: "orders",
+        domain: "orders",
+        domainName: "Orders",
+        tagClass: "tag-orders",
+        desc: "Customer order transaction and lifecycle status",
+        columns: [
+          { name: "id", type: "VARCHAR(64)", pk: true },
+          { name: "order_number", type: "VARCHAR(32) UNIQUE" },
+          { name: "customer_id", type: "VARCHAR(64)", fk: "users.id (Customer)" },
+          { name: "seller_id", type: "VARCHAR(64)", fk: "users.id (Seller)" },
+          { name: "status", type: "order_status_enum" },
+          { name: "total_amount", type: "NUMERIC(12,2)" },
+          { name: "delivery_address", type: "TEXT" },
+          { name: "delivery_lat", type: "DOUBLE PRECISION" },
+          { name: "delivery_lng", type: "DOUBLE PRECISION" },
+          { name: "created_at", type: "TIMESTAMPTZ" }
+        ],
+        roles: ["customer", "seller", "rider", "admin"]
+      },
+      {
+        id: "order_items",
+        name: "order_items",
+        domain: "orders",
+        domainName: "Order Items",
+        tagClass: "tag-orders",
+        desc: "Purchased products, quantity, unit price, and subtotal",
+        columns: [
+          { name: "id", type: "VARCHAR(64)", pk: true },
+          { name: "order_id", type: "VARCHAR(64)", fk: "orders.id" },
+          { name: "product_id", type: "VARCHAR(64)", fk: "products.id" },
+          { name: "quantity", type: "INT" },
+          { name: "unit_price", type: "NUMERIC(12,2)" },
+          { name: "subtotal", type: "NUMERIC(12,2)" }
+        ],
+        roles: ["customer", "seller", "admin"]
+      },
+      {
+        id: "deliveries",
+        name: "deliveries",
+        domain: "logistics",
+        domainName: "Delivery & GPS",
+        tagClass: "tag-logistics",
+        desc: "Assigned rider fulfillment task with live rider coordinates",
+        columns: [
+          { name: "id", type: "VARCHAR(64)", pk: true },
+          { name: "order_id", type: "VARCHAR(64) UNIQUE", fk: "orders.id" },
+          { name: "rider_id", type: "VARCHAR(64)", fk: "users.id (Rider)" },
+          { name: "status", type: "order_status_enum" },
+          { name: "pickup_address", type: "TEXT" },
+          { name: "dropoff_address", type: "TEXT" },
+          { name: "rider_current_lat", type: "DOUBLE PRECISION" },
+          { name: "rider_current_lng", type: "DOUBLE PRECISION" },
+          { name: "assigned_at", type: "TIMESTAMPTZ" },
+          { name: "picked_up_at", type: "TIMESTAMPTZ" },
+          { name: "delivered_at", type: "TIMESTAMPTZ" }
+        ],
+        roles: ["customer", "rider", "admin"]
+      },
+      {
+        id: "support_tickets",
+        name: "support_tickets",
+        domain: "support",
+        domainName: "Support Tickets",
+        tagClass: "tag-proof",
+        desc: "Customer inquiries, order disputes, and Support Admin replies",
+        columns: [
+          { name: "id", type: "VARCHAR(64)", pk: true },
+          { name: "ticket_number", type: "VARCHAR(32) UNIQUE" },
+          { name: "user_id", type: "VARCHAR(64)", fk: "users.id" },
+          { name: "order_id", type: "VARCHAR(64)", fk: "orders.id" },
+          { name: "subject", type: "VARCHAR(255)" },
+          { name: "message", type: "TEXT" },
+          { name: "status", type: "ticket_status_enum" },
+          { name: "assigned_to", type: "VARCHAR(64)", fk: "users.id" },
+          { name: "admin_response", type: "TEXT" },
+          { name: "resolved_at", type: "TIMESTAMPTZ" },
+          { name: "created_at", type: "TIMESTAMPTZ" }
+        ],
+        roles: ["customer", "support_admin", "admin"]
+      }
+    ];
+
+    // Render ERD Cards
+    const erdGrid = document.getElementById("erdGrid");
+
+    function renderTables(filter = "all") {
+      erdGrid.innerHTML = "";
+      const filtered = filter === "all" ? SCHEMA_TABLES : SCHEMA_TABLES.filter(t => t.domain === filter);
+      
+      filtered.forEach(table => {
+        const card = document.createElement("div");
+        card.className = "schema-card";
+        card.setAttribute("data-table-id", table.id);
+        card.setAttribute("data-roles", table.roles.join(" "));
+
+        let colsHtml = "";
+        table.columns.forEach(col => {
+          let badge = "";
+          if (col.pk) badge += `<span class="badge-pk">PK</span>`;
+          if (col.fk) badge += `<span class="badge-fk" title="FK -> ${col.fk}">FK</span>`;
+
+          colsHtml += `
+            <div class="col-row">
+              <div class="col-name-group">
+                ${badge}
+                <span class="col-name">${col.name}</span>
+              </div>
+              <span class="col-type">${col.type}</span>
+            </div>
+          `;
+        });
+
+        card.innerHTML = `
+          <div class="card-header">
+            <span class="card-title">
+              <span style="color:#00d2ff;">#</span> ${table.name}
+            </span>
+            <span class="domain-tag ${table.tagClass}">${table.domainName}</span>
+          </div>
+          <div style="padding: 10px 18px 4px; font-size: 0.75rem; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.04);">
+            ${table.desc}
+          </div>
+          <div class="columns-list">
+            ${colsHtml}
+          </div>
+          <div class="card-footer">
+            <span>Roles: ${table.roles.map(r => r.toUpperCase()).join(", ")}</span>
+            <span style="color: #38bdf8;">PostgreSQL 14+</span>
+          </div>
+        `;
+        erdGrid.appendChild(card);
+      });
+    }
+
+    renderTables();
+
+    // Filter Buttons Click
+    document.querySelectorAll(".filter-btn[data-domain]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".filter-btn[data-domain]").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        renderTables(btn.dataset.domain);
+      });
+    });
+
+    // Highlight tables connected to specific role
+    window.highlightRole = function(role) {
+      document.querySelectorAll(".role-box").forEach(b => b.classList.remove("active"));
+      event.currentTarget.classList.add("active");
+
+      document.querySelectorAll(".schema-card").forEach(card => {
+        const roles = card.getAttribute("data-roles") || "";
+        if (roles.includes(role)) {
+          card.style.borderColor = "#00d2ff";
+          card.style.boxShadow = "0 0 25px rgba(0, 210, 255, 0.35)";
+          card.style.opacity = "1";
+        } else {
+          card.style.borderColor = "rgba(255,255,255,0.05)";
+          card.style.boxShadow = "none";
+          card.style.opacity = "0.35";
+        }
+      });
+    };
+
+    // Live Telemetry Simulation Engine
+    const canvas = document.getElementById("radarMap");
+    const ctx = canvas.getContext("2d");
+    const logBox = document.getElementById("telemetryLog");
+    const pingCounter = document.getElementById("pingCount");
+
+    function resizeCanvas() {
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+    }
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+
+    // Simulated Route Waypoints
+    const routePoints = [
+      { x: 0.15, y: 0.75, lat: 12.9352, lng: 77.6245 },
+      { x: 0.28, y: 0.60, lat: 12.9450, lng: 77.6320 },
+      { x: 0.45, y: 0.52, lat: 12.9550, lng: 77.6410 },
+      { x: 0.65, y: 0.38, lat: 12.9650, lng: 77.6520 },
+      { x: 0.85, y: 0.25, lat: 12.9750, lng: 77.6650 }
+    ];
+
+    let t = 0;
+    let pingIndex = 1;
+
+    function drawRadar() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Map Grid Lines
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
+      ctx.lineWidth = 1;
+      const gridSize = 40;
+      for (let x = 0; x < canvas.width; x += gridSize) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += gridSize) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
+
+      // Draw Planned Route Path
+      ctx.strokeStyle = "rgba(0, 210, 255, 0.5)";
+      ctx.lineWidth = 4;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath();
+      routePoints.forEach((p, idx) => {
+        const px = p.x * canvas.width;
+        const py = p.y * canvas.height;
+        if (idx === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw Hub and Destination Pins
+      const startP = routePoints[0];
+      const endP = routePoints[routePoints.length - 1];
+
+      // Start Hub Pin (Vendor Hub)
+      ctx.fillStyle = "#f59e0b";
+      ctx.beginPath();
+      ctx.arc(startP.x * canvas.width, startP.y * canvas.height, 7, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Destination Pin (Customer Flat)
+      ctx.fillStyle = "#ec4899";
+      ctx.beginPath();
+      ctx.arc(endP.x * canvas.width, endP.y * canvas.height, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Current Rider Position Interpolation
+      t = (t + 0.003) % 1;
+      const segmentCount = routePoints.length - 1;
+      const totalT = t * segmentCount;
+      const curSegment = Math.min(Math.floor(totalT), segmentCount - 1);
+      const segT = totalT - curSegment;
+
+      const p1 = routePoints[curSegment];
+      const p2 = routePoints[curSegment + 1];
+
+      const curX = (p1.x + (p2.x - p1.x) * segT) * canvas.width;
+      const curY = (p1.y + (p2.y - p1.y) * segT) * canvas.height;
+
+      // Draw Rider Pulse Rings
+      ctx.fillStyle = "rgba(0, 210, 255, 0.25)";
+      ctx.beginPath();
+      ctx.arc(curX, curY, 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw Rider Pin
+      ctx.fillStyle = "#00d2ff";
+      ctx.shadowColor = "#00d2ff";
+      ctx.shadowBlur = 15;
+      ctx.beginPath();
+      ctx.arc(curX, curY, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      requestAnimationFrame(drawRadar);
+    }
+
+    drawRadar();
+
+    // Stream fake GPS telemetry pings into table every 3 seconds
+    setInterval(() => {
+      pingIndex++;
+      pingCounter.innerText = `Pings: ${pingIndex}`;
+
+      const lat = (12.9352 + t * 0.04).toFixed(4);
+      const lng = (77.6245 + t * 0.04).toFixed(4);
+      const speed = (24 + Math.sin(t * 10) * 8).toFixed(1);
+      const heading = Math.floor(45 + Math.sin(t * 5) * 20);
+      const bat = Math.max(20, Math.floor(82 - t * 15));
+
+      const logRow = document.createElement("div");
+      logRow.className = "log-item";
+      logRow.innerHTML = `
+        <span><strong>#${pingIndex}</strong> [tech_ramesh]</span>
+        <span style="color:#00d2ff;">${lat}, ${lng}</span>
+        <span>${speed} km/h</span>
+        <span style="color:#10b981;">🔋 ${bat}%</span>
+      `;
+
+      logBox.insertBefore(logRow, logBox.firstChild);
+      if (logBox.children.length > 8) {
+        logBox.removeChild(logBox.lastChild);
+      }
+    }, 2800);
+  </script>
+</body>
+</html>
