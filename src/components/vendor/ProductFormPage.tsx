@@ -315,7 +315,7 @@ export function ProductFormPage({ product, onCancel, onSuccess }: ProductFormPag
       <div className="space-y-4 mb-8">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white font-display">
-            Add New Product
+            {isEdit ? "Edit Product" : "Add New Product"}
           </h1>
           <span className="inline-flex items-center rounded-full bg-blue-950/80 px-3.5 py-1 text-xs font-semibold text-blue-400 border border-blue-800/40">
             Step {currentStep} of 5
@@ -323,7 +323,7 @@ export function ProductFormPage({ product, onCancel, onSuccess }: ProductFormPag
         </div>
 
         <p className="text-xs text-zinc-400 -mt-1">
-          Create a product listing for your Riderzpro store.
+          {isEdit ? "Update and modify product listing in Riderzpro store." : "Create a product listing for your Riderzpro store."}
         </p>
 
         {/* 5-Segment Progress Bar */}

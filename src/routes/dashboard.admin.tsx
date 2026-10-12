@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   LayoutDashboard,
   Package,
@@ -22,6 +22,7 @@ import {
   Clock,
   AlertTriangle,
   ArrowRight,
+  ArrowLeft,
   ExternalLink,
   MapPin,
   ChevronRight,
@@ -42,9 +43,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/site/bits";
-import { getProduct, getVendor, inr, products, vendors } from "@/lib/data";
+import { getProduct, getVendor, inr, products, vendors, type Product } from "@/lib/data";
 import { ORDER_STEPS, useStore, type Order } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { ProductFormPage } from "@/components/vendor/ProductFormPage";
 
 export const Route = createFileRoute("/dashboard/admin")({
   head: () => ({
@@ -107,6 +109,77 @@ export function AdminDashboard() {
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>("ALL");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [selectedShipment, setSelectedShipment] = useState<ShipmentRecord | null>(null);
+
+  // Dynamic Products State linked to PostgreSQL schema
+  const [adminProducts, setAdminProducts] = useState<Product[]>(products);
+  const [productViewMode, setProductViewMode] = useState<"list" | "form">("list");
+  const [editingAdminProduct, setEditingAdminProduct] = useState<Product | null>(null);
+
+  // Sync with PostgreSQL on mount
+  useEffect(() => {
+    fetch("/api/products")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const dbProducts: Product[] = res.data.map((row: any) => {
+            let primaryImg = "/src/assets/battery-1.jpg";
+            if (row.image_url) {
+              try {
+                if (row.image_url.startsWith("[")) {
+                  const arr = JSON.parse(row.image_url);
+                  primaryImg = arr[0] || primaryImg;
+                } else {
+                  primaryImg = row.image_url;
+                }
+              } catch {
+                primaryImg = row.image_url;
+              }
+            }
+            const desc = row.description || "";
+            return {
+              id: row.id,
+              name: row.name,
+              brand: row.brand || "Riderzpro Certified",
+              category: (row.category_name as any) || "Car Accessories",
+              image: primaryImg,
+              warrantyMonths: 24,
+              weightKg: 5,
+              fits: ["tata-nexon-ev", "ola-s1pro"],
+              description: desc,
+              offers: [{ vendorId: "v1", price: Number(row.price), stock: Number(row.stock) }],
+              verificationStatus: row.verification_status || "verified",
+            };
+          });
+          setAdminProducts((prev) => {
+            const ids = new Set(dbProducts.map((p) => p.id));
+            const remaining = prev.filter((p) => !ids.has(p.id));
+            return [...dbProducts, ...remaining];
+          });
+        }
+      })
+      .catch((err) => {
+        console.log("[DB fetch notice admin]:", err.message);
+      });
+  }, []);
+
+  const handleOpenAddProduct = () => {
+    setEditingAdminProduct(null);
+    setProductViewMode("form");
+  };
+
+  const handleOpenEditProduct = (p: Product) => {
+    setEditingAdminProduct(p);
+    setProductViewMode("form");
+  };
+
+  const handleProductFormSuccess = (savedItem: Product) => {
+    if (editingAdminProduct) {
+      setAdminProducts((list) => list.map((p) => (p.id === savedItem.id ? savedItem : p)));
+    } else {
+      setAdminProducts((list) => [savedItem, ...list]);
+    }
+    setProductViewMode("list");
+  };
 
   // Local inventory stock adjustments
   const [inventoryStock, setInventoryStock] = useState<Record<string, number>>(() => {
@@ -832,64 +905,89 @@ export function AdminDashboard() {
 
           {/* TAB 4: PRODUCTS */}
           {activeTab === "products" && (
-            <div className="space-y-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="font-display text-2xl font-extrabold text-[#111111]">Product Catalog</h1>
-                  <p className="text-xs text-[#6B7280]">Manage automotive parts, electric bikes, and retail pricing.</p>
+            productViewMode === "form" ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => setProductViewMode("list")}
+                    className="flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-gray-900 transition bg-white px-3.5 py-2 rounded-lg border border-gray-200 shadow-2xs hover:bg-gray-50 cursor-pointer"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    <span>Back to Product Catalog</span>
+                  </button>
+                  <span className="text-xs text-gray-500 font-medium">
+                    {editingAdminProduct ? `Editing: ${editingAdminProduct.name}` : "New Product Listing (PostgreSQL Sync)"}
+                  </span>
                 </div>
-                <button
-                  onClick={() => toast.success("New product modal opened")}
-                  className="flex items-center gap-1.5 rounded-lg bg-[#E31E24] px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Add Product</span>
-                </button>
-              </div>
 
-              <div className="overflow-x-auto rounded-xl border border-[#E5E7EB] bg-white shadow-2xs">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#F5F6F8] border-b border-[#E5E7EB] text-[#6B7280] font-semibold uppercase tracking-wider text-[10px]">
-                    <tr>
-                      <th className="px-4 py-3">Product Name</th>
-                      <th className="px-4 py-3">Brand</th>
-                      <th className="px-4 py-3">Category</th>
-                      <th className="px-4 py-3">Base Price</th>
-                      <th className="px-4 py-3">Warranty</th>
-                      <th className="px-4 py-3">Stock Units</th>
-                      <th className="px-4 py-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#E5E7EB]">
-                    {products.map((p) => {
-                      const stock = inventoryStock[p.id] ?? 12;
-                      return (
-                        <tr key={p.id} className="hover:bg-gray-50/80 transition">
-                          <td className="px-4 py-3 font-semibold text-gray-900">{p.name}</td>
-                          <td className="px-4 py-3 text-[#6B7280]">{p.brand}</td>
-                          <td className="px-4 py-3">
-                            <span className="rounded bg-gray-100 text-gray-700 px-2 py-0.5 text-[10px] font-medium">
-                              {p.category}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 font-bold text-[#111111]">{inr(p.offers[0]?.price || 0)}</td>
-                          <td className="px-4 py-3 text-[#6B7280]">{p.warrantyMonths} Months</td>
-                          <td className="px-4 py-3 font-semibold">{stock}</td>
-                          <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => toast.success(`Editing ${p.name}`)}
-                              className="text-xs text-[#E31E24] font-semibold hover:underline"
-                            >
-                              Edit
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                <div className="rounded-2xl border border-gray-200 bg-[#09090b] p-4 sm:p-8 shadow-sm">
+                  <ProductFormPage
+                    product={editingAdminProduct}
+                    onCancel={() => setProductViewMode("list")}
+                    onSuccess={handleProductFormSuccess}
+                  />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="font-display text-2xl font-extrabold text-[#111111]">Product Catalog</h1>
+                    <p className="text-xs text-[#6B7280]">Manage automotive parts, electric bikes, and retail pricing.</p>
+                  </div>
+                  <button
+                    onClick={handleOpenAddProduct}
+                    className="flex items-center gap-1.5 rounded-lg bg-[#E31E24] px-3.5 py-2 text-xs font-bold text-white hover:bg-red-700 transition cursor-pointer shadow-sm active:scale-95"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Add Product</span>
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-[#E5E7EB] bg-white shadow-2xs">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-[#F5F6F8] border-b border-[#E5E7EB] text-[#6B7280] font-semibold uppercase tracking-wider text-[10px]">
+                      <tr>
+                        <th className="px-4 py-3">Product Name</th>
+                        <th className="px-4 py-3">Brand</th>
+                        <th className="px-4 py-3">Category</th>
+                        <th className="px-4 py-3">Base Price</th>
+                        <th className="px-4 py-3">Warranty</th>
+                        <th className="px-4 py-3">Stock Units</th>
+                        <th className="px-4 py-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E5E7EB]">
+                      {adminProducts.map((p) => {
+                        const stock = p.offers[0]?.stock ?? inventoryStock[p.id] ?? 12;
+                        return (
+                          <tr key={p.id} className="hover:bg-gray-50/80 transition">
+                            <td className="px-4 py-3 font-semibold text-gray-900">{p.name}</td>
+                            <td className="px-4 py-3 text-[#6B7280]">{p.brand}</td>
+                            <td className="px-4 py-3">
+                              <span className="rounded bg-gray-100 text-gray-700 px-2 py-0.5 text-[10px] font-medium">
+                                {p.category}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 font-bold text-[#111111]">{inr(p.offers[0]?.price || 0)}</td>
+                            <td className="px-4 py-3 text-[#6B7280]">{p.warrantyMonths || 12} Months</td>
+                            <td className="px-4 py-3 font-semibold">{stock}</td>
+                            <td className="px-4 py-3 text-right">
+                              <button
+                                onClick={() => handleOpenEditProduct(p)}
+                                className="text-xs text-[#E31E24] font-semibold hover:underline cursor-pointer"
+                              >
+                                Edit
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
           )}
 
           {/* TAB 5: CATEGORIES */}
