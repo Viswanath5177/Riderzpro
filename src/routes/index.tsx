@@ -38,7 +38,6 @@ function Landing() {
       <Categories />
       <HowItWorks />
       <Featured />
-      <Roles />
       <Testimonials />
       <AppCta />
     </SiteLayout>
@@ -344,47 +343,7 @@ function Featured() {
   );
 }
 
-function Roles() {
-  const roles = [
-    { t: "Riders & owners", d: "Garage, VIN fitment, live tracking.", img: scooterImg, to: "/dashboard/customer", Icon: BikeIcon },
-    { t: "Workshops & mechanics", d: "Bulk orders and job cards per vehicle.", img: workshopImg, to: "/dashboard/workshop", Icon: Wrench },
-    { t: "Vendors & dealers", d: "Inventory, fitment tags and payouts.", img: battery3, to: "/dashboard/vendor", Icon: Store },
-    { t: "Delivery riders", d: "Accept jobs, multi-pickup routes, earnings.", img: riderImg, to: "/dashboard/rider", Icon: Truck },
-  ] as const;
-  return (
-    <section className="mx-auto max-w-7xl px-4 pt-28 md:px-6">
-      <SectionTitle eyebrow="One platform, every role" title="Pick your dashboard" />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {roles.map((r) => (
-          <Link
-            key={r.t}
-            to={r.to}
-            className="group overflow-hidden rounded-3xl border border-border/80 bg-card/75 backdrop-blur-xl shadow-card transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:border-primary/50"
-          >
-            <div className="aspect-[4/3] overflow-hidden">
-              <img
-                src={r.img}
-                alt={r.t}
-                loading="lazy"
-                width={1280}
-                height={896}
-                className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
-              />
-            </div>
-            <div className="p-5">
-              <r.Icon className="h-5 w-5 text-primary" />
-              <p className="mt-3 text-base font-bold tracking-tight">{r.t}</p>
-              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{r.d}</p>
-              <p className="mt-4 flex items-center gap-1 text-xs font-semibold text-primary">
-                Open dashboard <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
-              </p>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
+
 
 function Testimonials() {
   const t = [

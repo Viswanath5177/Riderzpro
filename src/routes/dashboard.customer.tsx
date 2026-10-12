@@ -13,6 +13,7 @@ import { SettingsTab } from "@/components/dashboard/SettingsTab";
 import { SupportTab } from "@/components/dashboard/SupportTab";
 import { BookingModal } from "@/components/dashboard/BookingModal";
 import { AddBikeModal } from "@/components/dashboard/AddBikeModal";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 export const Route = createFileRoute("/dashboard/customer")({
   head: () => ({
@@ -26,8 +27,16 @@ export const Route = createFileRoute("/dashboard/customer")({
       { property: "og:description", content: "Automotive e-commerce and bike ownership platform." },
     ],
   }),
-  component: CustomerDashboard,
+  component: CustomerDashboardRoute,
 });
+
+function CustomerDashboardRoute() {
+  return (
+    <ProtectedRoute>
+      <CustomerDashboard />
+    </ProtectedRoute>
+  );
+}
 
 function CustomerDashboard() {
   const [tab, setTab] = useState<CustomerTab>("overview");

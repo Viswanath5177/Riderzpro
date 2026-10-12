@@ -21,7 +21,7 @@ export type GarageBike = {
   batteryHealth?: number;
   nextServiceDays?: number;
 };
-export type Role = "customer" | "workshop" | "vendor" | "rider" | "admin";
+export type Role = "customer";
 
 export const ORDER_STEPS = ["Placed", "Vendor accepted", "Rider assigned", "Picked up", "On the way", "Delivered"] as const;
 

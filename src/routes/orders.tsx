@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Package, ArrowRight } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { inr } from "@/lib/data";
 import { ORDER_STEPS, useStore } from "@/lib/store";
 
@@ -13,8 +14,16 @@ export const Route = createFileRoute("/orders")({
       { property: "og:description", content: "Track all your Riderzpro orders." },
     ],
   }),
-  component: Orders,
+  component: OrdersRoute,
 });
+
+function OrdersRoute() {
+  return (
+    <ProtectedRoute>
+      <Orders />
+    </ProtectedRoute>
+  );
+}
 
 function Orders() {
   const { orders } = useStore();

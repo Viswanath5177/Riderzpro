@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
+  Navigate,
+  useRouterState,
   createRootRouteWithContext,
   useRouter,
   HeadContent,
@@ -12,10 +14,22 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { AuthProvider } from "../lib/auth";
 import { StoreProvider } from "../lib/store";
 import { Toaster } from "../components/ui/sonner";
 
 function NotFoundComponent() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  // Block direct URL access: any /vendor*, /admin*, /technician* route must redirect to the landing page (or 404).
+  if (
+    /^\/(vendor|admin|technician|workshop|dashboards|dashboard\/(admin|vendor|rider|workshop))/i.test(
+      pathname
+    )
+  ) {
+    return <Navigate to="/" replace />;
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
@@ -131,10 +145,12 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <StoreProvider>
-        <Outlet />
-        <Toaster position="top-center" />
-      </StoreProvider>
+      <AuthProvider>
+        <StoreProvider>
+          <Outlet />
+          <Toaster position="top-center" />
+        </StoreProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

@@ -4,6 +4,7 @@ import { Minus, Plus, ShoppingCart, Store, Truck, Clock, CreditCard, Smartphone,
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { DELIVERY_BASE, DELIVERY_PER_KM, getProduct, getVendor, inr } from "@/lib/data";
 import { quoteCart, useStore } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -19,6 +20,7 @@ export const Route = createFileRoute("/cart")({
 
 function Cart() {
   const { cart, setQty, placeOrder } = useStore();
+  const { isAuthenticated } = useAuth();
   const nav = useNavigate();
   const [pay, setPay] = useState("UPI");
   const q = quoteCart(cart);
@@ -98,8 +100,18 @@ function Cart() {
                 );
               })}
             </div>
-            <button onClick={() => { const o = placeOrder(pay); nav({ to: "/track/$id", params: { id: o.id } }); }} className="mt-6 w-full rounded-2xl bg-primary py-4 font-semibold text-primary-foreground shadow-glow">
-              Place order · {inr(q.total)}
+            <button
+              onClick={() => {
+                if (!isAuthenticated) {
+                  nav({ to: "/auth", search: { redirect: "/cart" } });
+                  return;
+                }
+                const o = placeOrder(pay);
+                nav({ to: "/track/$id", params: { id: o.id } });
+              }}
+              className="mt-6 w-full rounded-2xl bg-primary py-4 font-semibold text-primary-foreground shadow-glow transition hover:brightness-105 active:scale-[0.99]"
+            >
+              {isAuthenticated ? `Place order · ${inr(q.total)}` : `Sign in to checkout · ${inr(q.total)}`}
             </button>
             <p className="mt-2 text-center text-[11px] text-muted-foreground">Demo payment — no money is charged.</p>
           </aside>
