@@ -194,7 +194,7 @@ function CustomerLogin() {
           </div>
 
           {/* Tab Switcher: Sign In vs Create Account */}
-          <div className="flex p-1 rounded-xl bg-gray-100 border border-gray-200/80 mb-5 text-xs font-bold">
+          <div className="flex p-1 rounded-xl bg-gray-100 border border-gray-200/80 mb-5 text-sm font-bold">
             <button
               type="button"
               onClick={() => setActiveTab("signin")}
@@ -225,17 +225,17 @@ function CustomerLogin() {
           {activeTab === "signin" ? (
             <div className="space-y-4">
               <div>
-                <h1 className="text-xl font-black text-gray-900 tracking-tight font-display">
+                <h1 className="text-2xl font-black text-gray-900 tracking-tight font-display">
                   Welcome to RiderzPro
                 </h1>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-sm text-gray-500 mt-1">
                   Enter your mobile number or email to access your garage and orders.
                 </p>
               </div>
 
-              <form onSubmit={handleSignIn} className="space-y-3.5 pt-1">
+              <form onSubmit={handleSignIn} className="space-y-4 pt-1">
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     Mobile Number or Email
                   </label>
                   <div className="relative">
@@ -246,7 +246,7 @@ function CustomerLogin() {
                       value={signInContact}
                       onChange={(e) => setSignInContact(e.target.value)}
                       placeholder="e.g. 9876543210 or name@mail.com"
-                      className="w-full h-11 rounded-xl border border-gray-300 px-3.5 pl-10 text-sm outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition bg-white"
+                      className="w-full h-11.5 rounded-xl border border-gray-300 px-3.5 pl-10 text-sm outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition bg-white"
                       required
                     />
                     <Phone className="h-4 w-4 text-gray-400 absolute left-3.5 top-3.5" />
@@ -254,14 +254,14 @@ function CustomerLogin() {
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
                       Password
                     </label>
                     <button
                       type="button"
                       onClick={() => toast.info("Demo recovery link sent.")}
-                      className="text-[11px] text-[#E31E24] font-semibold hover:underline"
+                      className="text-xs text-[#E31E24] font-semibold hover:underline"
                     >
                       Forgot?
                     </button>
@@ -274,7 +274,7 @@ function CustomerLogin() {
                       value={signInPassword}
                       onChange={(e) => setSignInPassword(e.target.value)}
                       placeholder="Enter password"
-                      className="w-full h-11 rounded-xl border border-gray-300 px-3.5 pl-10 pr-10 text-sm outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition bg-white"
+                      className="w-full h-11.5 rounded-xl border border-gray-300 px-3.5 pl-10 pr-10 text-sm outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition bg-white"
                       required
                     />
                     <Lock className="h-4 w-4 text-gray-400 absolute left-3.5 top-3.5" />
@@ -291,7 +291,7 @@ function CustomerLogin() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full h-11 rounded-xl bg-[#E31E24] hover:bg-red-700 text-white font-bold text-xs sm:text-sm shadow-sm transition active:scale-98 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 mt-2"
+                  className="w-full h-11.5 rounded-xl bg-[#E31E24] hover:bg-red-700 text-white font-bold text-sm shadow-sm transition active:scale-98 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 mt-2"
                 >
                   {isLoading ? (
                     <span>Signing in...</span>
@@ -304,7 +304,7 @@ function CustomerLogin() {
                 </button>
               </form>
 
-              <div className="pt-3 text-center text-xs text-gray-500">
+              <div className="pt-3 text-center text-sm text-gray-500">
                 New to RiderzPro?{" "}
                 <button
                   type="button"
@@ -321,17 +321,17 @@ function CustomerLogin() {
                ───────────────────────────────────────────────────────────── */
             <div className="space-y-4">
               <div>
-                <h1 className="text-xl font-black text-gray-900 tracking-tight font-display">
+                <h1 className="text-2xl font-black text-gray-900 tracking-tight font-display">
                   Create Your Account
                 </h1>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-sm text-gray-500 mt-1">
                   Register your vehicle to unlock compatible parts and doorstep service.
                 </p>
               </div>
 
-              <form onSubmit={handleSignUp} className="space-y-3 pt-1">
+              <form onSubmit={handleSignUp} className="space-y-3.5 pt-1">
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     Full Name <span className="text-[#E31E24]">*</span>
                   </label>
                   <div className="relative">
@@ -342,7 +342,7 @@ function CustomerLogin() {
                       value={signUpName}
                       onChange={(e) => setSignUpName(e.target.value)}
                       placeholder="e.g. Rahul Sharma"
-                      className="w-full h-11 rounded-xl border border-gray-300 px-3.5 pl-10 text-sm outline-none focus:border-[#E31E24] transition bg-white"
+                      className="w-full h-11.5 rounded-xl border border-gray-300 px-3.5 pl-10 text-sm outline-none focus:border-[#E31E24] transition bg-white"
                       required
                     />
                     <User className="h-4 w-4 text-gray-400 absolute left-3.5 top-3.5" />
@@ -350,7 +350,7 @@ function CustomerLogin() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     Mobile Number <span className="text-[#E31E24]">*</span>
                   </label>
                   <div className="relative">
@@ -361,7 +361,7 @@ function CustomerLogin() {
                       value={signUpPhone}
                       onChange={(e) => setSignUpPhone(e.target.value)}
                       placeholder="10-digit mobile number"
-                      className="w-full h-11 rounded-xl border border-gray-300 px-3.5 pl-10 text-sm outline-none focus:border-[#E31E24] transition bg-white"
+                      className="w-full h-11.5 rounded-xl border border-gray-300 px-3.5 pl-10 text-sm outline-none focus:border-[#E31E24] transition bg-white"
                       required
                     />
                     <Phone className="h-4 w-4 text-gray-400 absolute left-3.5 top-3.5" />
@@ -369,14 +369,14 @@ function CustomerLogin() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     Electric Vehicle <span className="text-gray-400 font-normal">(Optional)</span>
                   </label>
                   <div className="relative">
                     <select
                       value={signUpBikeId}
                       onChange={(e) => setSignUpBikeId(e.target.value)}
-                      className="w-full h-11 rounded-xl border border-gray-300 px-3.5 pl-10 text-sm outline-none focus:border-[#E31E24] transition bg-white text-gray-800 appearance-none cursor-pointer"
+                      className="w-full h-11.5 rounded-xl border border-gray-300 px-3.5 pl-10 text-sm outline-none focus:border-[#E31E24] transition bg-white text-gray-800 appearance-none cursor-pointer"
                     >
                       <option value="">Select your model (e.g. Ather, Ola...)</option>
                       {bikes.map((b) => (
@@ -392,7 +392,7 @@ function CustomerLogin() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     Password <span className="text-[#E31E24]">*</span>
                   </label>
                   <div className="relative">
@@ -403,7 +403,7 @@ function CustomerLogin() {
                       value={signUpPassword}
                       onChange={(e) => setSignUpPassword(e.target.value)}
                       placeholder="Min. 4 characters"
-                      className="w-full h-11 rounded-xl border border-gray-300 px-3.5 pl-10 pr-10 text-sm outline-none focus:border-[#E31E24] transition bg-white"
+                      className="w-full h-11.5 rounded-xl border border-gray-300 px-3.5 pl-10 pr-10 text-sm outline-none focus:border-[#E31E24] transition bg-white"
                       required
                     />
                     <Lock className="h-4 w-4 text-gray-400 absolute left-3.5 top-3.5" />
@@ -420,7 +420,7 @@ function CustomerLogin() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full h-11 rounded-xl bg-[#E31E24] hover:bg-red-700 text-white font-bold text-xs sm:text-sm shadow-sm transition active:scale-98 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 mt-2"
+                  className="w-full h-11.5 rounded-xl bg-[#E31E24] hover:bg-red-700 text-white font-bold text-sm shadow-sm transition active:scale-98 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 mt-2"
                 >
                   {isLoading ? (
                     <span>Creating account...</span>
@@ -433,7 +433,7 @@ function CustomerLogin() {
                 </button>
               </form>
 
-              <div className="pt-2 text-center text-xs text-gray-500">
+              <div className="pt-2 text-center text-sm text-gray-500">
                 Already registered?{" "}
                 <button
                   type="button"

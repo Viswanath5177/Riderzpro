@@ -646,7 +646,7 @@ export function CustomerLayout({
         <button
           onClick={() => onTabChange("overview")}
           className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[11px] font-semibold transition active:scale-95 cursor-pointer",
+            "flex flex-1 flex-col items-center gap-0.5 py-1 text-xs font-bold transition active:scale-95 cursor-pointer",
             activeTab === "overview" ? "text-[#E31E24]" : "text-gray-500 hover:text-gray-900"
           )}
         >
@@ -658,7 +658,7 @@ export function CustomerLayout({
         <button
           onClick={() => onTabChange("shop")}
           className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[11px] font-semibold transition active:scale-95 cursor-pointer",
+            "flex flex-1 flex-col items-center gap-0.5 py-1 text-xs font-bold transition active:scale-95 cursor-pointer",
             activeTab === "shop" ? "text-[#E31E24]" : "text-gray-500 hover:text-gray-900"
           )}
         >
@@ -670,7 +670,7 @@ export function CustomerLayout({
         <button
           onClick={() => onTabChange("garage")}
           className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[11px] font-semibold transition active:scale-95 cursor-pointer",
+            "flex flex-1 flex-col items-center gap-0.5 py-1 text-xs font-bold transition active:scale-95 cursor-pointer",
             activeTab === "garage" ? "text-[#E31E24]" : "text-gray-500 hover:text-gray-900"
           )}
         >
@@ -682,7 +682,7 @@ export function CustomerLayout({
         <button
           onClick={() => onTabChange("orders")}
           className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[11px] font-semibold transition active:scale-95 cursor-pointer relative",
+            "flex flex-1 flex-col items-center gap-0.5 py-1 text-xs font-bold transition active:scale-95 cursor-pointer relative",
             activeTab === "orders" ? "text-[#E31E24]" : "text-gray-500 hover:text-gray-900"
           )}
         >
@@ -697,7 +697,7 @@ export function CustomerLayout({
         <button
           onClick={() => onTabChange("settings")}
           className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[11px] font-semibold transition active:scale-95 cursor-pointer",
+            "flex flex-1 flex-col items-center gap-0.5 py-1 text-xs font-bold transition active:scale-95 cursor-pointer",
             activeTab === "settings" ? "text-[#E31E24]" : "text-gray-500 hover:text-gray-900"
           )}
         >
