@@ -1,8 +1,9 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { Bike, Shield, Store, Truck, Wrench, ArrowLeft, type LucideIcon } from "lucide-react";
+import { Bike, Shield, Store, Truck, Wrench, ArrowLeft, LogOut, type LucideIcon } from "lucide-react";
 import { Logo, ThemeToggle } from "./bits";
 import { cn } from "@/lib/utils";
+import { signOut } from "@/lib/auth";
 
 export const ROLE_LINKS = [
   { to: "/dashboard/customer", label: "Customer", Icon: Bike },
@@ -19,6 +20,12 @@ export function DashboardShell({
 }: {
   title: string; subtitle: string; sections: Section[]; active: string; onSelect: (id: string) => void; children: ReactNode; actions?: ReactNode;
 }) {
+  const navigate = useNavigate();
+  async function handleSignOut() {
+    await signOut();
+    await navigate({ to: "/login" });
+  }
+
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-0">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-sidebar-border bg-sidebar p-4 md:flex">
@@ -47,7 +54,7 @@ export function DashboardShell({
             <h1 className="font-display text-3xl leading-none">{title}</h1>
             <p className="text-xs text-muted-foreground">{subtitle}</p>
           </div>
-          <div className="ml-auto flex items-center gap-2">{actions}<ThemeToggle /></div>
+          <div className="ml-auto flex items-center gap-2">{actions}<button type="button" onClick={handleSignOut} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-3 text-sm font-medium hover:bg-muted"><LogOut className="h-4 w-4" /><span className="hidden sm:inline">Sign out</span></button><ThemeToggle /></div>
         </header>
         <div className="flex gap-2 overflow-x-auto border-b border-border px-4 py-2 md:hidden">
           {ROLE_LINKS.map((r) => (

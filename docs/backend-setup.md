@@ -1,37 +1,26 @@
-# Backend setup
+# PostgreSQL backend setup
 
-## Backend decision
+Riderzpro uses PostgreSQL directly. The app server sends parameterized SQL through the `pg` driver. SQL migrations live in `database/migrations` and can be applied with `psql` or the team's migration runner.
 
-Riderzpro will use Supabase directly, managed in the team's Supabase organization. Do not create or connect a Lovable Cloud backend. The application uses Supabase Auth and Postgres with row-level security; privileged operations belong in server-side functions. The Supabase publishable/anon key is public by design and is safe for the client only when every exposed table is protected by RLS.
+## Runtime connection
 
-## Environments
+The app currently deploys to Cloudflare Workers. In production, connect the Worker's server-side `pg` driver through a Cloudflare Hyperdrive binding. Hyperdrive can connect to any PostgreSQL database and keeps its connection string inside the Worker environment. For local development, set `DATABASE_URL` in `.env.local` to a local PostgreSQL instance. Do not use a `VITE_` prefix for database or auth secrets.
 
-Create separate Supabase projects for **test** and **production**. Keep production data and credentials out of local development. Apply database changes through reviewed migrations so both environments can be recreated consistently. The repository now has a CLI `supabase/config.toml`; local migrations use the Supabase CLI and Docker.
+Create separate PostgreSQL databases for test and production. The production database URL and auth-provider credentials belong in the hosting platform's secret manager. Keep migration-owner credentials separate from the runtime application's restricted database role.
 
-For local development, copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to the test project's URL and publishable key. Vite exposes `VITE_*` values to browser code. Never put a service-role key, OTP provider secret, payment secret, or other privileged credential in a `VITE_*` variable or commit it to Git.
+## Local setup
 
-After Docker Desktop is running, use `npx supabase start` and `npx supabase migration up --local` to apply migrations to the local stack. For each hosted project, authenticate with `npx supabase login`, link with its project ref using `npx supabase link --project-ref <project-ref>`, then review `npx supabase migration list` before `npx supabase db push`. Never point the production link at the test project by mistake.
+1. Install PostgreSQL and create a local database and user, or use an existing development instance.
+2. Copy `.env.example` to `.env.local` and set `DATABASE_URL`.
+3. Apply migrations in order, for example: `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/001_auth.sql`.
+4. Set `OTP_HASH_SECRET` to a random value. Configure Resend for email codes and Twilio for SMS codes before using those channels.
 
-## First handoff
+## Cloudflare setup
 
-Before implementation against real data, the owners named in [the backend API contract](backend-api-contract.md) must agree on the shared table boundaries, endpoint behavior, and courier event format. Until then, the contract remains a proposal and frontend work should use sample responses. The user identity is always derived from the verified Supabase session; clients must not choose their own role or send an authoritative user ID.
+1. Create or select a PostgreSQL database for test and another for production.
+2. Create one Hyperdrive configuration for each database. Keep their IDs in non-secret deployment config; Hyperdrive's database connection string is not exposed to browser code.
+3. Bind the test Hyperdrive as `HYPERDRIVE` for test deployments and the production Hyperdrive for production deployments.
+4. Add `OTP_HASH_SECRET`, email/SMS provider credentials, and other secrets with the Cloudflare secret manager.
+5. Apply migrations to test first, verify access rules and auth, then apply the same ordered migrations to production.
 
-## Before exposing real data
-
-1. Add reviewed migrations for profiles and role assignment, then the domain tables owned by Muni and Vamsi.
-2. Enable and review RLS for every table exposed through the Supabase API before integrating real customer or admin data.
-3. Create admin users through a restricted operator process; do not add a public role-promotion flow.
-4. Configure Auth redirect URLs and OTP/email providers separately for test and production.
-5. Keep service-role and integration secrets in the server-side secret store. Rotate credentials if they are ever committed or sent to a browser.
-
-## Operator-only admin grant
-
-Create the account through Supabase Auth first, then grant the admin role from the SQL editor or another restricted operator connection using the account's Auth UUID:
-
-```sql
-insert into public.user_roles (user_id, role)
-values ('00000000-0000-0000-0000-000000000000', 'admin')
-on conflict (user_id) do update set role = excluded.role;
-```
-
-Never expose this operation through a public app endpoint. Public signup always receives the `customer` role, regardless of submitted metadata.
+The runtime database account must not own tables or have permission to alter schemas. It should receive only the table and sequence privileges the application needs. Database ownership and migrations should use a separate operator account.

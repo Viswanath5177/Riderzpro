@@ -9,6 +9,6 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- Marketplace data and pricing live in `src/lib/data.ts` and `src/lib/store.tsx` (browser-side demo state); replace them with calls to the team's standalone Supabase backend when it is ready — keeps every screen on one data seam.
+- Marketplace data and pricing live in `src/lib/data.ts` and `src/lib/store.tsx` (browser-side demo state); replace them with server-side PostgreSQL queries when the database is ready — keeps every screen on one data seam.
 - Customer pages wrap content in `SiteLayout`; role dashboards use `DashboardShell` — keeps web nav and phone tab bar consistent per surface.
 - tsconfig strict index/optional flags are relaxed — mock-data heavy UI code was fighting them with no safety gain.

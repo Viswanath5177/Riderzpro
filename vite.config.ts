@@ -7,6 +7,15 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
+  vite: {
+    // Nitro's Cloudflare preset provides this built-in module at runtime.
+    // Keep it external during Vite's intermediate SSR bundle as well.
+    build: {
+      rolldownOptions: {
+        external: ["cloudflare:workers"],
+      },
+    },
+  },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
