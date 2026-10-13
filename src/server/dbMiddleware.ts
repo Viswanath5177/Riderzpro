@@ -513,7 +513,7 @@ export function pgApiMiddleware() {
                 return sendJson(res, 200, { success: true, data: [] });
               }
               const itemsRes = await query(
-                "SELECT product_id FROM wishlist_items WHERE wishlist_id = $1",
+                "SELECT DISTINCT product_id FROM wishlist_items WHERE wishlist_id = $1",
                 [wishRes.rows[0].id]
               );
               return sendJson(res, 200, { success: true, data: itemsRes.rows.map((r: any) => r.product_id) });
