@@ -12,6 +12,7 @@ import {
   UserCog,
   LifeBuoy,
   ShoppingBag,
+  ShoppingCart,
   ArrowLeft,
   Sparkles,
   Mic,
@@ -30,7 +31,6 @@ import {
   ScanLine,
   Truck,
   MapPin,
-  ShoppingCart,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/site/bits";
@@ -105,52 +105,63 @@ export function CustomerLayout({
 
   const unreadNotifsCount = notifications.filter((n) => !n.read).length;
 
-  const navItems = [
+  const navItems: Array<{
+    id: CustomerTab;
+    label: string;
+    Icon: any;
+    badge?: string;
+    badgeColor?: string;
+    to?: string;
+  }> = [
     {
-      id: "overview" as CustomerTab,
+      id: "overview",
       label: "Overview",
       Icon: LayoutGrid,
     },
     {
-      id: "shop" as CustomerTab,
+      id: "shop",
       label: "Shop Bikes & Parts",
       Icon: ShoppingBag,
     },
     {
-      id: "garage" as CustomerTab,
+      id: "garage",
       label: "My Garage",
       Icon: Bike,
       badge: `${garage.length}`,
     },
     {
-      id: "orders" as CustomerTab,
+      id: "orders",
       label: "My Orders",
       Icon: Package,
       badge: orders.length > 0 ? `${orders.length}` : undefined,
     },
     {
-      id: "tracking" as CustomerTab,
+      id: "tracking",
       label: "Track Delivery",
       Icon: Truck,
       badge: liveOrder ? "Live" : undefined,
       badgeColor: "bg-[#E31E24] text-white",
     },
     {
-      id: "service" as CustomerTab,
+      id: "service",
       label: "Service & Maintenance",
       Icon: Wrench,
       badge: upcomingServicesCount > 0 ? `${upcomingServicesCount} Due` : undefined,
       badgeColor: "bg-blue-600 text-white",
     },
     {
-      id: "support" as CustomerTab,
+      id: "support",
       label: "Help & Support",
       Icon: LifeBuoy,
     },
   ];
 
-  const handleNavClick = (tabId: CustomerTab) => {
-    onTabChange(tabId);
+  const handleNavClick = (item: (typeof navItems)[number]) => {
+    if (item.to) {
+      navigate({ to: item.to });
+    } else {
+      onTabChange(item.id as CustomerTab);
+    }
     setIsMobileMenuOpen(false);
   };
 
@@ -294,12 +305,12 @@ export function CustomerLayout({
         <aside
           className={cn(
             "hidden md:flex flex-col sticky top-0 h-screen shrink-0 z-30 select-none",
-            "bg-white/65 backdrop-blur-3xl backdrop-saturate-200 border-r border-slate-200/80 shadow-[2px_0_20px_rgba(15,23,42,0.03)] transition-all duration-300",
+            "bg-white/80 backdrop-blur-2xl backdrop-saturate-150 border-r border-black/[0.06] shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300",
             isCollapsed ? "w-20" : "w-64"
           )}
         >
           {/* Logo & Header */}
-          <div className="relative h-18 shrink-0 flex items-center justify-center px-4 border-b border-slate-200/70 bg-white/50 backdrop-blur-md">
+          <div className="relative h-18 shrink-0 flex items-center justify-center px-4 border-b border-black/[0.06] bg-white/50 backdrop-blur-md">
             {!isCollapsed ? (
               <div className="flex items-center justify-center">
                 <Logo className="justify-center" imgClassName="h-9 w-auto" />
@@ -330,7 +341,7 @@ export function CustomerLayout({
               return (
                 <button
                   key={item.id}
-                  onClick={() => handleNavClick(item.id)}
+                  onClick={() => handleNavClick(item)}
                   className={cn(
                     "group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-150 ease-out cursor-pointer select-none",
                     isActive
@@ -415,7 +426,7 @@ export function CustomerLayout({
                 <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
                   <span>Customer Portal</span>
                   <span>/</span>
-                  <span className="text-gray-900 font-semibold truncate">{getBreadcrumbTitle()}</span>
+                  <span className="text-gray-800 font-semibold truncate">{getBreadcrumbTitle()}</span>
                 </div>
                 <h1 className="text-base font-bold text-gray-900 leading-tight">
                   Welcome back{userProfile?.name?.trim() ? `, ${userProfile.name.trim().split(" ")[0]}` : ""}
@@ -423,17 +434,17 @@ export function CustomerLayout({
               </div>
             </div>
 
-            {/* Center: Command Search Bar */}
+            {/* Center: Command Search Bar (Spotlight Glass) */}
             <div className="flex-1 max-w-md hidden md:block">
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="w-full flex items-center justify-between px-4 py-2 rounded-full bg-[#F5F6F8] hover:bg-white text-sm text-gray-700 transition shadow-2xs group border border-[#E5E7EB] hover:border-gray-400"
+                className="w-full flex items-center justify-between px-4 py-2 rounded-full bg-black/[0.03] hover:bg-black/[0.06] active:scale-[0.99] text-sm text-gray-700 transition-all duration-200 shadow-2xs group border border-black/[0.06] hover:border-black/[0.12]"
               >
                 <span className="flex items-center gap-2.5">
-                  <Search className="h-4 w-4 text-gray-500 group-hover:text-primary transition" />
-                  <span className="text-xs text-gray-600 font-medium">Search EV batteries, chargers, fitments...</span>
+                  <Search className="h-4 w-4 text-gray-400 group-hover:text-[#E31E24] transition-colors" />
+                  <span className="text-xs text-gray-500 font-normal">Search EV batteries, chargers, fitments...</span>
                 </span>
-                <kbd className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono text-gray-600 bg-white border border-[#E5E7EB] rounded-full shadow-2xs">
+                <kbd className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono text-gray-500 bg-white/80 border border-black/[0.08] rounded-md shadow-2xs">
                   ⌘K
                 </kbd>
               </button>
@@ -441,20 +452,21 @@ export function CustomerLayout({
 
             {/* Right: Actions, Search by VIN, AI Voice, Cart, Avatar */}
             <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-              {/* Search by VIN Button in Navbar (desktop/tablet only) */}
+              {/* Search by VIN Button */}
               <button
                 onClick={() => setIsVinSearchOpen(true)}
-                className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#E5E7EB] bg-white hover:border-[#E31E24] hover:text-[#E31E24] text-xs font-semibold text-[#111111] transition active:scale-95 shadow-2xs"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/[0.08] hover:bg-emerald-500/[0.16] hover:border-emerald-500/40 text-xs font-semibold text-emerald-800 transition-all duration-200 active:scale-95 shadow-2xs"
                 title="Search items based on 17-digit VIN number"
               >
-                <ScanLine className="h-3.5 w-3.5 text-primary" />
-                <span>Search by VIN</span>
+                <ScanLine className="h-3.5 w-3.5 text-emerald-600" />
+                <span className="hidden sm:inline">Search by VIN</span>
+                <span className="sm:hidden font-mono text-[11px]">VIN</span>
               </button>
 
               {/* Mobile Search trigger */}
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="md:hidden p-2 rounded-xl text-gray-700 hover:bg-gray-100 transition"
+                className="md:hidden p-2 rounded-xl text-gray-700 hover:bg-black/[0.05] transition"
                 aria-label="Search products"
               >
                 <Search className="h-5 w-5" />
@@ -469,36 +481,29 @@ export function CustomerLayout({
                 <span>AI Voice</span>
               </Link>
 
-              {/* Shopping Cart button on top right */}
-              <button
-                onClick={() => onTabChange("orders")}
-                id="dashboard-header-cart-btn"
-                aria-label="Shopping Cart and Orders"
-                className={cn(
-                  "relative flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition shadow-2xs active:scale-95 cursor-pointer",
-                  activeTab === "orders"
-                    ? "border-[#E31E24] bg-red-50 text-[#E31E24]"
-                    : "border-[#E5E7EB] bg-white text-[#111111] hover:border-[#E31E24] hover:text-[#E31E24]"
-                )}
-                title="View Orders & Delivery Tracking"
+              {/* Cart Button to Open Cart */}
+              <Link
+                to="/cart"
+                className="relative p-2.5 rounded-full bg-black/[0.03] hover:bg-black/[0.07] text-gray-700 active:scale-90 transition-all duration-200"
+                aria-label="Shopping Cart"
+                title="Open Shopping Cart"
               >
-                <ShoppingCart className="h-4 w-4 text-[#E31E24]" />
-                <span className="hidden sm:inline">Cart</span>
-                {(orders.length > 0 || cartCount > 0) && (
-                  <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-[#E31E24] px-1 text-[10px] font-bold text-white leading-none">
-                    {orders.length || cartCount}
+                <ShoppingCart className="h-4.5 w-4.5 text-gray-700" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 grid h-4.5 min-w-4.5 px-1 place-items-center rounded-full bg-[#E31E24] text-[9.5px] font-bold text-white shadow-xs ring-2 ring-white">
+                    {cartCount}
                   </span>
                 )}
-              </button>
+              </Link>
 
               {/* Profile Avatar & Account Menu */}
               <div className="relative">
                 <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition"
+                  className="flex items-center p-0.5 rounded-full hover:ring-2 hover:ring-[#E31E24]/30 active:scale-95 transition-all duration-200"
                   aria-label="Account menu"
                 >
-                  <span className="grid h-8.5 w-8.5 place-items-center rounded-full bg-primary text-white font-bold text-xs shadow-xs">
+                  <span className="grid h-8.5 w-8.5 place-items-center rounded-full bg-gradient-to-tr from-[#E31E24] to-[#f43f45] text-white font-bold text-xs shadow-xs">
                     {userProfile?.name?.trim()
                       ? userProfile.name
                           .trim()
@@ -516,7 +521,7 @@ export function CustomerLayout({
                       className="fixed inset-0 z-40"
                       onClick={() => setIsProfileOpen(false)}
                     />
-                    <div className="absolute right-0 mt-2 w-72 rounded-3xl bg-white border border-gray-200 shadow-2xl p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="absolute right-0 mt-2 w-72 rounded-3xl bg-white/95 backdrop-blur-2xl border border-black/[0.08] shadow-[0_20px_50px_rgba(0,0,0,0.12)] p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150">
                       <div className="px-3 py-2.5 border-b border-gray-100">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-bold text-gray-900 truncate">
@@ -572,7 +577,7 @@ export function CustomerLayout({
                           )}
                         </button>
 
-                        {/* Moved Items */}
+                        {/* Moved Items per user request */}
                         <button
                           onClick={() => {
                             setIsProfileOpen(false);
@@ -711,7 +716,7 @@ export function CustomerLayout({
                 return (
                   <button
                     key={item.id}
-                    onClick={() => handleNavClick(item.id)}
+                    onClick={() => handleNavClick(item)}
                     className={cn(
                       "group relative flex w-full items-center justify-between rounded-2xl px-3 py-2.5 text-xs font-medium transition-all duration-200 ease-out",
                       isActive
@@ -740,73 +745,81 @@ export function CustomerLayout({
                 );
               })}
             </nav>
+            <div className="pt-4 border-t border-gray-100">
+              <Link
+                to="/"
+                className="flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-primary transition"
+              >
+                <ArrowLeft className="h-4 w-4" /> Back to store
+              </Link>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Native Mobile Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-200/90 px-2 py-2 flex items-center justify-around md:hidden shadow-[0_-2px_10px_rgba(0,0,0,0.05)] safe-area-bottom">
-        {/* Tab 1: Home */}
+      {/* Apple VisionOS Floating Glass Dock with Central AI Assistant Mic */}
+      <nav className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-md items-center justify-around rounded-full vision-dock px-3 py-1.5 md:hidden">
+        {/* Tab 1: Overview */}
         <button
           onClick={() => onTabChange("overview")}
           className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1 text-xs font-bold transition active:scale-95 cursor-pointer",
-            activeTab === "overview" ? "text-[#E31E24]" : "text-gray-500 hover:text-gray-900"
+            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[10px] font-semibold transition active:scale-95",
+            activeTab === "overview" ? "text-[#E31E24] font-bold" : "text-[#6B7280] hover:text-[#111111]"
           )}
         >
-          <LayoutGrid className={cn("h-5 w-5", activeTab === "overview" ? "stroke-[2.5]" : "stroke-[1.75]")} />
-          <span>Home</span>
+          <LayoutGrid className={cn("h-5 w-5", activeTab === "overview" && "stroke-[2.5]")} />
+          <span>Overview</span>
         </button>
 
-        {/* Tab 2: Shop */}
-        <button
-          onClick={() => onTabChange("shop")}
-          className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1 text-xs font-bold transition active:scale-95 cursor-pointer",
-            activeTab === "shop" ? "text-[#E31E24]" : "text-gray-500 hover:text-gray-900"
-          )}
-        >
-          <ShoppingBag className={cn("h-5 w-5", activeTab === "shop" ? "stroke-[2.5]" : "stroke-[1.75]")} />
-          <span>Shop</span>
-        </button>
-
-        {/* Tab 3: Garage */}
+        {/* Tab 2: Garage */}
         <button
           onClick={() => onTabChange("garage")}
           className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1 text-xs font-bold transition active:scale-95 cursor-pointer",
-            activeTab === "garage" ? "text-[#E31E24]" : "text-gray-500 hover:text-gray-900"
+            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[10px] font-semibold transition active:scale-95",
+            activeTab === "garage" ? "text-[#E31E24] font-bold" : "text-[#6B7280] hover:text-[#111111]"
           )}
         >
-          <Bike className={cn("h-5 w-5", activeTab === "garage" ? "stroke-[2.5]" : "stroke-[1.75]")} />
+          <Bike className={cn("h-5 w-5", activeTab === "garage" && "stroke-[2.5]")} />
           <span>Garage</span>
         </button>
 
-        {/* Tab 4: Orders */}
+        {/* CENTER ELEVATED AI ASSISTANT MIC ORB */}
+        <Link
+          to="/assistant"
+          aria-label="Voice AI Assistant"
+          className="relative -mt-6 flex flex-col items-center group px-1"
+        >
+          <span className="vision-mic-orb relative grid h-13 w-13 place-items-center rounded-full text-white cursor-pointer active:scale-90 shadow-xl">
+            <span className="vision-mic-pulse animate-mic-pulse" />
+            <Mic className="h-6 w-6 relative z-10 drop-shadow-sm" />
+          </span>
+          <span className="mt-1 text-[10px] font-bold tracking-tight text-[#E31E24]">
+            Ask AI
+          </span>
+        </Link>
+
+        {/* Tab 3: Orders */}
         <button
           onClick={() => onTabChange("orders")}
           className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1 text-xs font-bold transition active:scale-95 cursor-pointer relative",
-            activeTab === "orders" ? "text-[#E31E24]" : "text-gray-500 hover:text-gray-900"
+            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[10px] font-semibold transition active:scale-95",
+            activeTab === "orders" ? "text-[#E31E24] font-bold" : "text-[#6B7280] hover:text-[#111111]"
           )}
         >
-          <Package className={cn("h-5 w-5", activeTab === "orders" ? "stroke-[2.5]" : "stroke-[1.75]")} />
+          <Package className={cn("h-5 w-5", activeTab === "orders" && "stroke-[2.5]")} />
           <span>Orders</span>
-          {orders.length > 0 && (
-            <span className="absolute top-1 right-[28%] h-2 w-2 rounded-full bg-[#E31E24]" />
-          )}
         </button>
 
-        {/* Tab 5: Account */}
+        {/* Tab 4: Track Delivery */}
         <button
-          onClick={() => onTabChange("settings")}
+          onClick={() => onTabChange("tracking")}
           className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1 text-xs font-bold transition active:scale-95 cursor-pointer",
-            activeTab === "settings" ? "text-[#E31E24]" : "text-gray-500 hover:text-gray-900"
+            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[10px] font-semibold transition active:scale-95",
+            activeTab === "tracking" ? "text-[#E31E24] font-bold" : "text-[#6B7280] hover:text-[#111111]"
           )}
         >
-          <UserCog className={cn("h-5 w-5", activeTab === "settings" ? "stroke-[2.5]" : "stroke-[1.75]")} />
-          <span>Account</span>
+          <Truck className={cn("h-5 w-5", activeTab === "tracking" && "stroke-[2.5]")} />
+          <span>Tracking</span>
         </button>
       </nav>
 

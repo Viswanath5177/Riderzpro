@@ -156,7 +156,7 @@ export function ShopTab() {
   const availableCategories = useMemo(() => {
     const set = new Set<string>();
     dbProducts.forEach((p) => {
-      if (p.category && p.category !== "All") set.add(p.category);
+      if (p.category && (p.category as string) !== "All") set.add(p.category);
     });
     return ["All", ...Array.from(set).sort()];
   }, [dbProducts]);
