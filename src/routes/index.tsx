@@ -2,50 +2,52 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   ArrowRight,
-  Battery,
-  BatteryCharging,
-  Cpu,
-  Disc,
-  Gauge,
-  MapPin,
-  Mic,
-  PackageCheck,
-  Search,
   ShieldCheck,
-  Store,
   Truck,
-  Wrench,
+  Headphones,
+  FileCheck,
+  Heart,
+  ShoppingCart,
+  Car,
+  Bike,
   Zap,
-  Bike as BikeIcon,
+  BatteryCharging,
+  Wrench,
+  ScanLine,
+  SlidersHorizontal,
+  Lock,
+  Search,
+  CheckCircle2,
+  Package,
+  Sparkles,
+  ChevronRight,
   Star,
+  MapPin,
+  Clock,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
-import heroBike from "@/assets/hero-bike.jpg";
-import workshopImg from "@/assets/workshop.jpg";
-import riderImg from "@/assets/rider.jpg";
 import scooterImg from "@/assets/scooter.jpg";
-import battery1 from "@/assets/battery-1.jpg";
-import chargerImg from "@/assets/charger.jpg";
+import heroBikeImg from "@/assets/hero-bike.jpg";
 import partsImg from "@/assets/parts.jpg";
-import battery3 from "@/assets/battery-3.jpg";
+import workshopImg from "@/assets/workshop.jpg";
 import { SiteLayout } from "@/components/site/SiteLayout";
-import { ProductCard, SectionTitle } from "@/components/site/bits";
-import { bikes, decodeVin, products } from "@/lib/data";
+import { bestOffer, inr, products, type Product } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Riderzpro — EV batteries & parts that fit your bike" },
+      { title: "RiderzPro — Quality Automotive Essentials, Parts & Electric Bikes" },
       {
         name: "description",
         content:
-          "Enter your VIN or pick your EV, compare sellers, place one order across vendors and track your rider live.",
+          "Discover electric bikes, car accessories, bike accessories, batteries, chargers, and verified spare parts with guaranteed vehicle compatibility.",
       },
-      { property: "og:title", content: "Riderzpro — EV batteries & parts that fit your bike" },
+      { property: "og:title", content: "RiderzPro — Your Automotive Marketplace" },
       {
         property: "og:description",
-        content: "Compare EV battery sellers, order once, track delivery live.",
+        content: "Everything your ride needs: electric bikes, accessories, batteries, and spare parts.",
       },
     ],
   }),
@@ -54,194 +56,161 @@ export const Route = createFileRoute("/")({
 
 function Landing() {
   return (
-    <SiteLayout transparent>
-      <Hero />
-      <BrandStrip />
-      <Categories />
-      <HowItWorks />
-      <Featured />
-      <Roles />
-      <Testimonials />
-      <AppCta />
+    <SiteLayout>
+      {/* 1. Hero Section with Interactive Search */}
+      <HeroSection />
+
+      {/* 2. Quick Category Navigation Grid (Car, Bike Accessories, EVs, Spares) */}
+      <DepartmentGridSection />
+
+      {/* 3. Application Features & Platform Capabilities */}
+      <ApplicationFeaturesSection />
+
+      {/* 4. Curated Featured Products Catalog */}
+      <FeaturedProductsSection />
+
+      {/* 5. Doorstep Technician & Diagnostics Feature Banner */}
+      <DoorstepServiceBanner />
+
+      {/* 6. Account & Garage Status CTA (Login Guarded) */}
+      <GarageAccessSection />
+
+      {/* 7. Trust, Guarantees & Support */}
+      <TrustAndSupportSection />
     </SiteLayout>
   );
 }
 
-function Hero() {
-  const nav = useNavigate();
-  const { addBike } = useStore();
-  const [mode, setMode] = useState<"bike" | "vin">("bike");
-  const [vin, setVin] = useState("");
-  const [bikeId, setBikeId] = useState(bikes[0].id);
+{/* ─────────────────────────────────────────────────────────────
+    1. HERO SECTION (Clean White Surface, High Contrast, Search)
+   ───────────────────────────────────────────────────────────── */}
+function HeroSection() {
+  const navigate = useNavigate();
+  const { isLoggedIn } = useStore();
+  const [heroSearch, setHeroSearch] = useState("");
 
-  const go = () => {
-    if (mode === "vin") {
-      const r = decodeVin(vin);
-      if (!r.ok || !r.bike) return toast.error(r.error);
-      addBike({ bikeId: r.bike.id, year: r.year, vin: vin.toUpperCase() });
-      toast.success(`Found ${r.bike.make} ${r.bike.model}${r.year ? ` (${r.year})` : ""}`);
-    } else addBike({ bikeId });
-    nav({ to: "/shop" });
+  const handleHeroSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (heroSearch.trim()) {
+      navigate({ to: "/shop", search: { q: heroSearch.trim() } as any });
+    } else {
+      navigate({ to: "/shop" });
+    }
+  };
+
+  const handleVehicleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!isLoggedIn) {
+      toast.info("Please sign in to access your registered vehicle & garage");
+      navigate({ to: "/login", search: { redirect: "/dashboard/customer?tab=garage" } as any });
+    } else {
+      navigate({ to: "/dashboard/customer", search: { tab: "garage" } as any });
+    }
   };
 
   return (
-    <section className="relative isolate min-h-[100svh] overflow-hidden text-hero-ink">
-      <img
-        src={heroBike}
-        alt="Electric motorbike with glowing battery at night"
-        width={1920}
-        height={1088}
-        className="absolute inset-0 -z-20 h-full w-full object-cover object-[70%_center]"
-      />
-      <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[oklch(0.12_0.01_260)] via-[oklch(0.12_0.01_260/0.75)] to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 -z-10 h-40 bg-gradient-to-t from-background to-transparent" />
-      {/* charge lines */}
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden opacity-70">
-        {[22, 48, 71].map((top, i) => (
-          <div
-            key={top}
-            className="absolute h-px w-full overflow-hidden"
-            style={{ top: `${top}%` }}
-          >
-            <div className="charge-line h-px w-1/2" style={{ animationDelay: `${i * 1.1}s` }} />
-          </div>
-        ))}
-      </div>
-
-      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 pb-24 pt-28 md:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:pt-36">
-        <div>
-          <span className="inline-flex items-center gap-2 rounded-full border border-[oklch(1_0_0/0.15)] bg-[oklch(1_0_0/0.06)] px-3 py-1.5 text-xs font-semibold backdrop-blur">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary" />
-              <span className="relative h-2 w-2 rounded-full bg-primary" />
-            </span>
-            128 riders delivering in Bengaluru now
-          </span>
-          <h1 className="mt-6 font-display text-[clamp(3.5rem,10vw,8.5rem)] leading-[0.85]">
-            Power your ride.
-            <br />
-            <span className="bg-gradient-to-r from-primary to-[oklch(0.85_0.17_160)] bg-clip-text text-transparent">
-              Parts that fit.
-            </span>
-          </h1>
-          <p className="mt-6 max-w-xl text-lg text-[oklch(0.98_0_0/0.75)]">
-            Batteries, chargers and spares for every EV — matched to your VIN, compared across
-            sellers, delivered in one order with a rider you can track live.
-          </p>
-
-          {/* Search card */}
-          <div className="mt-8 max-w-xl rounded-3xl border border-[oklch(1_0_0/0.12)] bg-[oklch(0.15_0.01_260/0.65)] p-2 shadow-glow backdrop-blur-xl">
-            <div className="flex gap-1 p-1">
-              {(["bike", "vin"] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setMode(m)}
-                  className={`flex-1 rounded-2xl px-4 py-2 text-sm font-semibold transition ${mode === m ? "bg-primary text-primary-foreground" : "text-[oklch(1_0_0/0.7)] hover:text-hero-ink"}`}
-                >
-                  {m === "bike" ? "Pick my bike" : "Enter VIN"}
-                </button>
-              ))}
+    <section className="border-b border-[#E5E7EB] bg-white py-12 md:py-16">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="grid items-center gap-10 lg:grid-cols-[1.15fr_0.85fr]">
+          {/* Left Column: Hero Text, Search & CTAs */}
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-bold text-[#E31E24]">
+              <Zap className="h-3.5 w-3.5 fill-[#E31E24]" />
+              <span>OFFICIAL AUTOMOTIVE STORE & SPARES</span>
             </div>
-            <div className="flex flex-col gap-2 p-2 sm:flex-row">
-              {mode === "bike" ? (
-                <div className="flex flex-1 items-center gap-2 rounded-2xl bg-[oklch(1_0_0/0.08)] px-4">
-                  <BikeIcon className="h-5 w-5 text-primary" />
-                  <select
-                    value={bikeId}
-                    onChange={(e) => setBikeId(e.target.value)}
-                    className="h-12 w-full bg-transparent text-hero-ink outline-none [&>option]:text-[oklch(0.2_0_0)]"
+
+            <h1 className="mt-4 text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#111111] tracking-tight leading-[1.12] font-display">
+              Quality Automotive Essentials, Parts & Electric Bikes.
+            </h1>
+
+            <p className="mt-4 text-base sm:text-lg text-[#6B7280] leading-relaxed max-w-xl">
+              Discover electric bikes, car accessories, bike accessories, batteries, chargers, and verified spare parts in one clean, professional marketplace.
+            </p>
+
+            {/* Embedded Live Search Box */}
+            <form onSubmit={handleHeroSearch} className="mt-6 max-w-xl">
+              <div className="relative flex items-center rounded-xl border-2 border-[#E5E7EB] bg-white p-1.5 shadow-2xs transition-all focus-within:border-[#E31E24] focus-within:ring-2 focus-within:ring-[#E31E24]/20">
+                <Search className="ml-3 h-5 w-5 text-[#6B7280] shrink-0" />
+                <input
+                  type="text"
+                  value={heroSearch}
+                  onChange={(e) => setHeroSearch(e.target.value)}
+                  placeholder="Search car accessories, helmets, batteries, Brembo brakes..."
+                  className="w-full bg-transparent px-3 py-2 text-sm text-[#111111] placeholder:text-[#6B7280] focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  className="shrink-0 rounded-lg bg-[#E31E24] px-5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-xs transition hover:bg-red-700 active:scale-95"
+                >
+                  Search
+                </button>
+              </div>
+
+              {/* Quick trending tags */}
+              <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-[#6B7280]">
+                <span className="font-semibold text-[#111111]">Popular:</span>
+                {[
+                  { label: "Car Accessories", q: "Car Accessories" },
+                  { label: "Bike Accessories", q: "Bike Accessories" },
+                  { label: "Electric Bikes", q: "Electric Bikes" },
+                  { label: "Fast Chargers", q: "Charger" },
+                  { label: "Brembo Rotors", q: "Brembo" },
+                ].map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => navigate({ to: "/shop", search: { q: item.q } as any })}
+                    className="rounded-md border border-[#E5E7EB] bg-[#F7F7F8] px-2 py-0.5 text-[11px] font-medium text-[#111111] hover:border-[#E31E24] hover:text-[#E31E24] transition"
                   >
-                    {bikes.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.make} {b.model} · {b.voltage}V
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div className="flex flex-1 items-center gap-2 rounded-2xl bg-[oklch(1_0_0/0.08)] px-4">
-                  <Search className="h-5 w-5 text-primary" />
-                  <input
-                    value={vin}
-                    onChange={(e) => setVin(e.target.value)}
-                    maxLength={17}
-                    placeholder="e.g. P6R1S1PR2PN000001"
-                    className="h-12 w-full bg-transparent font-mono uppercase tracking-wider text-hero-ink outline-none placeholder:text-[oklch(1_0_0/0.4)]"
-                  />
-                </div>
-              )}
-              <button
-                onClick={go}
-                className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-6 font-semibold text-primary-foreground transition hover:opacity-90"
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </form>
+
+            {/* Hero Quick Navigation Actions */}
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Link
+                to="/shop"
+                className="inline-flex items-center justify-center rounded-lg bg-[#E31E24] px-6 py-3 text-sm font-semibold text-white shadow-xs transition hover:bg-red-700 active:scale-95"
               >
-                Find parts <ArrowRight className="h-4 w-4" />
+                <span>Explore Store Catalog</span>
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+              <button
+                onClick={handleVehicleClick}
+                className="inline-flex items-center justify-center rounded-lg border border-[#E5E7EB] bg-white px-5 py-3 text-sm font-semibold text-[#111111] shadow-2xs transition hover:bg-[#F7F7F8] hover:border-gray-400 active:scale-95"
+              >
+                <Car className="mr-2 h-4 w-4 text-[#E31E24]" />
+                <span>My Car & Garage</span>
+                {!isLoggedIn && <Lock className="ml-1.5 h-3.5 w-3.5 text-gray-400" />}
               </button>
             </div>
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              to="/assistant"
-              className="flex items-center gap-2 rounded-full border border-[oklch(1_0_0/0.2)] px-5 py-3 text-sm font-semibold backdrop-blur transition hover:border-primary hover:text-primary"
-            >
-              <Mic className="h-4 w-4" /> Talk to AI assistant
-            </Link>
-            <Link
-              to="/shop"
-              className="flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-[oklch(1_0_0/0.8)] hover:text-primary"
-            >
-              Browse all parts <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-
-        {/* Floating cards */}
-        <div className="relative hidden h-[520px] lg:block">
-          <div className="animate-float absolute right-0 top-4 w-72 rounded-3xl border border-[oklch(1_0_0/0.12)] bg-[oklch(0.15_0.01_260/0.7)] p-5 backdrop-blur-xl">
-            <div className="flex items-center justify-between text-xs text-[oklch(1_0_0/0.6)]">
-              <span>Order #RZ48213</span>
-              <span className="text-primary">● Live</span>
-            </div>
-            <p className="mt-2 font-display text-3xl">Arriving in 18 min</p>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-[oklch(1_0_0/0.1)]">
-              <div className="h-full w-2/3 rounded-full bg-primary" />
-            </div>
-            <div className="mt-4 flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-primary font-bold text-primary-foreground">
-                RK
-              </span>
-              <div className="text-sm">
-                <p className="font-semibold">Ravi Kumar</p>
-                <p className="text-[oklch(1_0_0/0.6)]">2 pickups · Ather Rizta</p>
+          {/* Right Column: Visual Showcase Card */}
+          <div className="hidden lg:flex justify-end">
+            <div className="w-full max-w-md overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-xs">
+              <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-[#F7F7F8] relative">
+                <img
+                  src={scooterImg}
+                  alt="RiderzPro Electric Vehicle & Automotive Marketplace"
+                  className="h-full w-full object-cover"
+                />
+                <span className="absolute top-3 left-3 rounded-md bg-[#111111] px-2.5 py-1 text-[11px] font-bold text-white shadow-xs">
+                  100% Genuine Spares
+                </span>
+              </div>
+              <div className="mt-3 px-1 space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-semibold text-[#111111]">
+                  <span>Verified Automotive Spares & EVs</span>
+                  <span className="text-[#E31E24]">Authorized Suppliers</span>
+                </div>
+                <p className="text-[11px] text-[#6B7280]">
+                  Every part is tested for voltage compatibility, fitment precision, and manufacturer warranty.
+                </p>
               </div>
             </div>
-          </div>
-          <div
-            className="animate-float absolute left-4 top-56 w-60 rounded-3xl border border-[oklch(1_0_0/0.12)] bg-[oklch(0.15_0.01_260/0.7)] p-5 backdrop-blur-xl"
-            style={{ animationDelay: "1.5s" }}
-          >
-            <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-              <ShieldCheck className="h-4 w-4" /> Fitment verified
-            </div>
-            <p className="mt-2 text-sm text-[oklch(1_0_0/0.75)]">
-              VoltRide 60V 30Ah fits your <b className="text-hero-ink">Ola S1 Pro 2023</b>
-            </p>
-          </div>
-          <div className="absolute bottom-6 right-6 grid grid-cols-2 gap-3">
-            {[
-              ["6+", "Verified sellers"],
-              ["1.2k", "Parts listed"],
-              ["38m", "Avg delivery"],
-              ["4.8★", "Rider rating"],
-            ].map(([v, l]) => (
-              <div
-                key={l}
-                className="rounded-2xl border border-[oklch(1_0_0/0.12)] bg-[oklch(0.15_0.01_260/0.6)] px-4 py-3 backdrop-blur-xl"
-              >
-                <p className="font-display text-3xl text-primary">{v}</p>
-                <p className="text-xs text-[oklch(1_0_0/0.65)]">{l}</p>
-              </div>
-            ))}
           </div>
         </div>
       </div>
@@ -249,261 +218,604 @@ function Hero() {
   );
 }
 
-function BrandStrip() {
+{/* ─────────────────────────────────────────────────────────────
+    2. DEPARTMENT NAVIGATION GRID (Car Accessories, Bike Accessories, etc.)
+   ───────────────────────────────────────────────────────────── */}
+function DepartmentGridSection() {
+  const { isLoggedIn } = useStore();
+  const navigate = useNavigate();
+
+  const handleCarClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!isLoggedIn) {
+      toast.info("Please sign in to access your registered vehicle & garage");
+      navigate({ to: "/login", search: { redirect: "/dashboard/customer?tab=garage" } as any });
+    } else {
+      navigate({ to: "/dashboard/customer", search: { tab: "garage" } as any });
+    }
+  };
+
+  const departments = [
+    {
+      title: "Car Accessories",
+      desc: "Floor mats, ambient lighting, 4K dashcams, seat covers, mobile mounts & wireless chargers.",
+      to: "/shop",
+      search: "Car Accessories",
+      Icon: Car,
+      tag: "Car Essentials",
+    },
+    {
+      title: "Bike Accessories",
+      desc: "Riding jackets, ISI/DOT helmets, gloves, crash guards, saddlebags & phone holders.",
+      to: "/shop",
+      search: "Bike Accessories",
+      Icon: Bike,
+      tag: "Riding Gear",
+    },
+    {
+      title: "Electric Bikes",
+      desc: "High-grade certified electric bikes and scooters from authorized manufacturers.",
+      to: "/shop",
+      search: "Electric Bikes",
+      Icon: Zap,
+      tag: "Clean Mobility",
+    },
+    {
+      title: "Batteries & Chargers",
+      desc: "48V, 60V & 72V Lithium-ion packs, smart Bluetooth BMS, and certified rapid chargers.",
+      to: "/shop",
+      search: "Battery",
+      Icon: BatteryCharging,
+      tag: "High-Voltage Power",
+    },
+    {
+      title: "Automotive Spare Parts",
+      desc: "Precision brake rotors, disc pads, hub motors, controllers, suspension & bearings.",
+      to: "/shop",
+      search: "Spare Parts",
+      Icon: Wrench,
+      tag: "OEM & Aftermarket",
+    },
+    {
+      title: "My Car / Garage",
+      desc: "Digital vehicle log, State-of-Health (SOH) battery telemetry, and service booking.",
+      to: "/dashboard/customer",
+      isCustomClick: true,
+      Icon: Car,
+      tag: isLoggedIn ? "Active Garage" : "Login Required",
+      requiresAuth: true,
+    },
+  ];
+
   return (
-    <div className="border-y border-border bg-card/40">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-12 gap-y-4 px-4 py-6 font-display text-2xl text-muted-foreground md:justify-between">
-        {["Ather", "Ola Electric", "TVS iQube", "Bajaj Chetak", "Revolt", "Hero Vida"].map((b) => (
-          <span key={b} className="opacity-70 transition hover:text-primary hover:opacity-100">
-            {b}
+    <section className="bg-[#F7F7F8] py-12 md:py-16 border-b border-[#E5E7EB]">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between pb-6">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#E31E24]">
+              CATALOG DEPARTMENTS
+            </p>
+            <h2 className="mt-1 text-2xl sm:text-3xl font-extrabold text-[#111111] font-display">
+              Shop by Vehicle Category
+            </h2>
+          </div>
+          <Link
+            to="/shop"
+            className="mt-2 sm:mt-0 text-xs font-semibold text-[#E31E24] hover:underline flex items-center gap-1"
+          >
+            <span>View All Products</span>
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+        {/* 6 Grid Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {departments.map((dep) => {
+            const isCar = dep.isCustomClick;
+            return (
+              <div
+                key={dep.title}
+                onClick={(e) => {
+                  if (isCar) {
+                    handleCarClick(e);
+                  } else {
+                    navigate({ to: dep.to as any, search: { cat: dep.search } as any });
+                  }
+                }}
+                className="group flex flex-col justify-between rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-2xs hover:border-[#111111] hover:shadow-xs transition-all cursor-pointer"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="grid h-10 w-10 place-items-center rounded-lg bg-red-50 text-[#E31E24] group-hover:bg-[#E31E24] group-hover:text-white transition">
+                      <dep.Icon className="h-5 w-5" />
+                    </span>
+                    <span className="rounded-md border border-[#E5E7EB] bg-[#F7F7F8] px-2 py-0.5 text-[10px] font-bold text-[#6B7280] group-hover:text-[#111111]">
+                      {dep.tag}
+                    </span>
+                  </div>
+
+                  <h3 className="mt-4 text-base font-bold text-[#111111] group-hover:text-[#E31E24] transition flex items-center gap-1.5">
+                    <span>{dep.title}</span>
+                    {dep.requiresAuth && !isLoggedIn && (
+                      <Lock className="h-3.5 w-3.5 text-gray-400" />
+                    )}
+                  </h3>
+
+                  <p className="mt-1.5 text-xs text-[#6B7280] leading-relaxed">
+                    {dep.desc}
+                  </p>
+                </div>
+
+                <div className="mt-5 pt-3 border-t border-[#E5E7EB] flex items-center justify-between text-xs font-semibold text-[#111111] group-hover:text-[#E31E24]">
+                  <span>{isCar && !isLoggedIn ? "Sign In to Access" : "Browse Department"}</span>
+                  <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+{/* ─────────────────────────────────────────────────────────────
+    3. APPLICATION FEATURES SECTION (Dedicated Explaining Features)
+   ───────────────────────────────────────────────────────────── */}
+function ApplicationFeaturesSection() {
+  const features = [
+    {
+      title: "Precision Fitment & 17-Digit VIN Lookup",
+      desc: "Decode your vehicle identification number (VIN) or pick your exact car or bike model. Components are mathematically filtered to fit your specific chassis and voltage architecture.",
+      Icon: ScanLine,
+      tag: "Zero Guesswork",
+    },
+    {
+      title: "Multi-Vendor Genuine Marketplace",
+      desc: "Source direct from certified automotive distributors and OEM suppliers. Compare live supplier ratings, warranty coverage (up to 48 months), and stock in your city.",
+      Icon: Package,
+      tag: "Authorized Supply",
+    },
+    {
+      title: "Live GPS Courier & Telemetry Tracking",
+      desc: "Synchronized tracking with third-party logistics partners (Bluedart, Delhivery) and local express dispatch. Watch real-time route progress, checkpoint scans, and verified OTP delivery.",
+      Icon: Truck,
+      tag: "Real-time Telemetry",
+    },
+    {
+      title: "Digital Vehicle Garage & Health Monitoring",
+      desc: "Register your vehicles to track battery State-of-Health (SOH), log odometer readings, inspect active spares, and receive automated maintenance schedule reminders.",
+      Icon: Car,
+      tag: "Ownership Hub",
+    },
+    {
+      title: "Certified Doorstep Technician Service",
+      desc: "Book verified EV mechanics for 24-point battery diagnostics, brake calibration, and electrical health checkups right at your doorstep.",
+      Icon: Wrench,
+      tag: "Home Service",
+    },
+    {
+      title: "GST Tax Invoices & Order Management",
+      desc: "Download official GST tax receipts, track multi-supplier dispatches, manage digital warranties, and request straightforward 7-day replacements.",
+      Icon: FileCheck,
+      tag: "Full Transparency",
+    },
+  ];
+
+  return (
+    <section className="bg-white py-14 md:py-20 border-b border-[#E5E7EB]">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="max-w-2xl">
+          <p className="text-xs font-bold uppercase tracking-wider text-[#E31E24]">
+            BUILT FOR MODERN VEHICLE OWNERS
+          </p>
+          <h2 className="mt-2 text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#111111] font-display tracking-tight">
+            Application Features & Capabilities
+          </h2>
+          <p className="mt-3 text-sm sm:text-base text-[#6B7280] leading-relaxed">
+            RiderzPro connects automotive part discovery, compatibility verification, doorstep technician booking, and live shipment telemetry into one seamless experience.
+          </p>
+        </div>
+
+        {/* 6 Clean Feature Cards */}
+        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {features.map((feat) => (
+            <div
+              key={feat.title}
+              className="flex flex-col justify-between rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-2xs hover:border-gray-400 transition"
+            >
+              <div>
+                <div className="flex items-center justify-between">
+                  <div className="grid h-11 w-11 place-items-center rounded-lg bg-red-50 text-[#E31E24]">
+                    <feat.Icon className="h-5 w-5" />
+                  </div>
+                  <span className="rounded-md bg-[#F7F7F8] border border-[#E5E7EB] px-2.5 py-0.5 text-[10px] font-bold text-[#6B7280]">
+                    {feat.tag}
+                  </span>
+                </div>
+                <h3 className="mt-4 text-base font-bold text-[#111111]">
+                  {feat.title}
+                </h3>
+                <p className="mt-2 text-xs leading-relaxed text-[#6B7280]">
+                  {feat.desc}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+{/* ─────────────────────────────────────────────────────────────
+    4. CURATED FEATURED PRODUCTS SECTION
+   ───────────────────────────────────────────────────────────── */}
+function FeaturedProductsSection() {
+  const [activeTab, setActiveTab] = useState<string>("All");
+
+  // Selected catalog items representing diverse inventory
+  const featuredIds = ["p13", "p16", "p1", "p24", "p21", "p7", "p22", "p17"];
+  const allFeatured = featuredIds
+    .map((id) => products.find((p) => p.id === id))
+    .filter((p): p is Product => Boolean(p));
+
+  const filteredList = allFeatured.filter((p) => {
+    if (activeTab === "All") return true;
+    if (activeTab === "Car Accessories") return p.category === "Car Accessories";
+    if (activeTab === "Bike Accessories") return p.category === "Bike Accessories";
+    if (activeTab === "Electric Bikes") return p.category === "Electric Bikes";
+    if (activeTab === "Spares & Batteries")
+      return ["Spare Parts", "Battery", "Charger", "Brakes"].includes(p.category);
+    return true;
+  });
+
+  return (
+    <section className="bg-white py-14 sm:py-18 border-b border-[#E5E7EB]">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between pb-6 gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#E31E24]">
+              GENUINE CATALOG
+            </p>
+            <h2 className="mt-1 text-2xl sm:text-3xl font-extrabold text-[#111111] font-display">
+              Featured Products & Accessories
+            </h2>
+            <p className="mt-1 text-xs sm:text-sm text-[#6B7280]">
+              Discover tested components with verified vehicle compatibility and warranty.
+            </p>
+          </div>
+
+          {/* Interactive filter tabs */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {["All", "Car Accessories", "Bike Accessories", "Electric Bikes", "Spares & Batteries"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition ${
+                  activeTab === tab
+                    ? "bg-[#E31E24] text-white shadow-2xs"
+                    : "border border-[#E5E7EB] bg-white text-[#6B7280] hover:text-[#111111] hover:border-gray-400"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 4-Column Responsive Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {filteredList.map((p) => (
+            <ProductCardItem key={p.id} product={p} />
+          ))}
+        </div>
+
+        <div className="mt-8 text-center">
+          <Link
+            to="/shop"
+            className="inline-flex items-center justify-center rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-6 py-2.5 text-xs font-semibold text-[#111111] hover:border-[#E31E24] hover:text-[#E31E24] hover:bg-white transition"
+          >
+            <span>Explore All 27 Products in Catalog</span>
+            <ArrowRight className="ml-2 h-3.5 w-3.5" />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProductCardItem({ product }: { product: Product }) {
+  const { addToCart, toggleSaved, isSaved } = useStore();
+  const offer = bestOffer(product);
+  const saved = isSaved(product.id);
+
+  const mrp = Math.round((offer.price * 1.15) / 100) * 100;
+  const discountPct = Math.round(((mrp - offer.price) / mrp) * 100);
+
+  return (
+    <div className="group flex flex-col overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-2xs transition hover:border-gray-400 hover:shadow-xs">
+      {/* Product Image Container */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#F7F7F8]">
+        <Link to="/product/$id" params={{ id: product.id }} className="block h-full w-full">
+          <img
+            src={product.image}
+            alt={product.name}
+            className="h-full w-full object-cover transition duration-300 group-hover:scale-102"
+          />
+        </Link>
+
+        {/* Discount Badge */}
+        {discountPct > 0 && (
+          <span className="absolute left-2.5 top-2.5 rounded bg-[#E31E24] px-2 py-0.5 text-[10px] font-bold text-white shadow-2xs">
+            {discountPct}% OFF
           </span>
-        ))}
+        )}
+
+        {/* Save Item Action */}
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleSaved(product.id);
+            toast.success(saved ? "Removed from saved items" : "Added to saved items");
+          }}
+          aria-label={saved ? "Remove from saved items" : "Save item"}
+          className="absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-full bg-white text-gray-400 border border-[#E5E7EB] shadow-2xs transition hover:text-[#E31E24]"
+        >
+          <Heart className={`h-3.5 w-3.5 ${saved ? "fill-[#E31E24] text-[#E31E24]" : ""}`} />
+        </button>
+      </div>
+
+      {/* Content Area */}
+      <div className="flex flex-1 flex-col p-4">
+        {/* Category & Brand */}
+        <div className="flex items-center justify-between text-[11px] text-[#6B7280]">
+          <span className="font-semibold uppercase tracking-wider truncate">
+            {product.category} · {product.brand}
+          </span>
+          <span className="flex items-center gap-1 font-semibold text-gray-700 shrink-0">
+            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+            4.8
+          </span>
+        </div>
+
+        {/* Product Name Link */}
+        <Link
+          to="/product/$id"
+          params={{ id: product.id }}
+          className="mt-1 line-clamp-2 text-sm font-semibold text-[#111111] hover:text-[#E31E24] transition leading-snug"
+        >
+          {product.name}
+        </Link>
+
+        {/* Stock & Warranty */}
+        <div className="mt-2 flex items-center gap-1.5 text-[11px]">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <span className="font-medium text-emerald-700">
+            {offer.stock > 0 ? "In Stock" : "Available to Order"}
+          </span>
+          <span className="text-gray-300">·</span>
+          <span className="text-[#6B7280]">{product.warrantyMonths}m Warranty</span>
+        </div>
+
+        {/* Price & Add to Cart Action */}
+        <div className="mt-auto pt-4 border-t border-[#E5E7EB]">
+          <div className="flex items-baseline gap-2 mb-3">
+            <span className="text-base font-bold text-[#111111]">
+              {inr(offer.price)}
+            </span>
+            {mrp > offer.price && (
+              <span className="text-xs text-[#6B7280] line-through">
+                {inr(mrp)}
+              </span>
+            )}
+          </div>
+
+          <button
+            onClick={() => {
+              addToCart(product.id, offer.vendorId);
+              toast.success(`Added ${product.name} to cart`);
+            }}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#E31E24] py-2 text-xs font-semibold text-white transition hover:bg-red-700 active:scale-95 shadow-2xs"
+          >
+            <ShoppingCart className="h-3.5 w-3.5" />
+            <span>Add to Cart</span>
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-function Categories() {
-  const cats = [
-    { name: "Batteries", img: battery1, Icon: Battery, count: 6 },
-    { name: "Chargers", img: chargerImg, Icon: BatteryCharging, count: 2 },
-    { name: "Motors & Controllers", img: partsImg, Icon: Cpu, count: 2 },
-    { name: "Performance packs", img: battery3, Icon: Gauge, count: 2 },
-  ];
+{/* ─────────────────────────────────────────────────────────────
+    5. DOORSTEP TECHNICIAN SERVICE BANNER
+   ───────────────────────────────────────────────────────────── */}
+function DoorstepServiceBanner() {
+  const { isLoggedIn } = useStore();
+  const navigate = useNavigate();
+
+  const handleBookService = () => {
+    if (!isLoggedIn) {
+      toast.info("Please sign in to schedule doorstep technician service");
+      navigate({ to: "/login", search: { redirect: "/dashboard/customer?tab=service" } as any });
+    } else {
+      navigate({ to: "/dashboard/customer", search: { tab: "service" } as any });
+    }
+  };
+
   return (
-    <section className="mx-auto max-w-7xl px-4 pt-24 md:px-6">
-      <SectionTitle eyebrow="Shop by category" title="Everything your EV runs on" />
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {cats.map((c, i) => (
-          <Link
-            key={c.name}
-            to="/shop"
-            className={`group relative overflow-hidden rounded-3xl border border-border bg-card ${i === 0 ? "lg:row-span-2" : ""}`}
-          >
-            <img
-              src={c.img}
-              alt={c.name}
-              loading="lazy"
-              width={1024}
-              height={1024}
-              className={`w-full object-cover transition duration-700 group-hover:scale-105 ${i === 0 ? "aspect-square lg:aspect-auto lg:h-full" : "aspect-[4/3]"}`}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[oklch(0.1_0_0/0.85)] via-transparent to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-5 text-hero-ink">
-              <div>
-                <c.Icon className="mb-2 h-6 w-6 text-primary" />
-                <p className="font-display text-2xl leading-none md:text-3xl">{c.name}</p>
-                <p className="text-xs opacity-70">{c.count}+ products</p>
-              </div>
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-primary text-primary-foreground transition group-hover:rotate-[-45deg]">
-                <ArrowRight className="h-4 w-4" />
+    <section className="bg-[#F7F7F8] py-12 border-b border-[#E5E7EB]">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 sm:p-8 shadow-2xs grid gap-6 lg:grid-cols-[1.2fr_0.8fr] items-center">
+          <div>
+            <span className="rounded-full bg-red-50 border border-red-200 px-3 py-1 text-xs font-bold text-[#E31E24]">
+              DOORSTEP AUTOMOTIVE SERVICE
+            </span>
+            <h3 className="mt-3 text-2xl font-extrabold text-[#111111] font-display">
+              Book a Certified EV Technician at Your Doorstep
+            </h3>
+            <p className="mt-2 text-sm text-[#6B7280] leading-relaxed max-w-xl">
+              From 24-point battery health diagnostic scans to brake adjustments and emergency electrical troubleshooting, our certified technicians come directly to your home.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-4 text-xs font-semibold text-[#111111]">
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                24-Point BMS Test
+              </span>
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                State-of-Health Diagnostic
+              </span>
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                Zero Travel Required
               </span>
             </div>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function HowItWorks() {
-  const steps = [
-    {
-      Icon: Search,
-      t: "Find",
-      d: "Enter your VIN or pick your bike. We show only parts verified to fit.",
-    },
-    {
-      Icon: Disc,
-      t: "Compare",
-      d: "See prices, stock and delivery time from every nearby seller side by side.",
-    },
-    {
-      Icon: PackageCheck,
-      t: "One order",
-      d: "Mix items from many vendors. Delivery is priced per km — no surprises.",
-    },
-    {
-      Icon: MapPin,
-      t: "Track live",
-      d: "Watch your rider on the map, then call or chat once they accept.",
-    },
-  ];
-  return (
-    <section className="mx-auto max-w-7xl px-4 pt-28 md:px-6">
-      <SectionTitle
-        eyebrow="How it works"
-        title="From VIN to doorstep"
-        sub="Built for riders, workshops and dealers who are tired of guessing which battery fits."
-      />
-      <div className="grid gap-4 md:grid-cols-4">
-        {steps.map((s, i) => (
-          <div
-            key={s.t}
-            className="relative rounded-3xl border border-border bg-card p-6 shadow-card"
-          >
-            <span className="font-display text-6xl text-primary/20">0{i + 1}</span>
-            <s.Icon className="mt-2 h-7 w-7 text-primary" />
-            <p className="mt-4 font-display text-3xl">{s.t}</p>
-            <p className="mt-2 text-sm text-muted-foreground">{s.d}</p>
+            <div className="mt-6 flex items-center gap-3">
+              <button
+                onClick={handleBookService}
+                className="inline-flex items-center rounded-lg bg-[#E31E24] px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-red-700 transition"
+              >
+                <span>Schedule Technician</span>
+                <ArrowRight className="ml-2 h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
-        ))}
+
+          <div className="hidden lg:block overflow-hidden rounded-xl border border-[#E5E7EB] bg-gray-50 aspect-[16/10]">
+            <img
+              src={workshopImg}
+              alt="Certified Doorstep EV Technician Diagnostic"
+              className="h-full w-full object-cover"
+            />
+          </div>
+        </div>
       </div>
     </section>
   );
 }
 
-function Featured() {
+{/* ─────────────────────────────────────────────────────────────
+    6. ACCOUNT & GARAGE ACCESS SECTION (Login Guarded)
+   ───────────────────────────────────────────────────────────── */}
+function GarageAccessSection() {
+  const { isLoggedIn, userProfile } = useStore();
+  const navigate = useNavigate();
+
   return (
-    <section className="mx-auto max-w-7xl px-4 pt-28 md:px-6">
-      <div className="flex items-end justify-between">
-        <SectionTitle eyebrow="Trending now" title="Top batteries this week" />
-        <Link
-          to="/shop"
-          className="mb-8 hidden items-center gap-1 text-sm font-semibold text-primary md:flex"
-        >
-          View all <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {products
-          .filter((p) => p.category === "Battery")
-          .slice(0, 4)
-          .map((p) => (
-            <ProductCard key={p.id} p={p} />
-          ))}
+    <section className="bg-white py-12 md:py-16 border-b border-[#E5E7EB]">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="rounded-2xl border border-[#E5E7EB] bg-[#F7F7F8] p-8 sm:p-10 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="max-w-xl">
+            <div className="flex items-center gap-2">
+              <span className="grid h-9 w-9 place-items-center rounded-lg bg-red-50 text-[#E31E24]">
+                <Car className="h-5 w-5" />
+              </span>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#6B7280]">
+                {isLoggedIn ? "CONNECTED VEHICLE PORTAL" : "LOGIN TO ACCESS GARAGE"}
+              </span>
+            </div>
+
+            <h3 className="mt-3 text-2xl sm:text-3xl font-extrabold text-[#111111] font-display">
+              {isLoggedIn
+                ? `Welcome back${userProfile?.name?.trim() ? `, ${userProfile.name.trim().split(" ")[0]}` : ""}!`
+                : "Own a Car or Electric Two-Wheeler?"}
+            </h3>
+
+            <p className="mt-2 text-sm text-[#6B7280] leading-relaxed">
+              {isLoggedIn
+                ? "Your digital garage has active vehicle records. Check battery state-of-health, view live dispatches, and access order tax receipts."
+                : "Sign in to unlock your Digital Garage, access live order dispatches, save compatible spare parts, and manage vehicle health telemetry."}
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
+            {isLoggedIn ? (
+              <>
+                <Link
+                  to="/dashboard/customer"
+                  search={{ tab: "garage" } as any}
+                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-[#E31E24] px-6 py-3 text-xs font-semibold text-white shadow-xs hover:bg-red-700 transition"
+                >
+                  <Car className="mr-2 h-4 w-4" />
+                  <span>Open My Garage</span>
+                </Link>
+                <Link
+                  to="/dashboard/customer"
+                  search={{ tab: "orders" } as any}
+                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg border border-[#E5E7EB] bg-white px-5 py-3 text-xs font-semibold text-[#111111] hover:bg-gray-100 transition shadow-2xs"
+                >
+                  <span>View Orders & Tracking</span>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-[#E31E24] px-6 py-3 text-xs font-semibold text-white shadow-xs hover:bg-red-700 transition"
+                >
+                  <span>Sign In to Your Account</span>
+                  <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                </Link>
+                <Link
+                  to="/shop"
+                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg border border-[#E5E7EB] bg-white px-5 py-3 text-xs font-semibold text-[#111111] hover:bg-gray-100 transition shadow-2xs"
+                >
+                  <span>Browse Store Catalog</span>
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </section>
   );
 }
 
-function Roles() {
-  const roles = [
+{/* ─────────────────────────────────────────────────────────────
+    7. TRUST AND SERVICE HIGHLIGHTS
+   ───────────────────────────────────────────────────────────── */}
+function TrustAndSupportSection() {
+  const items = [
     {
-      t: "Riders & owners",
-      d: "Garage, VIN fitment, live tracking.",
-      img: scooterImg,
-      to: "/dashboard/customer",
-      Icon: BikeIcon,
+      title: "100% Genuine Components",
+      desc: "Direct supply from verified automotive distributors and OEMs.",
+      Icon: ShieldCheck,
     },
     {
-      t: "Workshops & mechanics",
-      d: "Bulk orders and job cards per vehicle.",
-      img: workshopImg,
-      to: "/dashboard/workshop",
-      Icon: Wrench,
-    },
-    {
-      t: "Vendors & dealers",
-      d: "Inventory, fitment tags and payouts.",
-      img: battery3,
-      to: "/dashboard/vendor",
-      Icon: Store,
-    },
-    {
-      t: "Delivery riders",
-      d: "Accept jobs, multi-pickup routes, earnings.",
-      img: riderImg,
-      to: "/dashboard/rider",
+      title: "Real-time Courier Telemetry",
+      desc: "Live GPS updates & express milestone checkpoints.",
       Icon: Truck,
     },
-  ] as const;
-  return (
-    <section className="mx-auto max-w-7xl px-4 pt-28 md:px-6">
-      <SectionTitle eyebrow="One platform, every role" title="Pick your dashboard" />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {roles.map((r) => (
-          <Link
-            key={r.t}
-            to={r.to}
-            className="group overflow-hidden rounded-3xl border border-border bg-card shadow-card transition hover:border-primary/60"
-          >
-            <div className="aspect-[4/3] overflow-hidden">
-              <img
-                src={r.img}
-                alt={r.t}
-                loading="lazy"
-                width={1280}
-                height={896}
-                className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
-              />
-            </div>
-            <div className="p-5">
-              <r.Icon className="h-5 w-5 text-primary" />
-              <p className="mt-3 text-lg font-bold">{r.t}</p>
-              <p className="text-sm text-muted-foreground">{r.d}</p>
-              <p className="mt-4 flex items-center gap-1 text-sm font-semibold text-primary">
-                Open dashboard{" "}
-                <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-              </p>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function Testimonials() {
-  const t = [
     {
-      n: "Priya S.",
-      r: "Ather 450X owner",
-      q: "Entered my VIN and got three verified batteries in seconds. Rider showed up in 32 minutes.",
+      title: "7-Day Replacement Guarantee",
+      desc: "Hassle-free replacement for fitment discrepancies.",
+      Icon: FileCheck,
     },
     {
-      n: "Manjunath Auto Works",
-      r: "Workshop, Jayanagar",
-      q: "We order from four vendors in one go now. Delivery charges are finally transparent.",
-    },
-    {
-      n: "VoltHub",
-      r: "Dealer, Indiranagar",
-      q: "Orders come pre-matched to the customer's bike — almost zero returns this month.",
+      title: "Automotive Technical Support",
+      desc: "Direct phone and chat assistance for vehicle spares.",
+      Icon: Headphones,
     },
   ];
-  return (
-    <section className="mx-auto max-w-7xl px-4 pt-28 md:px-6">
-      <SectionTitle eyebrow="Loved on the road" title="Riders trust Riderzpro" />
-      <div className="grid gap-4 md:grid-cols-3">
-        {t.map((x) => (
-          <figure key={x.n} className="rounded-3xl border border-border bg-card p-6 shadow-card">
-            <div className="flex gap-0.5">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star key={i} className="h-4 w-4 fill-warning text-warning" />
-              ))}
-            </div>
-            <blockquote className="mt-4 text-lg leading-relaxed">“{x.q}”</blockquote>
-            <figcaption className="mt-6 text-sm">
-              <b>{x.n}</b> <span className="text-muted-foreground">· {x.r}</span>
-            </figcaption>
-          </figure>
-        ))}
-      </div>
-    </section>
-  );
-}
 
-function AppCta() {
   return (
-    <section className="mx-auto max-w-7xl px-4 pt-28 md:px-6">
-      <div className="relative overflow-hidden rounded-[2rem] bg-primary p-10 text-primary-foreground md:p-16">
-        <Zap className="absolute -right-10 -top-10 h-72 w-72 opacity-10" fill="currentColor" />
-        <p className="font-display text-5xl leading-none md:text-7xl">
-          Install Riderzpro
-          <br />
-          on your phone.
-        </p>
-        <p className="mt-4 max-w-lg opacity-80">
-          Open this site on your phone and tap “Add to Home Screen” — it works like a native app
-          with live tracking and voice search.
-        </p>
-        <Link
-          to="/shop"
-          className="mt-8 inline-flex items-center gap-2 rounded-full bg-primary-foreground px-6 py-3 font-semibold text-primary"
-        >
-          Start shopping <ArrowRight className="h-4 w-4" />
-        </Link>
+    <section className="bg-white py-10">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {items.map((it) => (
+            <div key={it.title} className="flex items-center gap-3.5">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] text-[#111111]">
+                <it.Icon className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-[#111111]">{it.title}</p>
+                <p className="text-[11px] text-[#6B7280] leading-snug">{it.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );

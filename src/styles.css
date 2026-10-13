@@ -5,14 +5,15 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-display: "Bebas Neue", "Barlow Condensed", sans-serif;
-  --font-sans: "Barlow", system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  --font-sans: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
+  --radius-full: 9999px;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -52,84 +53,54 @@
 }
 
 :root {
-  --radius: 0.9rem;
-  --background: oklch(0.975 0.006 110);
-  --foreground: oklch(0.2 0.01 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.01 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.01 260);
-  --primary: oklch(0.62 0.19 135);
-  --primary-foreground: oklch(0.99 0.01 120);
-  --secondary: oklch(0.93 0.01 110);
-  --secondary-foreground: oklch(0.22 0.01 260);
-  --muted: oklch(0.94 0.008 110);
-  --muted-foreground: oklch(0.5 0.015 260);
-  --accent: oklch(0.92 0.06 125);
-  --accent-foreground: oklch(0.3 0.08 135);
-  --destructive: oklch(0.58 0.22 27);
-  --destructive-foreground: oklch(0.98 0 0);
-  --success: oklch(0.62 0.17 150);
-  --warning: oklch(0.75 0.16 70);
-  --border: oklch(0.89 0.01 110);
-  --input: oklch(0.89 0.01 110);
-  --ring: oklch(0.62 0.19 135);
-  --chart-1: oklch(0.62 0.19 135);
-  --chart-2: oklch(0.6 0.12 220);
-  --chart-3: oklch(0.7 0.16 60);
-  --chart-4: oklch(0.55 0.18 300);
-  --chart-5: oklch(0.65 0.2 25);
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.2 0.01 260);
-  --sidebar-primary: oklch(0.62 0.19 135);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.94 0.03 125);
-  --sidebar-accent-foreground: oklch(0.25 0.05 135);
-  --sidebar-border: oklch(0.9 0.01 110);
-  --sidebar-ring: oklch(0.62 0.19 135);
-  --hero-ink: oklch(0.98 0.01 120);
-  --glass: color-mix(in oklab, var(--card) 72%, transparent);
-  --shadow-glow:
-    0 0 0 1px color-mix(in oklab, var(--primary) 30%, transparent),
-    0 18px 50px -18px color-mix(in oklab, var(--primary) 55%, transparent);
-  --shadow-card: 0 1px 2px oklch(0 0 0 / 5%), 0 12px 32px -16px oklch(0 0 0 / 18%);
-}
+  --radius: 0.5rem;
+  --background: #F5F6F8;
+  --foreground: #111111;
+  --card: #FFFFFF;
+  --card-foreground: #111111;
+  --popover: #FFFFFF;
+  --popover-foreground: #111111;
+  --primary: #E31E24;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F3F4F6;
+  --secondary-foreground: #111111;
+  --muted: #F3F4F6;
+  --muted-foreground: #6B7280;
+  --accent: #FEF2F2;
+  --accent-foreground: #E31E24;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --success: #15803D;
+  --warning: #D97706;
+  --border: #E5E7EB;
+  --input: #E5E7EB;
+  --ring: #E31E24;
+  --chart-1: #E31E24;
+  --chart-2: #111111;
+  --chart-3: #E9A04B;
+  --chart-4: #6B7280;
+  --chart-5: #DC2626;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #111111;
+  --sidebar-primary: #E31E24;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #FEF2F2;
+  --sidebar-accent-foreground: #E31E24;
+  --sidebar-border: #E5E7EB;
+  --sidebar-ring: #E31E24;
+  --hero-ink: #FFFFFF;
+  --glass: rgba(255, 255, 255, 0.95);
+  --shadow-glow: 0 0 0 1px rgba(227, 30, 36, 0.25), 0 8px 24px -6px rgba(227, 30, 36, 0.2);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
 
-.dark {
-  --background: oklch(0.155 0.008 260);
-  --foreground: oklch(0.96 0.01 110);
-  --card: oklch(0.2 0.01 260);
-  --card-foreground: oklch(0.96 0.01 110);
-  --popover: oklch(0.2 0.01 260);
-  --popover-foreground: oklch(0.96 0.01 110);
-  --primary: oklch(0.88 0.22 128);
-  --primary-foreground: oklch(0.18 0.02 260);
-  --secondary: oklch(0.25 0.01 260);
-  --secondary-foreground: oklch(0.96 0.01 110);
-  --muted: oklch(0.24 0.01 260);
-  --muted-foreground: oklch(0.7 0.015 260);
-  --accent: oklch(0.3 0.06 130);
-  --accent-foreground: oklch(0.92 0.15 128);
-  --destructive: oklch(0.65 0.2 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --success: oklch(0.75 0.17 150);
-  --warning: oklch(0.8 0.15 75);
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.88 0.22 128);
-  --chart-1: oklch(0.88 0.22 128);
-  --chart-2: oklch(0.7 0.13 220);
-  --chart-3: oklch(0.78 0.15 65);
-  --chart-4: oklch(0.65 0.18 300);
-  --chart-5: oklch(0.68 0.2 25);
-  --sidebar: oklch(0.18 0.009 260);
-  --sidebar-foreground: oklch(0.96 0.01 110);
-  --sidebar-primary: oklch(0.88 0.22 128);
-  --sidebar-primary-foreground: oklch(0.18 0.02 260);
-  --sidebar-accent: oklch(0.26 0.03 130);
-  --sidebar-accent-foreground: oklch(0.92 0.15 128);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.88 0.22 128);
+  /* Suggested Brand Tokens */
+  --brand-primary: #E31E24;
+  --brand-dark: #111111;
+  --brand-background: #F5F6F8;
+  --surface: #FFFFFF;
+  --text-primary: #111111;
+  --text-secondary: #6B7280;
+  --brand-orange: #E9A04B;
 }
 
 @layer base {
@@ -138,22 +109,28 @@
   }
   html {
     font-family: var(--font-sans);
+    letter-spacing: -0.011em;
   }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.025em;
   }
 }
 
 @utility font-display {
   font-family: var(--font-display);
-  letter-spacing: 0.01em;
+  letter-spacing: -0.028em;
+  font-weight: 700;
 }
 @utility glass {
   background: var(--glass);
-  backdrop-filter: blur(16px) saturate(1.4);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 @utility shadow-glow {
   box-shadow: var(--shadow-glow);
@@ -166,64 +143,96 @@
   animation: charge 3.2s linear infinite;
 }
 @keyframes charge {
-  0% {
-    transform: translateX(-100%);
-    opacity: 0;
-  }
-  20% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateX(100%);
-    opacity: 0;
-  }
+  0% { transform: translateX(-100%); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
 }
 @keyframes float-y {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
 }
 @utility animate-float {
   animation: float-y 5s ease-in-out infinite;
 }
-@keyframes pulse-ring {
-  0% {
-    transform: scale(0.8);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(2.2);
-    opacity: 0;
-  }
-}
-@utility animate-pulse-ring {
-  animation: pulse-ring 1.6s ease-out infinite;
+
+/* ─────────────────────────────────────────────────────────────
+   APPLE VISIONOS SPATIAL GLASSMORPHISM DESIGN SYSTEM
+   ───────────────────────────────────────────────────────────── */
+
+@utility vision-glass {
+  background: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.05), inset 0 1px 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-/* Safe area padding utilities for mobile notch and home indicators */
-@utility pt-safe {
-  padding-top: env(safe-area-inset-top, 0px);
+@utility vision-glass-subtle {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 4px 16px 0 rgba(15, 23, 42, 0.03);
 }
-@utility pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+
+@utility vision-dock {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.12), inset 0 1px 2px 0 rgba(255, 255, 255, 1);
 }
-@utility pl-safe {
-  padding-left: env(safe-area-inset-left, 0px);
+
+@utility vision-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 2px 8px 0 rgba(15, 23, 42, 0.04), inset 0 1px 1px 0 rgba(255, 255, 255, 0.9);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
-@utility pr-safe {
-  padding-right: env(safe-area-inset-right, 0px);
+
+.vision-card:hover {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(227, 30, 36, 0.3);
+  box-shadow: 0 12px 24px -4px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(227, 30, 36, 0.15);
+  transform: translateY(-1px);
 }
-@utility p-safe {
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  padding-left: env(safe-area-inset-left, 0px);
+
+@utility vision-pill {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
 }
-@utility tap-target {
-  min-height: 44px;
-  min-width: 44px;
+
+@utility vision-mic-orb {
+  background: radial-gradient(circle at 35% 30%, #FF5252, #E31E24 60%, #B71217 100%);
+  box-shadow: 
+    inset 0 2px 3px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -2px 3px 0 rgba(0, 0, 0, 0.3),
+    0 10px 28px -4px rgba(227, 30, 36, 0.5),
+    0 0 0 3px rgba(255, 255, 255, 0.85);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+.vision-mic-orb:hover {
+  transform: translateY(-3px) scale(1.06);
+  box-shadow: 
+    inset 0 2.5px 3.5px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -2px 3px 0 rgba(0, 0, 0, 0.3),
+    0 14px 34px -4px rgba(227, 30, 36, 0.65),
+    0 0 0 4px rgba(255, 255, 255, 0.95);
+}
+
+@keyframes vision-mic-pulse {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.2); opacity: 0.35; }
+  100% { transform: scale(1.45); opacity: 0; }
+}
+
+@utility animate-mic-pulse {
+  animation: vision-mic-pulse 2.2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+

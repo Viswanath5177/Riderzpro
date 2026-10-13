@@ -14,7 +14,6 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { StoreProvider } from "../lib/store";
 import { Toaster } from "../components/ui/sonner";
-import { useNativeShell } from "../lib/native";
 
 function NotFoundComponent() {
   return (
@@ -80,22 +79,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Riderzpro — EV Batteries & Parts Marketplace" },
-      {
-        name: "description",
-        content:
-          "Find EV batteries and parts that fit your bike, order from many sellers at once and track delivery live.",
-      },
-      { name: "theme-color", content: "#14161a" },
+      { name: "description", content: "Find EV batteries and parts that fit your bike, order from many sellers at once and track delivery live." },
+      { name: "theme-color", content: "#ffffff" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { property: "og:title", content: "Riderzpro — EV Batteries & Parts Marketplace" },
-      {
-        property: "og:description",
-        content:
-          "Find EV batteries and parts that fit your bike, order from many sellers at once and track delivery live.",
-      },
+      { property: "og:description", content: "Find EV batteries and parts that fit your bike, order from many sellers at once and track delivery live." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
@@ -106,13 +96,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
-      { rel: "apple-touch-icon", href: "/icon-192.png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Bebas+Neue&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
       },
     ],
   }),
@@ -124,7 +113,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
@@ -138,17 +127,11 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const { isOnline } = useNativeShell();
 
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <StoreProvider>
-        {!isOnline && (
-          <div className="fixed top-0 inset-x-0 z-50 bg-destructive/90 text-destructive-foreground px-4 py-1 text-center text-xs font-medium pt-safe">
-            Offline mode — Showing cached data
-          </div>
-        )}
         <Outlet />
         <Toaster position="top-center" />
       </StoreProvider>
