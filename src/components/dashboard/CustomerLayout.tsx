@@ -424,8 +424,8 @@ export function CustomerLayout({
                     </p>
                     <UserCog className="h-3.5 w-3.5 text-gray-400 group-hover:text-[#E31E24] shrink-0" />
                   </div>
-                  <p className="text-[11px] text-gray-500 truncate flex items-center gap-1 mt-0.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <p className="text-[11px] text-[#E31E24] font-medium truncate flex items-center gap-1.5 mt-0.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#E31E24] shrink-0" />
                     <span>{userProfile.points || 450} pts · Gold Tier</span>
                   </p>
                 </div>
@@ -642,8 +642,8 @@ export function CustomerLayout({
                           <p className="text-xs font-bold text-gray-950 truncate">{userProfile.name}</p>
                           <p className="text-[11px] text-gray-500 truncate">{userProfile.email}</p>
                           <div className="flex items-center gap-1.5 mt-1">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                            <span className="text-[10px] font-semibold text-emerald-700">Gold Tier · {userProfile.points || 450} pts</span>
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#E31E24]" />
+                            <span className="text-[10px] font-semibold text-[#E31E24]">Gold Tier · {userProfile.points || 450} pts</span>
                           </div>
                         </div>
                       </div>

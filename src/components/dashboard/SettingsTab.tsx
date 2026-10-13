@@ -129,7 +129,7 @@ export function SettingsTab() {
               </p>
 
               <div className="pt-1 flex flex-wrap items-center gap-2 text-xs">
-                <span className="inline-flex items-center gap-1.5 rounded-xl bg-red-500/10 px-3 py-1.5 text-xs font-bold text-[#E31E24] border border-red-500/25 shadow-2xs backdrop-blur-sm">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-[#E31E24] border border-red-200 shadow-2xs backdrop-blur-sm">
                   <Award className="h-3.5 w-3.5 text-[#E31E24]" />
                   <span>Gold Tier Member · {userProfile.points || 450} ProPoints</span>
                 </span>
