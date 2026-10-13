@@ -294,14 +294,16 @@ export function OrdersTab() {
                     </button>
                   </div>
 
-                  <Link
-                    to="/track/$id"
-                    params={{ id: o.id }}
-                    className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold shadow-xs hover:bg-emerald-600 transition flex items-center gap-1.5"
-                  >
-                    <MapPin className="h-3.5 w-3.5" />
-                    <span>Track Live GPS Courier</span>
-                  </Link>
+                  {isLive && (
+                    <Link
+                      to="/track/$id"
+                      params={{ id: o.shipmentId || o.id }}
+                      className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold shadow-xs hover:bg-emerald-600 transition flex items-center gap-1.5"
+                    >
+                      <MapPin className="h-3.5 w-3.5" />
+                      <span>Track Live GPS Courier</span>
+                    </Link>
+                  )}
                 </div>
               </div>
             );

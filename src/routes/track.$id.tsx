@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, MessageCircle, Phone, Star, Lock, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -23,7 +24,12 @@ export const Route = createFileRoute("/track/$id")({
 
 function Track() {
   const { id } = Route.useParams();
-  const { orders, advanceOrder, role, userProfile } = useStore();
+  const { orders, advanceOrder, updateOrderStatus, role, userProfile } = useStore();
+
+  // Find linked order to resolve deliveryId or fallback to id
+  const targetOrder = orders.find((x) => x.id === id || x.shipmentId === id);
+  const effectiveDeliveryId = targetOrder?.shipmentId || id;
+  const effectiveUserId = userProfile?.phone || "9876543210";
 
   // Connect live real-time backend tracking via REST + WebSocket
   const {
@@ -37,13 +43,22 @@ function Track() {
     error: trackingError,
     refresh,
   } = useDeliveryTracking({
-    deliveryId: id,
-    userId: (id === "ord_demo_battery" || id === "delivery_vijayawada_amaravati_live") ? "cust_demo" : userProfile?.phone || "cust_demo",
+    deliveryId: effectiveDeliveryId,
+    userId: effectiveUserId,
     userRole: role || "customer",
   });
 
+  // Sync completion milestone back into store order state
+  useEffect(() => {
+    if (tracking?.status === "delivered" || connectionState === "completed") {
+      if (targetOrder && targetOrder.status < 5) {
+        updateOrderStatus(targetOrder.id, 5);
+      }
+    }
+  }, [tracking?.status, connectionState, targetOrder, updateOrderStatus]);
+
   // Check demo store fallback
-  const demoOrder = orders.find((x) => x.id === id || x.shipmentId === id);
+  const demoOrder = targetOrder;
 
   // If real backend tracking data is active and loaded
   if (tracking) {

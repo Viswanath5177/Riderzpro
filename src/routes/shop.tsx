@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { SlidersHorizontal, Search, Bike, Check, X, ShieldCheck } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { ProductCard } from "@/components/site/bits";
-import { bestOffer, bikes, getBike, products, type Category } from "@/lib/data";
+import { bestOffer, bikes, getBike, type Category } from "@/lib/data";
+import { useCatalogue } from "@/lib/catalogue";
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/shop")({
@@ -35,6 +36,7 @@ const CATS: (Category | "All")[] = [
 
 function Shop() {
   const { activeBikeId, setActiveBikeId } = useStore();
+  const { products: catalogueProducts } = useCatalogue();
 
   const [q, setQ] = useState(() => {
     if (typeof window !== "undefined") {
@@ -73,7 +75,7 @@ function Shop() {
   }, []);
 
   const list = useMemo(() => {
-    let l = products.filter(
+    let l = catalogueProducts.filter(
       (p) =>
         (cat === "All" || p.category === cat) &&
         (!volt || p.voltage === volt) &&
@@ -83,7 +85,7 @@ function Shop() {
     if (sort === "low") l = [...l].sort((a, b) => bestOffer(a).price - bestOffer(b).price);
     if (sort === "high") l = [...l].sort((a, b) => bestOffer(b).price - bestOffer(a).price);
     return l;
-  }, [q, cat, volt, onlyFit, activeBikeId, sort]);
+  }, [catalogueProducts, q, cat, volt, onlyFit, activeBikeId, sort]);
 
   const bike = activeBikeId ? getBike(activeBikeId) : null;
 

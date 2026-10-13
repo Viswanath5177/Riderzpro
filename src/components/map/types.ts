@@ -70,6 +70,8 @@ export interface WebSocketTelemetryMessage {
     | "RIDER_APPROACHING"
     | "RIDER_ARRIVED"
     | "RIDER_ROUTE_DEVIATION"
+    | "RIDER_ROUTE_RECOVERED"
+    | "DELIVERY_STATUS_CHANGED"
     | "DELIVERY_COMPLETED"
     | "PING"
     | "PONG";

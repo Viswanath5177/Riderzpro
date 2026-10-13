@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Package, ArrowRight } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { inr } from "@/lib/data";
 import { ORDER_STEPS, useStore } from "@/lib/store";
 
@@ -13,8 +14,16 @@ export const Route = createFileRoute("/orders")({
       { property: "og:description", content: "Track all your Riderzpro orders." },
     ],
   }),
-  component: Orders,
+  component: OrdersRoute,
 });
+
+function OrdersRoute() {
+  return (
+    <ProtectedRoute>
+      <Orders />
+    </ProtectedRoute>
+  );
+}
 
 function Orders() {
   const { orders } = useStore();
@@ -31,7 +40,7 @@ function Orders() {
         ) : (
           <div className="mt-6 space-y-3">
             {orders.map((o) => (
-              <Link key={o.id} to="/track/$id" params={{ id: o.id }} className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-card transition hover:border-primary">
+              <Link key={o.id} to="/track/$id" params={{ id: o.shipmentId || o.id }} className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-card transition hover:border-primary">
                 <span className="grid h-12 w-12 place-items-center rounded-xl bg-accent text-accent-foreground"><Package className="h-5 w-5" /></span>
                 <div className="flex-1">
                   <p className="font-semibold">{o.id} · {o.groups.length} sellers</p>

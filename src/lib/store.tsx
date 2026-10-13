@@ -22,6 +22,174 @@ import {
   processCourierWebhookEvent,
   type WebhookResult,
 } from "./logistics/adapters";
+import {
+  fetchDeliveries,
+  createDelivery as apiCreateDelivery,
+  updateDeliveryStatus as apiUpdateDeliveryStatus,
+  type BackendDelivery,
+} from "./api";
+
+export function backendDeliveryToOrder(del: BackendDelivery): Order {
+  let numStatus = 0;
+  let fulfillmentStatus: Order["fulfillmentStatus"] = "Awaiting Fulfillment";
+  switch (del.status) {
+    case "pending":
+      numStatus = 0;
+      fulfillmentStatus = "Awaiting Fulfillment";
+      break;
+    case "assigned":
+      numStatus = 2;
+      fulfillmentStatus = "Packed";
+      break;
+    case "picked_up":
+      numStatus = 3;
+      fulfillmentStatus = "Dispatched";
+      break;
+    case "in_transit":
+      numStatus = 4;
+      fulfillmentStatus = "Dispatched";
+      break;
+    case "delivered":
+      numStatus = 5;
+      fulfillmentStatus = "Delivered";
+      break;
+    case "cancelled":
+      numStatus = 0;
+      fulfillmentStatus = "Cancelled";
+      break;
+    default:
+      numStatus = 1;
+      fulfillmentStatus = "Preparing";
+  }
+
+  const createdAt = del.created_at ? new Date(del.created_at).getTime() : Date.now();
+  const km = del.latest_route?.distance_km || 18.4;
+  const eta = Math.round(del.latest_route?.duration_minutes || 25);
+
+  return {
+    id: del.order_id || del.id,
+    createdAt,
+    groups: [
+      {
+        vendorId: del.vendor_id || "v1",
+        items: [{ productId: "p7", qty: 1, price: 14500 }],
+        subtotal: 14500,
+        km,
+        fee: 86,
+        eta,
+      },
+    ],
+    itemsTotal: 14500,
+    deliveryTotal: 86,
+    tax: 2610,
+    total: 17196,
+    eta,
+    payment: "UPI · Paid Online",
+    paymentStatus: del.status === "cancelled" ? "Refunded" : "Paid",
+    status: numStatus,
+    fulfillmentStatus,
+    riderId: del.assigned_rider_id || del.assigned_rider?.id || riders[0]?.id,
+    customerName: del.customer_name || "Aakash Sharma",
+    customerPhone: del.customer_phone || "+91 98765 43210",
+    shipmentId: del.id,
+    shippingAddress: {
+      name: del.customer_name || "Aakash Sharma",
+      phone: del.customer_phone || "+91 98765 43210",
+      street: del.dropoff_address || "Amaravati Capital Complex",
+      city: "Amaravati",
+      state: "Andhra Pradesh",
+      pincode: "522237",
+    },
+  };
+}
+
+export function backendDeliveryToShipment(del: BackendDelivery): NormalizedShipment {
+  let shipStatus: ShipmentStatus = "Manifested";
+  switch (del.status) {
+    case "pending":
+    case "assigned":
+      shipStatus = "Manifested";
+      break;
+    case "picked_up":
+    case "in_transit":
+      shipStatus = "In Transit";
+      break;
+    case "delivered":
+      shipStatus = "Delivered";
+      break;
+    case "cancelled":
+      shipStatus = "Cancelled";
+      break;
+    case "failed":
+      shipStatus = "Delayed";
+      break;
+    default:
+      shipStatus = "In Transit";
+  }
+
+  const events: ShipmentEvent[] = (del.status_history || []).map((sh, idx) => ({
+    id: sh.id || `evt-${idx}`,
+    timestamp: sh.created_at ? new Date(sh.created_at).toLocaleTimeString("en-IN") : "Recent",
+    status: (sh.to_status === "delivered" ? "Delivered" : sh.to_status === "in_transit" ? "In Transit" : "Manifested") as ShipmentStatus,
+    location: del.pickup_address,
+    description: sh.reason || `Status updated to ${sh.to_status}`,
+    isGps: true,
+  }));
+
+  if (events.length === 0) {
+    events.push({
+      id: "evt-initial",
+      timestamp: "Just now",
+      status: shipStatus,
+      location: del.pickup_address,
+      description: `Delivery assigned to ${del.assigned_rider?.name || "Sathesh Ittraju"}`,
+      isGps: true,
+    });
+  }
+
+  return {
+    shipmentId: del.id,
+    orderId: del.order_id || del.id,
+    provider: "RiderzPro Fleet",
+    providerReference: del.id.toUpperCase(),
+    trackingNumber: del.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 14),
+    trackingUrl: `/track/${del.id}`,
+    pickupAddress: {
+      name: del.vendor_name || "Vijayawada Central Hub",
+      street: del.pickup_address,
+      city: "Vijayawada",
+      state: "Andhra Pradesh",
+      pincode: "520001",
+      phone: "+91 866 245 1100",
+    },
+    destinationAddress: {
+      name: del.customer_name || "Aakash Sharma",
+      street: del.dropoff_address,
+      city: "Amaravati",
+      state: "Andhra Pradesh",
+      pincode: "522237",
+      phone: del.customer_phone || "+91 98765 43210",
+    },
+    status: shipStatus,
+    locationType: "Live GPS Telemetry",
+    latestLocation: del.assigned_rider
+      ? `${del.assigned_rider.name} en route (${del.dropoff_address})`
+      : del.pickup_address,
+    lastEventTimestamp: "Live GPS Active",
+    estimatedDelivery: del.latest_route
+      ? `Arriving in ~${Math.round(del.latest_route.duration_minutes)} mins`
+      : "In Transit",
+    currentGps: del.assigned_rider?.current_lat
+      ? {
+          lat: del.assigned_rider.current_lat,
+          lng: del.assigned_rider.current_lng || 80.6480,
+          speedKmph: 32,
+          heading: 285,
+        }
+      : undefined,
+    events,
+  };
+}
 
 export type CartItem = { productId: string; vendorId: string; qty: number };
 export type GarageBike = {
@@ -218,230 +386,21 @@ const DEFAULT_ADDRESS: AddressRef = {
   phone: "",
 };
 
-const DEFAULT_BOOKINGS: ServiceBooking[] = [
-  {
-    id: "SB-1042",
-    bikeId: "ola-s1pro",
-    serviceType: "24-Point EV Health & BMS Diagnostic",
-    slot: "Tomorrow, 10:30 AM",
-    location: "Doorstep (Bellandur)",
-    status: "Confirmed",
-    technician: "Manoj Swamy (Certified EV Tech)",
-    cost: 299,
-    createdAt: Date.now() - 3600000,
-  },
-];
+const DEFAULT_BOOKINGS: ServiceBooking[] = [];
 
-const DEFAULT_NOTIFICATIONS: CustomerNotification[] = [
-  {
-    id: "notif-1",
-    title: "Technician Confirmed",
-    message: "Manoj Swamy is assigned for your doorstep BMS diagnostic tomorrow at 10:30 AM.",
-    time: "25m ago",
-    read: false,
-    type: "service",
-  },
-  {
-    id: "notif-2",
-    title: "Battery Health Alert",
-    message: "Your Ola S1 Pro battery is running optimal at 96% state of health. Regular monsoon maintenance recommended.",
-    time: "3h ago",
-    read: false,
-    type: "system",
-  },
-  {
-    id: "notif-3",
-    title: "Monsoon Exclusive Offer",
-    message: "Get ₹500 off on 60V fast chargers with code EVSAFE. Valid until Sunday.",
-    time: "1d ago",
-    read: true,
-    type: "offer",
-  },
-];
+const DEFAULT_NOTIFICATIONS: CustomerNotification[] = [];
 
-export const DEFAULT_ORDERS: Order[] = [
-  {
-    id: "RZ-849201",
-    createdAt: Date.now() - 48 * 60 * 1000,
-    groups: [
-      {
-        vendorId: "v1",
-        items: [{ productId: "p7", qty: 1, price: 14500 }],
-        subtotal: 14500,
-        km: 4.2,
-        fee: 90,
-        eta: 25,
-      },
-    ],
-    itemsTotal: 14500,
-    deliveryTotal: 90,
-    tax: 2610,
-    total: 17200,
-    eta: 25,
-    payment: "UPI · Google Pay",
-    paymentStatus: "Paid",
-    status: 3, // Picked up / In transit
-    fulfillmentStatus: "Dispatched",
-    riderId: "r1",
-    customerName: "Aakash Sharma",
-    customerPhone: "+91 98765 43210",
-    shippingAddress: DEFAULT_ADDRESS,
-    shipmentId: "SHP-9201-DEL",
-  },
-  {
-    id: "RZ-793420",
-    createdAt: Date.now() - 4 * 24 * 60 * 60 * 1000,
-    groups: [
-      {
-        vendorId: "v3",
-        items: [{ productId: "p12", qty: 1, price: 2400 }],
-        subtotal: 2400,
-        km: 3.1,
-        fee: 77,
-        eta: 30,
-      },
-    ],
-    itemsTotal: 2400,
-    deliveryTotal: 77,
-    tax: 432,
-    total: 2909,
-    eta: 30,
-    payment: "Credit Card (HDFC)",
-    paymentStatus: "Paid",
-    status: 5, // Delivered
-    fulfillmentStatus: "Delivered",
-    riderId: "r2",
-    customerName: "Aakash Sharma",
-    customerPhone: "+91 98765 43210",
-    shippingAddress: DEFAULT_ADDRESS,
-    shipmentId: "SHP-3420-BLU",
-  },
-];
+export const DEFAULT_ORDERS: Order[] = [];
 
-export const DEFAULT_SHIPMENTS: NormalizedShipment[] = [
-  {
-    shipmentId: "SHP-9201-DEL",
-    orderId: "RZ-849201",
-    provider: "Delhivery",
-    providerReference: "DEL-WAYBILL-984128471",
-    trackingNumber: "DEL984128471",
-    trackingUrl: "https://www.delhivery.com/track/package/DEL984128471",
-    pickupAddress: {
-      name: "VoltHub Indiranagar",
-      street: "100ft Road, HAL 2nd Stage",
-      city: "Bengaluru",
-      pincode: "560038",
-      phone: "+91 80 4123 9901",
-    },
-    destinationAddress: DEFAULT_ADDRESS,
-    status: "In Transit",
-    locationType: "Facility Checkpoint",
-    latestLocation: "Bommasandra Hub Facility (Bengaluru)",
-    lastEventTimestamp: "24m ago",
-    estimatedDelivery: "Today, 5:30 PM",
-    events: [
-      {
-        id: "evt-del-1",
-        timestamp: "Today, 09:15 AM",
-        status: "Manifested",
-        location: "VoltHub Indiranagar",
-        description: "Package Picked Up from Vendor Facility",
-        isGps: false,
-        facilityName: "Indiranagar Inbound Sort Hub",
-      },
-      {
-        id: "evt-del-2",
-        timestamp: "Today, 11:30 AM",
-        status: "In Transit",
-        location: "Central Sort Facility",
-        description: "Inbound Scan & Sort Completed into Mother Bag",
-        isGps: false,
-        facilityName: "Central Sort Facility (Bengaluru East)",
-      },
-      {
-        id: "evt-del-3",
-        timestamp: "Today, 01:10 PM",
-        status: "In Transit",
-        location: "Bommasandra Hub Facility",
-        description: "Bagging for Local Route Dispatch to Bellandur",
-        isGps: false,
-        facilityName: "Bommasandra Hub Facility",
-      },
-    ],
-  },
-  {
-    shipmentId: "SHP-3420-BLU",
-    orderId: "RZ-793420",
-    provider: "Bluedart",
-    providerReference: "BLU-AWB-7749021",
-    trackingNumber: "BLU7749021",
-    trackingUrl: "https://www.bluedart.com/tracking?trackNumber=BLU7749021",
-    pickupAddress: {
-      name: "EV Spares Jayanagar",
-      street: "9th Block, Jayanagar",
-      city: "Bengaluru",
-      pincode: "560069",
-      phone: "+91 80 2654 8831",
-    },
-    destinationAddress: DEFAULT_ADDRESS,
-    status: "Delivered",
-    locationType: "Facility Checkpoint",
-    latestLocation: "Bellandur Destination Facility",
-    lastEventTimestamp: "4 days ago",
-    estimatedDelivery: "Delivered on Oct 8",
-    actualDeliveryTimestamp: "Oct 8, 02:45 PM",
-    events: [
-      {
-        id: "evt-blu-1",
-        timestamp: "Oct 7, 03:00 PM",
-        status: "Manifested",
-        location: "Jayanagar Logistics Desk",
-        description: "Air/Surface Manifest Created",
-        isGps: false,
-      },
-      {
-        id: "evt-blu-2",
-        timestamp: "Oct 8, 10:00 AM",
-        status: "Out for Delivery",
-        location: "Bellandur Delivery Center",
-        description: "Out for delivery with Blue Dart Field Executive",
-        isGps: false,
-      },
-      {
-        id: "evt-blu-3",
-        timestamp: "Oct 8, 02:45 PM",
-        status: "Delivered",
-        location: "Customer Doorstep (Bellandur)",
-        description: "Delivered & Signed by Aakash Sharma. OTP Verified.",
-        isGps: false,
-      },
-    ],
-    proofOfDelivery: {
-      signedBy: "Aakash Sharma",
-      timestamp: "Oct 8, 02:45 PM",
-      otpVerified: true,
-    },
-  },
-];
+export const DEFAULT_SHIPMENTS: NormalizedShipment[] = [];
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [garage, setGarage] = useState<GarageBike[]>([
-    {
-      bikeId: "ola-s1pro",
-      year: 2023,
-      nickname: "Daily Ride",
-      vin: "P6R1S1PR2PN000001",
-      regNo: "KA 01 EQ 8821",
-      odoKm: 12450,
-      batteryHealth: 96,
-      nextServiceDays: 42,
-    },
-  ]);
-  const [activeBikeId, setActiveBikeId] = useState<string | null>("ola-s1pro");
-  const [orders, setOrders] = useState<Order[]>(DEFAULT_ORDERS);
-  const [shipments, setShipments] = useState<NormalizedShipment[]>(DEFAULT_SHIPMENTS);
+  const [garage, setGarage] = useState<GarageBike[]>([]);
+  const [activeBikeId, setActiveBikeId] = useState<string | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [shipments, setShipments] = useState<NormalizedShipment[]>([]);
   const [inventoryStock, setInventoryStock] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
     products.forEach((p) => {
@@ -449,14 +408,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
     return initial;
   });
-  const [savedProductIds, setSavedProductIds] = useState<string[]>(["p1", "p8"]);
-  const [serviceBookings, setServiceBookings] = useState<ServiceBooking[]>(DEFAULT_BOOKINGS);
-  const [notifications, setNotifications] = useState<CustomerNotification[]>(DEFAULT_NOTIFICATIONS);
+  const [savedProductIds, setSavedProductIds] = useState<string[]>([]);
+  const [serviceBookings, setServiceBookings] = useState<ServiceBooking[]>([]);
+  const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [role, setRole] = useState<Role>("customer");
-  // A browser-local flag is not an authentication credential. The navbar hydrates
-  // this state from the server session cookie after the app loads.
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  // Hydrates auth state and purges legacy mock user profiles
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const auth = localStorage.getItem("riderzpro_auth");
+      const user = localStorage.getItem(KEY);
+      if (user && (user.includes("RZ-849201") || user.includes("P6R1S1PR2PN000001"))) {
+        localStorage.removeItem(KEY);
+      }
+      return auth === "true";
+    }
+    return false;
+  });
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -464,36 +432,117 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const raw = localStorage.getItem(KEY);
       if (raw) {
         const s = JSON.parse(raw);
-        if (s.cart) setCart(s.cart);
-        if (s.garage) setGarage(s.garage);
-        if ("activeBikeId" in s) setActiveBikeId(s.activeBikeId);
-        if (s.orders && s.orders.length > 0) setOrders(s.orders);
-        if (s.shipments && s.shipments.length > 0) setShipments(s.shipments);
-        if (s.inventoryStock) setInventoryStock(s.inventoryStock);
-        if (s.savedProductIds) setSavedProductIds(s.savedProductIds);
-        if (s.serviceBookings) setServiceBookings(s.serviceBookings);
-        if (s.notifications) setNotifications(s.notifications);
-        if (s.userProfile) {
-          const isMock =
-            s.userProfile.name === "Aakash Sharma" ||
-            s.userProfile.email === "aakash.sharma@example.com";
-          if (!isMock) {
-            setUserProfile({
-              ...DEFAULT_PROFILE,
-              ...s.userProfile,
-              addresses: Array.isArray(s.userProfile.addresses) ? s.userProfile.addresses : [],
-              selectedAddressId: s.userProfile.selectedAddressId || "",
-            });
-          } else {
-            setUserProfile(DEFAULT_PROFILE);
+        // Clean out any legacy mock data if present
+        const hasLegacyMock =
+          (s.orders && s.orders.some((o: Order) => o.id === "RZ-849201" || o.id === "RZ-793420")) ||
+          (s.garage && s.garage.some((g: GarageBike) => g.vin === "P6R1S1PR2PN000001" || g.bikeId === "ola-s1pro")) ||
+          (s.serviceBookings && s.serviceBookings.some((b: ServiceBooking) => b.id === "SB-1042"));
+
+        if (!hasLegacyMock) {
+          if (Array.isArray(s.cart)) setCart(s.cart);
+          if (Array.isArray(s.garage)) setGarage(s.garage);
+          if ("activeBikeId" in s) setActiveBikeId(s.activeBikeId);
+          if (Array.isArray(s.orders)) setOrders(s.orders);
+          if (Array.isArray(s.shipments)) setShipments(s.shipments);
+          if (s.inventoryStock) setInventoryStock(s.inventoryStock);
+          if (Array.isArray(s.savedProductIds)) setSavedProductIds(s.savedProductIds);
+          if (Array.isArray(s.serviceBookings)) setServiceBookings(s.serviceBookings);
+          if (Array.isArray(s.notifications)) setNotifications(s.notifications);
+          if (s.userProfile) {
+            const isMock = s.userProfile.email === "aakash.sharma@example.com";
+            if (!isMock) {
+              setUserProfile({
+                ...DEFAULT_PROFILE,
+                ...s.userProfile,
+                addresses: Array.isArray(s.userProfile.addresses) ? s.userProfile.addresses : [],
+                selectedAddressId: s.userProfile.selectedAddressId || "",
+              });
+            } else {
+              setUserProfile(DEFAULT_PROFILE);
+            }
           }
+          if (s.role) setRole(s.role);
+        } else {
+          // Reset legacy mock state
+          localStorage.removeItem(KEY);
+          setUserProfile(DEFAULT_PROFILE);
+          setOrders([]);
+          setShipments([]);
+          setGarage([]);
+          setActiveBikeId(null);
+          setServiceBookings([]);
+          setNotifications([]);
+          setSavedProductIds([]);
         }
-        if (s.role) setRole(s.role);
       }
+
+      // Hydrate user profile from active auth session
+      const rawAuthUser = localStorage.getItem("riderzpro_auth_user");
+      if (rawAuthUser) {
+        try {
+          const parsedAuth = JSON.parse(rawAuthUser);
+          if (parsedAuth && parsedAuth.name) {
+            setUserProfile((prev) => ({
+              ...prev,
+              name: parsedAuth.name,
+              email: parsedAuth.email || prev.email,
+              phone: parsedAuth.phone || prev.phone,
+            }));
+            setIsLoggedIn(true);
+          }
+        } catch {}
+      }
+
       setTheme("light");
     } catch {}
     setLoaded(true);
   }, []);
+
+  // Sync deliveries from real backend
+  useEffect(() => {
+    async function syncBackendDeliveries() {
+      try {
+        const rawAuth = typeof window !== "undefined" ? localStorage.getItem("riderzpro_auth_user") : null;
+        let customerIdentifier = "9876543210";
+        if (rawAuth) {
+          try {
+            const parsed = JSON.parse(rawAuth);
+            if (parsed.phone) customerIdentifier = parsed.phone;
+            else if (parsed.id) customerIdentifier = parsed.id;
+          } catch {}
+        } else if (userProfile?.phone) {
+          customerIdentifier = userProfile.phone;
+        }
+
+        const res = await fetchDeliveries({ customer_id: customerIdentifier });
+        if (res && Array.isArray(res.items) && res.items.length > 0) {
+          const backendOrders = res.items.map(backendDeliveryToOrder);
+          const backendShipments = res.items.map(backendDeliveryToShipment);
+
+          setOrders((prev) => {
+            const backendOrderIds = new Set(backendOrders.map((o) => o.id));
+            const backendShipmentIds = new Set(backendOrders.map((o) => o.shipmentId).filter(Boolean));
+            const remainingLocal = prev.filter(
+              (o) => !backendOrderIds.has(o.id) && !backendShipmentIds.has(o.shipmentId || "")
+            );
+            return [...backendOrders, ...remainingLocal];
+          });
+
+          setShipments((prev) => {
+            const backendShipIds = new Set(backendShipments.map((s) => s.shipmentId));
+            const remainingLocal = prev.filter((s) => !backendShipIds.has(s.shipmentId));
+            return [...backendShipments, ...remainingLocal];
+          });
+        }
+      } catch (err) {
+        console.warn("Could not sync deliveries from backend:", err);
+      }
+    }
+
+    if (loaded) {
+      syncBackendDeliveries();
+    }
+  }, [loaded, userProfile?.phone, isLoggedIn]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -684,9 +733,43 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setOrders((prev) => [order, ...prev]);
       setShipments((prev) => [autoShipment, ...prev]);
       setCart([]);
+
+      // Asynchronously persist delivery task in real logistics backend
+      const backendPayload = {
+        order_id: newOrderId,
+        customer_id: userProfile?.phone || "cust_demo",
+        customer_name: options.shippingAddress.name || userProfile?.name || "Customer",
+        customer_phone: options.shippingAddress.phone || userProfile?.phone || "+91 98765 43210",
+        vendor_id: "vnd_nexgen_ev",
+        vendor_name: "NexGen EV Logistics",
+        pickup_address: "Vijayawada Central Hub (16.5062, 80.6480)",
+        pickup_lat: 16.5062,
+        pickup_lng: 80.6480,
+        dropoff_address: `${options.shippingAddress.street || "Amaravati"}, ${options.shippingAddress.city || "Amaravati"}`,
+        dropoff_lat: 16.5740,
+        dropoff_lng: 80.3575,
+        package_weight_kg: 4.5,
+        priority: "normal",
+      };
+
+      apiCreateDelivery(backendPayload)
+        .then((createdDelivery) => {
+          if (createdDelivery?.id) {
+            setOrders((prev) =>
+              prev.map((o) => (o.id === newOrderId ? { ...o, shipmentId: createdDelivery.id } : o))
+            );
+            setShipments((prev) =>
+              prev.map((s) => (s.orderId === newOrderId ? { ...s, shipmentId: createdDelivery.id } : s))
+            );
+          }
+        })
+        .catch((err) => {
+          console.warn("Async backend delivery creation failed:", err);
+        });
+
       return order;
     },
-    [cart, updateInventoryStock]
+    [cart, updateInventoryStock, userProfile]
   );
 
   const placeOrder = useCallback(
@@ -702,12 +785,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const updateOrderStatus = useCallback((id: string, status: number) => {
     setOrders((os) =>
       os.map((o) => {
-        if (o.id !== id) return o;
+        if (o.id !== id && o.shipmentId !== id) return o;
         let fulfillmentStatus = o.fulfillmentStatus;
         if (status === 1) fulfillmentStatus = "Preparing";
         else if (status === 2) fulfillmentStatus = "Packed";
         else if (status >= 3 && status < 5) fulfillmentStatus = "Dispatched";
         else if (status === 5) fulfillmentStatus = "Delivered";
+
+        const targetDeliveryId = o.shipmentId || o.id;
+        if (status === 5 && targetDeliveryId) {
+          apiUpdateDeliveryStatus(targetDeliveryId, "delivered").catch(() => {});
+        }
 
         return {
           ...o,
@@ -717,6 +805,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         };
       })
     );
+
+    if (status === 5) {
+      setShipments((prev) =>
+        prev.map((s) =>
+          s.shipmentId === id || s.orderId === id ? { ...s, status: "Delivered" as ShipmentStatus } : s
+        )
+      );
+    }
   }, []);
 
   const cancelOrder = useCallback((id: string, reason: string) => {
@@ -866,14 +962,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const simulateDemoOrder = useCallback(() => {
     const demoOrder: Order = {
-      id: `RZ-${Math.floor(100000 + Math.random() * 900000)}`,
-      createdAt: Date.now() - 15 * 60 * 1000,
+      id: "delivery_vijayawada_amaravati_live",
+      createdAt: Date.now() - 25 * 60 * 1000,
       groups: [
         {
           vendorId: "v1",
           items: [{ productId: "p7", qty: 1, price: 14500 }],
           subtotal: 14500,
-          km: 3.8,
+          km: 18.4,
           fee: 86,
           eta: 25,
         },
@@ -885,62 +981,88 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       eta: 25,
       payment: "UPI · Google Pay",
       paymentStatus: "Paid",
-      status: 3,
+      status: 4,
       fulfillmentStatus: "Dispatched",
-      riderId: riders[0].id,
-      customerName: "Aakash Sharma",
-      customerPhone: "+91 98765 43210",
-      shippingAddress: DEFAULT_ADDRESS,
-      shipmentId: "SHP-DEMO-FLEET",
+      customerName: userProfile?.name?.trim() || "Aakash Sharma",
+      customerPhone: userProfile?.phone?.trim() || "+91 98765 43210",
+      shippingAddress: {
+        name: "Aakash Sharma",
+        phone: "+91 98765 43210",
+        street: "Amaravati Secretariat / City Center",
+        city: "Amaravati",
+        state: "Andhra Pradesh",
+        pincode: "522237",
+      },
+      shipmentId: "delivery_vijayawada_amaravati_live",
     };
 
     const demoShipment: NormalizedShipment = {
-      shipmentId: "SHP-DEMO-FLEET",
-      orderId: demoOrder.id,
+      shipmentId: "delivery_vijayawada_amaravati_live",
+      orderId: "delivery_vijayawada_amaravati_live",
       provider: "RiderzPro Fleet",
-      providerReference: "FLEET-FAST-9021",
-      trackingNumber: "RZP9021334",
-      trackingUrl: `/track/${demoOrder.id}`,
+      providerReference: "VIJ-AMA-LIVE",
+      trackingNumber: "RZPVJA849201",
+      trackingUrl: `/track/delivery_vijayawada_amaravati_live`,
       pickupAddress: {
-        name: "VoltHub Indiranagar",
-        street: "100ft Road",
-        city: "Bengaluru",
-        pincode: "560038",
-        phone: "+91 80 4123 9901",
+        name: "Vijayawada Central Hub",
+        street: "MG Road, Vijayawada Central Hub",
+        city: "Vijayawada",
+        pincode: "520001",
+        phone: "+91 866 245 1100",
       },
-      destinationAddress: DEFAULT_ADDRESS,
+      destinationAddress: {
+        name: "Aakash Sharma",
+        street: "Amaravati Secretariat / City Center",
+        city: "Amaravati",
+        pincode: "522237",
+        phone: "+91 98765 43210",
+      },
       status: "In Transit",
       locationType: "Live GPS Telemetry",
-      latestLocation: "Indiranagar 100ft Rd -> Koramangala Ring Rd",
-      lastEventTimestamp: "2m ago",
-      estimatedDelivery: "Arriving in 18 mins",
-      currentGps: { lat: 12.9554, lng: 77.625, speedKmph: 32, heading: 140 },
+      latestLocation: "Sathesh Ittraju en route (Seed Access Road)",
+      lastEventTimestamp: "Live GPS Active",
+      estimatedDelivery: "Arriving in 24 mins",
+      currentGps: { lat: 16.5182, lng: 80.6050, speedKmph: 32.5, heading: 285 },
       events: [
         {
-          id: "evt-fl-1",
-          timestamp: "12m ago",
+          id: "evt-vja-1",
+          timestamp: "20m ago",
           status: "Manifested",
-          location: "VoltHub Indiranagar",
-          description: "Rider Ravi Kumar accepted order and collected package",
+          location: "Vijayawada Central Hub",
+          description: "Rider Sathesh Ittraju accepted order and collected package",
           isGps: true,
-          coordinates: { lat: 12.9784, lng: 77.6408 },
+          coordinates: { lat: 16.5062, lng: 80.6480 },
         },
         {
-          id: "evt-fl-2",
-          timestamp: "2m ago",
+          id: "evt-vja-2",
+          timestamp: "Live",
           status: "In Transit",
-          location: "Intermediate Ring Road",
-          description: "Live GPS broadcast: En route to Bellandur doorstep",
+          location: "Krishna River Crossing / Prakasam Barrage",
+          description: "Live GPS broadcast: En route to Amaravati Secretariat",
           isGps: true,
-          coordinates: { lat: 12.9554, lng: 77.625 },
+          coordinates: { lat: 16.5182, lng: 80.6050 },
         },
       ],
     };
 
-    setOrders((prev) => [demoOrder, ...prev]);
-    setShipments((prev) => [demoShipment, ...prev]);
+    setOrders((prev) => [demoOrder, ...prev.filter((o) => o.id !== demoOrder.id && o.shipmentId !== demoOrder.shipmentId)]);
+    setShipments((prev) => [demoShipment, ...prev.filter((s) => s.shipmentId !== demoShipment.shipmentId)]);
+
+    // Trigger async fetch from backend to refresh live data
+    fetchDeliveries({ customer_id: "9876543210" })
+      .then((res) => {
+        if (res && res.items && res.items.length > 0) {
+          const liveDel = res.items.find((d) => d.id === "delivery_vijayawada_amaravati_live") || res.items[0];
+          const ord = backendDeliveryToOrder(liveDel);
+          const shp = backendDeliveryToShipment(liveDel);
+          setOrders((p) => [ord, ...p.filter((o) => o.id !== ord.id && o.shipmentId !== ord.shipmentId)]);
+          setShipments((p) => [shp, ...p.filter((s) => s.shipmentId !== shp.shipmentId)]);
+        }
+      })
+      .catch(() => {});
+
     return demoOrder;
-  }, []);
+  }, [userProfile]);
 
   const value = useMemo<Ctx>(
     () => ({
@@ -962,13 +1084,51 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       placeOrder,
       placeOrderWithOptions,
       advanceOrder: (id) =>
-        setOrders((os) =>
-          os.map((o) =>
-            o.id === id && o.status < ORDER_STEPS.length - 1
-              ? { ...o, status: o.status + 1, riderId: o.status + 1 >= 2 ? riders[0].id : undefined }
-              : o,
-          ),
-        ),
+        setOrders((os) => {
+          const target = os.find((o) => o.id === id);
+          if (!target || target.status >= ORDER_STEPS.length - 1) return os;
+          const nextStatusNum = target.status + 1;
+          const statusMap = ["pending", "assigned", "assigned", "picked_up", "in_transit", "delivered"];
+          const backendStatus = statusMap[nextStatusNum] || "in_transit";
+          const deliveryId = target.shipmentId || target.id;
+
+          apiUpdateDeliveryStatus(deliveryId, backendStatus).catch((err) =>
+            console.warn("Could not sync advanceOrder to backend:", err)
+          );
+
+          setShipments((prev) =>
+            prev.map((s) =>
+              s.shipmentId === deliveryId || s.orderId === target.id
+                ? {
+                    ...s,
+                    status: (nextStatusNum === 5
+                      ? "Delivered"
+                      : nextStatusNum >= 3
+                      ? "In Transit"
+                      : "Manifested") as ShipmentStatus,
+                  }
+                : s
+            )
+          );
+
+          return os.map((o) =>
+            o.id === id
+              ? {
+                  ...o,
+                  status: nextStatusNum,
+                  fulfillmentStatus:
+                    nextStatusNum === 5
+                      ? "Delivered"
+                      : nextStatusNum >= 3
+                      ? "Dispatched"
+                      : nextStatusNum === 2
+                      ? "Packed"
+                      : "Preparing",
+                  riderId: nextStatusNum >= 2 ? o.riderId || riders[0].id : undefined,
+                }
+              : o
+          );
+        }),
       updateOrderStatus,
       cancelOrder,
       refundOrder,

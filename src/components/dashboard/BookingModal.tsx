@@ -45,7 +45,7 @@ export function BookingModal({ isOpen, onClose }: BookingModalProps) {
       slot,
       location: locationType === "doorstep" ? `Doorstep (${address.slice(0, 24)}...)` : "VoltHub Workshop, Indiranagar",
       status: "Confirmed",
-      technician: "Manoj Swamy (Certified EV Tech)",
+      technician: "Assigned EV Specialist",
       cost: currentService.price,
     });
     toast.success("Service technician booked!", {

@@ -6,6 +6,7 @@ import {
   signOutServer,
   verifySignInCodeServer,
 } from "./auth.server";
+export { AuthProvider, useAuth, type User, type AuthContextType } from "./auth.tsx";
 
 const requestSignInCode = createServerFn({ method: "POST" })
   .validator((data: { identity: string }) => {

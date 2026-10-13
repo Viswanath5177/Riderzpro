@@ -197,6 +197,22 @@ export function useDeliveryTracking({
                 }
                 break;
 
+              case "RIDER_ROUTE_RECOVERED":
+                setIsDeviating(false);
+                setDeviationDistance(null);
+                break;
+
+              case "DELIVERY_STATUS_CHANGED":
+                setData((prev) => (prev ? { ...prev, status: msg.status || prev.status } : prev));
+                if (msg.status === "delivered") {
+                  isCompletedRef.current = true;
+                  setConnectionState("completed");
+                  if (ws.readyState === WebSocket.OPEN) {
+                    ws.close(1000, "Delivery complete");
+                  }
+                }
+                break;
+
               case "DELIVERY_COMPLETED":
                 isCompletedRef.current = true;
                 setConnectionState("completed");

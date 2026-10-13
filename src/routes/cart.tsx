@@ -24,6 +24,7 @@ import { SiteLayout } from "@/components/site/SiteLayout";
 import { DELIVERY_BASE, DELIVERY_PER_KM, getProduct, getVendor, inr } from "@/lib/data";
 import { quoteCart, useStore, type Order } from "@/lib/store";
 import type { AddressRef } from "@/lib/logistics/types";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -38,14 +39,9 @@ export const Route = createFileRoute("/cart")({
 });
 
 function CartPage() {
-  const { cart, setQty, placeOrderWithOptions, userProfile, inventoryStock, isLoggedIn } = useStore();
+  const { cart, setQty, placeOrderWithOptions, userProfile, inventoryStock } = useStore();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (isLoggedIn) {
-      navigate({ to: "/dashboard/customer", search: { tab: "orders" } as any, replace: true });
-    }
-  }, [isLoggedIn, navigate]);
 
   const [paymentMethod, setPaymentMethod] = useState<string>("UPI");
   const [couponInput, setCouponInput] = useState<string>("EVSAFE");
@@ -57,7 +53,7 @@ function CartPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
 
-  if (!isLoggedIn) {
+  if (!isAuthenticated) {
     return (
       <SiteLayout>
         <div className="mx-auto max-w-md px-4 py-20 text-center">
@@ -91,13 +87,16 @@ function CartPage() {
   }
 
   // Address state prefilled from profile
-  const [address, setAddress] = useState<AddressRef>({
-    name: userProfile.name || "Aakash Sharma",
-    phone: userProfile.phone || "+91 98765 43210",
-    street: "Flat 402, Green Glen Layout, Bellandur",
-    city: "Bengaluru",
-    state: "Karnataka",
-    pincode: "560103",
+  const [address, setAddress] = useState<AddressRef>(() => {
+    const selectedAddr = userProfile.addresses?.find((a) => a.id === userProfile.selectedAddressId) || userProfile.addresses?.[0];
+    return {
+      name: userProfile.name || selectedAddr?.name || "",
+      phone: userProfile.phone || selectedAddr?.phone || "",
+      street: selectedAddr?.street || userProfile.address || "",
+      city: selectedAddr?.city || userProfile.city || "",
+      state: "Karnataka",
+      pincode: selectedAddr?.pincode || "",
+    };
   });
 
   const [isEditingAddress, setIsEditingAddress] = useState(false);
@@ -132,6 +131,11 @@ function CartPage() {
   };
 
   const handlePlaceOrder = () => {
+    if (!isAuthenticated) {
+      toast.info("Please sign in to place your order.");
+      navigate({ to: "/auth", search: { redirect: "/cart" } });
+      return;
+    }
     if (stockErrors.length > 0) {
       toast.error("Please adjust quantities to match available inventory.");
       return;
@@ -537,6 +541,11 @@ function CartPage() {
               >
                 {isSubmitting ? (
                   <span>Securing Order & Manifesting...</span>
+                ) : !isAuthenticated ? (
+                  <>
+                    <span>Sign in to Checkout · {inr(quote.total)}</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </>
                 ) : (
                   <>
                     <span>Confirm Order · {inr(quote.total)}</span>

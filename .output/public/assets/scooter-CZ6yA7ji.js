@@ -1,1 +1,0 @@
-var e=`/assets/scooter-BSqdqeFM.jpg`;export{e as t};

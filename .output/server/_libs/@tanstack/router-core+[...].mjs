@@ -1,4 +1,4 @@
-import { C as createPlugin, D as isStream, F as getStylesheetHref, H as createSieveCache, J as rootRouteId, K as dehydrateSsrMatchId, M as createInlineCssPlaceholderAsset, N as createInlineCssStyleAsset, R as waitForReason, T as crossSerializeStream, U as decodePath, V as invariant, l as createHydrationScripts, u as GLOBAL_TSR, w as createStream, z as _getRenderedMatches } from "./react-router+[...].mjs";
+import { D as crossSerializeStream, E as createStream, F as getStylesheetHref, H as createSieveCache, K as dehydrateSsrMatchId, M as createInlineCssPlaceholderAsset, N as createInlineCssStyleAsset, R as waitForReason, T as createPlugin, U as decodePath, V as invariant, X as rootRouteId, k as isStream, l as createHydrationScripts, u as GLOBAL_TSR, z as _getRenderedMatches } from "./react-router+[...].mjs";
 //#region node_modules/@tanstack/router-core/dist/esm/ssr/serializer/transformer.js
 /**
 * Create a strongly-typed serialization adapter for SSR hydration.
@@ -61,6 +61,66 @@ var RawStream = class {
 		this.hint = options?.hint ?? "binary";
 	}
 };
+//#endregion
+//#region node_modules/cookie-es/dist/index.mjs
+function splitSetCookieString(cookiesString) {
+	if (Array.isArray(cookiesString)) return cookiesString.flatMap((c) => splitSetCookieString(c));
+	if (typeof cookiesString !== "string") return [];
+	const cookiesStrings = [];
+	let pos = 0;
+	let start;
+	let ch;
+	let lastComma;
+	let nextStart;
+	let cookiesSeparatorFound;
+	const skipWhitespace = () => {
+		while (pos < cookiesString.length && /\s/.test(cookiesString.charAt(pos))) pos += 1;
+		return pos < cookiesString.length;
+	};
+	const notSpecialChar = () => {
+		ch = cookiesString.charAt(pos);
+		return ch !== "=" && ch !== ";" && ch !== ",";
+	};
+	while (pos < cookiesString.length) {
+		start = pos;
+		cookiesSeparatorFound = false;
+		while (skipWhitespace()) {
+			ch = cookiesString.charAt(pos);
+			if (ch === ",") {
+				lastComma = pos;
+				pos += 1;
+				skipWhitespace();
+				nextStart = pos;
+				while (pos < cookiesString.length && notSpecialChar()) pos += 1;
+				if (pos < cookiesString.length && cookiesString.charAt(pos) === "=") {
+					cookiesSeparatorFound = true;
+					pos = nextStart;
+					cookiesStrings.push(cookiesString.slice(start, lastComma));
+					start = pos;
+				} else pos = lastComma + 1;
+			} else pos += 1;
+		}
+		if (!cookiesSeparatorFound || pos >= cookiesString.length) cookiesStrings.push(cookiesString.slice(start));
+	}
+	return cookiesStrings;
+}
+//#endregion
+//#region node_modules/@tanstack/router-core/dist/esm/ssr/headers.js
+function toHeadersInstance(init) {
+	if (init instanceof Headers) return init;
+	else if (Array.isArray(init)) return new Headers(init);
+	else if (typeof init === "object") return new Headers(init);
+	else return null;
+}
+function mergeHeaders(...headers) {
+	return headers.reduce((acc, header) => {
+		const headersInstance = toHeadersInstance(header);
+		if (!headersInstance) return acc;
+		for (const [key, value] of headersInstance.entries()) if (key === "set-cookie") splitSetCookieString(value).forEach((cookie) => acc.append("set-cookie", cookie));
+		else acc.set(key, value);
+		return acc;
+	}, new Headers());
+}
 //#endregion
 //#region node_modules/@tanstack/router-core/dist/esm/ssr/serializer/ShallowErrorPlugin.js
 /**
@@ -809,64 +869,4 @@ function getNormalizedURL(url, base) {
 	};
 }
 //#endregion
-//#region node_modules/cookie-es/dist/index.mjs
-function splitSetCookieString(cookiesString) {
-	if (Array.isArray(cookiesString)) return cookiesString.flatMap((c) => splitSetCookieString(c));
-	if (typeof cookiesString !== "string") return [];
-	const cookiesStrings = [];
-	let pos = 0;
-	let start;
-	let ch;
-	let lastComma;
-	let nextStart;
-	let cookiesSeparatorFound;
-	const skipWhitespace = () => {
-		while (pos < cookiesString.length && /\s/.test(cookiesString.charAt(pos))) pos += 1;
-		return pos < cookiesString.length;
-	};
-	const notSpecialChar = () => {
-		ch = cookiesString.charAt(pos);
-		return ch !== "=" && ch !== ";" && ch !== ",";
-	};
-	while (pos < cookiesString.length) {
-		start = pos;
-		cookiesSeparatorFound = false;
-		while (skipWhitespace()) {
-			ch = cookiesString.charAt(pos);
-			if (ch === ",") {
-				lastComma = pos;
-				pos += 1;
-				skipWhitespace();
-				nextStart = pos;
-				while (pos < cookiesString.length && notSpecialChar()) pos += 1;
-				if (pos < cookiesString.length && cookiesString.charAt(pos) === "=") {
-					cookiesSeparatorFound = true;
-					pos = nextStart;
-					cookiesStrings.push(cookiesString.slice(start, lastComma));
-					start = pos;
-				} else pos = lastComma + 1;
-			} else pos += 1;
-		}
-		if (!cookiesSeparatorFound || pos >= cookiesString.length) cookiesStrings.push(cookiesString.slice(start));
-	}
-	return cookiesStrings;
-}
-//#endregion
-//#region node_modules/@tanstack/router-core/dist/esm/ssr/headers.js
-function toHeadersInstance(init) {
-	if (init instanceof Headers) return init;
-	else if (Array.isArray(init)) return new Headers(init);
-	else if (typeof init === "object") return new Headers(init);
-	else return null;
-}
-function mergeHeaders(...headers) {
-	return headers.reduce((acc, header) => {
-		const headersInstance = toHeadersInstance(header);
-		if (!headersInstance) return acc;
-		for (const [key, value] of headersInstance.entries()) if (key === "set-cookie") splitSetCookieString(value).forEach((cookie) => acc.append("set-cookie", cookie));
-		else acc.set(key, value);
-		return acc;
-	}, new Headers());
-}
-//#endregion
-export { defaultSerovalDeserializerPlugins as a, createRawStreamRPCPlugin as i, attachRouterServerSsrUtils as n, makeSerovalPlugin as o, getNormalizedURL as r, createSerializationAdapter as s, mergeHeaders as t };
+export { mergeHeaders as a, defaultSerovalDeserializerPlugins as i, getNormalizedURL as n, makeSerovalPlugin as o, createRawStreamRPCPlugin as r, createSerializationAdapter as s, attachRouterServerSsrUtils as t };

@@ -106,8 +106,17 @@ export const riders: Rider[] = [
   { id: "r2", name: "Salma Begum", phone: "+91 99000 54321", vehicle: "TVS iQube", plate: "KA 03 EV 1180", rating: 4.8, avatar: "SB" },
 ];
 
-export const getVendor = (id: string) => vendors.find((v) => v.id === id)!;
-export const getProduct = (id: string) => products.find((p) => p.id === id);
+import { getCatalogueProduct, getCatalogueVendor } from "./catalogue";
+
+export const getVendor = (id: string): Vendor => {
+  const dynamic = getCatalogueVendor(id);
+  if (dynamic) return dynamic;
+  return vendors.find((v) => v.id === id) || vendors[0];
+};
+
+export const getProduct = (id: string): Product | undefined => {
+  return getCatalogueProduct(id);
+};
 export const getBike = (id: string) => bikes.find((b) => b.id === id);
 export const bestOffer = (p: Product) => [...p.offers].sort((a, b) => a.price - b.price)[0];
 
