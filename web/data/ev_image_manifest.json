@@ -1,0 +1,614 @@
+{
+  "dataset_name": "Riderzpro electric two-wheeler listing images",
+  "dataset_version": "4.2.0",
+  "captured_on": "2026-10-09",
+  "source_listing_url": "#",
+  "image_host": "imgd.aeplcdn.com",
+  "image_dimensions_px": {
+    "width": 272,
+    "height": 153
+  },
+  "usage_note": "Direct asset references only; files were not downloaded. Image URLs are publisher/manufacturer hosted and may be changed or restricted. Use only after confirming image licensing and hotlink terms. All entries are model-matched where noted.",
+  "images": [
+    {
+      "product_name": "Bajaj Chetak",
+      "slug": "bajaj-chetak",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/194471/chetak-right-side-view-4.png?isig=0&q=80",
+      "alt": "Bajaj Chetak electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "TVS iQube",
+      "slug": "tvs-iqube",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/202879/iqube-right-side-view-55.jpeg?isig=0&q=80",
+      "alt": "TVS iQube electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Ather Konarc",
+      "slug": "ather-konarc",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/209108/konarc-right-side-view-16.jpeg?isig=0&q=80",
+      "alt": "Ather Konarc electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Ather Rizta",
+      "slug": "ather-rizta",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/168965/rizta-right-side-view-4.png?isig=0&q=80",
+      "alt": "Ather Rizta electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "TVS Orbiter",
+      "slug": "tvs-orbiter",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/209216/orbiter-right-side-view-6.png?isig=0&q=80",
+      "alt": "TVS Orbiter electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "VIDA VX2",
+      "slug": "vida-vx2",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/203734/vx2-right-side-view-12.png?isig=0&q=80",
+      "alt": "VIDA VX2 electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Ather 450X",
+      "slug": "ather-450x",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/196337/450x-right-side-view-2.png?isig=0&q=80",
+      "alt": "Ather 450X electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "River Indie",
+      "slug": "river-indie",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/183651/indie-right-side-view-2.png?isig=0&q=80",
+      "alt": "River Indie electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Ola S1 X",
+      "slug": "ola-s1-x",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/196993/s1-x-right-side-view.png?isig=0&q=80",
+      "alt": "Ola S1 X electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Bajaj Chetak C25",
+      "slug": "bajaj-chetak-c25",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/216393/chetak-c2501-right-side-view.png?isig=0&q=80",
+      "alt": "Bajaj Chetak C25 electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Simple Wave",
+      "slug": "simple-wave",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/226186/simple-wave-right-side-view-8.png?isig=0&q=80",
+      "alt": "Simple Wave electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Ather 450S",
+      "slug": "ather-450s",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/149605/450s-right-side-view-2.png?isig=0&q=80",
+      "alt": "Ather 450S electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Suzuki E Access",
+      "slug": "suzuki-e-access",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/138929/e-access-right-side-view-8.png?isig=0&q=80",
+      "alt": "Suzuki E Access electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Simple One",
+      "slug": "simple-one",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/215879/one-gen-2-left-side-view.jpeg?isig=0&q=80",
+      "alt": "Simple One electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Ampere Magnus G Max",
+      "slug": "ampere-magnus-g-max",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/223584/magnus-g-max-right-side-view-4.avif?isig=0&q=80",
+      "alt": "Ampere Magnus G Max electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Yamaha EC 06",
+      "slug": "yamaha-ec-06",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/212489/ec-06-right-side-view-2.jpeg?isig=0&q=80",
+      "alt": "Yamaha EC 06 electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Honda QC1",
+      "slug": "honda-qc1",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/193093/qc1-right-side-view-4.png?isig=0&q=80",
+      "alt": "Honda QC1 electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Ather 450 Apex",
+      "slug": "ather-450-apex",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/167915/450-apex-right-side-view.png?isig=0&q=80",
+      "alt": "Ather 450 Apex electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Honda Activa e",
+      "slug": "honda-activa-e",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/138913/activa-e-right-side-view-10.png?isig=0&q=80",
+      "alt": "Honda Activa e electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Ola Roadster",
+      "slug": "ola-roadster",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/156743/roadster-right-side-view-9.png?isig=0&q=80",
+      "alt": "Ola Roadster electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Simple Ultra",
+      "slug": "simple-ultra",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/215875/ultra-right-side-view.png?isig=0&q=80",
+      "alt": "Simple Ultra electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Honda QC3",
+      "slug": "honda-qc3",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/224856/qc3-right-side-view.png?isig=0&q=80",
+      "alt": "Honda QC3 electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Ampere Nexus",
+      "slug": "ampere-nexus",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/168323/nexus-right-side-view-2.png?isig=0&q=80",
+      "alt": "Ampere Nexus electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Ola S1 Z",
+      "slug": "ola-s1-z",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/226630/s1-z-2026-right-front-three-quarter.png?isig=0&q=80",
+      "alt": "Ola S1 Z electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "BGauss C12 MaxR",
+      "slug": "bgauss-c12-maxr",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/227218/c12-maxr-left-front-three-quarter.jpeg?isig=0&q=80",
+      "alt": "BGauss C12 MaxR electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Ola S1 Pro",
+      "slug": "ola-s1-pro",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/196991/s1-pro-left-side-view-3.png?isig=0&q=80",
+      "alt": "Ola S1 Pro electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Royal Enfield Flying Flea C6",
+      "slug": "royal-enfield-flying-flea-c6",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/181825/flying-flea-right-side-view-12.png?isig=0&q=80",
+      "alt": "Royal Enfield Flying Flea C6 electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Ultraviolette X47 Crossover",
+      "slug": "ultraviolette-x47-crossover",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/210510/x47-crossover-right-side-view-27.jpeg?isig=0&q=80",
+      "alt": "Ultraviolette X47 Crossover electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Ola Roadster Pro",
+      "slug": "ola-roadster-pro",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/184761/roadster-pro-right-side-view-3.png?isig=0&q=80",
+      "alt": "Ola Roadster Pro electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Oben Rorr EVO",
+      "slug": "oben-rorr-evo",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/221342/rorr-evo-right-side-view.png?isig=0&q=80",
+      "alt": "Oben Rorr EVO electric two-wheeler, side view",
+      "source_page_url": "#"
+    },
+    {
+      "product_name": "Ather 450",
+      "slug": "ather-450",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/196337/450x-right-side-view-2.png?isig=0&q=80",
+      "alt": "Ather 450 product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro Verified Image",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "TVS iQube S",
+      "slug": "tvs-iqube-s-47",
+      "image_url": "https://imgd.aeplcdn.com/1280x720/n/cw/ec/221836/iqube-right-side-view-3.avif?isig=0",
+      "alt": "TVS iQube S product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro Verified Image",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "TVS iQube ST",
+      "slug": "tvs-iqube-st-53",
+      "image_url": "https://asset.autocarindia.com/static/features/images/20260212_110022_36203eb3.jpg",
+      "alt": "TVS iQube ST product image",
+      "source_page_url": "https://www.autocarindia.com/auto-features/6-things-to-know-before-buying-a-tvs-iqube-st-440214",
+      "image_host": "Autocar India",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "Ampere Magnus GMax",
+      "slug": "ampere-magnus-gmax",
+      "image_url": "https://static.ampere-electric.com/5_9d360b7780.webp",
+      "alt": "Ampere Magnus GMax product image",
+      "source_page_url": "https://ampere-electric.com/gmax",
+      "image_host": "Ampere official",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "Ampere Reo Vyb",
+      "slug": "ampere-reo-vyb",
+      "image_url": "https://images.91wheels.com/assets/b_images/gallery/ampere/reo-vyb/ampere-reo-vyb-5-1784276510.png?q=40&w=1100",
+      "alt": "Ampere Reo Vyb product image",
+      "source_page_url": "https://www.91wheels.com/scooters/ampere/reo-vyb",
+      "image_host": "91Wheels",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "VIDA (Hero) VX2",
+      "slug": "vida-vx2-go",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/203734/vx2-right-side-view-12.png?isig=0&q=80",
+      "alt": "VIDA (Hero) VX2 product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro Verified Image",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "VIDA (Hero) VX2",
+      "slug": "vida-vx2-plus",
+      "image_url": "https://imgd.aeplcdn.com/272x153/n/cw/ec/203734/vx2-right-side-view-12.png?isig=0&q=80",
+      "alt": "VIDA (Hero) VX2 product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro Verified Image",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "Ola Electric S1 Pro+",
+      "slug": "ola-s1-pro-plus",
+      "image_url": "https://cdn.Riderzpro.com/upload/userfiles/images/685ba4c0982d8.png?tr=w-930",
+      "alt": "Ola Electric S1 Pro+ product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "Revolt RV1",
+      "slug": "revolt-rv1",
+      "image_url": "https://imgd.aeplcdn.com/1280x720/n/cw/ec/187453/rv1-right-side-view-2.png?isig=0",
+      "alt": "Revolt RV1 product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro Verified Image",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "Revolt RV1+",
+      "slug": "revolt-rv1-plus",
+      "image_url": "https://imgd.aeplcdn.com/1280x720/n/cw/ec/187453/rv1-right-side-view-2.png?isig=0",
+      "alt": "Revolt RV1+ product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro Verified Image",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "Revolt RV400 BRZ",
+      "slug": "revolt-rv400-brz",
+      "image_url": "https://imgd.aeplcdn.com/0x0/n/cw/ec/40710/rv-400-right-side-view-11.png?isig=0&q=80",
+      "alt": "Revolt RV400 BRZ product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro Verified Image",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "Revolt RV400",
+      "slug": "revolt-rv400",
+      "image_url": "https://imgd.aeplcdn.com/0x0/n/cw/ec/40710/rv-400-right-side-view-11.png?isig=0&q=80",
+      "alt": "Revolt RV400 product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro Verified Image",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "Revolt RVX",
+      "slug": "revolt-rvx",
+      "image_url": "https://www.revoltmotors.com/images/model/rvx/eclipse-red-02.png",
+      "alt": "Revolt RVX product image",
+      "source_page_url": "https://www.revoltmotors.com/rvx",
+      "image_host": "Revolt official",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "Ultraviolette F77 Mach 2",
+      "slug": "uv-f77-mach2",
+      "image_url": "https://imgd.aeplcdn.com/1056x594/n/cw/ec/175595/f77-mach-2-left-side-view.jpeg?isig=0&q=80",
+      "alt": "Ultraviolette F77 Mach 2 product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro Verified Image",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "Simple Energy Simple OneS",
+      "slug": "simple-simple-ones",
+      "image_url": "https://www.iautoindia.com/images/autoindia/10005889-1.jpg",
+      "alt": "Simple Energy Simple OneS product image",
+      "source_page_url": "https://www.iautoindia.com/articles/2025/electric-bike/simple-ones-electric-scooter-launched-at-rs-139-lakh-claims-181-km-range-1-10005889.html",
+      "image_host": "IAutoIndia",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "Kinetic Green E Luna",
+      "slug": "kinetic-green-e-luna",
+      "image_url": "https://imgd.aeplcdn.com/1056x594/n/bw/models/colors/kinetic-green-select-model-night-star-black-1707465661090.png?q=80",
+      "alt": "Kinetic Green E Luna product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro Verified Image",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "TVS iQube MillionR Edition",
+      "slug": "tvs-iqube-millionr-edition",
+      "image_url": "https://asset.autocarindia.com/static/news/images/20260825_081514_a3f5def7.jpg",
+      "alt": "TVS iQube MillionR Edition product image",
+      "source_page_url": "https://www.autocarindia.com/bike-news/tvs-iqube-millionr-special-edition-launched-at-rs-140-lakh-440568",
+      "image_host": "Autocar India",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "VIDA (Hero) V2",
+      "slug": "vida-hero-v2",
+      "image_url": "https://imgd.aeplcdn.com/0x0/n/cw/ec/193459/v2-right-front-three-quarter-2.jpeg?isig=0&q=80",
+      "alt": "VIDA (Hero) V2 product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro Verified Image",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "Komaki XGT CAT 2.0",
+      "slug": "komaki-xgt-cat-2-0",
+      "image_url": "https://cdn.Riderzpro.com/processedimages/komaki/xgt-cat-2/source/xgt-cat-269538a699e5c4.jpg",
+      "alt": "Komaki XGT CAT 2.0 product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "BGauss Max C12",
+      "slug": "bgauss-max-c12",
+      "image_url": "https://cdn.Riderzpro.com/processedimages/bgauss/c12i-max/source/c12i-max686248a519894.jpg",
+      "alt": "BGauss Max C12 product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "Ampere Magnus Neo",
+      "slug": "ampere-magnus-neo",
+      "image_url": "https://imgd.aeplcdn.com/0x0/n/cw/ec/221086/magnus-left-side-view-2.png?isig=0&q=80",
+      "alt": "Ampere Magnus Neo product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro Verified Image",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "Keeway Hypevolt-R",
+      "slug": "keeway-hypevolt-r",
+      "image_url": "https://cdn-s3.autocarindia.com/Keeway/hypevolt-r/Keeway%20Hypevolt-R_5.jpg?fm=auto&q=75&w=640",
+      "alt": "Keeway Hypevolt-R product image",
+      "source_page_url": "https://www.autocarindia.com/new-bikes",
+      "image_host": "Autocar India",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Confirm publisher licensing/hotlink policy for production use."
+    },
+    {
+      "product_name": "Komaki XR7",
+      "slug": "komaki-xr7",
+      "image_url": "https://bike.zigcdn.com/processedimages/komaki/xr7/source/xr7689c93f86999a.jpg",
+      "alt": "Komaki XR7 electric vehicle product image",
+      "source_page_url": "https://www.zigwheels.com/komaki-bikes/xr7/colours/",
+      "image_host": "ZigWheels",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Verify reuse and hotlink conditions before production."
+    },
+    {
+      "product_name": "Komaki XGT KM",
+      "slug": "komaki-xgt-km",
+      "image_url": "https://bike.zigcdn.com/processedimages/komaki/xgtkm/source/xgtkm651e96420edd4.jpg",
+      "alt": "Komaki XGT KM electric vehicle product image",
+      "source_page_url": "https://www.zigwheels.com/komaki-bikes/xgt-km/colours/royal-blue",
+      "image_host": "ZigWheels",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Verify reuse and hotlink conditions before production."
+    },
+    {
+      "product_name": "Komaki MG Pro",
+      "slug": "komaki-mg-pro",
+      "image_url": "https://connect.komaki.in/mg_pro/assets/images/MG-pro-metal-two-bike-img.webp",
+      "alt": "Komaki MG Pro electric vehicle product image",
+      "source_page_url": "https://connect.komaki.in/mg_pro/",
+      "image_host": "Komaki official",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Verify reuse and hotlink conditions before production."
+    },
+    {
+      "product_name": "Zelio Eeva",
+      "slug": "zelio-eeva",
+      "image_url": "https://www.evnomadz.com/storage/vehicles/eeva_black_XWm801S1Wi.webp",
+      "alt": "Zelio Eeva electric vehicle product image",
+      "source_page_url": "https://www.evnomadz.com/electric-scooter/zelio/eeva",
+      "image_host": "EVNomadz",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Verify reuse and hotlink conditions before production."
+    },
+    {
+      "product_name": "Zelio Gracy i",
+      "slug": "zelio-gracy-i",
+      "image_url": "https://auto.hindustantimes.com/cms-images/zelio_gracy-i-2025/images/exterior_zelio-gracy-i_front-left-view_930x620.jpg",
+      "alt": "Zelio Gracy i electric vehicle product image",
+      "source_page_url": "https://auto.hindustantimes.com/new-bikes/zelio/gracy-i",
+      "image_host": "HT Auto",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Verify reuse and hotlink conditions before production."
+    },
+    {
+      "product_name": "Lectrix EV NDuro",
+      "slug": "lectrix-ev-nduro",
+      "image_url": "https://cdn.Riderzpro.com/processedimages/lectrix-ev/nduro/source/nduro675a78652e3bc.jpg?impolicy=resize&imwidth=890",
+      "alt": "Lectrix EV NDuro electric vehicle product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Verify reuse and hotlink conditions before production."
+    },
+    {
+      "product_name": "Lectrix EV ZYRO",
+      "slug": "lectrix-ev-zyro",
+      "image_url": "https://cdn.Riderzpro.com/processedimages/lectrix-ev/zyro/source/zyro6865036e3bd8f.jpg",
+      "alt": "Lectrix EV ZYRO electric vehicle product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Verify reuse and hotlink conditions before production."
+    },
+    {
+      "product_name": "Bounce Infinity E.1",
+      "slug": "bounce-infinity-e-1",
+      "image_url": "https://imgd.aeplcdn.com/1280x720/n/cw/ec/108613/infinity-e1-right-side-view-2.png?isig=0",
+      "alt": "Bounce Infinity E.1 electric vehicle product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro Verified Image",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Verify reuse and hotlink conditions before production."
+    },
+    {
+      "product_name": "Raptee T 30",
+      "slug": "raptee-t-30",
+      "image_url": "https://raptee-media-development.zohostratus.in/Website/bike-images/white/0014.webp",
+      "alt": "Raptee T 30 electric vehicle product image",
+      "source_page_url": "https://www.rapteehv.com/",
+      "image_host": "Raptee official",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL. Verify reuse and hotlink conditions before production."
+    },
+    {
+      "product_name": "Matter Aera",
+      "slug": "matter-aera",
+      "image_url": "https://bike.zigcdn.com/processedimages/matter-ev/matter-electric-bike/source/matter-electric-bike67efa6d35f399.jpg",
+      "alt": "Matter Aera electric product image",
+      "source_page_url": "https://www.zigwheels.com/matter-ev-bikes/electric-bike",
+      "image_host": "ZigWheels",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL; verify reuse and hotlink terms before production."
+    },
+    {
+      "product_name": "Kabira Mobility KM3000 Mark 2",
+      "slug": "kabira-mobility-km3000-mark-2",
+      "image_url": "https://cdn.Riderzpro.com/processedimages/kabira-mobility/km-3000/source/km-300068398c8e474cb.jpg?imwidth=880",
+      "alt": "Kabira Mobility KM3000 Mark 2 electric product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL; verify reuse and hotlink terms before production."
+    },
+    {
+      "product_name": "Kabira Mobility KM4000 Mark 2",
+      "slug": "kabira-mobility-km4000-mark-2",
+      "image_url": "https://bd.gaadicdn.com/upload/userfiles/images/65cc927496ab1.jpg",
+      "alt": "Kabira Mobility KM4000 Mark 2 electric product image",
+      "source_page_url": "#",
+      "image_host": "Riderzpro",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL; verify reuse and hotlink terms before production."
+    },
+    {
+      "product_name": "One Electric Kridn",
+      "slug": "one-electric-kridn",
+      "image_url": "https://images.tractorjunction.com/One_KRIDN_3_fdfb13d0e3.png?format=webp&quality=40",
+      "alt": "One Electric Kridn electric product image",
+      "source_page_url": "https://thebikejunction.com/electric-bikes/one/kridn",
+      "image_host": "The Bike Junction",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL; verify reuse and hotlink terms before production."
+    },
+    {
+      "product_name": "Atumobile Atum Version 1.0",
+      "slug": "atumobile-atum-version-1-0",
+      "image_url": "https://allaboutevs.com/uploads/evimages/atumobile-version-1-0/Colours/version-1-0604202cb11cc6.jpg",
+      "alt": "Atumobile Atum Version 1.0 electric product image",
+      "source_page_url": "https://allaboutevs.com/two-wheeler",
+      "image_host": "All About EVs",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "Third-party asset URL; verify reuse and hotlink terms before production."
+    },
+    {
+      "product_name": "Yulu Wynn",
+      "slug": "yulu-wynn",
+      "image_url": "https://catalog-management.s3.ap-south-1.amazonaws.com/htmobile1/yulu_wynn/images/exterior_yulu-wynn_front-left-view_600x400.jpeg?imwidth=420",
+      "alt": "Yulu Wynn electric two-wheeler",
+      "source_page_url": "https://auto.hindustantimes.com/new-bikes/yulu/wynn",
+      "image_host": "HT Auto",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "External image asset; verify publisher reuse and hotlink terms before production."
+    },
+    {
+      "product_name": "Yamaha Aerox-E",
+      "slug": "yamaha-aerox-e",
+      "image_url": "https://Riderzpro-cms.Riderzproassets.com/yamaha_AEROX_E_6294b6bdb4.webp",
+      "alt": "Yamaha Aerox-E electric two-wheeler",
+      "source_page_url": "#",
+      "image_host": "Riderzpro",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "External image asset; verify publisher reuse and hotlink terms before production."
+    },
+    {
+      "product_name": "Kinetic DX EV",
+      "slug": "kinetic-dx-ev",
+      "image_url": "https://cdn.Riderzpro.com/processedimages/kinetic/dx/source/dx68874e071d289.jpg?imwidth=880",
+      "alt": "Kinetic DX EV electric two-wheeler",
+      "source_page_url": "#",
+      "image_host": "Riderzpro",
+      "resolution_status": "verified_model_match",
+      "reuse_note": "External image asset; verify publisher reuse and hotlink terms before production."
+    }
+  ]
+}

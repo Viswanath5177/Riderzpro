@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { SlidersHorizontal, Search, Bike, Check, X, ShieldCheck } from "lucide-react";
+import { SlidersHorizontal, Search, Bike, Check, X, ShieldCheck, Tag, Car, RotateCcw } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { ProductCard } from "@/components/site/bits";
 import { bestOffer, bikes, getBike, mapDbProductToProduct, type Product, type Category } from "@/lib/data";
@@ -57,6 +57,9 @@ function Shop() {
   const [volt, setVolt] = useState<number | null>(null);
   const [onlyFit, setOnlyFit] = useState(false);
   const [sort, setSort] = useState("relevance");
+  const [selectedBrand, setSelectedBrand] = useState("All");
+  const [selectedVehicleType, setSelectedVehicleType] = useState("All");
+  const [selectedStock, setSelectedStock] = useState("all");
 
   useEffect(() => {
     fetch("/api/products")
@@ -68,6 +71,14 @@ function Shop() {
       })
       .catch((err) => console.log("Shop fetch error:", err));
   }, []);
+
+  const availableBrands = useMemo(() => {
+    const set = new Set<string>();
+    dbProducts.forEach((p) => {
+      if (p.brand && p.brand.trim() && p.brand !== "Riderzpro Certified") set.add(p.brand.trim());
+    });
+    return ["All", "Riderzpro Certified", ...Array.from(set).sort()];
+  }, [dbProducts]);
 
   useEffect(() => {
     const handleUrl = () => {
@@ -85,17 +96,47 @@ function Shop() {
   }, []);
 
   const list = useMemo(() => {
-    let l = dbProducts.filter(
-      (p) =>
-        (cat === "All" || p.category.toLowerCase().includes(cat.toLowerCase()) || cat.toLowerCase().includes(p.category.toLowerCase())) &&
-        (!volt || p.voltage === volt) &&
-        (!onlyFit || !activeBikeId || p.fits.includes("universal") || p.fits.includes(activeBikeId)) &&
-        (q === "" || `${p.name} ${p.brand} ${p.category} ${p.description}`.toLowerCase().includes(q.toLowerCase())),
-    );
+    let l = dbProducts.filter((p) => {
+      const matchesCat =
+        cat === "All" ||
+        p.category.toLowerCase().includes(cat.toLowerCase()) ||
+        cat.toLowerCase().includes(p.category.toLowerCase());
+      const matchesBrand =
+        selectedBrand === "All" ||
+        p.brand?.toLowerCase() === selectedBrand.toLowerCase();
+      const pVType = (p.vehicleType || "").toLowerCase();
+      const matchesVehicleType =
+        selectedVehicleType === "All" ||
+        (selectedVehicleType === "bike" && (pVType === "bike" || pVType === "two-wheeler" || p.category.toLowerCase().includes("bike"))) ||
+        (selectedVehicleType === "car" && (pVType === "car" || pVType === "four-wheeler" || p.category.toLowerCase().includes("car"))) ||
+        (selectedVehicleType === "universal" && (pVType === "universal" || pVType === "both" || !pVType));
+      const offer = bestOffer(p);
+      const stock = offer.stock ?? p.offers?.[0]?.stock ?? 0;
+      const matchesStock =
+        selectedStock === "all" ||
+        (selectedStock === "in_stock" && stock >= 5) ||
+        (selectedStock === "low_stock" && stock < 5);
+      const matchesVolt = !volt || p.voltage === volt;
+      const matchesFit =
+        !onlyFit || !activeBikeId || p.fits.includes("universal") || p.fits.includes(activeBikeId);
+      const matchesQuery =
+        q === "" ||
+        `${p.name} ${p.brand} ${p.category} ${p.description}`.toLowerCase().includes(q.toLowerCase());
+
+      return (
+        matchesCat &&
+        matchesBrand &&
+        matchesVehicleType &&
+        matchesStock &&
+        matchesVolt &&
+        matchesFit &&
+        matchesQuery
+      );
+    });
     if (sort === "low") l = [...l].sort((a, b) => bestOffer(a).price - bestOffer(b).price);
     if (sort === "high") l = [...l].sort((a, b) => bestOffer(b).price - bestOffer(a).price);
     return l;
-  }, [dbProducts, q, cat, volt, onlyFit, activeBikeId, sort]);
+  }, [dbProducts, q, cat, selectedBrand, selectedVehicleType, selectedStock, volt, onlyFit, activeBikeId, sort]);
 
   const bike = activeBikeId ? getBike(activeBikeId) : null;
 
@@ -180,33 +221,84 @@ function Shop() {
             </div>
           </div>
 
-          {/* Sub Filters: Voltage, Fitment, Sorting */}
-          <div className="mt-3 flex flex-wrap items-center gap-2 pt-3 border-t border-gray-100 text-xs">
-            <SlidersHorizontal className="h-3.5 w-3.5 text-[#6B7280]" />
-            <span className="text-[#6B7280] font-medium">Voltage:</span>
-            {[48, 60, 72].map((v) => (
-              <button
-                key={v}
-                onClick={() => setVolt(volt === v ? null : v)}
-                className={`rounded-md border px-2.5 py-1 font-semibold leading-none ${
-                  volt === v
-                    ? "border-[#E31E24] bg-red-50 text-[#E31E24]"
-                    : "border-[#E5E7EB] bg-white text-[#6B7280] hover:text-[#111111]"
-                }`}
+          {/* Sub Filters: Brand, Vehicle Type, Stock, Voltage, Fitment, Sorting */}
+          <div className="mt-3 flex flex-wrap items-center gap-2.5 pt-3 border-t border-gray-100 text-xs">
+            {/* Brand Filter */}
+            <div className="flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs">
+              <Tag className="h-3.5 w-3.5 text-[#E31E24]" />
+              <span className="text-[#6B7280]">Brand:</span>
+              <select
+                value={selectedBrand}
+                onChange={(e) => setSelectedBrand(e.target.value)}
+                className="bg-transparent font-semibold text-[#111111] outline-none cursor-pointer"
               >
-                {v}V
-              </button>
-            ))}
+                {availableBrands.map((b) => (
+                  <option key={b} value={b}>
+                    {b === "All" ? "All Brands" : b}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Vehicle Type Filter */}
+            <div className="flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs">
+              <Car className="h-3.5 w-3.5 text-[#E31E24]" />
+              <span className="text-[#6B7280]">Vehicle:</span>
+              <select
+                value={selectedVehicleType}
+                onChange={(e) => setSelectedVehicleType(e.target.value)}
+                className="bg-transparent font-semibold text-[#111111] outline-none cursor-pointer"
+              >
+                <option value="All">All Types</option>
+                <option value="bike">🛵 2-Wheeler (Bikes/EVs)</option>
+                <option value="car">🚗 4-Wheeler (Cars)</option>
+                <option value="universal">⚡ Universal Fitment</option>
+              </select>
+            </div>
+
+            {/* Stock Availability */}
+            <div className="flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs">
+              <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="text-[#6B7280]">Stock:</span>
+              <select
+                value={selectedStock}
+                onChange={(e) => setSelectedStock(e.target.value)}
+                className="bg-transparent font-semibold text-[#111111] outline-none cursor-pointer"
+              >
+                <option value="all">All Availability</option>
+                <option value="in_stock">In Stock (5+ units)</option>
+                <option value="low_stock">⚠️ Limited Stock (&lt; 5)</option>
+              </select>
+            </div>
+
+            {/* Voltage */}
+            <div className="flex items-center gap-1.5">
+              <SlidersHorizontal className="h-3.5 w-3.5 text-[#6B7280]" />
+              <span className="text-[#6B7280]">Voltage:</span>
+              {[48, 60, 72].map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setVolt(volt === v ? null : v)}
+                  className={`rounded-md border px-2 py-1 font-semibold leading-none cursor-pointer ${
+                    volt === v
+                      ? "border-[#E31E24] bg-red-50 text-[#E31E24]"
+                      : "border-[#E5E7EB] bg-white text-[#6B7280] hover:text-[#111111]"
+                  }`}
+                >
+                  {v}V
+                </button>
+              ))}
+            </div>
 
             {bike && (
-              <label className="ml-3 flex items-center gap-1.5 cursor-pointer font-medium text-[#111111]">
+              <label className="ml-2 flex items-center gap-1.5 cursor-pointer font-medium text-[#111111]">
                 <input
                   type="checkbox"
                   checked={onlyFit}
                   onChange={(e) => setOnlyFit(e.target.checked)}
                   className="rounded border-gray-300 accent-[#E31E24]"
                 />
-                <span>Only compatible with {bike.make} {bike.model}</span>
+                <span>Fit for {bike.make} {bike.model}</span>
               </label>
             )}
 
@@ -215,7 +307,7 @@ function Shop() {
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
-                className="rounded-md border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs font-medium text-[#111111] outline-none"
+                className="rounded-md border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs font-medium text-[#111111] outline-none cursor-pointer"
               >
                 <option value="relevance">Relevance</option>
                 <option value="low">Price: Low → High</option>
@@ -225,19 +317,23 @@ function Shop() {
           </div>
         </div>
 
-        {/* Results Count */}
+        {/* Results Count & Clear Button */}
         <div className="mt-5 flex items-center justify-between text-xs text-[#6B7280]">
           <p>Showing <span className="font-semibold text-[#111111]">{list.length}</span> products</p>
-          {(cat !== "All" || q || volt !== null || onlyFit) && (
+          {(cat !== "All" || q || volt !== null || onlyFit || selectedBrand !== "All" || selectedVehicleType !== "All" || selectedStock !== "all") && (
             <button
               onClick={() => {
                 setCat("All");
                 setQ("");
                 setVolt(null);
                 setOnlyFit(false);
+                setSelectedBrand("All");
+                setSelectedVehicleType("All");
+                setSelectedStock("all");
               }}
-              className="font-medium text-[#E31E24] hover:underline"
+              className="inline-flex items-center gap-1 font-semibold text-[#E31E24] hover:underline cursor-pointer"
             >
+              <RotateCcw className="h-3 w-3" />
               Reset all filters
             </button>
           )}

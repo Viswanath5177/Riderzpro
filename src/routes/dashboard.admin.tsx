@@ -40,6 +40,7 @@ import {
   Ban,
   IndianRupee,
   Lock,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/site/bits";
@@ -182,6 +183,130 @@ export function AdminDashboard() {
   const handleProductFormSuccess = (savedItem: Product) => {
     fetchAdminProducts();
     setProductViewMode("list");
+  };
+
+  // Product Selection & Batch Deletion
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
+  const [isDeletingProducts, setIsDeletingProducts] = useState(false);
+
+  const handleToggleSelectProduct = (id: string) => {
+    setSelectedProductIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAllOnPage = (items: Product[]) => {
+    setSelectedProductIds((prev) => {
+      const pageIds = items.map((p) => p.id);
+      const allSelected = pageIds.length > 0 && pageIds.every((id) => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) {
+        pageIds.forEach((id) => next.delete(id));
+      } else {
+        pageIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAllFiltered = (items: Product[]) => {
+    setSelectedProductIds(new Set(items.map((p) => p.id)));
+  };
+
+  const handleClearSelection = () => {
+    setSelectedProductIds(new Set());
+  };
+
+  const handleDeleteSingleProduct = async (product: Product) => {
+    const confirmMsg = `Are you sure you want to permanently delete "${product.name}" (ID: ${product.id})?\n\nThis will remove it from the catalog and PostgreSQL database.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsDeletingProducts(true);
+    try {
+      const res = await fetch(`/api/products/${product.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Deleted "${product.name}" successfully`);
+        setSelectedProductIds((prev) => {
+          const next = new Set(prev);
+          next.delete(product.id);
+          return next;
+        });
+        fetchAdminProducts();
+      } else {
+        toast.error(data.error || "Failed to delete product");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Network error deleting product");
+    } finally {
+      setIsDeletingProducts(false);
+    }
+  };
+
+  const handleDeleteSelectedProducts = async () => {
+    const count = selectedProductIds.size;
+    if (count === 0) return;
+
+    const confirmMsg = `Are you sure you want to permanently delete ${count} selected product(s) from the database? This action cannot be undone.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsDeletingProducts(true);
+    try {
+      const ids = Array.from(selectedProductIds);
+      const res = await fetch("/api/products", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Successfully deleted ${data.deletedCount ?? count} product(s)`);
+        setSelectedProductIds(new Set());
+        fetchAdminProducts();
+      } else {
+        toast.error(data.error || "Failed to delete selected products");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Network error deleting selected products");
+    } finally {
+      setIsDeletingProducts(false);
+    }
+  };
+
+  const handleDeleteAllFiltered = async (items: Product[]) => {
+    const count = items.length;
+    if (count === 0) return;
+
+    const confirmMsg = `WARNING: Are you sure you want to delete ALL ${count} product(s) currently displayed? This will permanently erase them from PostgreSQL.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsDeletingProducts(true);
+    try {
+      const ids = items.map((p) => p.id);
+      const res = await fetch("/api/products", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Deleted ${data.deletedCount ?? count} products`);
+        setSelectedProductIds(new Set());
+        fetchAdminProducts();
+      } else {
+        toast.error(data.error || "Failed to delete all products");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Network error deleting products");
+    } finally {
+      setIsDeletingProducts(false);
+    }
   };
 
   // Webhook simulator test inputs
@@ -937,6 +1062,16 @@ export function AdminDashboard() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    {selectedProductIds.size > 0 && (
+                      <button
+                        onClick={handleDeleteSelectedProducts}
+                        disabled={isDeletingProducts}
+                        className="flex items-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-700 px-3.5 py-2 text-xs font-bold text-white transition cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span>Delete Selected ({selectedProductIds.size})</span>
+                      </button>
+                    )}
                     <button
                       onClick={handleOpenAddProduct}
                       className="flex items-center gap-1.5 rounded-lg bg-[#E31E24] px-3.5 py-2 text-xs font-bold text-white hover:bg-red-700 transition cursor-pointer shadow-sm active:scale-95"
@@ -1026,12 +1161,65 @@ export function AdminDashboard() {
                   const currentPage = Math.min(productPage, totalPages);
                   const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
+                  const allPageSelected = paginated.length > 0 && paginated.every((p) => selectedProductIds.has(p.id));
+                  const somePageSelected = paginated.some((p) => selectedProductIds.has(p.id));
+
                   return (
                     <div className="space-y-3">
+                      {/* Active Selection Banner */}
+                      {selectedProductIds.size > 0 && (
+                        <div className="flex flex-wrap items-center justify-between gap-3 bg-red-50 border border-red-200 px-4 py-2.5 rounded-xl text-xs shadow-2xs">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-red-950">
+                              {selectedProductIds.size} of {filtered.length} product{selectedProductIds.size > 1 ? "s" : ""} selected
+                            </span>
+                            {selectedProductIds.size < filtered.length && (
+                              <button
+                                onClick={() => handleSelectAllFiltered(filtered)}
+                                className="text-red-700 underline font-semibold hover:text-red-900 cursor-pointer ml-1"
+                              >
+                                Select all {filtered.length} products
+                              </button>
+                            )}
+                            <button
+                              onClick={handleClearSelection}
+                              className="text-gray-600 underline hover:text-gray-800 cursor-pointer ml-1"
+                            >
+                              Deselect all
+                            </button>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={handleDeleteSelectedProducts}
+                              disabled={isDeletingProducts}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-[#E31E24] hover:bg-red-700 text-white font-bold px-3.5 py-1.5 shadow-2xs transition cursor-pointer active:scale-95 disabled:opacity-50"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span>Delete Selected ({selectedProductIds.size})</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="overflow-x-auto rounded-xl border border-[#E5E7EB] bg-white shadow-2xs">
                         <table className="w-full text-left text-xs">
                           <thead className="bg-[#F5F6F8] border-b border-[#E5E7EB] text-[#6B7280] font-semibold uppercase tracking-wider text-[10px]">
                             <tr>
+                              <th className="w-10 px-3 py-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={allPageSelected}
+                                  ref={(el) => {
+                                    if (el) {
+                                      el.indeterminate = somePageSelected && !allPageSelected;
+                                    }
+                                  }}
+                                  onChange={() => handleSelectAllOnPage(paginated)}
+                                  title="Select all products on this page"
+                                  className="h-4 w-4 rounded border-gray-300 text-[#E31E24] focus:ring-[#E31E24] cursor-pointer accent-[#E31E24]"
+                                />
+                              </th>
                               <th className="px-4 py-3">Product Name & ID</th>
                               <th className="px-4 py-3">Brand</th>
                               <th className="px-4 py-3">Category</th>
@@ -1039,12 +1227,13 @@ export function AdminDashboard() {
                               <th className="px-4 py-3">Status</th>
                               <th className="px-4 py-3">Stock Units</th>
                               <th className="px-4 py-3 text-right">Action</th>
+                              <th className="px-4 py-3 text-center text-red-600 font-bold">Delete</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-[#E5E7EB]">
                             {filtered.length === 0 ? (
                               <tr>
-                                <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                                <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
                                   <div className="flex flex-col items-center justify-center space-y-3">
                                     <Package className="h-10 w-10 text-gray-300 stroke-[1.5]" />
                                     <div>
@@ -1059,9 +1248,27 @@ export function AdminDashboard() {
                                 const stock = p.offers[0]?.stock ?? inventoryStock[p.id] ?? 0;
                                 const isApproved = (p.verificationStatus || "approved") === "approved";
                                 const priceVal = p.offers[0]?.price || 0;
+                                const isSelected = selectedProductIds.has(p.id);
 
                                 return (
-                                  <tr key={p.id} className="hover:bg-gray-50/80 transition">
+                                  <tr
+                                    key={p.id}
+                                    className={cn(
+                                      "transition",
+                                      isSelected
+                                        ? "bg-red-50/50 hover:bg-red-50/70"
+                                        : "hover:bg-gray-50/80"
+                                    )}
+                                  >
+                                    <td className="w-10 px-3 py-3 text-center">
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => handleToggleSelectProduct(p.id)}
+                                        title={`Select ${p.name}`}
+                                        className="h-4 w-4 rounded border-gray-300 text-[#E31E24] focus:ring-[#E31E24] cursor-pointer accent-[#E31E24]"
+                                      />
+                                    </td>
                                     <td className="px-4 py-3">
                                       <div className="font-semibold text-gray-900 line-clamp-1">{p.name}</div>
                                       <div className="text-[10px] font-mono text-gray-400">{p.id} {p.sku ? `· ${p.sku}` : ""}</div>
@@ -1106,6 +1313,17 @@ export function AdminDashboard() {
                                           Edit
                                         </button>
                                       </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                                      <button
+                                        onClick={() => handleDeleteSingleProduct(p)}
+                                        disabled={isDeletingProducts}
+                                        title={`Delete ${p.name}`}
+                                        className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 px-2.5 py-1 rounded-md font-semibold transition cursor-pointer active:scale-95 disabled:opacity-50"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                        <span>Delete</span>
+                                      </button>
                                     </td>
                                   </tr>
                                 );

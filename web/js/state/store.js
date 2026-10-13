@@ -22,6 +22,12 @@ class VoltFitStore {
     this.currentRole = "customer"; // 'customer' | 'vendor' | 'technician'
     this.currentTab = "find"; // role-specific tab
     this.previewMode = "desktop"; // 'desktop' | 'tablet' | 'mobile'
+    this.catalogSearch = "";
+    this.catalogVehicleType = "all";
+    this.accessorySearch = "";
+    this.accessoryVehicleType = "all";
+    this.accessoryCategory = "all";
+    this.selectedAccessoryId = null;
 
     // Bypass User Profile
     this.users = {

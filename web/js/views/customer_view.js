@@ -1,10 +1,172 @@
 /* ==========================================================================
-   VoltFit Customer View Module (Refined Layout Alignment & Extended Catalog)
+   Riderzpro Customer View Module (Refined Layout Alignment & Extended Catalog)
    ========================================================================== */
 
 import { store } from "../state/store.js";
 import { formatCurrency, renderStatusChip, showToast, openModal, closeModal } from "../components/glass_ui.js";
 import { LiveMapCanvas } from "../components/map_view.js";
+let vehicleCatalog = { products: [] };
+let vehicleImages = { images: [] };
+let accessoryCatalog = { products: [], price_note: "" };
+Promise.all([
+  fetch(new URL("../../data/ev_two_wheeler_catalog.json", import.meta.url)).then(response => response.ok ? response.json() : null),
+  fetch(new URL("../../data/ev_image_manifest.json", import.meta.url)).then(response => response.ok ? response.json() : null),
+  fetch(new URL("../../data/vehicle_accessories.json", import.meta.url)).then(response => response.ok ? response.json() : null)
+]).then(([catalog, images, accessories]) => {
+  if (catalog?.products) vehicleCatalog = catalog;
+  if (images?.images) vehicleImages = images;
+  if (accessories?.products) accessoryCatalog = accessories;
+  store.notify();
+}).catch(error => console.warn("Vehicle catalog could not be loaded:", error));
+
+function escapeHtml(value = "") {
+  return String(value).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+}
+
+function priceBasisLabel(value = "") {
+  const labels = {
+    starting_ex_showroom: "Starting ex-showroom",
+    starting_price_before_local_charges: "Starting price before local charges",
+    ex_showroom: "Ex-showroom",
+    ex_showroom_without_baas: "Ex-showroom, without BaaS",
+    starting_price: "Starting price",
+    ex_showroom_bengaluru: "Ex-showroom, Bengaluru",
+    ex_showroom_starting_price: "Starting ex-showroom price"
+  };
+  return labels[value] || value.replaceAll("_", " ");
+}
+
+function availabilityLabel(value = "") {
+  if (value === "listed_check_retail" || value === "listed_verify_stock") return "Listed · In Stock";
+  return value.replaceAll("_", " ");
+}
+
+function renderAccessoryCard(product) {
+  const price = formatCurrency(product.price_inr);
+  return `
+    <article class="glass-card accessory-card">
+      <a class="accessory-image" href="${escapeHtml(product.source_url)}" target="_blank" rel="noopener noreferrer" aria-label="View ${escapeHtml(product.name)} at ${escapeHtml(product.source_name)}">
+        <img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.image_alt)}" loading="lazy" onerror="this.parentElement.classList.add('no-accessory-image'); this.remove();">
+        <span class="accessory-vehicle-badge">${product.vehicle_type === "car" ? "🚘 Car" : "🏍️ Bike"}</span>
+      </a>
+      <div class="accessory-content">
+        <div class="accessory-meta"><span>${escapeHtml(product.brand)}</span><span>${escapeHtml(product.category)}</span></div>
+        <h2>${escapeHtml(product.name)}</h2>
+        <div class="accessory-price">${price}<small>Listed price · verify with seller</small></div>
+        <div class="accessory-fitment"><strong>Fitment</strong><span>${escapeHtml(product.fitment)}</span></div>
+        <details class="vehicle-catalog-more"><summary>Product details</summary><div>
+          <span>Part number: ${escapeHtml(product.part_number)}</span>
+          ${product.details.map(detail => `<span>• ${escapeHtml(detail)}</span>`).join("")}
+          <span>Source: ${escapeHtml(product.source_name)}</span>
+        </div></details>
+        <div class="accessory-actions">
+          <button type="button" class="btn btn-primary accessory-book-button" data-accessory-id="${escapeHtml(product.id)}">Book Now</button>
+          <a class="accessory-source-link" href="${escapeHtml(product.source_url)}" target="_blank" rel="noopener noreferrer">Seller details ↗</a>
+        </div>
+      </div>
+    </article>`;
+}
+
+function filteredAccessories() {
+  const query = (store.accessorySearch || "").trim().toLowerCase();
+  return accessoryCatalog.products.filter(product => {
+    const text = `${product.brand} ${product.name} ${product.category} ${product.part_number} ${product.fitment} ${product.details.join(" ")}`.toLowerCase();
+    return (!query || text.includes(query)) &&
+      (store.accessoryVehicleType === "all" || product.vehicle_type === store.accessoryVehicleType) &&
+      (store.accessoryCategory === "all" || product.category === store.accessoryCategory);
+  });
+}
+
+window.riderzproFilterAccessories = function() {
+  const search = document.getElementById("accessory-search");
+  const vehicle = document.getElementById("accessory-vehicle-type");
+  const category = document.getElementById("accessory-category");
+  store.accessorySearch = search?.value || "";
+  store.accessoryVehicleType = vehicle?.value || "all";
+  store.accessoryCategory = category?.value || "all";
+  const products = filteredAccessories();
+  const count = document.getElementById("accessory-results-count");
+  if (count) count.textContent = `${products.length} accessories`;
+  const grid = document.getElementById("accessory-grid-container");
+  if (grid) grid.innerHTML = products.length
+    ? `<div class="accessory-grid">${products.map(renderAccessoryCard).join("")}</div>`
+    : `<div class="glass-card empty-state"><div class="empty-state-icon">🧰</div><h2 class="text-title-medium">No accessories found</h2><p class="text-secondary">Try a different search or filter.</p></div>`;
+};
+
+function catalogImage(product) {
+  if (product.image_url) return { url: product.image_url, alt: product.image_alt || `${product.brand} ${product.model}` };
+  const manifestImage = vehicleImages.images.find(image => product.id === image.slug || product.id.startsWith(`${image.slug}-`));
+  return manifestImage ? { url: manifestImage.image_url, alt: manifestImage.alt } : null;
+}
+
+function renderCatalogBike(product) {
+  const image = catalogImage(product);
+  const price = product.price_inr ? formatCurrency(product.price_inr) : "Price not listed";
+  const bookingUrl = product.source_url && product.source_url !== "#"
+    ? product.source_url
+    : `https://www.google.com/search?q=${encodeURIComponent(`${product.brand} ${product.model} official booking`)}`;
+  const facts = [
+    ["Range", product.claimed_range_km ? `${product.claimed_range_km} km` : "Not provided"],
+    ["Top speed", product.top_speed_kmh ? `${product.top_speed_kmh} km/h` : "Not provided"],
+    ["Battery", product.battery_capacity_kwh ? `${product.battery_capacity_kwh} kWh` : "Not provided"],
+    ["Charging", product.charging_time_text || "Not provided"]
+  ];
+  return `
+    <article class="glass-card catalog-bike-card">
+      <div class="catalog-bike-image">
+        ${image ? `<img src="${escapeHtml(image.url)}" alt="${escapeHtml(image.alt)}" loading="lazy" onerror="this.parentElement.classList.add('no-bike-image'); this.remove();">` : `<div class="catalog-bike-placeholder" aria-label="Bike image unavailable">🛵</div>`}
+        <span class="catalog-bike-type">${escapeHtml((product.vehicle_type || "electric two-wheeler").replaceAll("_", " "))}</span>
+      </div>
+      <div class="catalog-bike-content">
+        <div class="catalog-bike-title-row">
+          <div>
+            <span class="spec-label">${escapeHtml(product.brand)}</span>
+            <h2>${escapeHtml(product.model)}${product.variant && product.variant.toLowerCase() !== "base" ? ` <span>${escapeHtml(product.variant)}</span>` : ""}</h2>
+          </div>
+          <span class="catalog-bike-availability">${escapeHtml(availabilityLabel(product.availability || "Listed"))}</span>
+        </div>
+        <div class="catalog-bike-price">${price}<small>${escapeHtml(priceBasisLabel(product.price_type || ""))}</small></div>
+        <div class="catalog-bike-facts">${facts.map(([label, value]) => `<div><span>${label}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}</div>
+        ${product.price_note ? `<p class="catalog-bike-note">${escapeHtml(product.price_note)}</p>` : ""}
+        <details class="vehicle-catalog-more"><summary>Full specifications</summary><div>
+          <span>Brand and model: ${escapeHtml(product.brand)} ${escapeHtml(product.model)} · ${escapeHtml(product.variant || "Standard")}</span>
+          <span>Vehicle type: ${escapeHtml((product.vehicle_type || "electric two-wheeler").replaceAll("_", " "))}</span>
+          <span>Advertised price: ${price} (${escapeHtml(priceBasisLabel(product.price_type || ""))})</span>
+          <span>Availability: ${escapeHtml(availabilityLabel(product.availability || "In Stock"))}</span>
+          <span>Market: ${escapeHtml(product.market || "India")}</span>
+          <span>Estimated delivery: ${product.delivery_estimate_hours == null ? "Standard delivery" : `${escapeHtml(product.delivery_estimate_hours)} hours`}</span>
+          <span>Claimed range: ${facts[0][1]} · Top speed: ${facts[1][1]}</span>
+          <span>Battery capacity: ${facts[2][1]} · Charging time: ${facts[3][1]}</span>
+        </div></details>
+        <a class="btn btn-primary catalog-book-bike" href="${escapeHtml(bookingUrl)}" target="_blank" rel="noopener noreferrer">Book Now ↗</a>
+      </div>
+    </article>`;
+}
+
+window.riderzproSearchCatalog = function() {
+  const searchInput = document.getElementById("catalog-bike-search");
+  const typeSelect = document.getElementById("catalog-bike-type");
+  store.catalogSearch = searchInput ? searchInput.value : "";
+  store.catalogVehicleType = typeSelect ? typeSelect.value : "all";
+
+  const query = (store.catalogSearch || "").trim().toLowerCase();
+  const type = store.catalogVehicleType || "all";
+  const products = vehicleCatalog.products.filter(product => {
+    const matchesQuery = !query || `${product.brand} ${product.model} ${product.variant}`.toLowerCase().includes(query);
+    return matchesQuery && (type === "all" || product.vehicle_type === type);
+  });
+  const countEl = document.getElementById("catalog-results-count");
+  if (countEl) {
+    countEl.textContent = `${products.length} of ${vehicleCatalog.products.length} bikes`;
+  }
+
+  const container = document.getElementById("catalog-bike-grid-container");
+  if (container) {
+    container.innerHTML = products.length
+      ? `<div class="catalog-bike-grid">${products.map(renderCatalogBike).join("")}</div>`
+      : `<div class="glass-card empty-state"><div class="empty-state-icon">🛵</div><h2 class="text-title-medium">No bikes found</h2><p class="text-secondary">Try another search or vehicle type.</p></div>`;
+  }
+};
 
 export function renderCustomerView() {
   const tab = store.currentTab;
@@ -12,6 +174,10 @@ export function renderCustomerView() {
   switch (tab) {
     case "find":
       return renderFindTab();
+    case "accessories":
+      return renderAccessoriesTab();
+    case "accessory-booking":
+      return renderAccessoryBookingTab();
     case "book":
       return renderBookTab();
     case "orders":
@@ -25,120 +191,106 @@ export function renderCustomerView() {
   }
 }
 
+function renderAccessoryBookingTab() {
+  const product = accessoryCatalog.products.find(item => item.id === store.selectedAccessoryId);
+  if (!product) {
+    return `<section class="glass-card empty-state accessory-booking-empty"><div class="empty-state-icon">🧰</div><h1 class="text-title-medium">Choose an accessory first</h1><p class="text-secondary">Select a product from the accessories catalog to review its details.</p><button type="button" class="btn btn-primary" data-accessory-back>Browse accessories</button></section>`;
+  }
+  const image = `<img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.image_alt)}" onerror="this.parentElement.classList.add('no-accessory-image'); this.remove();">`;
+  return `
+    <div class="page-header accessory-checkout-header">
+      <div class="page-title-group"><h1 class="text-title-large">Review your accessory</h1><p class="text-secondary">Check the product, price, and vehicle fitment before continuing to the seller.</p></div>
+      <button type="button" class="btn btn-glass" data-accessory-back>← Back to accessories</button>
+    </div>
+    <div class="accessory-checkout-layout">
+      <section class="glass-card accessory-booking-product">
+        <div class="accessory-booking-image">${image}<span class="accessory-vehicle-badge">${product.vehicle_type === "car" ? "🚘 Car accessory" : "🏍️ Bike accessory"}</span></div>
+        <div class="accessory-booking-copy"><span class="spec-label">${escapeHtml(product.brand)} · ${escapeHtml(product.category)}</span><h2>${escapeHtml(product.name)}</h2><p>${escapeHtml(product.fitment)}</p>
+          <details class="vehicle-catalog-more" open><summary>Product information</summary><div><span>Part number: ${escapeHtml(product.part_number)}</span>${product.details.map(detail => `<span>• ${escapeHtml(detail)}</span>`).join("")}<span>Seller: ${escapeHtml(product.source_name)}</span></div></details>
+        </div>
+      </section>
+      <aside class="glass-card accessory-booking-summary">
+        <h2>Booking details</h2><div class="accessory-checkout-seller"><span>Seller</span><strong>${escapeHtml(product.source_name)}</strong></div>
+        <div class="accessory-checkout-price"><span>Listed price</span><strong>${formatCurrency(product.price_inr)}</strong></div>
+        <p>Price, stock, delivery, and exact fitment are confirmed by the seller. Continue to the official listing to complete your booking or purchase.</p>
+        <a class="btn btn-primary accessory-checkout-cta" href="${escapeHtml(product.source_url)}" target="_blank" rel="noopener noreferrer">Book Now · Continue to seller ↗</a>
+        <button type="button" class="btn btn-glass accessory-back-link" data-accessory-back>Keep browsing</button>
+      </aside>
+    </div>`;
+}
+
+function renderAccessoriesTab() {
+  const products = filteredAccessories();
+  const categories = [...new Set(accessoryCatalog.products
+    .filter(product => store.accessoryVehicleType === "all" || product.vehicle_type === store.accessoryVehicleType)
+    .map(product => product.category))];
+  return `
+    <div class="page-header">
+      <div class="page-title-group">
+        <h1 class="text-title-large">Car &amp; Bike Accessories</h1>
+        <p class="text-secondary">Browse sourced accessories, check fitment, and view current seller listings.</p>
+      </div>
+    </div>
+    <div class="accessory-source-note">Starter listings from Maruti Suzuki Genuine Accessories and Royal Enfield. Prices and availability may change; confirm vehicle fitment with the seller before ordering.</div>
+    <form class="catalog-toolbar accessory-toolbar" onsubmit="event.preventDefault(); window.riderzproFilterAccessories(); return false;">
+      <label class="catalog-search-label">Search accessories
+        <input id="accessory-search" class="form-control" type="search" placeholder="Name, brand, category or part number" value="${escapeHtml(store.accessorySearch)}" oninput="window.riderzproFilterAccessories()" autocomplete="off">
+      </label>
+      <label class="catalog-type-label">Vehicle
+        <select id="accessory-vehicle-type" class="form-control" onchange="window.riderzproFilterAccessories()">
+          <option value="all" ${store.accessoryVehicleType === "all" ? "selected" : ""}>Cars &amp; bikes</option>
+          <option value="car" ${store.accessoryVehicleType === "car" ? "selected" : ""}>Car accessories</option>
+          <option value="motorcycle" ${store.accessoryVehicleType === "motorcycle" ? "selected" : ""}>Bike accessories</option>
+        </select>
+      </label>
+      <label class="catalog-type-label">Category
+        <select id="accessory-category" class="form-control" onchange="window.riderzproFilterAccessories()">
+          <option value="all">All categories</option>
+          ${categories.map(item => `<option value="${escapeHtml(item)}" ${store.accessoryCategory === item ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
+        </select>
+      </label>
+      <span class="catalog-results-count" id="accessory-results-count">${products.length} accessories</span>
+    </form>
+    <div id="accessory-grid-container">
+      ${products.length ? `<div class="accessory-grid">${products.map(renderAccessoryCard).join("")}</div>` : `<div class="glass-card empty-state"><div class="empty-state-icon">🧰</div><h2 class="text-title-medium">Accessories are loading</h2><p class="text-secondary">The sourced catalog will appear here shortly.</p></div>`}
+    </div>
+    <p class="accessory-disclaimer">${escapeHtml(accessoryCatalog.price_note)}</p>
+  `;
+}
+
 // --------------------------------------------------------------------------
 // 1. FIND & DISCOVERY TAB
 // --------------------------------------------------------------------------
 function renderFindTab() {
-  const activeBike = store.getActiveBike();
-  const compatibleBatteries = store.getCompatibleBatteries();
-
+  const query = (store.catalogSearch || "").trim().toLowerCase();
+  const type = store.catalogVehicleType || "all";
+  const products = vehicleCatalog.products.filter(product => {
+    const matchesQuery = !query || `${product.brand} ${product.model} ${product.variant}`.toLowerCase().includes(query);
+    return matchesQuery && (type === "all" || product.vehicle_type === type);
+  });
   return `
     <div class="page-header">
       <div class="page-title-group">
-        <h1 class="text-title-large">Find EV Battery</h1>
-        <p class="text-secondary">Guaranteed compatibility with your electric two-wheeler</p>
-      </div>
-      <div class="page-actions">
-        <button id="btn-switch-bike-modal" class="btn btn-glass btn-sm">
-          <span>🛵</span> Switch Vehicle
-        </button>
+        <h1 class="text-title-large">Find Bike</h1>
+        <p class="text-secondary">Browse verified electric two-wheelers in Riderzpro ecosystem</p>
       </div>
     </div>
-
-    <!-- Active Vehicle Selector Bar -->
-    <div class="bike-selector-hero">
-      <div class="bike-selector-left">
-        <div class="bike-icon-circle">${activeBike?.modelDetails?.image || "🛵"}</div>
-        <div style="min-width: 0;">
-          <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--accent-blue); letter-spacing: 0.04em;">Selected Vehicle</div>
-          <div style="font-size: 18px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-            ${activeBike ? `${activeBike.modelDetails.brand} ${activeBike.modelDetails.model} (${activeBike.year})` : "Select a Bike"}
-          </div>
-          <div style="font-size: 12.5px; color: var(--text-secondary);">
-            ${activeBike?.nickname ? `“${activeBike.nickname}” • ` : ""}${activeBike?.registration_number || ""}
-          </div>
-        </div>
-      </div>
-      <div class="bike-selector-dropdowns">
-        <select id="select-quick-bike" class="form-control" style="width: auto; min-width: 220px;">
-          ${store.savedBikes.map(b => {
-            const m = store.bikeModels.find(m => m.id === b.bike_model_id);
-            return `<option value="${b.id}" ${b.id === store.selectedBikeId ? 'selected' : ''}>${m?.brand} ${m?.model} (${b.registration_number})</option>`;
-          }).join("")}
+    <form id="catalog-search-form" class="catalog-toolbar" onsubmit="event.preventDefault(); window.riderzproSearchCatalog(); return false;">
+      <label class="catalog-search-label">Search bikes
+        <input id="catalog-bike-search" class="form-control" type="search" placeholder="Search brand or model" value="${escapeHtml(store.catalogSearch || "")}" oninput="window.riderzproSearchCatalog()" autocomplete="off">
+      </label>
+      <label class="catalog-type-label">Vehicle type
+        <select id="catalog-bike-type" class="form-control" onchange="window.riderzproSearchCatalog()">
+          <option value="all" ${type === "all" ? "selected" : ""}>All types</option>
+          ${[...new Set(vehicleCatalog.products.map(product => product.vehicle_type).filter(Boolean))].map(item => `<option value="${escapeHtml(item)}" ${type === item ? "selected" : ""}>${escapeHtml(item.replaceAll("_", " "))}</option>`).join("")}
         </select>
-        <button id="btn-add-bike-quick" class="btn btn-secondary btn-sm">+ Add New</button>
-      </div>
+      </label>
+      <span class="catalog-results-count" id="catalog-results-count">${products.length} of ${vehicleCatalog.products.length} bikes</span>
+      <button class="btn btn-primary catalog-search-button" type="button" onclick="window.riderzproSearchCatalog()">Search</button>
+    </form>
+    <div id="catalog-bike-grid-container">
+      ${products.length ? `<div class="catalog-bike-grid">${products.map(renderCatalogBike).join("")}</div>` : `<div class="glass-card empty-state"><div class="empty-state-icon">🛵</div><h2 class="text-title-medium">No bikes found</h2><p class="text-secondary">Try another search or vehicle type.</p></div>`}
     </div>
-
-    <!-- Section Heading -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-      <div>
-        <h2 class="text-title-medium">Compatible Batteries</h2>
-        <p class="text-caption">Showing only batteries strictly verified to fit ${activeBike?.modelDetails?.model || "your bike"}</p>
-      </div>
-      <span class="status-chip confirmed" style="font-size: 12px;">
-        ${compatibleBatteries.length} Verified Options
-      </span>
-    </div>
-
-    <!-- Battery Grid -->
-    ${compatibleBatteries.length === 0 ? `
-      <div class="glass-card empty-state">
-        <div class="empty-state-icon">⚡</div>
-        <h3 class="text-section-title">No Compatible Batteries Found</h3>
-        <p class="text-secondary" style="max-width: 400px;">We couldn't find in-stock batteries matching this model. Try choosing another bike or contact support.</p>
-      </div>
-    ` : `
-      <div class="battery-grid">
-        ${compatibleBatteries.map(bat => `
-          <div class="glass-card battery-card interactive" data-battery-id="${bat.id}">
-            <div class="battery-card-header">
-              <div style="min-width: 0; flex: 1;">
-                <span class="fit-badge">✓ Fits ${activeBike?.modelDetails?.model}</span>
-                <h3 class="battery-name" style="margin-top: 6px;">${bat.name}</h3>
-                <div class="battery-supplier">by ${bat.vendor_name} • ★ ${bat.rating} (${bat.review_count})</div>
-              </div>
-              <span class="brand-badge" style="flex-shrink: 0;">${bat.badge || bat.chemistry.split(" ")[0]}</span>
-            </div>
-
-            <!-- Quick Specs Pills Grid -->
-            <div class="battery-specs-pills">
-              <div class="spec-item">
-                <span class="spec-label">Range</span>
-                <span class="spec-val">${bat.range_km} km / charge</span>
-              </div>
-              <div class="spec-item">
-                <span class="spec-label">Voltage & Capacity</span>
-                <span class="spec-val">${bat.voltage}V • ${bat.capacity_ah}Ah</span>
-              </div>
-              <div class="spec-item">
-                <span class="spec-label">Charge Time</span>
-                <span class="spec-val">${bat.charge_time_hours} hrs</span>
-              </div>
-              <div class="spec-item">
-                <span class="spec-label">Warranty</span>
-                <span class="spec-val">${bat.warranty_months} Months</span>
-              </div>
-            </div>
-
-            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
-              ${bat.bms_features}
-            </div>
-
-            <div class="battery-footer">
-              <div>
-                <div style="font-size: 10.5px; color: var(--text-secondary); font-weight: 500;">TOTAL PRICE</div>
-                <div class="battery-price tabular-nums">${formatCurrency(bat.price)}</div>
-              </div>
-              <div style="display: flex; gap: 8px;">
-                <button class="btn btn-glass btn-sm btn-view-specs" data-battery-id="${bat.id}">Specs</button>
-                <button class="btn btn-primary btn-sm btn-choose-battery" data-battery-id="${bat.id}">Choose & Book</button>
-              </div>
-            </div>
-          </div>
-        `).join("")}
-      </div>
-    `}
   `;
 }
 
@@ -156,7 +308,7 @@ function renderBookTab() {
         <div class="empty-state-icon">🔋</div>
         <h2 class="text-title-medium">No Battery Selected</h2>
         <p class="text-secondary">Please select a compatible battery for your bike first.</p>
-        <button class="btn btn-primary" onclick="window.voltfitRouter.navigate('find')">Browse Compatible Batteries</button>
+        <button class="btn btn-primary" onclick="window.voltfitRouter.navigate('find')">Browse Bikes</button>
       </div>
     `;
   }
