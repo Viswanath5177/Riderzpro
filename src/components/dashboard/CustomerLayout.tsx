@@ -36,6 +36,7 @@ import {
 import { toast } from "sonner";
 import { Logo } from "@/components/site/bits";
 import { useStore } from "@/lib/store";
+import { signOut as endServerSession } from "@/lib/auth";
 import { inr, products, type Product } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { VinSearchModal } from "./VinSearchModal";
@@ -723,11 +724,15 @@ export function CustomerLayout({
 
                       <div className="my-2 border-t border-black/[0.06]" />
 
-                      {/* 4. SIGN OUT (Requested) */}
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={async () => {
                           setIsProfileOpen(false);
+                          try {
+                            await endServerSession();
+                          } catch {
+                            // server session end fallback
+                          }
                           signOut();
                           toast.success("Signed out successfully. See you soon!");
                           navigate({ to: "/" });

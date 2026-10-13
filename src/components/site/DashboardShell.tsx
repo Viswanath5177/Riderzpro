@@ -1,13 +1,13 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { Bike, Shield, Store, Truck, Wrench, ArrowLeft, Sparkles, type LucideIcon } from "lucide-react";
-import { Logo } from "./bits";
+import { Bike, Shield, ArrowLeft, LogOut, Sparkles, type LucideIcon } from "lucide-react";
+import { Logo, ThemeToggle } from "./bits";
 import { cn } from "@/lib/utils";
+import { signOut } from "@/lib/auth";
 
 export const ROLE_LINKS = [
   { to: "/dashboard/customer", label: "Customer", Icon: Bike },
-  { to: "/dashboard/vendor", label: "Vendor", Icon: Store },
-  { to: "/dashboard/rider", label: "Rider", Icon: Truck },
+  { to: "/dashboard/admin", label: "Admin", Icon: Shield },
 ] as const;
 
 export type Section = { id: string; label: string; Icon: LucideIcon };
@@ -17,6 +17,12 @@ export function DashboardShell({
 }: {
   title: string; subtitle: string; sections: Section[]; active: string; onSelect: (id: string) => void; children: ReactNode; actions?: ReactNode;
 }) {
+  const navigate = useNavigate();
+  async function handleSignOut() {
+    await signOut();
+    await navigate({ to: "/login" });
+  }
+
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-0">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-sidebar-border bg-sidebar p-4 md:flex">
@@ -51,6 +57,8 @@ export function DashboardShell({
               <span className="hidden sm:inline">AI Assistant</span>
               <span className="sm:hidden">AI</span>
             </Link>
+            <button type="button" onClick={handleSignOut} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-3 text-sm font-medium hover:bg-muted"><LogOut className="h-4 w-4" /><span className="hidden sm:inline">Sign out</span></button>
+            <ThemeToggle />
           </div>
         </header>
         <div className="px-4 pt-4 md:hidden">

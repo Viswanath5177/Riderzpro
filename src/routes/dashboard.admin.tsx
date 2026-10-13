@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
 import {
   LayoutDashboard,
@@ -49,8 +49,14 @@ import { ORDER_STEPS, useStore, type Order } from "@/lib/store";
 import type { NormalizedShipment, LogisticsProvider, ShipmentStatus } from "@/lib/logistics/types";
 import { cn } from "@/lib/utils";
 import { ProductFormPage } from "@/components/vendor/ProductFormPage";
+import { getCurrentRole } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard/admin")({
+  beforeLoad: async () => {
+    const role = await getCurrentRole();
+    if (!role) throw redirect({ to: "/login" });
+    if (role !== "admin") throw redirect({ to: "/dashboard/customer" });
+  },
   head: () => ({
     meta: [
       { title: "Operations & Admin Console — RiderzPro" },
@@ -1964,17 +1970,11 @@ export function AdminDashboard() {
             </div>
 
             <p className="text-xs text-[#6B7280] mt-1">
-              Placed on {new Date(selectedOrder.createdAt).toLocaleString()} · Paid via {selectedOrder.payment} ·{" "}
-              <span className="font-semibold text-emerald-700">{selectedOrder.paymentStatus || "Paid"}</span>
+              Payment: <span className="font-semibold text-emerald-700">{selectedOrder.paymentStatus || "Paid"}</span> · {selectedOrder.payment}
             </p>
 
-            {/* Shipping Address info */}
-            <div className="mt-3 p-3 rounded-xl bg-gray-50 border border-gray-100 text-xs text-[#111111]">
-              <p className="font-bold">Doorstep Delivery Destination</p>
-              <p className="text-[#6B7280] mt-0.5">
-                {selectedOrder.shippingAddress?.street || "Flat 402, Green Glen Layout, Bellandur"}, {selectedOrder.shippingAddress?.city || "Bengaluru"} - {selectedOrder.shippingAddress?.pincode || "560103"}
-              </p>
-              <p className="text-[11px] text-gray-500 mt-1">
+            <div className="mt-3 p-3 rounded-lg bg-[#F5F6F8] border border-gray-200 text-xs text-gray-600">
+              <p>
                 Recipient: <span className="font-semibold text-gray-800">{selectedOrder.customerName || "Aakash Sharma"}</span> ({selectedOrder.customerPhone || "+91 98765 43210"})
               </p>
               {selectedOrder.shipmentId && (

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { CustomerLayout, type CustomerTab } from "@/components/dashboard/CustomerLayout";
 import { OverviewTab } from "@/components/dashboard/OverviewTab";
@@ -16,8 +16,14 @@ import { SupportTab } from "@/components/dashboard/SupportTab";
 import { AddressesTab } from "@/components/dashboard/AddressesTab";
 import { BookingModal } from "@/components/dashboard/BookingModal";
 import { AddBikeModal } from "@/components/dashboard/AddBikeModal";
+import { getCurrentRole } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard/customer")({
+  beforeLoad: async () => {
+    const role = await getCurrentRole();
+    if (!role) throw redirect({ to: "/login" });
+    if (role !== "customer") throw redirect({ to: "/dashboard/admin" });
+  },
   head: () => ({
     meta: [
       { title: "Customer Dashboard — RiderzPro" },
