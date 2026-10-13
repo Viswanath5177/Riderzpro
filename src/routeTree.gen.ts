@@ -20,6 +20,7 @@ import { Route as OffersRouteImport } from './routes/offers'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as VendorSignUpRouteImport } from './routes/vendor-sign-up'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAiAssistantRouteImport } from './routes/admin.ai-assistant'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
@@ -44,10 +45,12 @@ import { Route as DashboardCustomerRouteImport } from './routes/dashboard.custom
 import { Route as ProductIdRouteImport } from './routes/product.$id'
 import { Route as StoreSlugRouteImport } from './routes/store.$slug'
 import { Route as TrackIdRouteImport } from './routes/track.$id'
+import { Route as VendorIdRouteImport } from './routes/vendor.$id'
 import { Route as VendorAuthRouteImport } from './routes/vendor.auth'
 import { Route as VendorDashboardRouteImport } from './routes/vendor.dashboard'
 import { Route as VendorOnboardingRouteImport } from './routes/vendor.onboarding'
 import { Route as VendorPendingRouteImport } from './routes/vendor.pending'
+import { Route as VendorSignupRouteImport } from './routes/vendor.signup'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -102,6 +105,11 @@ const ShopRoute = ShopRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VendorSignUpRoute = VendorSignUpRouteImport.update({
+  id: '/vendor-sign-up',
+  path: '/vendor-sign-up',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -224,6 +232,11 @@ const TrackIdRoute = TrackIdRouteImport.update({
   path: '/track/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VendorIdRoute = VendorIdRouteImport.update({
+  id: '/vendor/$id',
+  path: '/vendor/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VendorAuthRoute = VendorAuthRouteImport.update({
   id: '/vendor/auth',
   path: '/vendor/auth',
@@ -244,6 +257,11 @@ const VendorPendingRoute = VendorPendingRouteImport.update({
   path: '/vendor/pending',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VendorSignupRoute = VendorSignupRouteImport.update({
+  id: '/vendor/signup',
+  path: '/vendor/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -257,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
+  '/vendor-sign-up': typeof VendorSignUpRoute
   '/admin/ai-assistant': typeof AdminAiAssistantRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/approvals': typeof AdminApprovalsRoute
@@ -280,10 +299,12 @@ export interface FileRoutesByFullPath {
   '/product/$id': typeof ProductIdRoute
   '/store/$slug': typeof StoreSlugRoute
   '/track/$id': typeof TrackIdRoute
+  '/vendor/$id': typeof VendorIdRoute
   '/vendor/auth': typeof VendorAuthRoute
   '/vendor/dashboard': typeof VendorDashboardRoute
   '/vendor/onboarding': typeof VendorOnboardingRoute
   '/vendor/pending': typeof VendorPendingRoute
+  '/vendor/signup': typeof VendorSignupRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
@@ -297,6 +318,7 @@ export interface FileRoutesByTo {
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
+  '/vendor-sign-up': typeof VendorSignUpRoute
   '/admin/ai-assistant': typeof AdminAiAssistantRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/approvals': typeof AdminApprovalsRoute
@@ -320,10 +342,12 @@ export interface FileRoutesByTo {
   '/product/$id': typeof ProductIdRoute
   '/store/$slug': typeof StoreSlugRoute
   '/track/$id': typeof TrackIdRoute
+  '/vendor/$id': typeof VendorIdRoute
   '/vendor/auth': typeof VendorAuthRoute
   '/vendor/dashboard': typeof VendorDashboardRoute
   '/vendor/onboarding': typeof VendorOnboardingRoute
   '/vendor/pending': typeof VendorPendingRoute
+  '/vendor/signup': typeof VendorSignupRoute
   '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
@@ -339,6 +363,7 @@ export interface FileRoutesById {
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
+  '/vendor-sign-up': typeof VendorSignUpRoute
   '/admin/ai-assistant': typeof AdminAiAssistantRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/approvals': typeof AdminApprovalsRoute
@@ -362,10 +387,12 @@ export interface FileRoutesById {
   '/product/$id': typeof ProductIdRoute
   '/store/$slug': typeof StoreSlugRoute
   '/track/$id': typeof TrackIdRoute
+  '/vendor/$id': typeof VendorIdRoute
   '/vendor/auth': typeof VendorAuthRoute
   '/vendor/dashboard': typeof VendorDashboardRoute
   '/vendor/onboarding': typeof VendorOnboardingRoute
   '/vendor/pending': typeof VendorPendingRoute
+  '/vendor/signup': typeof VendorSignupRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
@@ -382,6 +409,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/shop'
     | '/signup'
+    | '/vendor-sign-up'
     | '/admin/ai-assistant'
     | '/admin/analytics'
     | '/admin/approvals'
@@ -405,10 +433,12 @@ export interface FileRouteTypes {
     | '/product/$id'
     | '/store/$slug'
     | '/track/$id'
+    | '/vendor/$id'
     | '/vendor/auth'
     | '/vendor/dashboard'
     | '/vendor/onboarding'
     | '/vendor/pending'
+    | '/vendor/signup'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -422,6 +452,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/shop'
     | '/signup'
+    | '/vendor-sign-up'
     | '/admin/ai-assistant'
     | '/admin/analytics'
     | '/admin/approvals'
@@ -445,10 +476,12 @@ export interface FileRouteTypes {
     | '/product/$id'
     | '/store/$slug'
     | '/track/$id'
+    | '/vendor/$id'
     | '/vendor/auth'
     | '/vendor/dashboard'
     | '/vendor/onboarding'
     | '/vendor/pending'
+    | '/vendor/signup'
     | '/admin'
   id:
     | '__root__'
@@ -463,6 +496,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/shop'
     | '/signup'
+    | '/vendor-sign-up'
     | '/admin/ai-assistant'
     | '/admin/analytics'
     | '/admin/approvals'
@@ -486,10 +520,12 @@ export interface FileRouteTypes {
     | '/product/$id'
     | '/store/$slug'
     | '/track/$id'
+    | '/vendor/$id'
     | '/vendor/auth'
     | '/vendor/dashboard'
     | '/vendor/onboarding'
     | '/vendor/pending'
+    | '/vendor/signup'
     | '/admin/'
   fileRoutesById: FileRoutesById
 }
@@ -505,15 +541,18 @@ export interface RootRouteChildren {
   OrdersRoute: typeof OrdersRoute
   ShopRoute: typeof ShopRoute
   SignupRoute: typeof SignupRoute
+  VendorSignUpRoute: typeof VendorSignUpRoute
   DashboardAdminRoute: typeof DashboardAdminRoute
   DashboardCustomerRoute: typeof DashboardCustomerRoute
   ProductIdRoute: typeof ProductIdRoute
   StoreSlugRoute: typeof StoreSlugRoute
   TrackIdRoute: typeof TrackIdRoute
+  VendorIdRoute: typeof VendorIdRoute
   VendorAuthRoute: typeof VendorAuthRoute
   VendorDashboardRoute: typeof VendorDashboardRoute
   VendorOnboardingRoute: typeof VendorOnboardingRoute
   VendorPendingRoute: typeof VendorPendingRoute
+  VendorSignupRoute: typeof VendorSignupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -593,6 +632,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vendor-sign-up': {
+      id: '/vendor-sign-up'
+      path: '/vendor-sign-up'
+      fullPath: '/vendor-sign-up'
+      preLoaderRoute: typeof VendorSignUpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -763,6 +809,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TrackIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vendor/$id': {
+      id: '/vendor/$id'
+      path: '/vendor/$id'
+      fullPath: '/vendor/$id'
+      preLoaderRoute: typeof VendorIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/vendor/auth': {
       id: '/vendor/auth'
       path: '/vendor/auth'
@@ -789,6 +842,13 @@ declare module '@tanstack/react-router' {
       path: '/vendor/pending'
       fullPath: '/vendor/pending'
       preLoaderRoute: typeof VendorPendingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vendor/signup': {
+      id: '/vendor/signup'
+      path: '/vendor/signup'
+      fullPath: '/vendor/signup'
+      preLoaderRoute: typeof VendorSignupRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -852,15 +912,18 @@ const rootRouteChildren: RootRouteChildren = {
   OrdersRoute: OrdersRoute,
   ShopRoute: ShopRoute,
   SignupRoute: SignupRoute,
+  VendorSignUpRoute: VendorSignUpRoute,
   DashboardAdminRoute: DashboardAdminRoute,
   DashboardCustomerRoute: DashboardCustomerRoute,
   ProductIdRoute: ProductIdRoute,
   StoreSlugRoute: StoreSlugRoute,
   TrackIdRoute: TrackIdRoute,
+  VendorIdRoute: VendorIdRoute,
   VendorAuthRoute: VendorAuthRoute,
   VendorDashboardRoute: VendorDashboardRoute,
   VendorOnboardingRoute: VendorOnboardingRoute,
   VendorPendingRoute: VendorPendingRoute,
+  VendorSignupRoute: VendorSignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

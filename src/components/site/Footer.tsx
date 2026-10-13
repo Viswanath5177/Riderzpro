@@ -10,7 +10,7 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4">
           {/* Column 1: Brand & Blurb */}
           <div className="space-y-4">
-            <Logo imgClassName="h-9" />
+            <Logo className="flex items-center" imgClassName="h-12 sm:h-13 md:h-14 w-auto" />
             <p className="text-sm text-[#6b7280] leading-relaxed max-w-sm">
               India's specialized automotive marketplace for electric bike batteries, chargers, accessories, and chassis-verified replacement spares.
             </p>
@@ -79,7 +79,7 @@ export function Footer() {
               </li>
               <li>
                 <Link to="/vendor/auth" search={{ mode: "signup" }} className="hover:text-[#e11d2a] transition">
-                  Vendor Onboarding
+                  Partner with Us (Vendor Sign-Up)
                 </Link>
               </li>
             </ul>

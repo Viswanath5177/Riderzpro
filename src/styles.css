@@ -104,21 +104,36 @@
 }
 
 @layer base {
-  * {
+  *, *::before, *::after {
+    box-sizing: border-box;
     border-color: var(--color-border);
   }
   html {
     font-family: var(--font-sans);
     letter-spacing: -0.011em;
+    overflow-x: clip;
+    width: 100%;
+    -webkit-text-size-adjust: 100%;
   }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     -webkit-font-smoothing: antialiased;
     min-height: 100vh;
+    min-width: 320px;
+    width: 100%;
+    overflow-x: clip;
   }
   h1, h2, h3, h4, h5, h6 {
     letter-spacing: -0.025em;
+  }
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
   }
 }
 
@@ -288,10 +303,9 @@
 }
 
 .vision-card:hover {
-  background: rgba(255, 255, 255, 0.92);
-  border-color: rgba(227, 30, 36, 0.3);
-  box-shadow: 0 12px 24px -4px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(227, 30, 36, 0.15);
-  transform: translateY(-1px);
+  background: #FFFFFF;
+  border-color: #D1D5DB;
+  box-shadow: 0 6px 16px -3px rgba(0, 0, 0, 0.07);
 }
 
 @utility vision-pill {

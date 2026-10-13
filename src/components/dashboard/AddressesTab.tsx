@@ -6,26 +6,22 @@ import { useStore } from "@/lib/store";
 export function AddressesTab() {
   const { userProfile, updateUserProfile } = useStore();
 
-  const [addresses, setAddresses] = useState([
-    {
-      id: "addr-1",
-      tag: "Home (Primary)",
-      name: userProfile.name,
-      phone: userProfile.phone,
-      addressLine: userProfile.address,
-      city: userProfile.city,
-      isDefault: true,
-    },
-    {
-      id: "addr-2",
-      tag: "Office / Work",
-      name: userProfile.name,
-      phone: userProfile.phone,
-      addressLine: "Tech Park Block 3, Outer Ring Road, Marathahalli",
-      city: "Bengaluru 560103",
-      isDefault: false,
-    },
-  ]);
+  const [addresses, setAddresses] = useState(() => {
+    if (userProfile.address && userProfile.address.trim().length > 0) {
+      return [
+        {
+          id: "addr-1",
+          tag: "Home (Primary)",
+          name: userProfile.name,
+          phone: userProfile.phone,
+          addressLine: userProfile.address,
+          city: userProfile.city,
+          isDefault: true,
+        },
+      ];
+    }
+    return [];
+  });
 
   const setDefault = (id: string) => {
     setAddresses((prev) =>
@@ -56,7 +52,16 @@ export function AddressesTab() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {addresses.map((a) => (
+        {addresses.length === 0 ? (
+          <div className="col-span-full rounded-2xl border border-dashed border-gray-300 bg-white p-12 text-center">
+            <MapPin className="mx-auto h-10 w-10 text-gray-300 mb-2" />
+            <h3 className="text-base font-bold text-gray-800 font-display">No Delivery Addresses Saved</h3>
+            <p className="text-xs text-[#6B7280] mt-1 max-w-sm mx-auto">
+              You haven&rsquo;t added any shipping or garage locations yet. Click Add New Address to configure your destination.
+            </p>
+          </div>
+        ) : (
+          addresses.map((a) => (
           <div
             key={a.id}
             className={`rounded-xl border p-5 bg-white shadow-2xs flex flex-col justify-between transition ${
@@ -109,7 +114,7 @@ export function AddressesTab() {
               </div>
             </div>
           </div>
-        ))}
+        )))}
       </div>
     </div>
   );

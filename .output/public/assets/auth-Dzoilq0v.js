@@ -1,1 +1,0 @@
-import{t as e}from"./jsx-runtime-D3jfb0Ew.js";import{d as t}from"./index-DOvHL44d.js";import{t as n}from"./AuthPage-CVzQYUE4.js";var r=e();function i(){let e=t.useSearch();return(0,r.jsx)(n,{initialMode:e.mode||`signin`,redirectPath:e.redirect})}export{i as component};

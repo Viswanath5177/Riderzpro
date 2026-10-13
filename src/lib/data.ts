@@ -10,7 +10,107 @@ import catalog from "@/data/accessory_catalog.json";
 import vehicleCatalog from "../../web/data/ev_two_wheeler_catalog.json";
 
 export type Bike = { id: string; make: string; model: string; years: number[]; voltage: number; wmi: string };
-export type Vendor = { id: string; name: string; area: string; lat: number; lng: number; rating: number; prepMins: number };
+export type Car = { id: string; make: string; model: string; years: number[]; batteryKWh?: number };
+
+export type VendorOffer = {
+  vendorId: string;
+  price: number;
+  stock: number;
+  mrp?: number;
+  condition?: "new" | "refurbished";
+  warrantyMonths?: number;
+  warrantyTerms?: string;
+  shippingCharge?: number;
+  dispatchHours?: number;
+  deliveryDays?: string;
+  status?: "active" | "paused" | "out_of_stock";
+};
+
+export type Vendor = {
+  id: string;
+  name: string;
+  area: string;
+  lat: number;
+  lng: number;
+  rating: number;
+  prepMins: number;
+  reviewCount?: number;
+  isVerified?: boolean;
+  verificationBadge?: string;
+  description?: string;
+  deliveryCoverage?: string;
+  businessHours?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  gstin?: string;
+  shippingPolicy?: string;
+  returnPolicy?: string;
+  commissionRate?: number;
+};
+
+export type ProductReview = {
+  id: string;
+  productId: string;
+  userId: string;
+  userName: string;
+  userCity?: string;
+  rating: number; // 1 to 5
+  title: string;
+  comment: string;
+  fitmentVehicle?: string;
+  isVerifiedPurchase: boolean;
+  date: string;
+  helpfulCount: number;
+  status: "published" | "pending" | "rejected";
+};
+
+export type VendorReview = {
+  id: string;
+  vendorId: string;
+  userId: string;
+  userName: string;
+  rating: number; // 1 to 5
+  packagingRating?: number;
+  deliveryRating?: number;
+  communicationRating?: number;
+  comment: string;
+  orderId?: string;
+  isVerifiedPurchase: boolean;
+  date: string;
+  status: "published" | "pending" | "rejected";
+};
+
+export type VendorSettlement = {
+  id: string;
+  vendorId: string;
+  vendorName: string;
+  period: string;
+  orderCount: number;
+  grossSales: number;
+  commissionRate: number;
+  commissionAmount: number;
+  shippingFee: number;
+  netPayout: number;
+  status: "Pending" | "Processing" | "Paid";
+  payoutDate?: string;
+  referenceNumber?: string;
+};
+
+export type VendorApplication = {
+  id: string;
+  businessName: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  gstin: string;
+  area: string;
+  city: string;
+  primaryCategories: string[];
+  status: "pending" | "approved" | "rejected";
+  appliedAt: string;
+};
+
 export type Category =
   | "Battery"
   | "Charger"
@@ -18,6 +118,7 @@ export type Category =
   | "Motor"
   | "Controller"
   | "Brakes"
+  | "Accessory"
   | "Electric Bikes"
   | "Car Accessories"
   | "Bike Accessories"
@@ -44,13 +145,73 @@ export type Product = {
   warrantyMonths: number;
   rangeKm?: number;
   weightKg: number;
-  fits: string[]; // bike ids
+  fits: string[]; // bike or car ids
   description: string;
-  offers: { vendorId: string; price: number; stock: number }[];
+  offers: VendorOffer[];
+  vehicleType?: "bike" | "car" | "both" | "universal" | string;
+  department?: string;
+  availability?: string;
+  priceType?: string;
+  isAccessory?: boolean;
+  accessoryDetails?: {
+    type?: string;
+    material?: string;
+    mounting?: string;
+    powerRating?: string;
+  };
+  verificationStatus?: "pending_approval" | "approved" | "rejected";
+  variantModel?: string;
+  material?: string;
+  fitmentSize?: string;
+  colorOptions?: string[];
+  discountPercent?: number;
+  moq?: number;
+  supplier?: string;
+  sku?: string;
+  mrp?: number;
 };
 export type Rider = { id: string; name: string; phone: string; vehicle: string; plate: string; rating: number; avatar: string };
 
 export const CUSTOMER_LOCATION = { lat: 12.9716, lng: 77.5946, label: "MG Road, Bengaluru" };
+
+export type LocationArea = {
+  id: string;
+  name: string;
+  city: string;
+  lat: number;
+  lng: number;
+  pincode?: string;
+  tag?: string;
+  isPopular?: boolean;
+};
+
+export const DEFAULT_LOCATION: LocationArea = {
+  id: "indiranagar",
+  name: "Indiranagar",
+  city: "Bengaluru",
+  lat: 12.9784,
+  lng: 77.6408,
+  pincode: "560038",
+  tag: "Central-East Hub",
+  isPopular: true,
+};
+
+export const POPULAR_LOCATIONS: LocationArea[] = [
+  { id: "indiranagar", name: "Indiranagar", city: "Bengaluru", lat: 12.9784, lng: 77.6408, pincode: "560038", tag: "Central-East", isPopular: true },
+  { id: "koramangala", name: "Koramangala", city: "Bengaluru", lat: 12.9352, lng: 77.6245, pincode: "560034", tag: "South-East", isPopular: true },
+  { id: "mg-road", name: "MG Road / CBD", city: "Bengaluru", lat: 12.9716, lng: 77.5946, pincode: "560001", tag: "Central CBD", isPopular: true },
+  { id: "jayanagar", name: "Jayanagar", city: "Bengaluru", lat: 12.9250, lng: 77.5938, pincode: "560011", tag: "South Hub", isPopular: true },
+  { id: "whitefield", name: "Whitefield", city: "Bengaluru", lat: 12.9698, lng: 77.7500, pincode: "560066", tag: "East Tech Hub", isPopular: true },
+  { id: "malleshwaram", name: "Malleshwaram", city: "Bengaluru", lat: 13.0035, lng: 77.5709, pincode: "560003", tag: "North-West", isPopular: true },
+  { id: "hebbal", name: "Hebbal", city: "Bengaluru", lat: 13.0358, lng: 77.5970, pincode: "560024", tag: "North Hub", isPopular: true },
+  { id: "hsr-layout", name: "HSR Layout", city: "Bengaluru", lat: 12.9121, lng: 77.6446, pincode: "560102", tag: "South-East", isPopular: true },
+  { id: "bellandur", name: "Bellandur / Green Glen", city: "Bengaluru", lat: 12.9304, lng: 77.6784, pincode: "560103", tag: "Outer Ring Rd", isPopular: true },
+  { id: "electronic-city", name: "Electronic City Phase 1", city: "Bengaluru", lat: 12.8399, lng: 77.6770, pincode: "560100", tag: "South Tech Corridor", isPopular: false },
+  { id: "rajajinagar", name: "Rajajinagar", city: "Bengaluru", lat: 12.9982, lng: 77.5530, pincode: "560010", tag: "West Commercial", isPopular: false },
+  { id: "banashankari", name: "Banashankari", city: "Bengaluru", lat: 12.9150, lng: 77.5736, pincode: "560070", tag: "South Corridor", isPopular: false },
+  { id: "marathahalli", name: "Marathahalli", city: "Bengaluru", lat: 12.9591, lng: 77.6974, pincode: "560037", tag: "East Junction", isPopular: false },
+  { id: "yelahanka", name: "Yelahanka", city: "Bengaluru", lat: 13.1007, lng: 77.5963, pincode: "560064", tag: "North Suburbs", isPopular: false },
+];
 
 export const bikes: Bike[] = [
   { id: "ather-450x", make: "Ather", model: "450X", years: [2021, 2022, 2023, 2024, 2025], voltage: 48, wmi: "MD9" },
@@ -59,6 +220,15 @@ export const bikes: Bike[] = [
   { id: "bajaj-chetak", make: "Bajaj", model: "Chetak", years: [2020, 2021, 2022, 2023, 2024, 2025], voltage: 60, wmi: "MD2" },
   { id: "revolt-rv400", make: "Revolt", model: "RV400", years: [2020, 2021, 2022, 2023, 2024], voltage: 72, wmi: "MCR" },
   { id: "hero-vida-v1", make: "Hero", model: "Vida V1", years: [2023, 2024, 2025], voltage: 60, wmi: "MBL" },
+];
+
+export const cars: Car[] = [
+  { id: "tata-nexon-ev", make: "Tata", model: "Nexon.ev", years: [2021, 2022, 2023, 2024, 2025], batteryKWh: 40.5 },
+  { id: "tata-tiago-ev", make: "Tata", model: "Tiago.ev", years: [2022, 2023, 2024, 2025], batteryKWh: 24 },
+  { id: "mg-zs-ev", make: "MG", model: "ZS EV", years: [2020, 2021, 2022, 2023, 2024, 2025], batteryKWh: 50.3 },
+  { id: "mahindra-xuv400", make: "Mahindra", model: "XUV400 EV", years: [2023, 2024, 2025], batteryKWh: 39.4 },
+  { id: "hyundai-ioniq5", make: "Hyundai", model: "Ioniq 5", years: [2023, 2024, 2025], batteryKWh: 72.6 },
+  { id: "byd-atto3", make: "BYD", model: "Atto 3", years: [2022, 2023, 2024, 2025], batteryKWh: 60.48 },
 ];
 
 export const vendors: Vendor[] = [
@@ -112,11 +282,24 @@ const coreProducts: Product[] = coreSeeds.map((s, i) => {
   return {
     ...rest,
     id: `p${i + 1}`,
-    offers: vs.map((v, j) => ({
-      vendorId: v,
-      price: Math.round(((base * (1 + (j - 1) * 0.04)) / 10)) * 10,
-      stock: ((i + j) * 7) % 23 + 2,
-    })),
+    mrp: Math.round(base * 1.15),
+    offers: vs.map((v, j) => {
+      const diffPct = (j - 1) * 0.035;
+      const offerPrice = Math.round((base * (1 + diffPct)) / 10) * 10;
+      const offerMrp = Math.round(offerPrice * 1.15);
+      return {
+        vendorId: v,
+        price: offerPrice,
+        mrp: offerMrp,
+        stock: Math.max(3, ((i + j) * 7) % 24),
+        condition: "new" as const,
+        warrantyMonths: rest.warrantyMonths,
+        warrantyTerms: `${rest.warrantyMonths} Months Manufacturer Warranty`,
+        dispatchHours: v === "v6" ? 1 : v === "v1" ? 2 : 4,
+        deliveryDays: v === "v6" ? "Express (15-30m)" : "Same-day",
+        status: "active" as const,
+      };
+    }),
   };
 });
 
@@ -252,21 +435,188 @@ export const riders: Rider[] = [
 
 import { getCatalogueProduct, getCatalogueVendor } from "./catalogue";
 
+// Initial Verified Product Reviews
+export const initialProductReviews: ProductReview[] = [];
+
+// Initial Verified Vendor / Shop Reviews
+export const initialVendorReviews: VendorReview[] = [];
+
+// Initial Vendor Settlements Ledger
+export const initialVendorSettlements: VendorSettlement[] = [];
+
+// Initial Vendor Applications for Admin Approval
+export const initialVendorApplications: VendorApplication[] = [];
+
+let globalProductReviews = [...initialProductReviews];
+let globalVendorReviews = [...initialVendorReviews];
+let globalVendorSettlements = [...initialVendorSettlements];
+let globalVendorApplications = [...initialVendorApplications];
+
+export function getProductReviews(productId: string): ProductReview[] {
+  return globalProductReviews.filter((r) => r.productId === productId && r.status === "published");
+}
+
+export function getAllProductReviews(): ProductReview[] {
+  return globalProductReviews;
+}
+
+export function addProductReview(review: Omit<ProductReview, "id" | "date" | "helpfulCount" | "status">): ProductReview {
+  const newRev: ProductReview = {
+    ...review,
+    id: `rev-${Date.now()}`,
+    date: "Just now",
+    helpfulCount: 0,
+    status: "published",
+  };
+  globalProductReviews = [newRev, ...globalProductReviews];
+  return newRev;
+}
+
+export function getVendorReviews(vendorId: string): VendorReview[] {
+  return globalVendorReviews.filter((r) => r.vendorId === vendorId && r.status === "published");
+}
+
+export function getAllVendorReviews(): VendorReview[] {
+  return globalVendorReviews;
+}
+
+export function addVendorReview(review: Omit<VendorReview, "id" | "date" | "status">): VendorReview {
+  const newRev: VendorReview = {
+    ...review,
+    id: `vrev-${Date.now()}`,
+    date: "Just now",
+    status: "published",
+  };
+  globalVendorReviews = [newRev, ...globalVendorReviews];
+  return newRev;
+}
+
+export function getVendorSettlements(vendorId?: string): VendorSettlement[] {
+  if (vendorId) return globalVendorSettlements.filter((s) => s.vendorId === vendorId);
+  return globalVendorSettlements;
+}
+
+export function getVendorApplications(): VendorApplication[] {
+  return globalVendorApplications;
+}
+
+export function updateVendorApplicationStatus(id: string, status: "approved" | "rejected") {
+  globalVendorApplications = globalVendorApplications.map((a) => (a.id === id ? { ...a, status } : a));
+}
+
+export function getOffersForProduct(productId: string): (VendorOffer & { vendor: Vendor })[] {
+  const p = products.find((prod) => prod.id === productId);
+  if (!p || !p.offers) return [];
+  return p.offers.map((offer) => ({
+    ...offer,
+    vendor: getVendor(offer.vendorId),
+  }));
+}
+
+export function getVendorOffers(vendorId: string): { product: Product; offer: VendorOffer }[] {
+  const results: { product: Product; offer: VendorOffer }[] = [];
+  products.forEach((prod) => {
+    const offer = prod.offers?.find((o) => o.vendorId === vendorId);
+    if (offer) {
+      results.push({ product: prod, offer });
+    }
+  });
+  return results;
+}
+
 export const getVendor = (id: string): Vendor => {
   const dynamic = getCatalogueVendor(id);
   if (dynamic) return dynamic;
-  return vendors.find((v) => v.id === id) || vendors[0];
+  return (
+    vendors.find((v) => v.id === id) || {
+      id: id || "v1",
+      name: "Riderzpro Certified",
+      area: "Bengaluru",
+      lat: 12.9784,
+      lng: 77.6408,
+      rating: 4.9,
+      reviewCount: 150,
+      prepMins: 15,
+      isVerified: true,
+      verificationBadge: "Official Marketplace Partner",
+      description: "Official authorized dealer on RiderzPro marketplace.",
+      deliveryCoverage: "All Bengaluru",
+      businessHours: "Mon-Sat: 09:00 AM - 08:00 PM",
+      phone: "+91 80 4000 1122",
+      email: "support@riderzpro.com",
+      address: "MG Road, Bengaluru 560001",
+      gstin: "29AABCR0000Z1Z0",
+      shippingPolicy: "Express delivery across city.",
+      returnPolicy: "7-day replacement warranty.",
+      commissionRate: 0.1,
+    }
+  );
 };
 
 export const getProduct = (id: string): Product | undefined => {
   return getCatalogueProduct(id) || products.find((p) => p.id === id);
 };
+
+export function mapDbProductToProduct(row: any): Product {
+  let primaryImg = parts;
+  if (row.image_url) {
+    try {
+      if (typeof row.image_url === "string" && row.image_url.startsWith("[")) {
+        const arr = JSON.parse(row.image_url);
+        primaryImg = arr[0] || primaryImg;
+      } else if (typeof row.image_url === "string") {
+        primaryImg = row.image_url;
+      }
+    } catch {
+      primaryImg = row.image_url;
+    }
+  }
+
+  let fitsArr: string[] = ["universal"];
+  if (row.compatible_vehicles) {
+    fitsArr = Array.isArray(row.compatible_vehicles)
+      ? row.compatible_vehicles
+      : [row.compatible_vehicles];
+  }
+
+  const offerPrice = Number(row.price) || 0;
+  const mrpPrice = Number(row.mrp) || Math.round(offerPrice * 1.15);
+  const voltMatch = row.description?.match(/(\d+)V/i)?.[1];
+
+  return {
+    id: row.id,
+    name: row.name,
+    brand: row.brand || "Riderzpro Certified",
+    category: (row.category_name as any) || "Car Accessories",
+    image: primaryImg,
+    warrantyMonths: row.warranty?.includes("year") ? 12 : 6,
+    weightKg: Number(row.weight_kg) || 2,
+    fits: fitsArr,
+    description: row.description || "",
+    voltage: voltMatch ? Number(voltMatch) : undefined,
+    mrp: mrpPrice,
+    offers: [
+      {
+        vendorId: row.seller_id || "v1",
+        price: offerPrice,
+        stock: Number(row.stock) || 0,
+      },
+    ],
+    verificationStatus: row.verification_status || "approved",
+    sku: row.sku,
+    variantModel: row.variant_model,
+    vehicleType: row.vehicle_type || (row.category_name?.toLowerCase().includes("car") ? "car" : "universal"),
+    department: row.department || undefined,
+    availability: row.availability || undefined,
+    priceType: row.price_type || undefined,
+  };
+}
+
 export const getBike = (id: string) => bikes.find((b) => b.id === id);
 export const bestOffer = (p: Product) => {
   if (!p || !p.offers || p.offers.length === 0) return { vendorId: "v1", price: 999, stock: 5 };
   return [...p.offers].sort((a, b) => a.price - b.price)[0];
 };
-
 
 export const inr = (n: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);

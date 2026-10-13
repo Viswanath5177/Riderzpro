@@ -1,0 +1,12 @@
+DATABASE_URL=file:./database/riderzpro-dev.db
+APP_ENV=development
+OTP_HASH_SECRET=replace-with-a-random-secret-at-least-32-characters
+
+# Email option: configure a Resend API key and an allowed sender.
+RESEND_API_KEY=
+RESEND_FROM="Riderzpro <login@example.com>"
+
+# SMS option instead: configure Twilio credentials and a sender number.
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_FROM=
