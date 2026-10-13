@@ -69,7 +69,7 @@ export function MobileDrawer({
       <div className="relative flex w-full max-w-sm flex-1 flex-col bg-white shadow-2xl animate-in slide-in-from-left duration-200">
         {/* Header */}
         <div className="flex h-[72px] items-center justify-between border-b border-[#ececec] px-5">
-          <Logo imgClassName="h-8" />
+          <Logo className="flex items-center" imgClassName="h-10 sm:h-11 w-auto" />
           <button
             onClick={onClose}
             className="flex h-10 w-10 items-center justify-center rounded-xl text-[#6b7280] hover:bg-[#f7f7f8] hover:text-[#111111] transition cursor-pointer"

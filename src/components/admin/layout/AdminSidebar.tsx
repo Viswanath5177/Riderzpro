@@ -105,7 +105,7 @@ export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: Adm
         <div className="flex items-center justify-between pb-4 border-b border-[#E5E7EB] dark:border-white/10">
           {!isCollapsed ? (
             <div className="flex items-center gap-2">
-              <Logo imgClassName="h-8" />
+              <Logo className="flex items-center" imgClassName="h-10 sm:h-11 w-auto" />
               <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[9px] font-extrabold uppercase text-[#E31E24] border border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30">
                 ADMIN
               </span>

@@ -614,9 +614,9 @@ export function CustomerLogin({ defaultTab }: CustomerLoginProps) {
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col antialiased selection:bg-[#E31E24]/20 selection:text-[#E31E24]">
       {/* Top Mobile Bar (Visible on mobile only) */}
       <div className="lg:hidden bg-neutral-950 text-white px-4 py-3 flex items-center justify-between border-b border-white/10 shrink-0">
-        <Link to="/" className="flex items-center gap-2">
-          <Logo imgClassName="h-6 w-auto" />
-        </Link>
+        <div className="flex items-center gap-2">
+          <Logo imgClassName="h-9 sm:h-10 w-auto" />
+        </div>
         <Link
           to="/"
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition active:scale-95"
@@ -648,11 +648,11 @@ export function CustomerLogin({ defaultTab }: CustomerLoginProps) {
 
           {/* Top Brand Bar */}
           <div className="relative z-10 flex items-center justify-between">
-            <Link to="/" className="inline-flex items-center gap-3 group">
-              <div className="bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-2xl shadow-lg transition-transform group-hover:scale-105">
-                <Logo imgClassName="h-7 w-auto" />
+            <div className="inline-flex items-center gap-3">
+              <div className="bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-lg transition-transform hover:scale-105">
+                <Logo imgClassName="h-10 sm:h-11 w-auto" />
               </div>
-            </Link>
+            </div>
           </div>
 
           {/* Center Dynamic Showcase Content */}
@@ -775,8 +775,8 @@ export function CustomerLogin({ defaultTab }: CustomerLoginProps) {
           <div className="w-full max-w-md mx-auto my-auto py-4">
             {/* Brand Logo on Mobile Hero */}
             <div className="lg:hidden mb-6 text-center">
-              <div className="inline-block bg-white p-3 rounded-2xl shadow-md border border-gray-100">
-                <Logo imgClassName="h-7 w-auto mx-auto" />
+              <div className="inline-block bg-white px-4 py-2.5 rounded-2xl shadow-md border border-gray-100">
+                <Logo imgClassName="h-10 sm:h-11 w-auto mx-auto" />
               </div>
             </div>
 

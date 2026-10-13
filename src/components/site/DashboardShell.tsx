@@ -63,7 +63,7 @@ export function DashboardShell({
           />
           <div className="relative z-10 w-4/5 max-w-xs bg-sidebar border-r border-sidebar-border p-4 flex flex-col h-full shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-sidebar-border">
-              <Logo imgClassName="h-8 w-auto" />
+              <Logo className="flex items-center" imgClassName="h-10 sm:h-11 w-auto" />
               <button
                 onClick={() => setIsMobileDrawerOpen(false)}
                 className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
@@ -120,7 +120,7 @@ export function DashboardShell({
             >
               {isMobileDrawerOpen ? <X className="h-4.5 w-4.5" /> : <Menu className="h-4.5 w-4.5" />}
             </button>
-            <Logo imgClassName="h-8 w-auto" />
+            <Logo className="flex items-center" imgClassName="h-10 sm:h-11 md:h-12 w-auto" />
           </div>
           <div className="hidden md:block min-w-0">
             <h1 className="font-display text-2xl lg:text-3xl leading-none truncate">{title}</h1>

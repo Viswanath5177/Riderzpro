@@ -98,7 +98,6 @@ export function CustomerLayout({
   const [isVinSearchOpen, setIsVinSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const userInitials = (authUser?.name || userProfile.name || "CP")
     .trim()
@@ -618,85 +617,6 @@ export function CustomerLayout({
                 )}
               </div>
 
-              {/* User Profile Avatar Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center gap-2 p-1.5 rounded-full hover:bg-gray-100 transition cursor-pointer"
-                  aria-label="Account menu"
-                >
-                  <span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-white font-bold text-xs shadow-xs">
-                    {(authUser?.name || userProfile?.name || "CP")
-                      .trim()
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .slice(0, 2)
-                      .toUpperCase()}
-                  </span>
-                </button>
-
-                {isProfileOpen && (
-                  <div className="absolute right-0 mt-2 w-64 rounded-3xl bg-white border border-gray-200 shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
-                    <div className="px-3 py-2.5 border-b border-gray-100">
-                      <p className="text-sm font-bold text-gray-900 truncate">{authUser?.name || userProfile?.name || "Customer Account"}</p>
-                      <p className="text-xs text-gray-500 truncate">{authUser?.email || userProfile?.email || ""}</p>
-                      <div className="mt-2 flex items-center justify-between text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
-                        <span>ProPoints Loyalty</span>
-                        <span className="font-bold">{userProfile?.points || 0} pts</span>
-                      </div>
-                    </div>
-                    <div className="py-1 space-y-0.5">
-                      <button
-                        onClick={() => {
-                          setIsProfileOpen(false);
-                          onTabChange("garage");
-                        }}
-                        className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 rounded-xl transition cursor-pointer"
-                      >
-                        <Bike className="h-4 w-4 text-gray-400" />
-                        <span>Manage My Garage</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsProfileOpen(false);
-                          onTabChange("orders");
-                        }}
-                        className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 rounded-xl transition cursor-pointer"
-                      >
-                        <Package className="h-4 w-4 text-gray-400" />
-                        <span>My Orders</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsProfileOpen(false);
-                          onTabChange("settings");
-                        }}
-                        className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 rounded-xl transition cursor-pointer"
-                      >
-                        <UserCog className="h-4 w-4 text-gray-400" />
-                        <span>Profile & Delivery Addresses</span>
-                      </button>
-                    </div>
-                    <div className="pt-2 border-t border-gray-100 text-center">
-                      <button
-                        onClick={async () => {
-                          setIsProfileOpen(false);
-                          await signOut();
-                          toast.success("Signed out successfully", {
-                            description: "You have been logged out of your customer account.",
-                          });
-                          navigate({ to: "/" });
-                        }}
-                        className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
-                      >
-                        <LogOut className="h-4 w-4 text-rose-400" />
-                        <span>Sign out</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
 
               {/* Cart Button to Open Cart Drawer */}
               <button

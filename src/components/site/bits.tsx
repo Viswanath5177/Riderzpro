@@ -7,14 +7,25 @@ import { cn } from "@/lib/utils";
 
 import logoImg from "@/assets/riderzpro-logo.png";
 
-export function Logo({ className, imgClassName }: { className?: string; imgClassName?: string }) {
+export function Logo({
+  className,
+  imgClassName,
+  style,
+}: {
+  className?: string;
+  imgClassName?: string;
+  style?: React.CSSProperties;
+}) {
   return (
-    <Link to="/" className={cn("group inline-flex items-center", className)}>
+    <Link to="/" className={cn("group inline-flex items-center select-none", className)}>
       <img
         src={logoImg}
         alt="RiderzPro - Car & Bike Accessories"
-        style={{ maxHeight: 52, width: "auto" }}
-        className={cn("h-10 md:h-12 w-auto object-contain transition-transform group-hover:scale-[1.03]", imgClassName)}
+        className={cn(
+          "h-11 sm:h-12 md:h-14 w-auto object-contain object-left transition-transform duration-200 group-hover:scale-[1.03]",
+          imgClassName
+        )}
+        style={style}
       />
     </Link>
   );

@@ -364,7 +364,7 @@ export function VendorSignupFlow() {
       <header className="sticky top-0 z-30 bg-white border-b border-gray-200/80 shadow-2xs">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Logo imgClassName="h-8 md:h-8.5" />
+            <Logo className="flex items-center" imgClassName="h-10 sm:h-11 md:h-12 w-auto" />
             <span className="hidden sm:inline-block h-4 w-px bg-gray-300" />
             <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-[#0066cc] text-xs font-bold tracking-tight">
               <Store className="h-3.5 w-3.5" />

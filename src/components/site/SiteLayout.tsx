@@ -98,7 +98,7 @@ function Footer() {
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-4">
         {/* Brand & Summary */}
         <div className="md:col-span-1">
-          <Logo imgClassName="h-10 sm:h-11 w-auto" />
+          <Logo className="flex items-center" imgClassName="h-12 sm:h-13 w-auto" />
           <p className="mt-3 text-xs text-[#6B7280] leading-relaxed">
             RiderzPro is an automotive e-commerce platform offering electric bikes, accessories, batteries, chargers, and verified spare parts.
           </p>
