@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Minus,
   Plus,
@@ -17,12 +17,14 @@ import {
   Tag,
   ArrowRight,
   Package,
+  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { DELIVERY_BASE, DELIVERY_PER_KM, getProduct, getVendor, inr } from "@/lib/data";
 import { quoteCart, useStore, type Order } from "@/lib/store";
 import type { AddressRef } from "@/lib/logistics/types";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -38,6 +40,7 @@ export const Route = createFileRoute("/cart")({
 
 function CartPage() {
   const { cart, setQty, placeOrderWithOptions, userProfile, inventoryStock } = useStore();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const [paymentMethod, setPaymentMethod] = useState<string>("UPI");
@@ -50,14 +53,50 @@ function CartPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
 
+  if (!isAuthenticated) {
+    return (
+      <SiteLayout>
+        <div className="mx-auto max-w-md px-4 py-20 text-center">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-red-50 text-[#E31E24] shadow-xs">
+            <Lock className="h-8 w-8" />
+          </div>
+          <h1 className="mt-5 font-display text-2xl sm:text-3xl font-extrabold text-[#111111]">
+            Sign in to view orders & tracking
+          </h1>
+          <p className="mt-2 text-sm text-[#6B7280]">
+            Please sign in to access your orders, live courier dispatch milestones, and tax invoices.
+          </p>
+          <div className="mt-6 flex flex-col gap-3">
+            <Link
+              to="/login"
+              search={{ redirect: "/dashboard/customer?tab=orders" } as any}
+              className="inline-flex items-center justify-center rounded-lg bg-[#E31E24] px-6 py-3 text-sm font-semibold text-white shadow-xs hover:bg-red-700 transition"
+            >
+              Sign In to Continue
+            </Link>
+            <Link
+              to="/"
+              className="inline-flex items-center justify-center rounded-lg border border-[#E5E7EB] bg-white px-6 py-3 text-sm font-semibold text-[#111111] hover:bg-gray-50 transition"
+            >
+              Back to Storefront
+            </Link>
+          </div>
+        </div>
+      </SiteLayout>
+    );
+  }
+
   // Address state prefilled from profile
-  const [address, setAddress] = useState<AddressRef>({
-    name: userProfile.name || "Aakash Sharma",
-    phone: userProfile.phone || "+91 98765 43210",
-    street: "Flat 402, Green Glen Layout, Bellandur",
-    city: "Bengaluru",
-    state: "Karnataka",
-    pincode: "560103",
+  const [address, setAddress] = useState<AddressRef>(() => {
+    const selectedAddr = userProfile.addresses?.find((a) => a.id === userProfile.selectedAddressId) || userProfile.addresses?.[0];
+    return {
+      name: userProfile.name || selectedAddr?.name || "",
+      phone: userProfile.phone || selectedAddr?.phone || "",
+      street: selectedAddr?.street || userProfile.address || "",
+      city: selectedAddr?.city || userProfile.city || "",
+      state: "Karnataka",
+      pincode: selectedAddr?.pincode || "",
+    };
   });
 
   const [isEditingAddress, setIsEditingAddress] = useState(false);
@@ -92,6 +131,11 @@ function CartPage() {
   };
 
   const handlePlaceOrder = () => {
+    if (!isAuthenticated) {
+      toast.info("Please sign in to place your order.");
+      navigate({ to: "/auth", search: { redirect: "/cart" } });
+      return;
+    }
     if (stockErrors.length > 0) {
       toast.error("Please adjust quantities to match available inventory.");
       return;
@@ -497,6 +541,11 @@ function CartPage() {
               >
                 {isSubmitting ? (
                   <span>Securing Order & Manifesting...</span>
+                ) : !isAuthenticated ? (
+                  <>
+                    <span>Sign in to Checkout · {inr(quote.total)}</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </>
                 ) : (
                   <>
                     <span>Confirm Order · {inr(quote.total)}</span>

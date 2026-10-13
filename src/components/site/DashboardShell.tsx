@@ -4,12 +4,6 @@ import { Bike, Shield, Store, Truck, Wrench, ArrowLeft, Sparkles, type LucideIco
 import { Logo } from "./bits";
 import { cn } from "@/lib/utils";
 
-export const ROLE_LINKS = [
-  { to: "/dashboard/customer", label: "Customer", Icon: Bike },
-  { to: "/dashboard/vendor", label: "Vendor", Icon: Store },
-  { to: "/dashboard/rider", label: "Rider", Icon: Truck },
-] as const;
-
 export type Section = { id: string; label: string; Icon: LucideIcon };
 
 export function DashboardShell({

@@ -16,6 +16,7 @@ import { SupportTab } from "@/components/dashboard/SupportTab";
 import { AddressesTab } from "@/components/dashboard/AddressesTab";
 import { BookingModal } from "@/components/dashboard/BookingModal";
 import { AddBikeModal } from "@/components/dashboard/AddBikeModal";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 export const Route = createFileRoute("/dashboard/customer")({
   head: () => ({
@@ -29,8 +30,16 @@ export const Route = createFileRoute("/dashboard/customer")({
       { property: "og:description", content: "Automotive e-commerce and bike ownership platform." },
     ],
   }),
-  component: CustomerDashboard,
+  component: CustomerDashboardRoute,
 });
+
+function CustomerDashboardRoute() {
+  return (
+    <ProtectedRoute>
+      <CustomerDashboard />
+    </ProtectedRoute>
+  );
+}
 
 function CustomerDashboard() {
   const [tab, setTab] = useState<CustomerTab>("overview");
@@ -84,7 +93,7 @@ function CustomerDashboard() {
         {tab === "service" && (
           <ServiceTab onOpenBookingModal={() => setIsBookingOpen(true)} />
         )}
-        {tab === "addresses" && <AddressesTab />}
+        {tab === "addresses" && <SettingsTab />}
         {tab === "offers" && <OffersTab />}
         {tab === "invoices" && <InvoicesTab />}
         {tab === "notifications" && <NotificationsTab />}
