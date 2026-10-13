@@ -1,5 +1,5 @@
 import { t as __commonJSMin } from "../_runtime.mjs";
-import { A as globalthis_default, j as init_globalthis } from "./@tanstack/react-router+[...].mjs";
+import { n as globalthis_default, r as init_globalthis } from "./@libsql/client+[...].mjs";
 //#region node_modules/lodash/isArray.js
 var require_isArray = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	module.exports = Array.isArray;

@@ -413,55 +413,59 @@ function CartPage() {
                         const availableStock = inventoryStock[it.productId] ?? p?.offers?.[0]?.stock ?? 10;
                         const isStockLow = availableStock < 5;
                         return (
-                          <div key={it.productId} className="flex items-center gap-3 py-3">
-                            <img
-                              src={p?.image}
-                              alt={p?.name}
-                              loading="lazy"
-                              width={70}
-                              height={70}
-                              onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).src = "/src/assets/parts.jpg";
-                              }}
-                              className="h-14 w-14 rounded-xl object-cover border border-[#E5E7EB] shrink-0"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-bold text-xs text-[#111111] leading-tight truncate">
-                                {p?.name}
-                              </p>
-                              <div className="mt-0.5 flex items-center gap-2 text-[11px] text-[#6B7280]">
-                                <span>{inr(it.price)} each</span>
-                                <span>·</span>
-                                {isStockLow ? (
-                                  <span className="text-amber-700 font-bold flex items-center gap-1">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                                    Hurry limited Stock ({availableStock} left)
-                                  </span>
-                                ) : (
-                                  <span className="text-emerald-600 font-semibold">In Stock ({availableStock})</span>
-                                )}
+                          <div key={it.productId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3.5">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <img
+                                src={p?.image}
+                                alt={p?.name}
+                                loading="lazy"
+                                width={70}
+                                height={70}
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src = "/src/assets/parts.jpg";
+                                }}
+                                className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl object-cover border border-[#E5E7EB] shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-xs text-[#111111] leading-tight truncate">
+                                  {p?.name}
+                                </p>
+                                <div className="mt-0.5 flex items-center gap-2 text-[10.5px] sm:text-[11px] text-[#6B7280]">
+                                  <span>{inr(it.price)} each</span>
+                                  <span>·</span>
+                                  {isStockLow ? (
+                                    <span className="text-amber-700 font-bold flex items-center gap-1 truncate">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                                      Hurry limited Stock ({availableStock} left)
+                                    </span>
+                                  ) : (
+                                    <span className="text-emerald-600 font-semibold truncate">In Stock ({availableStock})</span>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 rounded-lg border border-[#E5E7EB] p-0.5 bg-gray-50">
-                              <button
-                                aria-label="Decrease"
-                                onClick={() => setQty(it.productId, g.vendorId, it.qty - 1)}
-                                className="grid h-6 w-6 place-items-center rounded hover:bg-gray-200 text-gray-600 transition cursor-pointer"
-                              >
-                                <Minus className="h-3 w-3" />
-                              </button>
-                              <span className="w-5 text-center text-xs font-bold text-gray-900">{it.qty}</span>
-                              <button
-                                aria-label="Increase"
-                                onClick={() => setQty(it.productId, g.vendorId, it.qty + 1)}
-                                className="grid h-6 w-6 place-items-center rounded hover:bg-gray-200 text-gray-600 transition cursor-pointer"
-                              >
-                                <Plus className="h-3 w-3" />
-                              </button>
+                            <div className="flex items-center justify-between sm:justify-end gap-3 self-stretch sm:self-auto pl-15 sm:pl-0">
+                              <div className="flex items-center gap-2 rounded-lg border border-[#E5E7EB] p-0.5 bg-gray-50">
+                                <button
+                                  aria-label="Decrease"
+                                  onClick={() => setQty(it.productId, g.vendorId, it.qty - 1)}
+                                  className="grid h-6 w-6 place-items-center rounded hover:bg-gray-200 text-gray-600 transition cursor-pointer"
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </button>
+                                <span className="w-5 text-center text-xs font-bold text-gray-900">{it.qty}</span>
+                                <button
+                                  aria-label="Increase"
+                                  onClick={() => setQty(it.productId, g.vendorId, it.qty + 1)}
+                                  className="grid h-6 w-6 place-items-center rounded hover:bg-gray-200 text-gray-600 transition cursor-pointer"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </button>
+                              </div>
+                              <p className="w-20 text-right font-extrabold text-xs text-[#111111]">
+                                {inr(it.price * it.qty)}
+                              </p>
                             </div>
-                            <p className="w-20 text-right font-extrabold text-xs text-[#111111]">
-                              {inr(it.price * it.qty)}
-                            </p>
                           </div>
                         );
                       })}

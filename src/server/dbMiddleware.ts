@@ -160,7 +160,7 @@ export function pgApiMiddleware() {
             return sendJson(res, 405, { success: false, error: `Method ${method} not allowed` });
           } catch (error: any) {
             console.error("[PostgreSQL Products API Error]:", error);
-            return sendJson(res, 500, { success: false, error: error.message });
+            return sendJson(res, 500, { success: false, error: error?.message || String(error), stack: error?.stack });
           }
         }
 

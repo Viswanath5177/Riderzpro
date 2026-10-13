@@ -31,6 +31,7 @@ import {
   ShieldCheck,
   Calendar,
   Eye,
+  Menu,
   X,
   Phone,
   Mail,
@@ -41,10 +42,31 @@ import {
   IndianRupee,
   Lock,
   Trash2,
+  Store,
+  MessageSquare,
+  Percent,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/site/bits";
-import { getProduct, getVendor, inr, products, vendors, mapDbProductToProduct, type Product } from "@/lib/data";
+import {
+  getProduct,
+  getVendor,
+  inr,
+  products,
+  vendors,
+  mapDbProductToProduct,
+  type Product,
+  type Vendor,
+  type VendorApplication,
+  type VendorSettlement,
+  type ProductReview,
+  type VendorReview,
+  getVendorApplications,
+  updateVendorApplicationStatus,
+  getVendorSettlements,
+  getAllProductReviews,
+  getAllVendorReviews,
+} from "@/lib/data";
 import { ORDER_STEPS, useStore, type Order } from "@/lib/store";
 import type { NormalizedShipment, LogisticsProvider, ShipmentStatus } from "@/lib/logistics/types";
 import { cn } from "@/lib/utils";
@@ -75,6 +97,11 @@ type AdminTab =
   | "products"
   | "categories"
   | "customers"
+  | "vendors"
+  | "vendor_applications"
+  | "vendor_offers"
+  | "commissions"
+  | "reviews_moderation"
   | "payments"
   | "returns"
   | "offers"
@@ -108,6 +135,7 @@ export function AdminDashboard() {
   } = useStore();
 
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [dateRange, setDateRange] = useState<"today" | "7d" | "30d" | "ytd">("7d");
   const [searchQuery, setSearchQuery] = useState("");
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>("ALL");
@@ -123,6 +151,80 @@ export function AdminDashboard() {
   const [productPage, setProductPage] = useState(1);
   const [dbCategories, setDbCategories] = useState<any[]>([]);
   const [categorySearch, setCategorySearch] = useState("");
+
+  // Multi-vendor marketplace management state
+  const [marketplaceVendors, setMarketplaceVendors] = useState<Vendor[]>(vendors);
+  const [vendorApplications, setVendorApplications] = useState<VendorApplication[]>(() => getVendorApplications());
+  const [adminSettlements, setAdminSettlements] = useState<VendorSettlement[]>(() => getVendorSettlements());
+  const [defaultPlatformCommission, setDefaultPlatformCommission] = useState<number>(10);
+  const [adminProductReviews, setAdminProductReviews] = useState<ProductReview[]>(() => getAllProductReviews());
+  const [adminVendorReviews, setAdminVendorReviews] = useState<VendorReview[]>(() => getAllVendorReviews());
+  const [reviewTabMode, setReviewTabMode] = useState<"product" | "vendor">("product");
+  const [vendorSearch, setVendorSearch] = useState<string>("");
+
+  const pendingApplicationsCount = vendorApplications.filter((a) => a.status === "pending").length;
+
+  const handleToggleVendorStatus = (vendorId: string) => {
+    setMarketplaceVendors((prev) =>
+      prev.map((v) => {
+        if (v.id === vendorId) {
+          const isSuspended = v.verificationBadge === "Suspended";
+          const newBadge = isSuspended ? "RiderzPro Verified Partner" : "Suspended";
+          toast.success(`Vendor ${v.name} ${isSuspended ? "reactivated" : "suspended"}`);
+          return { ...v, verificationBadge: newBadge };
+        }
+        return v;
+      })
+    );
+  };
+
+  const handleUpdateVendorCommission = (vendorId: string, rate: number) => {
+    setMarketplaceVendors((prev) =>
+      prev.map((v) => (v.id === vendorId ? { ...v, commissionRate: rate / 100 } : v))
+    );
+    toast.success(`Commission rate updated to ${rate}%`);
+  };
+
+  const handleApproveVendorApplication = (id: string) => {
+    updateVendorApplicationStatus(id, "approved");
+    setVendorApplications([...getVendorApplications()]);
+    toast.success("Vendor application approved! Onboarding credentials sent.");
+  };
+
+  const handleRejectVendorApplication = (id: string) => {
+    updateVendorApplicationStatus(id, "rejected");
+    setVendorApplications([...getVendorApplications()]);
+    toast.info("Vendor application rejected.");
+  };
+
+  const handleMarkSettlementPaid = (settlementId: string) => {
+    const utr = prompt("Enter Bank Settlement Reference / UTR Number:", `NEFT-HDFC-${Math.floor(10000000 + Math.random() * 90000000)}`);
+    if (!utr) return;
+    setAdminSettlements((prev) =>
+      prev.map((s) => (s.id === settlementId ? { ...s, status: "Paid", payoutDate: "Today", referenceNumber: utr } : s))
+    );
+    toast.success(`Settlement ${settlementId} marked as Paid (UTR: ${utr})`);
+  };
+
+  const handleModerateProductReview = (id: string, action: "published" | "rejected" | "deleted") => {
+    if (action === "deleted") {
+      setAdminProductReviews((prev) => prev.filter((r) => r.id !== id));
+      toast.success("Review deleted from database");
+    } else {
+      setAdminProductReviews((prev) => prev.map((r) => (r.id === id ? { ...r, status: action } : r)));
+      toast.success(`Review status changed to ${action}`);
+    }
+  };
+
+  const handleModerateVendorReview = (id: string, action: "published" | "rejected" | "deleted") => {
+    if (action === "deleted") {
+      setAdminVendorReviews((prev) => prev.filter((r) => r.id !== id));
+      toast.success("Vendor review deleted");
+    } else {
+      setAdminVendorReviews((prev) => prev.map((r) => (r.id === id ? { ...r, status: action } : r)));
+      toast.success(`Vendor review status changed to ${action}`);
+    }
+  };
 
   // Sync with PostgreSQL on mount & on updates
   const fetchAdminProducts = () => {
@@ -464,6 +566,11 @@ export function AdminDashboard() {
     { id: "shipments" as AdminTab, label: "Shipments & Tracking", Icon: Truck, badge: `${inTransitCount}` },
     { id: "products" as AdminTab, label: "Products", Icon: Box },
     { id: "categories" as AdminTab, label: "Categories", Icon: Layers },
+    { id: "vendors" as AdminTab, label: "Marketplace Vendors", Icon: Store, badge: `${marketplaceVendors.length}` },
+    { id: "vendor_applications" as AdminTab, label: "Vendor Applications", Icon: ShieldCheck, badge: pendingApplicationsCount > 0 ? `${pendingApplicationsCount}` : undefined },
+    { id: "vendor_offers" as AdminTab, label: "Vendor Offers Moderation", Icon: Sliders },
+    { id: "commissions" as AdminTab, label: "Commissions & Settlements", Icon: IndianRupee },
+    { id: "reviews_moderation" as AdminTab, label: "Reviews Moderation", Icon: MessageSquare },
     { id: "customers" as AdminTab, label: "Customers", Icon: Users },
     { id: "payments" as AdminTab, label: "Payments & Refunds", Icon: CreditCard },
     { id: "returns" as AdminTab, label: "Returns & Cancellations", Icon: RotateCcw },
@@ -481,9 +588,17 @@ export function AdminDashboard() {
           ADMIN TOP EXECUTIVE BAR
          ───────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 border-b border-[#E5E7EB] bg-white shadow-2xs">
-        <div className="flex h-16 items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-4">
-            <Logo imgClassName="h-10 sm:h-11 md:h-12 w-auto" />
+        <div className="flex h-16 items-center justify-between px-3 sm:px-6">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 rounded-lg text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 md:hidden cursor-pointer"
+              aria-label="Toggle admin navigation menu"
+            >
+              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+            <Logo imgClassName="h-9 sm:h-11 md:h-12 w-auto" />
             <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-gray-200">
               <span className="rounded-md bg-black px-2 py-0.5 text-[11px] font-bold text-white uppercase tracking-wider">
                 Admin Console
@@ -494,19 +609,19 @@ export function AdminDashboard() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Date filter dropdown */}
             <div className="flex items-center rounded-lg border border-[#E5E7EB] bg-[#F5F6F8] px-2 py-1 text-xs">
               <Calendar className="h-3.5 w-3.5 text-[#6B7280] mr-1.5" />
               <select
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value as any)}
-                className="bg-transparent font-medium text-[#111111] outline-none cursor-pointer"
+                className="bg-transparent font-medium text-[#111111] outline-none cursor-pointer text-xs"
               >
-                <option value="today">Today (Real-time)</option>
+                <option value="today">Today</option>
                 <option value="7d">Last 7 Days</option>
                 <option value="30d">Last 30 Days</option>
-                <option value="ytd">Year to Date (2026)</option>
+                <option value="ytd">Year to Date</option>
               </select>
             </div>
 
@@ -533,7 +648,81 @@ export function AdminDashboard() {
         </div>
       </header>
 
-      <div className="flex flex-1">
+      {/* Mobile Drawer for Admin */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex">
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="relative z-10 w-4/5 max-w-xs bg-white p-4 flex flex-col h-full shadow-2xl overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <Logo imgClassName="h-8 w-auto" />
+                <span className="rounded bg-black px-1.5 py-0.5 text-[9px] font-bold text-white uppercase">
+                  Admin
+                </span>
+              </div>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-1 rounded text-gray-500 hover:text-gray-900 cursor-pointer"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="mt-3 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+              Operations & Modules
+            </p>
+            <nav className="mt-2 space-y-0.5 flex-1 overflow-y-auto">
+              {navItems.map((item) => {
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-xs font-medium transition text-left cursor-pointer",
+                      isActive
+                        ? "bg-red-50 text-[#E31E24] font-semibold border-l-3 border-[#E31E24]"
+                        : "text-[#6B7280] hover:bg-gray-100 hover:text-[#111111]"
+                    )}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <item.Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-[#E31E24]" : "text-[#6B7280]")} />
+                      <span className="truncate">{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span
+                        className={cn(
+                          "rounded-full px-1.5 py-0.2 text-[10px] font-bold",
+                          isActive ? "bg-[#E31E24] text-white" : "bg-gray-100 text-gray-700"
+                        )}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+            <div className="pt-3 border-t border-gray-200">
+              <Link
+                to="/dashboard/customer"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-2 text-xs font-semibold text-gray-700 hover:text-[#E31E24] py-1"
+              >
+                <ExternalLink className="h-3.5 w-3.5" /> Customer Portal
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-1 min-w-0">
         {/* ─────────────────────────────────────────────────────────────
             ADMIN SIDEBAR (15 TABS)
            ───────────────────────────────────────────────────────────── */}
@@ -580,7 +769,7 @@ export function AdminDashboard() {
         {/* ─────────────────────────────────────────────────────────────
             MAIN CONTENT AREA
            ───────────────────────────────────────────────────────────── */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl overflow-x-hidden">
+        <main className="flex-1 min-w-0 p-3 sm:p-6 lg:p-8 max-w-7xl w-full overflow-x-hidden">
           {/* TAB 1: OVERVIEW */}
           {activeTab === "overview" && (
             <div className="space-y-6">
@@ -1903,6 +2092,704 @@ export function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {/* TAB: MARKETPLACE VENDORS */}
+          {activeTab === "vendors" && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h1 className="font-display text-2xl font-extrabold text-[#111111]">
+                    Authorized Marketplace Vendors ({marketplaceVendors.length})
+                  </h1>
+                  <p className="text-xs text-[#6B7280] mt-0.5">
+                    Manage certified EV parts sellers, commercial dealerships, service coverage, and commission terms.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search vendors or areas..."
+                      value={vendorSearch}
+                      onChange={(e) => setVendorSearch(e.target.value)}
+                      className="h-9 w-60 rounded-lg border border-gray-200 pl-8 pr-3 text-xs focus:border-[#E31E24] focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[#E5E7EB] bg-white shadow-2xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-[#F5F6F8] text-[#6B7280] font-semibold border-b border-[#E5E7EB]">
+                      <tr>
+                        <th className="p-3.5">Vendor / Shop</th>
+                        <th className="p-3.5">Verification & Status</th>
+                        <th className="p-3.5">Customer Rating</th>
+                        <th className="p-3.5">Coverage & Contact</th>
+                        <th className="p-3.5">Commission Rate</th>
+                        <th className="p-3.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {marketplaceVendors
+                        .filter(
+                          (v) =>
+                            !vendorSearch ||
+                            v.name.toLowerCase().includes(vendorSearch.toLowerCase()) ||
+                            v.area.toLowerCase().includes(vendorSearch.toLowerCase())
+                        )
+                        .map((v) => {
+                          const isSuspended = v.verificationBadge === "Suspended";
+                          return (
+                            <tr key={v.id} className="hover:bg-gray-50/80 transition">
+                              <td className="p-3.5">
+                                <div className="flex items-center gap-3">
+                                  <div className="grid h-9 w-9 place-items-center rounded-lg bg-red-50 text-[#E31E24] font-bold shrink-0">
+                                    <Store className="h-4 w-4" />
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-[#111111]">{v.name}</span>
+                                      <Link
+                                        to="/vendor/$id"
+                                        params={{ id: v.id }}
+                                        target="_blank"
+                                        className="text-[10px] text-gray-400 hover:text-[#E31E24] inline-flex items-center gap-0.5"
+                                        title="View public shopfront"
+                                      >
+                                        <ExternalLink className="h-3 w-3" />
+                                      </Link>
+                                    </div>
+                                    <p className="text-[11px] text-[#6B7280]">{v.address || v.area}</p>
+                                    <span className="font-mono text-[10px] text-gray-400">GST: {v.gstin || "29AABCR0000Z1Z0"}</span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="p-3.5">
+                                {isSuspended ? (
+                                  <span className="rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-[11px] font-bold">
+                                    Suspended
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[11px] font-bold border border-emerald-200">
+                                    <ShieldCheck className="h-3 w-3" />
+                                    {v.verificationBadge || "Verified Partner"}
+                                  </span>
+                                )}
+                              </td>
+
+                              <td className="p-3.5">
+                                <div className="flex items-center gap-1 font-bold text-amber-600">
+                                  <span>{v.rating} ★</span>
+                                  <span className="text-[11px] text-gray-400 font-normal">({v.reviewCount || 120})</span>
+                                </div>
+                              </td>
+
+                              <td className="p-3.5">
+                                <p className="text-[#111111] font-medium">{v.deliveryCoverage || "All Bengaluru"}</p>
+                                <p className="text-[11px] text-[#6B7280]">{v.phone || "+91 80 4000 1122"}</p>
+                              </td>
+
+                              <td className="p-3.5">
+                                <div className="flex items-center gap-1.5">
+                                  <input
+                                    type="number"
+                                    defaultValue={Math.round((v.commissionRate || 0.1) * 100)}
+                                    onBlur={(e) => handleUpdateVendorCommission(v.id, Number(e.target.value))}
+                                    className="w-14 h-7 rounded border border-gray-200 px-1.5 text-center font-bold"
+                                    min={1}
+                                    max={30}
+                                  />
+                                  <span className="text-gray-500 font-semibold">%</span>
+                                </div>
+                              </td>
+
+                              <td className="p-3.5 text-right">
+                                <button
+                                  onClick={() => handleToggleVendorStatus(v.id)}
+                                  className={cn(
+                                    "rounded-lg px-2.5 py-1 text-xs font-semibold transition cursor-pointer",
+                                    isSuspended
+                                      ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
+                                      : "bg-red-50 text-[#E31E24] hover:bg-red-100 border border-red-200"
+                                  )}
+                                >
+                                  {isSuspended ? "Reactivate" : "Suspend"}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: VENDOR ONBOARDING APPLICATIONS */}
+          {activeTab === "vendor_applications" && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h1 className="font-display text-2xl font-extrabold text-[#111111]">
+                    Vendor Onboarding Applications ({vendorApplications.length})
+                  </h1>
+                  <p className="text-xs text-[#6B7280] mt-0.5">
+                    Verify applicant business details, GSTIN tax registration, and authorized product categories.
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[#E5E7EB] bg-white shadow-2xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-[#F5F6F8] text-[#6B7280] font-semibold border-b border-[#E5E7EB]">
+                      <tr>
+                        <th className="p-3.5">Business Name & Contact</th>
+                        <th className="p-3.5">Location & Area</th>
+                        <th className="p-3.5">GSTIN Registration</th>
+                        <th className="p-3.5">Primary Categories</th>
+                        <th className="p-3.5">Status</th>
+                        <th className="p-3.5 text-right">Decision</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {vendorApplications.map((app) => (
+                        <tr key={app.id} className="hover:bg-gray-50/80 transition">
+                          <td className="p-3.5">
+                            <p className="font-bold text-[#111111]">{app.businessName}</p>
+                            <p className="text-[11px] text-[#6B7280]">{app.contactName} · {app.phone}</p>
+                            <span className="text-[10px] text-gray-400">{app.email} · Applied {app.appliedAt}</span>
+                          </td>
+
+                          <td className="p-3.5">
+                            <p className="font-medium text-[#111111]">{app.area}</p>
+                            <p className="text-[11px] text-[#6B7280]">{app.city}</p>
+                          </td>
+
+                          <td className="p-3.5 font-mono font-bold text-gray-800">
+                            {app.gstin}
+                          </td>
+
+                          <td className="p-3.5">
+                            <div className="flex flex-wrap gap-1">
+                              {app.primaryCategories.map((c) => (
+                                <span key={c} className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-700">
+                                  {c}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+
+                          <td className="p-3.5">
+                            <span
+                              className={cn(
+                                "rounded-full px-2.5 py-0.5 text-[11px] font-bold",
+                                app.status === "approved"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : app.status === "rejected"
+                                  ? "bg-rose-100 text-rose-800"
+                                  : "bg-amber-100 text-amber-800"
+                              )}
+                            >
+                              {app.status === "approved" ? "Approved" : app.status === "rejected" ? "Rejected" : "Pending Review"}
+                            </span>
+                          </td>
+
+                          <td className="p-3.5 text-right">
+                            {app.status === "pending" ? (
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={() => handleApproveVendorApplication(app.id)}
+                                  className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-emerald-700 transition cursor-pointer"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => handleRejectVendorApplication(app.id)}
+                                  className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-100 transition cursor-pointer"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 text-xs">Processed</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: VENDOR OFFERS MODERATION */}
+          {activeTab === "vendor_offers" && (
+            <div className="space-y-6">
+              <div>
+                <h1 className="font-display text-2xl font-extrabold text-[#111111]">
+                  Vendor Offers & Pricing Moderation
+                </h1>
+                <p className="text-xs text-[#6B7280] mt-0.5">
+                  Inspect and moderate all active offers attached to canonical products by vendors across the marketplace.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-[#E5E7EB] bg-white shadow-2xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-[#F5F6F8] text-[#6B7280] font-semibold border-b border-[#E5E7EB]">
+                      <tr>
+                        <th className="p-3.5">Canonical Product</th>
+                        <th className="p-3.5">Vendor / Seller</th>
+                        <th className="p-3.5">Offer Price & MRP</th>
+                        <th className="p-3.5">Stock Allocation</th>
+                        <th className="p-3.5">Warranty & Dispatch</th>
+                        <th className="p-3.5 text-right">Offer Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {adminProducts.flatMap((p) =>
+                        p.offers.map((off, idx) => {
+                          const v = getVendor(off.vendorId);
+                          return (
+                            <tr key={`${p.id}-${off.vendorId}-${idx}`} className="hover:bg-gray-50/80 transition">
+                              <td className="p-3.5">
+                                <div className="flex items-center gap-2.5">
+                                  <img src={p.image} alt="" className="h-9 w-9 rounded-lg object-cover border border-gray-200 shrink-0" />
+                                  <div>
+                                    <p className="font-bold text-[#111111] leading-tight">{p.name}</p>
+                                    <span className="text-[11px] text-[#6B7280]">{p.brand} · {p.category}</span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="p-3.5">
+                                <span className="font-bold text-[#111111] block">{v.name}</span>
+                                <span className="text-[11px] text-[#6B7280]">{v.area}</span>
+                              </td>
+
+                              <td className="p-3.5">
+                                <span className="font-extrabold text-sm text-[#111111]">{inr(off.price)}</span>
+                                {off.mrp && off.mrp > off.price && (
+                                  <span className="text-[11px] text-gray-400 line-through block">{inr(off.mrp)}</span>
+                                )}
+                              </td>
+
+                              <td className="p-3.5">
+                                {off.stock < 5 ? (
+                                  <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-[10px] font-bold">
+                                    Low · {off.stock} units
+                                  </span>
+                                ) : (
+                                  <span className="font-semibold text-gray-700">{off.stock} in stock</span>
+                                )}
+                              </td>
+
+                              <td className="p-3.5 text-[#6B7280]">
+                                <p className="font-medium text-[#111111]">{off.warrantyTerms || "Standard Warranty"}</p>
+                                <p className="text-[11px]">Dispatch in {off.dispatchHours || 24}h</p>
+                              </td>
+
+                              <td className="p-3.5 text-right">
+                                <span className="rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-0.5 text-[10px] font-bold">
+                                  Live in Catalog
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: COMMISSIONS & SETTLEMENTS */}
+          {activeTab === "commissions" && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h1 className="font-display text-2xl font-extrabold text-[#111111]">
+                    Platform Commission & Settlements
+                  </h1>
+                  <p className="text-xs text-[#6B7280] mt-0.5">
+                    Automated fee deductions, vendor settlement ledgers, and payout disbursement reconciliation.
+                  </p>
+                </div>
+              </div>
+
+              {/* Commission Rule Configuration */}
+              <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-2xs flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-bold text-sm text-[#111111]">Marketplace Commission Rules</h3>
+                  <p className="text-xs text-[#6B7280] mt-0.5">
+                    Standard default take-rate calculated on fulfilled order gross value.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-gray-50 px-3 py-1.5 text-xs font-bold">
+                    <span>Default Commission:</span>
+                    <input
+                      type="number"
+                      value={defaultPlatformCommission}
+                      onChange={(e) => setDefaultPlatformCommission(Number(e.target.value))}
+                      className="w-12 bg-transparent text-center text-[#E31E24] outline-none"
+                    />
+                    <span>%</span>
+                  </div>
+                  <button
+                    onClick={() => toast.success(`Platform commission rule updated to ${defaultPlatformCommission}%`)}
+                    className="rounded-lg bg-[#E31E24] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-red-700"
+                  >
+                    Apply Rate
+                  </button>
+                </div>
+              </div>
+
+              {/* KPI Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+                <div className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-2xs">
+                  <span className="text-xs font-semibold text-[#6B7280] uppercase">Total Gross GMV</span>
+                  <p className="mt-2 text-2xl font-extrabold text-[#111111] font-display">
+                    {inr(adminSettlements.reduce((s, x) => s + x.grossSales, 0))}
+                  </p>
+                  <p className="mt-1 text-[11px] text-emerald-600 font-medium">All settled periods</p>
+                </div>
+
+                <div className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-2xs">
+                  <span className="text-xs font-semibold text-[#6B7280] uppercase">Platform Revenue</span>
+                  <p className="mt-2 text-2xl font-extrabold text-[#E31E24] font-display">
+                    {inr(adminSettlements.reduce((s, x) => s + x.commissionAmount, 0))}
+                  </p>
+                  <p className="mt-1 text-[11px] text-gray-500">Take-rate earnings</p>
+                </div>
+
+                <div className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-2xs">
+                  <span className="text-xs font-semibold text-[#6B7280] uppercase">Disbursed to Vendors</span>
+                  <p className="mt-2 text-2xl font-extrabold text-emerald-600 font-display">
+                    {inr(adminSettlements.filter((s) => s.status === "Paid").reduce((s, x) => s + x.netPayout, 0))}
+                  </p>
+                  <p className="mt-1 text-[11px] text-emerald-600 font-medium">Transferred via NEFT/RTGS</p>
+                </div>
+
+                <div className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-2xs">
+                  <span className="text-xs font-semibold text-[#6B7280] uppercase">Pending Settlements</span>
+                  <p className="mt-2 text-2xl font-extrabold text-amber-600 font-display">
+                    {inr(adminSettlements.filter((s) => s.status !== "Paid").reduce((s, x) => s + x.netPayout, 0))}
+                  </p>
+                  <p className="mt-1 text-[11px] text-amber-600 font-medium">Awaiting disbursement</p>
+                </div>
+              </div>
+
+              {/* Settlements Ledger Table */}
+              <div className="rounded-xl border border-[#E5E7EB] bg-white shadow-2xs overflow-hidden">
+                <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                  <h3 className="font-bold text-sm text-[#111111]">Vendor Settlement Records & Ledger</h3>
+                  <span className="text-xs text-[#6B7280]">Audited against verified logistics delivered events</span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-[#F5F6F8] text-[#6B7280] font-semibold border-b border-[#E5E7EB]">
+                      <tr>
+                        <th className="p-3.5">Vendor Name</th>
+                        <th className="p-3.5">Settlement Period</th>
+                        <th className="p-3.5">Orders</th>
+                        <th className="p-3.5">Gross Sales</th>
+                        <th className="p-3.5">Platform Commission</th>
+                        <th className="p-3.5">Net Payout</th>
+                        <th className="p-3.5">Status</th>
+                        <th className="p-3.5 text-right">Bank UTR / Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {adminSettlements.map((st) => (
+                        <tr key={st.id} className="hover:bg-gray-50/80 transition">
+                          <td className="p-3.5 font-bold text-[#111111]">
+                            {st.vendorName}
+                            <span className="block text-[10px] font-mono text-gray-400">{st.id}</span>
+                          </td>
+
+                          <td className="p-3.5 text-gray-700">{st.period}</td>
+
+                          <td className="p-3.5">{st.orderCount} orders</td>
+
+                          <td className="p-3.5 font-semibold text-[#111111]">{inr(st.grossSales)}</td>
+
+                          <td className="p-3.5 text-[#E31E24] font-medium">
+                            {inr(st.commissionAmount)} ({Math.round(st.commissionRate * 100)}%)
+                          </td>
+
+                          <td className="p-3.5 font-extrabold text-emerald-700">{inr(st.netPayout)}</td>
+
+                          <td className="p-3.5">
+                            <span
+                              className={cn(
+                                "rounded-full px-2.5 py-0.5 text-[11px] font-bold",
+                                st.status === "Paid"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : st.status === "Processing"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-amber-100 text-amber-800"
+                              )}
+                            >
+                              {st.status}
+                            </span>
+                          </td>
+
+                          <td className="p-3.5 text-right font-mono text-xs">
+                            {st.status === "Paid" ? (
+                              <span className="text-gray-600 text-[11px]" title={`Paid on ${st.payoutDate}`}>
+                                {st.referenceNumber}
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleMarkSettlementPaid(st.id)}
+                                className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-emerald-700 transition cursor-pointer"
+                              >
+                                Disburse & Mark Paid
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: REVIEWS MODERATION */}
+          {activeTab === "reviews_moderation" && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h1 className="font-display text-2xl font-extrabold text-[#111111]">
+                    Customer Reviews & Quality Moderation
+                  </h1>
+                  <p className="text-xs text-[#6B7280] mt-0.5">
+                    Maintain catalog authenticity. Moderate product performance feedback and vendor shop delivery experiences.
+                  </p>
+                </div>
+                <div className="flex items-center rounded-lg border border-gray-200 bg-white p-1">
+                  <button
+                    onClick={() => setReviewTabMode("product")}
+                    className={cn(
+                      "rounded-md px-3 py-1 text-xs font-semibold transition",
+                      reviewTabMode === "product" ? "bg-[#E31E24] text-white" : "text-gray-600 hover:text-black"
+                    )}
+                  >
+                    Product Reviews ({adminProductReviews.length})
+                  </button>
+                  <button
+                    onClick={() => setReviewTabMode("vendor")}
+                    className={cn(
+                      "rounded-md px-3 py-1 text-xs font-semibold transition",
+                      reviewTabMode === "vendor" ? "bg-[#E31E24] text-white" : "text-gray-600 hover:text-black"
+                    )}
+                  >
+                    Vendor Shop Reviews ({adminVendorReviews.length})
+                  </button>
+                </div>
+              </div>
+
+              {reviewTabMode === "product" ? (
+                <div className="rounded-xl border border-[#E5E7EB] bg-white shadow-2xs overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#F5F6F8] text-[#6B7280] font-semibold border-b border-[#E5E7EB]">
+                        <tr>
+                          <th className="p-3.5">Customer</th>
+                          <th className="p-3.5">Product</th>
+                          <th className="p-3.5">Rating & Review</th>
+                          <th className="p-3.5">Vehicle Fitment</th>
+                          <th className="p-3.5">Status</th>
+                          <th className="p-3.5 text-right">Moderation Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {adminProductReviews.map((rev) => {
+                          const prod = getProduct(rev.productId);
+                          return (
+                            <tr key={rev.id} className="hover:bg-gray-50/80 transition">
+                              <td className="p-3.5">
+                                <p className="font-bold text-[#111111]">{rev.userName}</p>
+                                <span className="text-[10px] text-gray-400">{rev.date}</span>
+                                {rev.isVerifiedPurchase && (
+                                  <span className="block mt-0.5 text-[10px] font-bold text-emerald-700">Verified Buyer</span>
+                                )}
+                              </td>
+
+                              <td className="p-3.5">
+                                <p className="font-semibold text-[#111111] max-w-[180px] truncate">{prod?.name || rev.productId}</p>
+                                <span className="text-[11px] text-[#6B7280]">{prod?.brand}</span>
+                              </td>
+
+                              <td className="p-3.5 max-w-sm">
+                                <div className="flex items-center gap-1 text-amber-500 font-bold mb-0.5">
+                                  <span>{"★".repeat(rev.rating)}</span>
+                                  <span className="text-[#111111] ml-1">{rev.title}</span>
+                                </div>
+                                <p className="text-gray-700 leading-snug">{rev.comment}</p>
+                              </td>
+
+                              <td className="p-3.5 text-gray-600">
+                                {rev.fitmentVehicle || "Universal Fit"}
+                              </td>
+
+                              <td className="p-3.5">
+                                <span
+                                  className={cn(
+                                    "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                                    rev.status === "published"
+                                      ? "bg-emerald-100 text-emerald-800"
+                                      : "bg-rose-100 text-rose-800"
+                                  )}
+                                >
+                                  {rev.status}
+                                </span>
+                              </td>
+
+                              <td className="p-3.5 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  {rev.status !== "published" && (
+                                    <button
+                                      onClick={() => handleModerateProductReview(rev.id, "published")}
+                                      className="rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 text-xs font-semibold hover:bg-emerald-100"
+                                    >
+                                      Approve
+                                    </button>
+                                  )}
+                                  {rev.status === "published" && (
+                                    <button
+                                      onClick={() => handleModerateProductReview(rev.id, "rejected")}
+                                      className="rounded-lg bg-amber-50 text-amber-800 border border-amber-200 px-2 py-1 text-xs font-semibold hover:bg-amber-100"
+                                    >
+                                      Unpublish
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleModerateProductReview(rev.id, "deleted")}
+                                    className="p-1 rounded-lg text-rose-600 hover:bg-rose-50"
+                                    title="Delete Review"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-[#E5E7EB] bg-white shadow-2xs overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#F5F6F8] text-[#6B7280] font-semibold border-b border-[#E5E7EB]">
+                        <tr>
+                          <th className="p-3.5">Customer</th>
+                          <th className="p-3.5">Vendor Shop</th>
+                          <th className="p-3.5">Rating & Review</th>
+                          <th className="p-3.5">Sub-Scores</th>
+                          <th className="p-3.5">Status</th>
+                          <th className="p-3.5 text-right">Moderation Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {adminVendorReviews.map((rev) => {
+                          const v = getVendor(rev.vendorId);
+                          return (
+                            <tr key={rev.id} className="hover:bg-gray-50/80 transition">
+                              <td className="p-3.5">
+                                <p className="font-bold text-[#111111]">{rev.userName}</p>
+                                <span className="text-[10px] text-gray-400">{rev.date}</span>
+                                {rev.isVerifiedPurchase && (
+                                  <span className="block mt-0.5 text-[10px] font-bold text-emerald-700">Verified Buyer</span>
+                                )}
+                              </td>
+
+                              <td className="p-3.5">
+                                <p className="font-semibold text-[#111111]">{v.name}</p>
+                                <span className="text-[11px] text-[#6B7280]">{v.area}</span>
+                              </td>
+
+                              <td className="p-3.5 max-w-sm">
+                                <div className="flex items-center gap-1 text-amber-500 font-bold mb-0.5">
+                                  <span>{"★".repeat(rev.rating)}</span>
+                                  <span className="text-[#111111] ml-1">({rev.rating}/5)</span>
+                                </div>
+                                <p className="text-gray-700 leading-snug">{rev.comment}</p>
+                              </td>
+
+                              <td className="p-3.5 text-[11px] text-[#6B7280]">
+                                <span>Packaging: {rev.packagingRating}★</span>
+                                <br />
+                                <span>Delivery: {rev.deliveryRating}★</span>
+                              </td>
+
+                              <td className="p-3.5">
+                                <span
+                                  className={cn(
+                                    "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                                    rev.status === "published"
+                                      ? "bg-emerald-100 text-emerald-800"
+                                      : "bg-rose-100 text-rose-800"
+                                  )}
+                                >
+                                  {rev.status}
+                                </span>
+                              </td>
+
+                              <td className="p-3.5 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  {rev.status !== "published" && (
+                                    <button
+                                      onClick={() => handleModerateVendorReview(rev.id, "published")}
+                                      className="rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 text-xs font-semibold hover:bg-emerald-100"
+                                    >
+                                      Approve
+                                    </button>
+                                  )}
+                                  {rev.status === "published" && (
+                                    <button
+                                      onClick={() => handleModerateVendorReview(rev.id, "rejected")}
+                                      className="rounded-lg bg-amber-50 text-amber-800 border border-amber-200 px-2 py-1 text-xs font-semibold hover:bg-amber-100"
+                                    >
+                                      Unpublish
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleModerateVendorReview(rev.id, "deleted")}
+                                    className="p-1 rounded-lg text-rose-600 hover:bg-rose-50"
+                                    title="Delete Review"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

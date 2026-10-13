@@ -1,4 +1,5 @@
 // @lovable.dev/vite-tanstack-config already includes standard plugins
+// Multi-vendor marketplace API middleware enabled
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { pgApiMiddleware } from "./src/server/dbMiddleware";
 import { fileURLToPath } from "node:url";

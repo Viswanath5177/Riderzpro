@@ -1,9 +1,34 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { SlidersHorizontal, Search, Bike, Check, X, ShieldCheck, Tag, Car, RotateCcw } from "lucide-react";
+import {
+  SlidersHorizontal,
+  Search,
+  Bike,
+  Check,
+  X,
+  ShieldCheck,
+  Tag,
+  Car,
+  RotateCcw,
+  Store,
+  Star,
+  Shield,
+  IndianRupee,
+} from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { ProductCard } from "@/components/site/bits";
-import { bestOffer, bikes, getBike, mapDbProductToProduct, type Product, type Category } from "@/lib/data";
+import {
+  bestOffer,
+  bikes,
+  getBike,
+  mapDbProductToProduct,
+  products,
+  vendors,
+  getVendor,
+  getProductReviews,
+  type Product,
+  type Category,
+} from "@/lib/data";
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/shop")({
@@ -36,7 +61,8 @@ const CATS: (Category | "All")[] = [
 function Shop() {
   const { activeBikeId, setActiveBikeId } = useStore();
 
-  const [dbProducts, setDbProducts] = useState<Product[]>([]);
+  // Initialize with canonical seed catalog so user never sees blank page
+  const [dbProducts, setDbProducts] = useState<Product[]>(products);
   const [q, setQ] = useState(() => {
     if (typeof window !== "undefined") {
       const p = new URLSearchParams(window.location.search);
@@ -60,12 +86,17 @@ function Shop() {
   const [selectedBrand, setSelectedBrand] = useState("All");
   const [selectedVehicleType, setSelectedVehicleType] = useState("All");
   const [selectedStock, setSelectedStock] = useState("all");
+  const [selectedVendorId, setSelectedVendorId] = useState("All");
+  const [minPrice, setMinPrice] = useState<number | "">("");
+  const [maxPrice, setMaxPrice] = useState<number | "">("");
+  const [minRating, setMinRating] = useState<number | "">("");
+  const [warrantyFilter, setWarrantyFilter] = useState("All");
 
   useEffect(() => {
     fetch("/api/products")
       .then((r) => r.json())
       .then((res) => {
-        if (res.success && Array.isArray(res.data)) {
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
           setDbProducts(res.data.map((row: any) => mapDbProductToProduct(row)));
         }
       })
@@ -110,33 +141,82 @@ function Shop() {
         (selectedVehicleType === "bike" && (pVType === "bike" || pVType === "two-wheeler" || p.category.toLowerCase().includes("bike"))) ||
         (selectedVehicleType === "car" && (pVType === "car" || pVType === "four-wheeler" || p.category.toLowerCase().includes("car"))) ||
         (selectedVehicleType === "universal" && (pVType === "universal" || pVType === "both" || !pVType));
-      const offer = bestOffer(p);
+
+      const offer = selectedVendorId !== "All"
+        ? p.offers.find((o) => o.vendorId === selectedVendorId) || bestOffer(p)
+        : bestOffer(p);
+
+      const matchesVendor =
+        selectedVendorId === "All" || p.offers.some((o) => o.vendorId === selectedVendorId);
+
       const stock = offer.stock ?? p.offers?.[0]?.stock ?? 0;
       const matchesStock =
         selectedStock === "all" ||
         (selectedStock === "in_stock" && stock >= 5) ||
         (selectedStock === "low_stock" && stock < 5);
+
+      const price = offer.price;
+      const matchesMinPrice = minPrice === "" || price >= Number(minPrice);
+      const matchesMaxPrice = maxPrice === "" || price <= Number(maxPrice);
+
+      const revs = getProductReviews(p.id);
+      const avgRating = revs.length > 0 ? revs.reduce((s, r) => s + r.rating, 0) / revs.length : 4.8;
+      const matchesRating = minRating === "" || avgRating >= Number(minRating);
+
+      const matchesWarranty =
+        warrantyFilter === "All" ||
+        (warrantyFilter === "12" && p.warrantyMonths >= 12) ||
+        (warrantyFilter === "24" && p.warrantyMonths >= 24) ||
+        (warrantyFilter === "36" && p.warrantyMonths >= 36);
+
       const matchesVolt = !volt || p.voltage === volt;
       const matchesFit =
         !onlyFit || !activeBikeId || p.fits.includes("universal") || p.fits.includes(activeBikeId);
+
+      const vendorNames = p.offers.map((o) => getVendor(o.vendorId).name).join(" ");
       const matchesQuery =
         q === "" ||
-        `${p.name} ${p.brand} ${p.category} ${p.description}`.toLowerCase().includes(q.toLowerCase());
+        `${p.name} ${p.brand} ${p.category} ${p.description} ${p.sku || ""} ${vendorNames}`.toLowerCase().includes(q.toLowerCase());
 
       return (
         matchesCat &&
         matchesBrand &&
         matchesVehicleType &&
+        matchesVendor &&
         matchesStock &&
+        matchesMinPrice &&
+        matchesMaxPrice &&
+        matchesRating &&
+        matchesWarranty &&
         matchesVolt &&
         matchesFit &&
         matchesQuery
       );
     });
+
     if (sort === "low") l = [...l].sort((a, b) => bestOffer(a).price - bestOffer(b).price);
     if (sort === "high") l = [...l].sort((a, b) => bestOffer(b).price - bestOffer(a).price);
+    if (sort === "rating") {
+      l = [...l].sort((a, b) => {
+        const ra = getProductReviews(a.id);
+        const rb = getProductReviews(b.id);
+        const scoreA = ra.length ? ra.reduce((s, r) => s + r.rating, 0) / ra.length : 4.8;
+        const scoreB = rb.length ? rb.reduce((s, r) => s + r.rating, 0) / rb.length : 4.8;
+        return scoreB - scoreA;
+      });
+    }
+    if (sort === "value") {
+      l = [...l].sort((a, b) => {
+        const offA = bestOffer(a);
+        const offB = bestOffer(b);
+        const savA = (offA.mrp || offA.price * 1.15) - offA.price;
+        const savB = (offB.mrp || offB.price * 1.15) - offB.price;
+        return savB - savA;
+      });
+    }
+
     return l;
-  }, [dbProducts, q, cat, selectedBrand, selectedVehicleType, selectedStock, volt, onlyFit, activeBikeId, sort]);
+  }, [dbProducts, q, cat, selectedBrand, selectedVehicleType, selectedVendorId, selectedStock, minPrice, maxPrice, minRating, warrantyFilter, volt, onlyFit, activeBikeId, sort]);
 
   const bike = activeBikeId ? getBike(activeBikeId) : null;
 
@@ -221,8 +301,26 @@ function Shop() {
             </div>
           </div>
 
-          {/* Sub Filters: Brand, Vehicle Type, Stock, Voltage, Fitment, Sorting */}
-          <div className="mt-3 flex flex-wrap items-center gap-2.5 pt-3 border-t border-gray-100 text-xs">
+          {/* Sub Filters: Vendor, Brand, Vehicle Type, Stock, Price Range, Warranty, Rating, Voltage, Fitment, Sorting */}
+          <div className="mt-3 flex flex-wrap items-center gap-2 pt-3 border-t border-gray-100 text-xs">
+            {/* Vendor / Shop Filter */}
+            <div className="flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs">
+              <Store className="h-3.5 w-3.5 text-[#E31E24]" />
+              <span className="text-[#6B7280]">Shop:</span>
+              <select
+                value={selectedVendorId}
+                onChange={(e) => setSelectedVendorId(e.target.value)}
+                className="bg-transparent font-semibold text-[#111111] outline-none cursor-pointer"
+              >
+                <option value="All">All Sellers & Shops</option>
+                {vendors.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name} ({v.area})
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Brand Filter */}
             <div className="flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs">
               <Tag className="h-3.5 w-3.5 text-[#E31E24]" />
@@ -237,6 +335,59 @@ function Shop() {
                     {b === "All" ? "All Brands" : b}
                   </option>
                 ))}
+              </select>
+            </div>
+
+            {/* Price Range Filter */}
+            <div className="flex items-center gap-1 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs">
+              <IndianRupee className="h-3.5 w-3.5 text-[#E31E24]" />
+              <span className="text-[#6B7280]">Price:</span>
+              <input
+                type="number"
+                placeholder="Min"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value ? Number(e.target.value) : "")}
+                className="w-14 rounded border border-gray-200 px-1 py-0.5 text-center text-xs font-semibold outline-none"
+              />
+              <span className="text-gray-400">-</span>
+              <input
+                type="number"
+                placeholder="Max"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : "")}
+                className="w-16 rounded border border-gray-200 px-1 py-0.5 text-center text-xs font-semibold outline-none"
+              />
+            </div>
+
+            {/* Customer Rating Filter */}
+            <div className="flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs">
+              <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+              <span className="text-[#6B7280]">Rating:</span>
+              <select
+                value={minRating}
+                onChange={(e) => setMinRating(e.target.value ? Number(e.target.value) : "")}
+                className="bg-transparent font-semibold text-[#111111] outline-none cursor-pointer"
+              >
+                <option value="">Any Rating</option>
+                <option value="4.0">4.0★ & above</option>
+                <option value="4.5">4.5★ & above</option>
+                <option value="4.8">4.8★ & above</option>
+              </select>
+            </div>
+
+            {/* Warranty Filter */}
+            <div className="flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs">
+              <Shield className="h-3.5 w-3.5 text-[#E31E24]" />
+              <span className="text-[#6B7280]">Warranty:</span>
+              <select
+                value={warrantyFilter}
+                onChange={(e) => setWarrantyFilter(e.target.value)}
+                className="bg-transparent font-semibold text-[#111111] outline-none cursor-pointer"
+              >
+                <option value="All">Any Warranty</option>
+                <option value="12">1+ Year Warranty</option>
+                <option value="24">2+ Years Warranty</option>
+                <option value="36">3+ Years Warranty</option>
               </select>
             </div>
 
@@ -307,11 +458,13 @@ function Shop() {
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
-                className="rounded-md border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs font-medium text-[#111111] outline-none cursor-pointer"
+                className="rounded-md border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs font-semibold text-[#111111] outline-none cursor-pointer"
               >
                 <option value="relevance">Relevance</option>
                 <option value="low">Price: Low → High</option>
                 <option value="high">Price: High → Low</option>
+                <option value="rating">Highest Rated ★</option>
+                <option value="value">Best Value (Max Savings)</option>
               </select>
             </div>
           </div>
@@ -320,7 +473,18 @@ function Shop() {
         {/* Results Count & Clear Button */}
         <div className="mt-5 flex items-center justify-between text-xs text-[#6B7280]">
           <p>Showing <span className="font-semibold text-[#111111]">{list.length}</span> products</p>
-          {(cat !== "All" || q || volt !== null || onlyFit || selectedBrand !== "All" || selectedVehicleType !== "All" || selectedStock !== "all") && (
+          {(cat !== "All" ||
+            q ||
+            volt !== null ||
+            onlyFit ||
+            selectedBrand !== "All" ||
+            selectedVehicleType !== "All" ||
+            selectedStock !== "all" ||
+            selectedVendorId !== "All" ||
+            minPrice !== "" ||
+            maxPrice !== "" ||
+            minRating !== "" ||
+            warrantyFilter !== "All") && (
             <button
               onClick={() => {
                 setCat("All");
@@ -330,6 +494,11 @@ function Shop() {
                 setSelectedBrand("All");
                 setSelectedVehicleType("All");
                 setSelectedStock("all");
+                setSelectedVendorId("All");
+                setMinPrice("");
+                setMaxPrice("");
+                setMinRating("");
+                setWarrantyFilter("All");
               }}
               className="inline-flex items-center gap-1 font-semibold text-[#E31E24] hover:underline cursor-pointer"
             >
@@ -359,7 +528,7 @@ function Shop() {
             </button>
           </div>
         ) : (
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
             {list.map((p) => (
               <ProductCard key={p.id} p={p} />
             ))}

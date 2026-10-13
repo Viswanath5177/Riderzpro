@@ -457,12 +457,12 @@ export function CustomerLayout({
         {/* Right Content Area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Top Header (Apple Glassmorphic Theme) */}
-          <header className="sticky top-0 z-20 h-20 bg-white/65 backdrop-blur-2xl backdrop-saturate-180 border-b border-black/[0.06] px-4 md:px-8 flex items-center justify-between gap-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.85),0_10px_30px_-10px_rgba(0,0,0,0.04)] transition-all duration-200">
+          <header className="sticky top-0 z-20 h-18 sm:h-20 bg-white/65 backdrop-blur-2xl backdrop-saturate-180 border-b border-black/[0.06] px-3 sm:px-4 md:px-8 flex items-center justify-between gap-2 sm:gap-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.85),0_10px_30px_-10px_rgba(0,0,0,0.04)] transition-all duration-200">
             {/* Left: Mobile hamburger & breadcrumbs */}
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="md:hidden h-10 w-10 grid place-items-center rounded-2xl bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_6px_rgba(0,0,0,0.03)] text-gray-700 hover:text-gray-950 active:scale-95 transition-all duration-200"
+                className="md:hidden h-9 w-9 sm:h-10 sm:w-10 grid place-items-center rounded-2xl bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_6px_rgba(0,0,0,0.03)] text-gray-700 hover:text-gray-950 active:scale-95 transition-all duration-200 cursor-pointer shrink-0"
                 aria-label="Open navigation menu"
               >
                 <Menu className="h-5 w-5" />
@@ -497,36 +497,36 @@ export function CustomerLayout({
             </div>
 
             {/* Right: Actions, Search by VIN, Notifications, Cart, Avatar */}
-            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
               {/* Search by VIN Button */}
               <button
                 onClick={() => setIsVinSearchOpen(true)}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-full border border-emerald-500/25 hover:border-emerald-500/40 bg-emerald-500/[0.08] hover:bg-emerald-500/[0.15] active:bg-emerald-500/[0.22] text-xs font-bold text-emerald-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_2px_8px_rgba(16,185,129,0.06)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_4px_14px_rgba(16,185,129,0.12)] backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 group cursor-pointer"
+                className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-full border border-emerald-500/25 hover:border-emerald-500/40 bg-emerald-500/[0.08] hover:bg-emerald-500/[0.15] active:bg-emerald-500/[0.22] text-xs font-bold text-emerald-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_2px_8px_rgba(16,185,129,0.06)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_4px_14px_rgba(16,185,129,0.12)] backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 group cursor-pointer shrink-0"
                 title="Search items based on 17-digit VIN number"
               >
                 <ScanLine className="h-3.5 w-3.5 text-emerald-600 group-hover:rotate-12 transition-transform duration-200" />
                 <span className="hidden sm:inline">Search by VIN</span>
-                <span className="sm:hidden font-mono text-[11px]">VIN</span>
+                <span className="sm:hidden font-mono text-[10.5px]">VIN</span>
               </button>
 
               {/* Mobile Search trigger */}
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="md:hidden h-10 w-10 grid place-items-center rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] text-gray-700 active:scale-95 transition-all duration-200"
+                className="md:hidden h-9 w-9 sm:h-10 sm:w-10 grid place-items-center rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] text-gray-700 active:scale-95 transition-all duration-200 cursor-pointer shrink-0"
                 aria-label="Search products"
               >
-                <Search className="h-4.5 w-4.5" />
+                <Search className="h-4 w-4" />
               </button>
 
               {/* Notifications Button on Top Right with Badge & Popover */}
               <div className="relative">
                 <button
                   onClick={() => setIsNotifOpen(!isNotifOpen)}
-                  className="relative h-10 w-10 grid place-items-center rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] hover:border-black/[0.16] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] hover:scale-105 active:scale-95 transition-all duration-200 text-gray-600 hover:text-gray-950 cursor-pointer group"
+                  className="relative h-9 w-9 sm:h-10 sm:w-10 grid place-items-center rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] hover:border-black/[0.16] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] hover:scale-105 active:scale-95 transition-all duration-200 text-gray-600 hover:text-gray-950 cursor-pointer group shrink-0"
                   aria-label="Notifications"
                   title="Notifications"
                 >
-                  <Bell className="h-4.5 w-4.5 text-gray-700 group-hover:rotate-12 transition-transform duration-200" />
+                  <Bell className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-gray-700 group-hover:rotate-12 transition-transform duration-200" />
                   {unreadNotifsCount > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 grid h-4.5 min-w-4.5 px-1 place-items-center rounded-full bg-gradient-to-r from-[#E31E24] to-rose-500 text-[9.5px] font-extrabold text-white shadow-[0_2px_6px_rgba(227,30,36,0.4)] ring-2 ring-white">
                       {unreadNotifsCount}
@@ -535,7 +535,7 @@ export function CustomerLayout({
                 </button>
 
                 {isNotifOpen && (
-                  <div className="absolute right-0 mt-2.5 w-80 sm:w-96 rounded-3xl bg-white/94 backdrop-blur-3xl border border-white/80 shadow-[0_24px_60px_-15px_rgba(0,0,0,0.18),inset_0_1px_0_0_rgba(255,255,255,0.95)] p-4 z-50 ring-1 ring-black/[0.06] animate-in fade-in zoom-in-95 duration-150">
+                  <div className="absolute right-0 mt-2.5 w-[calc(100vw-1.5rem)] max-w-sm sm:w-96 rounded-3xl bg-white/94 backdrop-blur-3xl border border-white/80 shadow-[0_24px_60px_-15px_rgba(0,0,0,0.18),inset_0_1px_0_0_rgba(255,255,255,0.95)] p-4 z-50 ring-1 ring-black/[0.06] animate-in fade-in zoom-in-95 duration-150">
                     <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                       <div>
                         <p className="text-sm font-bold text-gray-900">Notifications</p>
@@ -544,7 +544,7 @@ export function CustomerLayout({
                       {unreadNotifsCount > 0 && (
                         <button
                           onClick={markAllNotificationsRead}
-                          className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
+                          className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
                         >
                           <CheckCheck className="h-3.5 w-3.5" /> Mark all read
                         </button>
@@ -584,7 +584,7 @@ export function CustomerLayout({
                           setIsNotifOpen(false);
                           onTabChange("notifications");
                         }}
-                        className="text-xs font-semibold text-primary hover:underline"
+                        className="text-xs font-semibold text-primary hover:underline cursor-pointer"
                       >
                         View all notifications →
                       </button>
@@ -597,11 +597,11 @@ export function CustomerLayout({
               <button
                 type="button"
                 onClick={() => setIsCartOpen(true)}
-                className="relative h-10 w-10 grid place-items-center rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] hover:border-black/[0.16] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] hover:scale-105 active:scale-95 transition-all duration-200 text-gray-600 hover:text-gray-950 cursor-pointer group"
+                className="relative h-9 w-9 sm:h-10 sm:w-10 grid place-items-center rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] hover:border-black/[0.16] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] hover:scale-105 active:scale-95 transition-all duration-200 text-gray-600 hover:text-gray-950 cursor-pointer group shrink-0"
                 aria-label="Shopping Cart"
                 title="Open Shopping Cart"
               >
-                <ShoppingCart className="h-4.5 w-4.5 text-gray-700 group-hover:-translate-y-0.5 transition-transform duration-200" />
+                <ShoppingCart className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-gray-700 group-hover:-translate-y-0.5 transition-transform duration-200" />
                 {cartCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 grid h-4.5 min-w-4.5 px-1 place-items-center rounded-full bg-gradient-to-r from-[#E31E24] to-rose-500 text-[9.5px] font-extrabold text-white shadow-[0_2px_6px_rgba(227,30,36,0.4)] ring-2 ring-white">
                     {cartCount}
@@ -609,22 +609,22 @@ export function CustomerLayout({
                 )}
               </button>
 
-              {/* Profile Button on Right Top (Apple Glassmorphism with My Orders & Sign Out) */}
+              {/* Profile Button on Right Top */}
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="relative flex items-center gap-2.5 p-1 pl-1 pr-3 sm:pr-3.5 rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] hover:border-black/[0.16] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,1),0_4px_16px_rgba(0,0,0,0.08)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer group"
+                  className="relative flex items-center gap-1.5 sm:gap-2.5 p-1 pl-1 pr-2 sm:pr-3.5 rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] hover:border-black/[0.16] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,1),0_4px_16px_rgba(0,0,0,0.08)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer group shrink-0"
                   aria-label="Profile and account menu"
                   title="Profile & Account Menu"
                 >
-                  <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-tr from-[#E31E24] via-rose-500 to-red-600 text-white font-extrabold text-xs shadow-xs ring-2 ring-white">
+                  <span className="grid h-7 w-7 sm:h-8 sm:w-8 place-items-center rounded-full bg-gradient-to-tr from-[#E31E24] via-rose-500 to-red-600 text-white font-extrabold text-xs shadow-xs ring-2 ring-white">
                     {userInitials}
                   </span>
                   <span className="hidden sm:inline-block text-xs font-bold text-gray-800 group-hover:text-gray-950 max-w-[90px] truncate transition-colors">
                     {userProfile.name.split(" ")[0]}
                   </span>
-                  <ChevronDown className={cn("h-3.5 w-3.5 text-gray-400 group-hover:text-gray-700 transition-transform duration-200", isProfileOpen && "rotate-180")} />
+                  <ChevronDown className={cn("h-3 w-3 sm:h-3.5 sm:w-3.5 text-gray-400 group-hover:text-gray-700 transition-transform duration-200", isProfileOpen && "rotate-180")} />
                 </button>
 
                 {isProfileOpen && (
@@ -633,7 +633,7 @@ export function CustomerLayout({
                       className="fixed inset-0 z-40"
                       onClick={() => setIsProfileOpen(false)}
                     />
-                    <div className="absolute right-0 mt-2.5 w-76 sm:w-80 rounded-3xl bg-white/94 backdrop-blur-3xl border border-white/80 shadow-[0_24px_60px_-15px_rgba(0,0,0,0.18),inset_0_1px_0_0_rgba(255,255,255,0.95)] p-3.5 z-50 ring-1 ring-black/[0.06] animate-in fade-in zoom-in-95 duration-150">
+                    <div className="absolute right-0 mt-2.5 w-[calc(100vw-1.5rem)] max-w-xs sm:w-80 rounded-3xl bg-white/94 backdrop-blur-3xl border border-white/80 shadow-[0_24px_60px_-15px_rgba(0,0,0,0.18),inset_0_1px_0_0_rgba(255,255,255,0.95)] p-3.5 z-50 ring-1 ring-black/[0.06] animate-in fade-in zoom-in-95 duration-150">
                       {/* User Header Preview */}
                       <div className="p-3.5 rounded-2xl bg-gradient-to-b from-white/70 to-black/[0.02] border border-black/[0.05] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)] mb-2 flex items-center gap-3">
                         <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-tr from-[#E31E24] to-rose-500 text-white font-extrabold text-sm shadow-xs ring-2 ring-white shrink-0">

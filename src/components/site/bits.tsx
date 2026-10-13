@@ -140,9 +140,9 @@ export function ProductCard({ p }: { p: Product }) {
       </div>
 
       {/* Card Content Area */}
-      <div className="flex flex-1 flex-col p-4">
-        <div className="flex items-center justify-between text-[11px] text-[#6B7280]">
-          <span className="font-semibold uppercase tracking-wider truncate max-w-[140px]">
+      <div className="flex flex-1 flex-col p-2.5 sm:p-4">
+        <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-[#6B7280]">
+          <span className="font-semibold uppercase tracking-wider truncate max-w-[95px] sm:max-w-[140px]">
             {p.category} · {p.brand}
           </span>
           <span className="flex items-center gap-1 font-semibold text-gray-700 shrink-0">
@@ -154,51 +154,51 @@ export function ProductCard({ p }: { p: Product }) {
         <Link
           to="/product/$id"
           params={{ id: p.id }}
-          className="mt-1 line-clamp-2 font-semibold text-sm leading-snug text-[#111111] transition-colors hover:text-[#E31E24]"
+          className="mt-1 line-clamp-2 font-semibold text-xs sm:text-sm leading-snug text-[#111111] transition-colors hover:text-[#E31E24]"
         >
           {p.name}
         </Link>
 
         {/* Availability status */}
-        <div className="mt-2 flex items-center gap-1.5 text-[11px]">
+        <div className="mt-1.5 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-[11px] truncate">
           {isLowStock ? (
             <>
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-              <span className="text-amber-700 font-bold">Hurry limited Stock</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+              <span className="text-amber-700 font-bold truncate">Hurry limited Stock</span>
               {currentStock > 0 && (
-                <span className="text-amber-600 font-semibold">({currentStock} left)</span>
+                <span className="text-amber-600 font-semibold shrink-0">({currentStock})</span>
               )}
             </>
           ) : (
             <>
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
               <span className="text-emerald-700 font-medium">In Stock</span>
             </>
           )}
           <span className="text-gray-400">·</span>
-          <span className="text-[#6B7280]">{p.warrantyMonths}m Warranty</span>
+          <span className="text-[#6B7280] truncate">{p.warrantyMonths}m Warranty</span>
         </div>
 
         {/* Price and Add to Cart Area */}
-        <div className="mt-auto pt-3 border-t border-gray-100 flex items-end justify-between gap-2">
-          <div>
+        <div className="mt-auto pt-2.5 sm:pt-3 border-t border-gray-100 flex items-end justify-between gap-1.5 sm:gap-2">
+          <div className="min-w-0">
             {offerPrice > 0 ? (
-              <div className="flex items-baseline gap-1.5">
-                <span className="font-display text-lg font-extrabold text-[#111111]">
+              <div className="flex items-baseline gap-1 sm:gap-1.5 flex-wrap">
+                <span className="font-display text-sm sm:text-base md:text-lg font-extrabold text-[#111111]">
                   {inr(offerPrice)}
                 </span>
                 {mrp > offerPrice && (
-                  <span className="text-xs text-gray-400 line-through">
+                  <span className="text-[10px] sm:text-xs text-gray-400 line-through">
                     {inr(mrp)}
                   </span>
                 )}
               </div>
             ) : (
-              <span className="text-xs font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
-                Price on Request
+              <span className="text-[10px] sm:text-xs font-bold text-gray-700 bg-gray-100 px-1.5 sm:px-2 py-0.5 rounded">
+                Price on Req.
               </span>
             )}
-            <p className="text-[10px] text-[#6B7280]">
+            <p className="text-[9.5px] sm:text-[10px] text-[#6B7280] truncate max-w-[95px] sm:max-w-[130px]">
               From {getVendor(offer.vendorId).name}
             </p>
           </div>
@@ -210,23 +210,24 @@ export function ProductCard({ p }: { p: Product }) {
               addToCart(p.id, offer.vendorId);
               toast.success(`Added ${p.name} to cart`);
             }}
-            className="flex items-center gap-1.5 rounded-lg bg-[#E31E24] px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-700 active:scale-95 shadow-2xs cursor-pointer"
+            aria-label={`Add ${p.name} to cart`}
+            className="flex items-center gap-1 sm:gap-1.5 rounded-lg bg-[#E31E24] px-2 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-white transition hover:bg-red-700 active:scale-95 shadow-2xs cursor-pointer shrink-0"
           >
-            <ShoppingCart className="h-3.5 w-3.5" />
+            <ShoppingCart className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
             <span>Add</span>
           </button>
         </div>
 
         {/* Low Stock Indicator Below Card */}
         {isLowStock && (
-          <div className="mt-3 -mx-4 -mb-4 bg-amber-50 border-t border-amber-200/90 px-3.5 py-1.5 flex items-center justify-between text-[11px] font-bold text-amber-800">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping shrink-0" />
-              <span className="tracking-tight">Hurry limited Stock</span>
+          <div className="mt-2.5 sm:mt-3 -mx-2.5 -mb-2.5 sm:-mx-4 sm:-mb-4 bg-amber-50 border-t border-amber-200/90 px-2.5 sm:px-3.5 py-1 sm:py-1.5 flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-amber-800">
+            <span className="flex items-center gap-1 sm:gap-1.5 truncate">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping shrink-0" />
+              <span className="tracking-tight truncate">Limited Stock</span>
             </span>
             {currentStock > 0 && (
-              <span className="text-[10px] font-bold text-amber-700 bg-amber-200/70 px-1.5 py-0.5 rounded">
-                Only {currentStock} left
+              <span className="text-[9.5px] sm:text-[10px] font-bold text-amber-700 bg-amber-200/70 px-1.5 py-0.5 rounded shrink-0">
+                {currentStock} left
               </span>
             )}
           </div>

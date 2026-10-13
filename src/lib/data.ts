@@ -9,7 +9,106 @@ import scooterImg from "@/assets/scooter.jpg";
 
 export type Bike = { id: string; make: string; model: string; years: number[]; voltage: number; wmi: string };
 export type Car = { id: string; make: string; model: string; years: number[]; batteryKWh?: number };
-export type Vendor = { id: string; name: string; area: string; lat: number; lng: number; rating: number; prepMins: number };
+
+export type VendorOffer = {
+  vendorId: string;
+  price: number;
+  stock: number;
+  mrp?: number;
+  condition?: "new" | "refurbished";
+  warrantyMonths?: number;
+  warrantyTerms?: string;
+  shippingCharge?: number;
+  dispatchHours?: number;
+  deliveryDays?: string;
+  status?: "active" | "paused" | "out_of_stock";
+};
+
+export type Vendor = {
+  id: string;
+  name: string;
+  area: string;
+  lat: number;
+  lng: number;
+  rating: number;
+  prepMins: number;
+  reviewCount?: number;
+  isVerified?: boolean;
+  verificationBadge?: string;
+  description?: string;
+  deliveryCoverage?: string;
+  businessHours?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  gstin?: string;
+  shippingPolicy?: string;
+  returnPolicy?: string;
+  commissionRate?: number;
+};
+
+export type ProductReview = {
+  id: string;
+  productId: string;
+  userId: string;
+  userName: string;
+  userCity?: string;
+  rating: number; // 1 to 5
+  title: string;
+  comment: string;
+  fitmentVehicle?: string;
+  isVerifiedPurchase: boolean;
+  date: string;
+  helpfulCount: number;
+  status: "published" | "pending" | "rejected";
+};
+
+export type VendorReview = {
+  id: string;
+  vendorId: string;
+  userId: string;
+  userName: string;
+  rating: number; // 1 to 5
+  packagingRating?: number;
+  deliveryRating?: number;
+  communicationRating?: number;
+  comment: string;
+  orderId?: string;
+  isVerifiedPurchase: boolean;
+  date: string;
+  status: "published" | "pending" | "rejected";
+};
+
+export type VendorSettlement = {
+  id: string;
+  vendorId: string;
+  vendorName: string;
+  period: string;
+  orderCount: number;
+  grossSales: number;
+  commissionRate: number;
+  commissionAmount: number;
+  shippingFee: number;
+  netPayout: number;
+  status: "Pending" | "Processing" | "Paid";
+  payoutDate?: string;
+  referenceNumber?: string;
+};
+
+export type VendorApplication = {
+  id: string;
+  businessName: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  gstin: string;
+  area: string;
+  city: string;
+  primaryCategories: string[];
+  status: "pending" | "approved" | "rejected";
+  appliedAt: string;
+};
+
 export type Category =
   | "Battery"
   | "Charger"
@@ -37,7 +136,7 @@ export type Product = {
   weightKg: number;
   fits: string[]; // bike or car ids
   description: string;
-  offers: { vendorId: string; price: number; stock: number }[];
+  offers: VendorOffer[];
   vehicleType?: "bike" | "car" | "both" | "universal" | string;
   department?: string;
   availability?: string;
@@ -83,12 +182,138 @@ export const cars: Car[] = [
 ];
 
 export const vendors: Vendor[] = [
-  { id: "v1", name: "VoltHub Indiranagar", area: "Indiranagar", lat: 12.9784, lng: 77.6408, rating: 4.8, prepMins: 15 },
-  { id: "v2", name: "ChargeKart Koramangala", area: "Koramangala", lat: 12.9352, lng: 77.6245, rating: 4.6, prepMins: 20 },
-  { id: "v3", name: "EV Spares Jayanagar", area: "Jayanagar", lat: 12.925, lng: 77.5938, rating: 4.5, prepMins: 25 },
-  { id: "v4", name: "Ampere Auto Hebbal", area: "Hebbal", lat: 13.0358, lng: 77.597, rating: 4.7, prepMins: 15 },
-  { id: "v5", name: "GreenWheels Whitefield", area: "Whitefield", lat: 12.9698, lng: 77.75, rating: 4.4, prepMins: 30 },
-  { id: "v6", name: "Riderz Dealer Malleshwaram", area: "Malleshwaram", lat: 13.0035, lng: 77.5709, rating: 4.9, prepMins: 10 },
+  {
+    id: "v1",
+    name: "VoltHub Indiranagar",
+    area: "Indiranagar",
+    lat: 12.9784,
+    lng: 77.6408,
+    rating: 4.8,
+    reviewCount: 342,
+    prepMins: 15,
+    isVerified: true,
+    verificationBadge: "RiderzPro Platinum Partner",
+    description: "Specialized in high-density Li-ion battery modules, Type-2 fast chargers, and smart performance parts with factory warranties.",
+    deliveryCoverage: "Indiranagar, Domlur, HAL, MG Road, CBD (12km radius)",
+    businessHours: "Mon - Sat: 9:00 AM - 8:30 PM",
+    phone: "+91 80 4122 8900",
+    email: "orders@volthub.in",
+    address: "100ft Road, HAL 2nd Stage, Indiranagar, Bengaluru 560038",
+    gstin: "29AABCV1234F1Z5",
+    shippingPolicy: "Dispatch within 1-2 hours. Free shipping over ₹2,000.",
+    returnPolicy: "7-day replacement warranty for manufacturing defects.",
+    commissionRate: 0.10,
+  },
+  {
+    id: "v2",
+    name: "ChargeKart Koramangala",
+    area: "Koramangala",
+    lat: 12.9352,
+    lng: 77.6245,
+    rating: 4.6,
+    reviewCount: 218,
+    prepMins: 20,
+    isVerified: true,
+    verificationBadge: "RiderzPro Verified Partner",
+    description: "Premium EV wallboxes, portable chargers, motor controllers, and smart digital accessories for all two-wheelers and cars.",
+    deliveryCoverage: "Koramangala, HSR Layout, BTM Layout, Bellandur (10km radius)",
+    businessHours: "Mon - Sat: 9:30 AM - 9:00 PM",
+    phone: "+91 80 4910 2211",
+    email: "support@chargekart.co",
+    address: "80 Feet Rd, 4th Block, Koramangala, Bengaluru 560034",
+    gstin: "29AABCK5678B2Z1",
+    shippingPolicy: "Same-day express dispatch across South Bengaluru.",
+    returnPolicy: "10-day replacement on electrical hardware.",
+    commissionRate: 0.08,
+  },
+  {
+    id: "v3",
+    name: "EV Spares Jayanagar",
+    area: "Jayanagar",
+    lat: 12.925,
+    lng: 77.5938,
+    rating: 4.5,
+    reviewCount: 184,
+    prepMins: 25,
+    isVerified: true,
+    verificationBadge: "RiderzPro Verified Partner",
+    description: "OEM brake discs, ceramic pads, Kevlar drive belts, coolants and replacement mechanical components.",
+    deliveryCoverage: "Jayanagar, JP Nagar, Banashankari, Basavanagudi (12km radius)",
+    businessHours: "Mon - Sat: 10:00 AM - 8:00 PM",
+    phone: "+91 80 2654 3322",
+    email: "spares@evsparesjnr.in",
+    address: "11th Main, 4th Block, Jayanagar, Bengaluru 560011",
+    gstin: "29AABCE9876C3Z8",
+    shippingPolicy: "Careful bubble & anti-shock packaging for fragile parts.",
+    returnPolicy: "7-day fitment return guarantee.",
+    commissionRate: 0.09,
+  },
+  {
+    id: "v4",
+    name: "Ampere Auto Hebbal",
+    area: "Hebbal",
+    lat: 13.0358,
+    lng: 77.597,
+    rating: 4.7,
+    reviewCount: 156,
+    prepMins: 15,
+    isVerified: true,
+    verificationBadge: "RiderzPro Verified Partner",
+    description: "Performance BLDC hub motors, heavy-duty LiFePO4 modules, and commercial fleet battery packs.",
+    deliveryCoverage: "Hebbal, RT Nagar, Yelahanka, Sahakarnagar (15km radius)",
+    businessHours: "Mon - Sat: 9:00 AM - 7:30 PM",
+    phone: "+91 80 2363 4455",
+    email: "care@ampereauto.com",
+    address: "Bellary Road, Hebbal Flyover, Bengaluru 560024",
+    gstin: "29AABCA4321D4Z2",
+    shippingPolicy: "Heavy item insured pallet shipping with tracking.",
+    returnPolicy: "Manufacturer on-site warranty support.",
+    commissionRate: 0.10,
+  },
+  {
+    id: "v5",
+    name: "GreenWheels Whitefield",
+    area: "Whitefield",
+    lat: 12.9698,
+    lng: 77.75,
+    rating: 4.4,
+    reviewCount: 129,
+    prepMins: 30,
+    isVerified: true,
+    verificationBadge: "RiderzPro Verified Partner",
+    description: "Certified riding gear, smart dashcams, anti-theft alarms, phone mounts, and waterproof scooter covers.",
+    deliveryCoverage: "Whitefield, Marathahalli, Kadugodi, Hoodi (14km radius)",
+    businessHours: "Mon - Sun: 10:00 AM - 9:00 PM",
+    phone: "+91 80 6789 5566",
+    email: "contact@greenwheels.in",
+    address: "ITPL Main Road, Whitefield, Bengaluru 560066",
+    gstin: "29AABCG8765E5Z9",
+    shippingPolicy: "Standard courier & 90-minute hyperlocal delivery.",
+    returnPolicy: "Exchange within 7 days for size/fitment.",
+    commissionRate: 0.08,
+  },
+  {
+    id: "v6",
+    name: "Riderz Dealer Malleshwaram",
+    area: "Malleshwaram",
+    lat: 13.0035,
+    lng: 77.5709,
+    rating: 4.9,
+    reviewCount: 412,
+    prepMins: 10,
+    isVerified: true,
+    verificationBadge: "RiderzPro Flagship Dealer",
+    description: "Official RiderzPro showroom & regional fulfillment center. Electric bikes, batteries, chargers, and priority delivery.",
+    deliveryCoverage: "Malleshwaram, Rajajinagar, Yeshwanthpur, Sadashivanagar (15km radius)",
+    businessHours: "Mon - Sun: 8:30 AM - 9:30 PM",
+    phone: "+91 80 2334 7788",
+    email: "malleshwaram@riderzpro.com",
+    address: "Sampige Road, 8th Cross, Malleshwaram, Bengaluru 560003",
+    gstin: "29AABCR1122F6Z4",
+    shippingPolicy: "Ultra-fast dispatch in under 15 minutes with live courier assignment.",
+    returnPolicy: "Instant 7-day doorstep replacement or refund.",
+    commissionRate: 0.05,
+  },
 ];
 
 const img = { b1: battery1, b2: battery2, b3: battery3, ch: charger, pt: parts };
@@ -129,7 +354,24 @@ export const products: Product[] = seeds.map((s, i) => {
   return {
     ...rest,
     id: `p${i + 1}`,
-    offers: vs.map((v, j) => ({ vendorId: v, price: Math.round(base * (1 + (j - 1) * 0.04) / 10) * 10, stock: ((i + j) * 7) % 23 })),
+    mrp: Math.round(base * 1.15),
+    offers: vs.map((v, j) => {
+      const diffPct = (j - 1) * 0.035;
+      const offerPrice = Math.round((base * (1 + diffPct)) / 10) * 10;
+      const offerMrp = Math.round(offerPrice * 1.15);
+      return {
+        vendorId: v,
+        price: offerPrice,
+        mrp: offerMrp,
+        stock: Math.max(3, ((i + j) * 7) % 24),
+        condition: "new" as const,
+        warrantyMonths: rest.warrantyMonths,
+        warrantyTerms: `${rest.warrantyMonths} Months Manufacturer Warranty`,
+        dispatchHours: v === "v6" ? 1 : v === "v1" ? 2 : 4,
+        deliveryDays: v === "v6" ? "Express (15-30m)" : "Same-day",
+        status: "active" as const,
+      };
+    }),
   };
 });
 
@@ -138,7 +380,362 @@ export const riders: Rider[] = [
   { id: "r2", name: "Salma Begum", phone: "+91 99000 54321", vehicle: "TVS iQube", plate: "KA 03 EV 1180", rating: 4.8, avatar: "SB" },
 ];
 
-export const getVendor = (id: string) =>
+// Initial Verified Product Reviews
+export const initialProductReviews: ProductReview[] = [
+  {
+    id: "rev-p1-1",
+    productId: "p1",
+    userId: "usr-101",
+    userName: "Vikram Shenoy",
+    userCity: "Bengaluru",
+    rating: 5,
+    title: "Incredible battery life & perfect fit on Ola S1 Pro",
+    comment: "Installed this VoltRide 60V 30Ah pack 2 months ago. Getting consistently 105+ km in normal mode. Fast charging works without any heating issues. Seller Indiranagar VoltHub provided prompt dispatch.",
+    fitmentVehicle: "Ola S1 Pro",
+    isVerifiedPurchase: true,
+    date: "14 days ago",
+    helpfulCount: 24,
+    status: "published",
+  },
+  {
+    id: "rev-p1-2",
+    productId: "p1",
+    userId: "usr-102",
+    userName: "Deepak Menon",
+    userCity: "Mysuru",
+    rating: 4,
+    title: "High quality build with CAN communication",
+    comment: "Solid IP67 casing. Connectors mated seamlessly with the harness. Cell balancing was within 8mV right out of the box. Highly recommended.",
+    fitmentVehicle: "Bajaj Chetak",
+    isVerifiedPurchase: true,
+    date: "1 month ago",
+    helpfulCount: 15,
+    status: "published",
+  },
+  {
+    id: "rev-p2-1",
+    productId: "p2",
+    userId: "usr-103",
+    userName: "Pooja Hegde",
+    userCity: "Bengaluru",
+    rating: 5,
+    title: "Safest battery choice for daily commute",
+    comment: "LiFePO4 gives peace of mind during hot summers. True 3000 cycle rating. Heavy weight compared to NMC but the thermal stability is totally worth it.",
+    fitmentVehicle: "Ather 450X",
+    isVerifiedPurchase: true,
+    date: "3 weeks ago",
+    helpfulCount: 18,
+    status: "published",
+  },
+  {
+    id: "rev-p10-1",
+    productId: "p10",
+    userId: "usr-104",
+    userName: "Rohit Deshmukh",
+    userCity: "Bengaluru",
+    rating: 5,
+    title: "Genuine Ather 450X experience with Warp mode",
+    comment: "Delivery was arranged within 45 minutes by Riderz Dealer Malleshwaram. Scooter runs buttery smooth, touchscreen dashboard is snappy. Absolutely loving the acceleration.",
+    fitmentVehicle: "Ather 450X Gen 3",
+    isVerifiedPurchase: true,
+    date: "5 days ago",
+    helpfulCount: 31,
+    status: "published",
+  },
+  {
+    id: "rev-p13-1",
+    productId: "p13",
+    userId: "usr-105",
+    userName: "Suresh Nambiar",
+    userCity: "Bengaluru",
+    rating: 5,
+    title: "Crisp 4K video and accurate ADAS warnings",
+    comment: "Dashcam records exceptional license plate details even at night. Wiring kit was included. Seller packed it securely.",
+    fitmentVehicle: "Tata Nexon.ev",
+    isVerifiedPurchase: true,
+    date: "2 weeks ago",
+    helpfulCount: 12,
+    status: "published",
+  },
+  {
+    id: "rev-p19-1",
+    productId: "p19",
+    userId: "usr-106",
+    userName: "Karthik Raj",
+    userCity: "Bengaluru",
+    rating: 5,
+    title: "Zero brake fade and silent stopping",
+    comment: "Installed front Brembo ceramic pads on my S1 Pro. Immediate bite improvement without squeaking. Worth every rupee.",
+    fitmentVehicle: "Ola S1 Pro",
+    isVerifiedPurchase: true,
+    date: "1 week ago",
+    helpfulCount: 9,
+    status: "published",
+  },
+];
+
+// Initial Verified Vendor / Shop Reviews
+export const initialVendorReviews: VendorReview[] = [
+  {
+    id: "vrev-1",
+    vendorId: "v1",
+    userId: "usr-201",
+    userName: "Aditya Rao",
+    rating: 5,
+    packagingRating: 5,
+    deliveryRating: 5,
+    communicationRating: 5,
+    comment: "VoltHub Indiranagar is top-notch. Dispatched my battery order within 20 minutes, battery arrived in reinforced crate with test report.",
+    orderId: "ORD-9201",
+    isVerifiedPurchase: true,
+    date: "10 days ago",
+    status: "published",
+  },
+  {
+    id: "vrev-2",
+    vendorId: "v1",
+    userId: "usr-202",
+    userName: "Manish Verma",
+    rating: 4,
+    packagingRating: 5,
+    deliveryRating: 4,
+    communicationRating: 5,
+    comment: "Very helpful team over phone when confirming vehicle compatibility before dispatch. Will buy again.",
+    orderId: "ORD-8942",
+    isVerifiedPurchase: true,
+    date: "3 weeks ago",
+    status: "published",
+  },
+  {
+    id: "vrev-3",
+    vendorId: "v6",
+    userId: "usr-203",
+    userName: "Sneha Nair",
+    rating: 5,
+    packagingRating: 5,
+    deliveryRating: 5,
+    communicationRating: 5,
+    comment: "Malleshwaram flagship dealer is unbeatable. Rider was assigned in 3 minutes and package reached me before expected time.",
+    orderId: "ORD-9411",
+    isVerifiedPurchase: true,
+    date: "4 days ago",
+    status: "published",
+  },
+  {
+    id: "vrev-4",
+    vendorId: "v2",
+    userId: "usr-204",
+    userName: "Gautam Iyer",
+    rating: 4,
+    packagingRating: 4,
+    deliveryRating: 4,
+    communicationRating: 5,
+    comment: "ChargeKart Koramangala explained installation steps for wallbox charger clearly. Prompt service.",
+    orderId: "ORD-8812",
+    isVerifiedPurchase: true,
+    date: "1 month ago",
+    status: "published",
+  },
+  {
+    id: "vrev-5",
+    vendorId: "v3",
+    userId: "usr-205",
+    userName: "Harish Gowda",
+    rating: 5,
+    packagingRating: 5,
+    deliveryRating: 4,
+    communicationRating: 5,
+    comment: "EV Spares Jayanagar stock only genuine OEM components. Brake rotors were precision machined.",
+    orderId: "ORD-9022",
+    isVerifiedPurchase: true,
+    date: "2 weeks ago",
+    status: "published",
+  },
+];
+
+// Initial Vendor Settlements Ledger
+export const initialVendorSettlements: VendorSettlement[] = [
+  {
+    id: "set-001",
+    vendorId: "v1",
+    vendorName: "VoltHub Indiranagar",
+    period: "Oct 1 - Oct 7, 2026",
+    orderCount: 28,
+    grossSales: 342000,
+    commissionRate: 0.10,
+    commissionAmount: 34200,
+    shippingFee: 2150,
+    netPayout: 309950,
+    status: "Paid",
+    payoutDate: "Oct 8, 2026",
+    referenceNumber: "NEFT-HDFC-99182371",
+  },
+  {
+    id: "set-002",
+    vendorId: "v6",
+    vendorName: "Riderz Dealer Malleshwaram",
+    period: "Oct 1 - Oct 7, 2026",
+    orderCount: 42,
+    grossSales: 618000,
+    commissionRate: 0.05,
+    commissionAmount: 30900,
+    shippingFee: 3400,
+    netPayout: 590500,
+    status: "Paid",
+    payoutDate: "Oct 8, 2026",
+    referenceNumber: "NEFT-ICIC-44128910",
+  },
+  {
+    id: "set-003",
+    vendorId: "v2",
+    vendorName: "ChargeKart Koramangala",
+    period: "Oct 1 - Oct 7, 2026",
+    orderCount: 19,
+    grossSales: 184500,
+    commissionRate: 0.08,
+    commissionAmount: 14760,
+    shippingFee: 1520,
+    netPayout: 171260,
+    status: "Paid",
+    payoutDate: "Oct 8, 2026",
+    referenceNumber: "NEFT-SBIN-88231012",
+  },
+  {
+    id: "set-004",
+    vendorId: "v1",
+    vendorName: "VoltHub Indiranagar",
+    period: "Oct 8 - Oct 14, 2026",
+    orderCount: 18,
+    grossSales: 214000,
+    commissionRate: 0.10,
+    commissionAmount: 21400,
+    shippingFee: 1420,
+    netPayout: 194020,
+    status: "Processing",
+  },
+  {
+    id: "set-005",
+    vendorId: "v3",
+    vendorName: "EV Spares Jayanagar",
+    period: "Oct 8 - Oct 14, 2026",
+    orderCount: 14,
+    grossSales: 96800,
+    commissionRate: 0.09,
+    commissionAmount: 8712,
+    shippingFee: 1100,
+    netPayout: 89188,
+    status: "Pending",
+  },
+];
+
+// Initial Vendor Applications for Admin Approval
+export const initialVendorApplications: VendorApplication[] = [
+  {
+    id: "vapp-101",
+    businessName: "EcoRide Motors & Spares",
+    contactName: "Naveen Prasad",
+    email: "naveen@ecoride.in",
+    phone: "+91 98451 22334",
+    gstin: "29AABCE4455G1Z9",
+    area: "Electronic City Phase 1",
+    city: "Bengaluru",
+    primaryCategories: ["Battery", "Charger", "Spare Parts"],
+    status: "pending",
+    appliedAt: "2 days ago",
+  },
+  {
+    id: "vapp-102",
+    businessName: "Precision EV Dyno Works",
+    contactName: "Arun Kulkarni",
+    email: "arun@precisiondyno.com",
+    phone: "+91 97400 99881",
+    gstin: "29AABCP8899H2Z4",
+    area: "Peenya Industrial Area",
+    city: "Bengaluru",
+    primaryCategories: ["Motor", "Controller", "BMS"],
+    status: "pending",
+    appliedAt: "Yesterday",
+  },
+];
+
+let globalProductReviews = [...initialProductReviews];
+let globalVendorReviews = [...initialVendorReviews];
+let globalVendorSettlements = [...initialVendorSettlements];
+let globalVendorApplications = [...initialVendorApplications];
+
+export function getProductReviews(productId: string): ProductReview[] {
+  return globalProductReviews.filter((r) => r.productId === productId && r.status === "published");
+}
+
+export function getAllProductReviews(): ProductReview[] {
+  return globalProductReviews;
+}
+
+export function addProductReview(review: Omit<ProductReview, "id" | "date" | "helpfulCount" | "status">): ProductReview {
+  const newRev: ProductReview = {
+    ...review,
+    id: `rev-${Date.now()}`,
+    date: "Just now",
+    helpfulCount: 0,
+    status: "published",
+  };
+  globalProductReviews = [newRev, ...globalProductReviews];
+  return newRev;
+}
+
+export function getVendorReviews(vendorId: string): VendorReview[] {
+  return globalVendorReviews.filter((r) => r.vendorId === vendorId && r.status === "published");
+}
+
+export function getAllVendorReviews(): VendorReview[] {
+  return globalVendorReviews;
+}
+
+export function addVendorReview(review: Omit<VendorReview, "id" | "date" | "status">): VendorReview {
+  const newRev: VendorReview = {
+    ...review,
+    id: `vrev-${Date.now()}`,
+    date: "Just now",
+    status: "published",
+  };
+  globalVendorReviews = [newRev, ...globalVendorReviews];
+  return newRev;
+}
+
+export function getVendorSettlements(vendorId?: string): VendorSettlement[] {
+  if (vendorId) return globalVendorSettlements.filter((s) => s.vendorId === vendorId);
+  return globalVendorSettlements;
+}
+
+export function getVendorApplications(): VendorApplication[] {
+  return globalVendorApplications;
+}
+
+export function updateVendorApplicationStatus(id: string, status: "approved" | "rejected") {
+  globalVendorApplications = globalVendorApplications.map((a) => (a.id === id ? { ...a, status } : a));
+}
+
+export function getOffersForProduct(productId: string): (VendorOffer & { vendor: Vendor })[] {
+  const p = products.find((prod) => prod.id === productId);
+  if (!p || !p.offers) return [];
+  return p.offers.map((offer) => ({
+    ...offer,
+    vendor: getVendor(offer.vendorId),
+  }));
+}
+
+export function getVendorOffers(vendorId: string): { product: Product; offer: VendorOffer }[] {
+  const results: { product: Product; offer: VendorOffer }[] = [];
+  products.forEach((prod) => {
+    const offer = prod.offers?.find((o) => o.vendorId === vendorId);
+    if (offer) {
+      results.push({ product: prod, offer });
+    }
+  });
+  return results;
+}
+
+export const getVendor = (id: string): Vendor =>
   vendors.find((v) => v.id === id) || {
     id: id || "v1",
     name: "Riderzpro Certified",
@@ -146,7 +743,20 @@ export const getVendor = (id: string) =>
     lat: 12.9784,
     lng: 77.6408,
     rating: 4.9,
+    reviewCount: 150,
     prepMins: 15,
+    isVerified: true,
+    verificationBadge: "Official Marketplace Partner",
+    description: "Official authorized dealer on RiderzPro marketplace.",
+    deliveryCoverage: "All Bengaluru",
+    businessHours: "Mon-Sat: 09:00 AM - 08:00 PM",
+    phone: "+91 80 4000 1122",
+    email: "support@riderzpro.com",
+    address: "MG Road, Bengaluru 560001",
+    gstin: "29AABCR0000Z1Z0",
+    shippingPolicy: "Express delivery across city.",
+    returnPolicy: "7-day replacement warranty.",
+    commissionRate: 0.10,
   };
 export const getProduct = (id: string) => products.find((p) => p.id === id);
 

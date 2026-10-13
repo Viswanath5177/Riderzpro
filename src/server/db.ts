@@ -4,9 +4,11 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const env = process.env;
+const isSqlite = (env["DATABASE_URL"] || "").startsWith("file:");
 const connectionString =
-  env["DATABASE_URL"] ||
-  `postgresql://${env["PGUSER"] || "postgres"}:${encodeURIComponent(env["PGPASSWORD"] || "Vsvg@db1")}@${env["PGHOST"] || "localhost"}:${env["PGPORT"] || "5432"}/${env["PGDATABASE"] || "riderzpro"}`;
+  !isSqlite && env["DATABASE_URL"]
+    ? env["DATABASE_URL"]
+    : `postgresql://${env["PGUSER"] || "postgres"}:${encodeURIComponent(env["PGPASSWORD"] || "Vsvg@db1")}@${env["PGHOST"] || "localhost"}:${env["PGPORT"] || "5432"}/${env["PGDATABASE"] || "riderzpro"}`;
 
 export const pool = new pg.Pool({
   connectionString,
@@ -22,7 +24,13 @@ export async function query<T extends pg.QueryResultRow = any>(text: string, par
  * Initializes and ensures all required database tables exist with proper schema and indexes.
  */
 export async function initializeDatabaseSchema() {
-  const client = await pool.connect();
+  let client: any;
+  try {
+    client = await pool.connect();
+  } catch (err: any) {
+    console.warn("[PostgreSQL] Local PostgreSQL not reached. Running with local SQLite/in-memory marketplace fallback.", err.message);
+    return;
+  }
   try {
     // 1. Categories Table
     await client.query(`
