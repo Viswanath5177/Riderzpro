@@ -109,14 +109,15 @@ function createPostgresDatabase(connectionString: string): Database {
 export function getDatabase(): Database {
   if (database) return database;
   const bindings = env as DatabaseBindings;
-  const url = bindings.DATABASE_URL ?? process.env["DATABASE_URL"];
+  const url = bindings.DATABASE_URL ?? process.env["DATABASE_URL"] ?? "file:./database/riderzpro-dev.db";
   if (url?.startsWith("file:")) {
     database = createSqliteDatabase(url);
     return database;
   }
   const connectionString = bindings.HYPERDRIVE?.connectionString ?? url;
   if (!connectionString) {
-    throw new Error("Database is not configured. Set DATABASE_URL locally or bind Cloudflare Hyperdrive as HYPERDRIVE.");
+    database = createSqliteDatabase("file:./database/riderzpro-dev.db");
+    return database;
   }
   database = createPostgresDatabase(connectionString);
   return database;
