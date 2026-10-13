@@ -73,8 +73,13 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/auth" className="hover:text-[#e11d2a] transition">
-                  Partner with Us
+                <Link to="/vendor/auth" className="text-[#e11d2a] font-bold hover:underline transition">
+                  Sell on RiderzPro →
+                </Link>
+              </li>
+              <li>
+                <Link to="/vendor/auth" search={{ mode: "signup" }} className="hover:text-[#e11d2a] transition">
+                  Vendor Onboarding
                 </Link>
               </li>
             </ul>

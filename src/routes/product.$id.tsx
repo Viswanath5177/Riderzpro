@@ -73,7 +73,15 @@ function ProductPage() {
                 <div key={o.vendorId} className={`flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center ${i === 0 ? "border-[#E31E24] bg-red-50/60 shadow-2xs" : "border-[#E5E7EB] bg-white shadow-2xs"}`}>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="font-semibold">{o.v.name}</p>
+                      <span className="text-xs text-muted-foreground">Sold by</span>
+                      <Link
+                        to="/store/$slug"
+                        params={{ slug: (o.v as any).storeSlug || o.v.id }}
+                        className="font-bold text-[#111111] hover:text-[#E31E24] inline-flex items-center gap-1 transition"
+                      >
+                        {o.v.name}
+                        <ShieldCheck className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                      </Link>
                       {i === 0 && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase text-primary-foreground">Best value</span>}
                     </div>
                     <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted-foreground">

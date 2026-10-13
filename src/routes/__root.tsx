@@ -16,15 +16,17 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../lib/auth";
 import { AdminAuthProvider } from "../lib/adminAuth";
+import { VendorStoreProvider } from "../lib/vendor/vendorStore";
+import { VendorAuthProvider } from "../lib/vendorAuth";
 import { StoreProvider } from "../lib/store";
 import { Toaster } from "../components/ui/sonner";
 
 function NotFoundComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  // Block direct URL access for unhandled vendor/technician routes
+  // Block direct URL access for unhandled technician/workshop routes
   if (
-    /^\/(vendor|technician|workshop|dashboards|dashboard\/(vendor|rider|workshop))/i.test(
+    /^\/(technician|workshop|dashboards|dashboard\/(rider|workshop))/i.test(
       pathname
     )
   ) {
@@ -148,10 +150,14 @@ function RootComponent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <AuthProvider>
         <AdminAuthProvider>
-          <StoreProvider>
-            <Outlet />
-            <Toaster position="top-center" />
-          </StoreProvider>
+          <VendorStoreProvider>
+            <VendorAuthProvider>
+              <StoreProvider>
+                <Outlet />
+                <Toaster position="top-center" />
+              </StoreProvider>
+            </VendorAuthProvider>
+          </VendorStoreProvider>
         </AdminAuthProvider>
       </AuthProvider>
     </QueryClientProvider>
