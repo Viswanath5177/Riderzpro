@@ -3,8 +3,6 @@ import { Link, useLocation } from "@tanstack/react-router";
 import {
   Search,
   Bell,
-  Sun,
-  Moon,
   Menu,
   ChevronRight,
   ShieldCheck,
@@ -23,7 +21,7 @@ export interface AdminTopBarProps {
 
 export function AdminTopBar({ onOpenCommandPalette, onOpenMobileMenu }: AdminTopBarProps) {
   const { adminUser, logout } = useAdminAuth();
-  const { theme, toggleTheme, notifications } = useAdminStore();
+  const { notifications } = useAdminStore();
   const location = useLocation();
   const pathname = location.pathname;
 
@@ -87,15 +85,6 @@ export function AdminTopBar({ onOpenCommandPalette, onOpenMobileMenu }: AdminTop
           className="flex sm:hidden h-9 w-9 items-center justify-center rounded-2xl border border-[#E5E7EB] bg-gray-50 text-[#6B7280] hover:text-[#111111]"
         >
           <Search className="h-4 w-4" />
-        </button>
-
-        {/* Light/Dark Toggle */}
-        <button
-          onClick={toggleTheme}
-          title={theme === "dark" ? "Switch to Light Theme" : "Switch to Dark Theme"}
-          className="flex h-9 w-9 items-center justify-center rounded-2xl border border-[#E5E7EB] bg-gray-50 text-[#4B5563] hover:text-[#111111] hover:bg-gray-100 transition cursor-pointer dark:border-white/15 dark:bg-white/10 dark:text-zinc-300 dark:hover:text-white"
-        >
-          {theme === "dark" ? <Sun className="h-4 w-4 text-amber-300" /> : <Moon className="h-4 w-4 text-zinc-700" />}
         </button>
 
         {/* Notification Bell with Dropdown */}

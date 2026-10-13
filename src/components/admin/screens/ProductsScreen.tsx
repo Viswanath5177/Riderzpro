@@ -160,7 +160,7 @@ export function ProductsScreen() {
     }
   };
 
-  const currentDisplayProducts = productsList.length > 0 ? productsList : mockProducts;
+  const currentDisplayProducts = productsList;
 
   const filterTabs = [
     { label: "All Catalog", value: "ALL", count: currentDisplayProducts.length },
@@ -368,23 +368,6 @@ export function ProductsScreen() {
             Manage EV spare parts, review vendor catalog submissions, threshold stock alerts and multi-brand compatibility.
           </p>
         </div>
-
-        <GlassButton
-          variant="primary"
-          size="md"
-          onClick={() => {
-            setTitle("");
-            setSku(`RZP-${Math.floor(1000 + Math.random() * 9000)}`);
-            setPrice(2500);
-            setDiscountPrice(1999);
-            setStock(20);
-            setSelectedBikes([bikes[0]?.id || "bike_ather_450x"]);
-            setIsAddModalOpen(true);
-          }}
-        >
-          <Plus className="h-4 w-4" />
-          <span>Add Catalog Part</span>
-        </GlassButton>
       </div>
 
       {/* Main Table */}
