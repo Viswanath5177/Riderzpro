@@ -146,7 +146,7 @@ export function TrackingTab() {
                 <span>{copied ? "Copied" : "Copy AWB"}</span>
               </button>
 
-              {activeShipment.trackingUrl.startsWith("http") && (
+              {activeShipment.trackingUrl?.startsWith("http") && (
                 <a
                   href={activeShipment.trackingUrl}
                   target="_blank"
@@ -231,18 +231,18 @@ export function TrackingTab() {
               <p className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
                 Origin (Pickup Hub)
               </p>
-              <p className="font-bold text-[#111111] mt-1">{activeShipment.pickupAddress.name}</p>
+              <p className="font-bold text-[#111111] mt-1">{activeShipment.pickupAddress?.name || "Regional Dispatch Hub"}</p>
               <p className="text-[#6B7280]">
-                {activeShipment.pickupAddress.street}, {activeShipment.pickupAddress.city} - {activeShipment.pickupAddress.pincode}
+                {activeShipment.pickupAddress ? `${activeShipment.pickupAddress.street}, ${activeShipment.pickupAddress.city} - ${activeShipment.pickupAddress.pincode}` : "Bengaluru Fulfillment Center"}
               </p>
             </div>
             <div>
               <p className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
                 Destination (Customer Address)
               </p>
-              <p className="font-bold text-[#111111] mt-1">{activeShipment.destinationAddress.name}</p>
+              <p className="font-bold text-[#111111] mt-1">{activeShipment.destinationAddress?.name || "Customer Destination"}</p>
               <p className="text-[#6B7280]">
-                {activeShipment.destinationAddress.street}, {activeShipment.destinationAddress.city} - {activeShipment.destinationAddress.pincode}
+                {activeShipment.destinationAddress ? `${activeShipment.destinationAddress.street}, ${activeShipment.destinationAddress.city} - ${activeShipment.destinationAddress.pincode}` : "Registered Delivery Address"}
               </p>
             </div>
           </div>
@@ -250,11 +250,11 @@ export function TrackingTab() {
           {/* Chronological Checkpoint Timeline */}
           <div>
             <h3 className="font-bold text-sm text-[#111111] mb-4">
-              Verified Tracking History ({activeShipment.events.length} Events)
+              Verified Tracking History ({activeShipment.events?.length ?? 0} Events)
             </h3>
 
             <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
-              {activeShipment.events.map((evt, idx) => {
+              {(activeShipment.events || []).map((evt, idx) => {
                 const isLatest = idx === 0;
                 return (
                   <div key={evt.id || idx} className="relative">

@@ -435,8 +435,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (s.cart) setCart(s.cart);
         if (s.garage && s.garage.length > 0) setGarage(s.garage);
         if ("activeBikeId" in s && s.activeBikeId) setActiveBikeId(s.activeBikeId);
-        if (s.orders && s.orders.length > 0) setOrders(s.orders);
-        if (s.shipments && s.shipments.length > 0) setShipments(s.shipments);
+        if (s.shipments && s.shipments.length > 0) {
+          const sanitized = s.shipments.map((sh: any) => ({
+            ...DEFAULT_SHIPMENTS[0],
+            ...sh,
+            pickupAddress: sh.pickupAddress?.name ? sh.pickupAddress : DEFAULT_SHIPMENTS[0].pickupAddress,
+            destinationAddress: sh.destinationAddress?.name ? sh.destinationAddress : DEFAULT_SHIPMENTS[0].destinationAddress,
+            events: Array.isArray(sh.events) ? sh.events : DEFAULT_SHIPMENTS[0].events,
+          }));
+          setShipments(sanitized);
+        }
         if (s.inventoryStock) setInventoryStock(s.inventoryStock);
         if (s.savedProductIds && s.savedProductIds.length > 0) setSavedProductIds(s.savedProductIds);
         if (s.serviceBookings && s.serviceBookings.length > 0) setServiceBookings(s.serviceBookings);
