@@ -98,6 +98,7 @@ export function CustomerLayout({
   const [isVinSearchOpen, setIsVinSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const userInitials = (authUser?.name || userProfile.name || "CP")
     .trim()

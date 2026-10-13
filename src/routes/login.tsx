@@ -90,18 +90,37 @@ function CustomerLogin() {
 
     setTimeout(() => {
       const isEmail = signInContact.includes("@");
-      if (isEmail && !userProfile?.email) {
-        updateUserProfile({ email: signInContact.trim() });
-      } else if (!isEmail && !userProfile?.phone) {
-        updateUserProfile({ phone: signInContact.trim() });
-      }
+      const cleanContact = signInContact.trim();
+      const customerEmail = isEmail ? cleanContact : `${cleanContact}@riderzpro.in`;
+      const customerPhone = isEmail ? (userProfile?.phone || "") : cleanContact;
+      const customerName = userProfile?.name && userProfile.name !== "Rider"
+        ? userProfile.name
+        : (isEmail ? cleanContact.split("@")[0] : "Rider");
+
+      // Clear any conflicting admin session so customer portal loads properly
+      localStorage.removeItem("riderzpro_admin_session");
+
+      // Save customer auth session in localStorage for getCurrentRole() & ProtectedRoute
+      const sessionUser = {
+        id: `usr_${Date.now()}`,
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
+        role: "customer" as const,
+      };
+      localStorage.setItem("riderzpro_auth_user", JSON.stringify(sessionUser));
+      localStorage.setItem("riderzpro_auth_token", `tok_${Date.now()}`);
+
+      updateUserProfile({
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
+      });
 
       signIn();
       setRole("customer");
 
-      const welcomeName = userProfile?.name?.trim()
-        ? userProfile.name.trim().split(" ")[0]
-        : "Rider";
+      const welcomeName = customerName.split(" ")[0];
       toast.success(`Welcome back, ${welcomeName}!`);
 
       const target = getRedirectTarget();
@@ -129,23 +148,52 @@ function CustomerLogin() {
     setIsLoading(true);
 
     setTimeout(() => {
-      // 1. Update user profile
+      const cleanPhone = signUpPhone.trim();
+      const cleanEmail = `${cleanPhone}@riderzpro.in`;
+      const cleanName = signUpName.trim();
+
+      // Clear conflicting admin session
+      localStorage.removeItem("riderzpro_admin_session");
+
+      // 1. Save customer auth session in localStorage
+      const sessionUser = {
+        id: `usr_${Date.now()}`,
+        name: cleanName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        role: "customer" as const,
+      };
+      localStorage.setItem("riderzpro_auth_user", JSON.stringify(sessionUser));
+      localStorage.setItem("riderzpro_auth_token", `tok_${Date.now()}`);
+
+      // 2. Also add to registered users list for compatibility
+      try {
+        const rawUsers = localStorage.getItem("riderzpro_registered_users");
+        const existingUsers = rawUsers ? JSON.parse(rawUsers) : [];
+        existingUsers.push({
+          ...sessionUser,
+          passwordHash: signUpPassword,
+        });
+        localStorage.setItem("riderzpro_registered_users", JSON.stringify(existingUsers));
+      } catch {}
+
+      // 3. Update user profile
       updateUserProfile({
-        name: signUpName.trim(),
-        phone: signUpPhone.trim(),
-        email: `${signUpPhone.trim()}@riderzpro.in`,
+        name: cleanName,
+        phone: cleanPhone,
+        email: cleanEmail,
         city: "Bengaluru, KA",
         address: "",
       });
 
-      // 2. If a bike was selected, register it in garage
+      // 4. If a bike was selected, register it in garage
       if (signUpBikeId && signUpBikeId !== "none") {
         const selectedBike = bikes.find((b) => b.id === signUpBikeId);
         if (selectedBike) {
           addBike({
             bikeId: selectedBike.id,
             year: selectedBike.years.at(-1),
-            nickname: `${signUpName.trim().split(" ")[0]}'s ${selectedBike.model}`,
+            nickname: `${cleanName.split(" ")[0]}'s ${selectedBike.model}`,
             batteryHealth: 99,
             nextServiceDays: 90,
             odoKm: 0,
@@ -153,11 +201,11 @@ function CustomerLogin() {
         }
       }
 
-      // 3. Authenticate and set role
+      // 5. Authenticate and set role
       signIn();
       setRole("customer");
 
-      toast.success(`Account created! Welcome, ${signUpName.trim().split(" ")[0]}!`);
+      toast.success(`Account created! Welcome, ${cleanName.split(" ")[0]}!`);
 
       const target = getRedirectTarget();
       navigate({ to: target as any });
