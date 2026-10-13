@@ -45,8 +45,8 @@ interface MapProviderProps {
 
 export function MapProvider({
   children,
-  initialCenter = { lat: 12.9716, lng: 77.5946 }, // Bengaluru default
-  initialZoom = 13,
+  initialCenter = { lat: 16.518, lng: 80.582 }, // Vijayawada - Amaravati corridor default
+  initialZoom = 12,
   config: customConfig,
 }: MapProviderProps) {
   const [viewport, setViewport] = useState<MapViewport>({

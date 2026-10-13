@@ -31,21 +31,30 @@ from sqlalchemy import inspect, text
 
 
 def _ensure_columns_exist():
-    """Ensure newly introduced tracking columns exist if riders table already existed in SQLite."""
+    """Ensure newly introduced tracking columns exist if tables already existed in SQLite."""
     try:
         inspector = inspect(engine)
-        if "riders" in inspector.get_table_names():
-            columns = [c["name"] for c in inspector.get_columns("riders")]
-            with engine.connect() as conn:
-                if "last_location_timestamp" not in columns:
+        tables = inspector.get_table_names()
+        with engine.connect() as conn:
+            if "riders" in tables:
+                rider_cols = [c["name"] for c in inspector.get_columns("riders")]
+                if "last_location_timestamp" not in rider_cols:
                     conn.execute(text("ALTER TABLE riders ADD COLUMN last_location_timestamp DATETIME"))
-                if "accuracy_meters" not in columns:
+                if "accuracy_meters" not in rider_cols:
                     conn.execute(text("ALTER TABLE riders ADD COLUMN accuracy_meters FLOAT"))
-                if "speed_kmh" not in columns:
+                if "speed_kmh" not in rider_cols:
                     conn.execute(text("ALTER TABLE riders ADD COLUMN speed_kmh FLOAT"))
-                if "heading_degrees" not in columns:
+                if "heading_degrees" not in rider_cols:
                     conn.execute(text("ALTER TABLE riders ADD COLUMN heading_degrees FLOAT"))
-                conn.commit()
+
+            if "deliveries" in tables:
+                del_cols = [c["name"] for c in inspector.get_columns("deliveries")]
+                if "pickup_window_start" not in del_cols:
+                    conn.execute(text("ALTER TABLE deliveries ADD COLUMN pickup_window_start DATETIME"))
+                if "pickup_window_end" not in del_cols:
+                    conn.execute(text("ALTER TABLE deliveries ADD COLUMN pickup_window_end DATETIME"))
+
+            conn.commit()
     except Exception:
         pass
 
@@ -118,6 +127,23 @@ def seed_default_riders(db: Session):
             max_concurrent_orders=2,
             current_workload_count=0,
             rating=4.7
+        ),
+        Rider(
+            id="rider_sathesh",
+            name="Sathesh Ittraju",
+            phone="+91 98450 77889",
+            email="sathesh.ittraju@riderzpro.demo",
+            vehicle_type="electric_bike",
+            certification="Certified Rapid EV Logistics Courier",
+            skills=json.dumps(["FAST_DELIVERY", "BATTERY_SWAP", "EV_PARTS"]),
+            current_lat=16.5062,
+            current_lng=80.6480,
+            status="available",
+            is_online=True,
+            max_payload_kg=35.0,
+            max_concurrent_orders=3,
+            current_workload_count=0,
+            rating=4.9
         )
     ]
     for r in default_riders:

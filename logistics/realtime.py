@@ -174,16 +174,28 @@ def handle_realtime_event(event_name: str, payload: Dict[str, Any]):
     elif event_name == "DELIVERY_STATUS_CHANGED":
         delivery_id = payload.get("delivery_id")
         to_status = payload.get("to_status")
-        if delivery_id and to_status in ("delivered", "cancelled", "failed"):
-            final_event = {
-                "event": "DELIVERY_COMPLETED",
-                "delivery_id": delivery_id,
-                "status": to_status,
-                "reason": payload.get("reason"),
-                "message": f"Delivery transitioned to terminal state '{to_status}'. Tracking concluded.",
-                "timestamp": datetime.utcnow().isoformat()
-            }
-            dispatch_coroutine(realtime_manager.close_delivery_connections(delivery_id, final_event=final_event, code=1000))
+        if delivery_id:
+            if to_status in ("delivered", "cancelled", "failed"):
+                final_event = {
+                    "event": "DELIVERY_COMPLETED",
+                    "delivery_id": delivery_id,
+                    "status": to_status,
+                    "reason": payload.get("reason"),
+                    "message": f"Delivery transitioned to terminal state '{to_status}'. Tracking concluded.",
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+                dispatch_coroutine(realtime_manager.close_delivery_connections(delivery_id, final_event=final_event, code=1000))
+            else:
+                status_event = {
+                    "event": "DELIVERY_STATUS_UPDATED",
+                    "delivery_id": delivery_id,
+                    "order_id": payload.get("order_id"),
+                    "from_status": payload.get("from_status"),
+                    "status": to_status,
+                    "reason": payload.get("reason"),
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+                dispatch_coroutine(realtime_manager.broadcast_to_delivery(delivery_id, status_event))
 
 
 def setup_realtime_subscribers(loc_service, del_service):

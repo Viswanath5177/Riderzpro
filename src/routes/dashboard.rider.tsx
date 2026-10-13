@@ -74,7 +74,7 @@ function RiderDash() {
       {tab === "active" && (
         active ? (
           <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-            <LiveMap stops={2} className="aspect-[4/3] lg:min-h-[480px]" />
+            <LiveMap deliveryId="delivery_vijayawada_amaravati_live" className="aspect-[4/3] lg:min-h-[480px]" />
             <Panel title={`Order ${active.id}`}>
               <ol className="space-y-3">
                 {STEPS.map((s, i) => <li key={s} className="flex items-center gap-3"><span className={`h-3 w-3 rounded-full ${i <= active.step ? "bg-primary" : "bg-muted"}`} /><span className={i <= active.step ? "font-semibold" : "text-muted-foreground"}>{s}</span></li>)}

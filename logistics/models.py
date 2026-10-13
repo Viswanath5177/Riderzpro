@@ -44,8 +44,10 @@ class Delivery(Base):
 
     package_weight_kg = Column(Float, default=5.0)
     package_dimensions = Column(String(128), default="30x20x15 cm")
-    priority = Column(String(32), default="standard", index=True)  # standard, express, same_day
+    priority = Column(String(32), default="normal", index=True)  # low, normal, high, urgent
     deadline = Column(DateTime, nullable=True)
+    pickup_window_start = Column(DateTime, nullable=True)
+    pickup_window_end = Column(DateTime, nullable=True)
 
     status = Column(String(32), default="pending", index=True)
     assigned_rider_id = Column(String(64), ForeignKey("riders.id"), nullable=True, index=True)

@@ -83,8 +83,11 @@ try:
     db.query(DeliveryRoute).filter_by(delivery_id=deliv.id).delete()
     db.commit()
 
-    route = planner.plan_route_for_delivery(db, deliv, provider_name="haversine_builtin")
-    print(f"Route planned: distance={route.distance_km}km, waypoints={len(json.loads(route.waypoints_json))}")
+    route = planner.plan_route_for_delivery(db, deliv, provider_name="osrm")
+    raw_wps = json.loads(route.waypoints_json) if route.waypoints_json else []
+    geom_count = len(raw_wps.get("geometry", raw_wps.get("waypoints", []))) if isinstance(raw_wps, dict) else len(raw_wps)
+    wps_count = len(raw_wps.get("waypoints", [])) if isinstance(raw_wps, dict) else len(raw_wps)
+    print(f"Route planned with {route.provider}: distance={route.distance_km}km, road_geometry_points={geom_count}, waypoints={wps_count}")
 
 finally:
     db.close()

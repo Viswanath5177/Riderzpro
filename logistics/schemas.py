@@ -15,7 +15,7 @@ VALID_DELIVERY_STATUSES = {
     "cancelled",
 }
 
-VALID_PRIORITIES = {"standard", "express", "same_day"}
+VALID_PRIORITIES = {"low", "normal", "high", "urgent", "standard", "express", "same_day"}
 VALID_VEHICLE_TYPES = {"regular_bike", "electric_bike", "cargo_ebike", "van"}
 
 
@@ -44,8 +44,11 @@ class DeliveryCreate(BaseModel):
 
     package_weight_kg: float = Field(5.0, gt=0.0, le=200.0, description="Weight in kilograms")
     package_dimensions: Optional[str] = Field("30x20x15 cm", max_length=128)
-    priority: str = Field("standard", description="standard | express | same_day")
+    priority: str = Field("normal", description="low | normal | high | urgent | standard | express | same_day")
     deadline: Optional[datetime] = None
+    delivery_deadline: Optional[datetime] = None
+    pickup_window_start: Optional[datetime] = None
+    pickup_window_end: Optional[datetime] = None
     notes: Optional[str] = None
 
     @field_validator("priority")
@@ -57,12 +60,14 @@ class DeliveryCreate(BaseModel):
         return v_clean
 
     @model_validator(mode="after")
-    def validate_distinct_locations(self) -> "DeliveryCreate":
+    def validate_distinct_locations_and_deadline(self) -> "DeliveryCreate":
         if (
             abs(self.pickup_lat - self.dropoff_lat) < 1e-6
             and abs(self.pickup_lng - self.dropoff_lng) < 1e-6
         ):
             raise ValueError("Pickup and drop-off coordinates cannot be identical.")
+        if not self.deadline and self.delivery_deadline:
+            self.deadline = self.delivery_deadline
         return self
 
 
@@ -128,12 +133,17 @@ class RiderResponse(BaseModel):
 
 class DeliveryStatusHistoryResponse(BaseModel):
     id: str
+    delivery_id: str
     from_status: Optional[str] = None
     to_status: str
+    previous_status: Optional[str] = None
+    new_status: Optional[str] = None
     changed_by_user_id: str
     changed_by_role: str
+    changed_by: Optional[str] = None
     reason: Optional[str] = None
     created_at: datetime
+    timestamp: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -173,6 +183,9 @@ class DeliveryResponse(BaseModel):
     package_dimensions: Optional[str] = None
     priority: str
     deadline: Optional[datetime] = None
+    delivery_deadline: Optional[datetime] = None
+    pickup_window_start: Optional[datetime] = None
+    pickup_window_end: Optional[datetime] = None
 
     status: str
     assigned_rider_id: Optional[str] = None
@@ -198,6 +211,23 @@ class DeliveryListResponse(BaseModel):
     page: int
     limit: int
     total_pages: int
+
+
+class LogisticsDashboardResponse(BaseModel):
+    total_deliveries: int
+    pending: int
+    assigned: int
+    picked_up: int
+    in_transit: int
+    delivered: int
+    failed: int
+    cancelled: int
+    active_riders: int
+    available_riders: int
+    total_riders: int
+    delayed_deliveries: int
+    high_priority_deliveries: int
+    recent_activity: List[DeliveryStatusHistoryResponse] = []
 
 
 class RouteOptimizationResultResponse(BaseModel):
@@ -295,6 +325,7 @@ class DeliveryTrackingResponse(BaseModel):
     eta_minutes: Optional[float] = None
     distance_km: Optional[float] = None
     route_waypoints: Optional[List[Dict[str, Any]]] = None
+    route_geometry: Optional[List[Dict[str, Any]]] = None
     distance_to_dropoff_meters: Optional[float] = None
     is_approaching: Optional[bool] = None
     is_arrived: Optional[bool] = None

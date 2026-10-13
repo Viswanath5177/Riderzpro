@@ -5,6 +5,7 @@ import { SiteLayout } from "@/components/site/SiteLayout";
 import { DeliveryMap } from "@/components/map/DeliveryMap";
 import { TrackingStatusPanel } from "@/components/map/TrackingStatusPanel";
 import { useDeliveryTracking } from "@/components/map/useDeliveryTracking";
+import type { DeliveryTrackingData } from "@/components/map/types";
 import { getProduct, getVendor, inr, riders } from "@/lib/data";
 import { ORDER_STEPS, useStore } from "@/lib/store";
 
@@ -90,6 +91,7 @@ function Track() {
             <div className="min-h-[480px] lg:min-h-[580px] flex flex-col">
               <DeliveryMap
                 tracking={tracking}
+                connectionState={connectionState}
                 isApproaching={isApproaching}
                 isArrived={isArrived}
                 isDeviating={isDeviating}
@@ -121,6 +123,64 @@ function Track() {
     const progress = demoOrder.status <= 2 ? 0 : demoOrder.status === 3 ? 0.45 : demoOrder.status === 4 ? 0.8 : 1;
     const remaining = Math.max(0, Math.round(demoOrder.eta * (1 - demoOrder.status / (ORDER_STEPS.length - 1))));
 
+    const demoTracking: DeliveryTrackingData = {
+      delivery_id: demoOrder.id,
+      order_id: demoOrder.id,
+      status: demoOrder.status === 5 ? "delivered" : demoOrder.status >= 3 ? "in_transit" : "assigned",
+      rider: {
+        id: rider?.id || "rider_sathesh",
+        name: rider?.name || "Sathesh Ittraju",
+        phone: rider?.phone || "+91 98490 12345",
+        vehicle_type: "electric_bike",
+        latitude: 16.5062 + (16.5417 - 16.5062) * progress,
+        longitude: 80.6480 + (80.5158 - 80.6480) * progress,
+        heading_degrees: 285.0,
+        speed_kmh: 30.0,
+        accuracy_meters: 4.0,
+        is_stale: false,
+      },
+      pickup: {
+        address: "Vijayawada Central Hub, MG Road, Vijayawada",
+        latitude: 16.5062,
+        longitude: 80.6480,
+      },
+      dropoff: {
+        address: "Amaravati Capital Complex, Sector 4, Amaravati",
+        latitude: 16.5417,
+        longitude: 80.5158,
+      },
+      eta_minutes: remaining,
+      distance_km: Math.round(18.4 * (1 - progress) * 10) / 10,
+      route_waypoints: [
+        { sequence: 0, lat: 16.5062, lng: 80.6480, latitude: 16.5062, longitude: 80.6480, label: "Vijayawada Central Hub" },
+        { sequence: 1, lat: 16.5120, lng: 80.6300, latitude: 16.5120, longitude: 80.6300, label: "Prakasam Barrage Road" },
+        { sequence: 2, lat: 16.5182, lng: 80.6050, latitude: 16.5182, longitude: 80.6050, label: "Krishna River Crossing" },
+        { sequence: 3, lat: 16.5280, lng: 80.5650, latitude: 16.5280, longitude: 80.5650, label: "Seed Access Road" },
+        { sequence: 4, lat: 16.5417, lng: 80.5158, latitude: 16.5417, longitude: 80.5158, label: "Amaravati Secretariat" },
+      ],
+      route_geometry: [
+        { lat: 16.5062, lng: 80.6480 },
+        { lat: 16.5085, lng: 80.6420 },
+        { lat: 16.5105, lng: 80.6350 },
+        { lat: 16.5120, lng: 80.6300 },
+        { lat: 16.5145, lng: 80.6210 },
+        { lat: 16.5160, lng: 80.6120 },
+        { lat: 16.5182, lng: 80.6050 },
+        { lat: 16.5210, lng: 80.5950 },
+        { lat: 16.5235, lng: 80.5840 },
+        { lat: 16.5260, lng: 80.5730 },
+        { lat: 16.5280, lng: 80.5650 },
+        { lat: 16.5315, lng: 80.5520 },
+        { lat: 16.5350, lng: 80.5390 },
+        { lat: 16.5385, lng: 80.5270 },
+        { lat: 16.5417, lng: 80.5158 },
+      ],
+      distance_to_dropoff_meters: Math.round(18400 * (1 - progress)),
+      is_approaching: progress > 0.85 && progress < 0.98,
+      is_arrived: progress >= 0.98,
+      is_route_deviating: false,
+    };
+
     return (
       <SiteLayout>
         <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
@@ -143,7 +203,7 @@ function Track() {
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_380px]">
             <DeliveryMap
-              tracking={null}
+              tracking={tracking || demoTracking}
               className="aspect-[4/3] lg:aspect-auto lg:min-h-[520px]"
             />
 

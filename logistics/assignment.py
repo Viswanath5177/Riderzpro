@@ -11,6 +11,14 @@ from logistics.route_planning import haversine_distance
 
 logger = logging.getLogger("riderzpro.assignment")
 
+_status_event_publisher = None
+
+
+def register_assignment_status_publisher(publisher):
+    """Register status event publisher callback."""
+    global _status_event_publisher
+    _status_event_publisher = publisher
+
 
 class AssignmentError(Exception):
     """Custom exception raised when assignment constraints cannot be satisfied."""
@@ -176,4 +184,18 @@ class RiderAssignmentService:
         db.commit()
         db.refresh(delivery)
         logger.info(f"Delivery {delivery.id} successfully assigned to rider {target_rider.name} ({target_rider.id})")
+
+        if _status_event_publisher:
+            try:
+                _status_event_publisher("DELIVERY_STATUS_CHANGED", {
+                    "delivery_id": delivery.id,
+                    "order_id": delivery.order_id,
+                    "from_status": previous_status,
+                    "to_status": "assigned",
+                    "changed_by": actor_id,
+                    "reason": reason or f"Assigned to {target_rider.name} ({target_rider.vehicle_type})"
+                })
+            except Exception as e:
+                logger.error(f"Error publishing assignment status event: {e}")
+
         return delivery

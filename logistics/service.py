@@ -32,9 +32,17 @@ class InvalidStatusTransitionError(Exception):
 class DeliveryService:
     """Service handling lifecycle, persistence, and state transitions for deliveries."""
 
+    # Phase 7 Strengthened State Machine:
+    # PENDING -> ASSIGNED -> PICKED_UP -> IN_TRANSIT -> DELIVERED
+    # Alternate paths:
+    # PENDING -> CANCELLED
+    # ASSIGNED -> FAILED, CANCELLED, PENDING (unassigned)
+    # PICKED_UP -> FAILED, CANCELLED
+    # IN_TRANSIT -> FAILED, CANCELLED
+    # FAILED -> PENDING (re-queued for retry), CANCELLED
     VALID_TRANSITIONS = {
         "pending": {"assigned", "cancelled"},
-        "assigned": {"picked_up", "pending", "cancelled"},
+        "assigned": {"picked_up", "pending", "failed", "cancelled"},
         "picked_up": {"in_transit", "failed", "cancelled"},
         "in_transit": {"delivered", "failed", "cancelled"},
         "failed": {"pending", "cancelled"},
@@ -59,7 +67,7 @@ class DeliveryService:
                 logger.error(f"Error notifying delivery status listener: {e}")
 
     def create_delivery(self, db: Session, data: DeliveryCreate) -> Delivery:
-        """Create a delivery task with duplicate prevention and route calculation."""
+        """Create a delivery task with duplicate prevention, time windows, and route calculation."""
         # 1. Prevent duplicate delivery task for the same active order
         existing_active = db.query(Delivery).filter(
             Delivery.order_id == data.order_id,
@@ -71,7 +79,7 @@ class DeliveryService:
                 f"An active delivery task ({existing_active.id}) already exists for Order '{data.order_id}'."
             )
 
-        # 2. Instantiate delivery record
+        # 2. Instantiate delivery record with priority and time windows
         delivery = Delivery(
             order_id=data.order_id,
             customer_id=data.customer_id,
@@ -88,7 +96,9 @@ class DeliveryService:
             package_weight_kg=data.package_weight_kg,
             package_dimensions=data.package_dimensions,
             priority=data.priority,
-            deadline=data.deadline,
+            deadline=data.deadline or data.delivery_deadline,
+            pickup_window_start=data.pickup_window_start,
+            pickup_window_end=data.pickup_window_end,
             notes=data.notes,
             status="pending"
         )
@@ -122,6 +132,15 @@ class DeliveryService:
         """Fetch delivery entity with associated relationships."""
         return db.query(Delivery).filter(Delivery.id == delivery_id).first()
 
+    def get_delivery_history(self, db: Session, delivery_id: str) -> List[DeliveryStatusHistory]:
+        """Fetch chronological audit history records for a delivery."""
+        return (
+            db.query(DeliveryStatusHistory)
+            .filter(DeliveryStatusHistory.delivery_id == delivery_id)
+            .order_by(DeliveryStatusHistory.created_at.asc())
+            .all()
+        )
+
     def list_deliveries(
         self,
         db: Session,
@@ -130,10 +149,11 @@ class DeliveryService:
         status: Optional[str] = None,
         order_id: Optional[str] = None,
         vendor_id: Optional[str] = None,
+        customer_id: Optional[str] = None,
         rider_id: Optional[str] = None,
         priority: Optional[str] = None
     ) -> Tuple[List[Delivery], int]:
-        """List and filter deliveries with pagination."""
+        """List and filter deliveries with pagination and operational search parameters."""
         query = db.query(Delivery)
 
         if status:
@@ -142,6 +162,8 @@ class DeliveryService:
             query = query.filter(Delivery.order_id == order_id)
         if vendor_id:
             query = query.filter(Delivery.vendor_id == vendor_id)
+        if customer_id:
+            query = query.filter(Delivery.customer_id == customer_id)
         if rider_id:
             query = query.filter(Delivery.assigned_rider_id == rider_id)
         if priority:
@@ -158,21 +180,21 @@ class DeliveryService:
         delivery: Delivery,
         update_data: DeliveryStatusUpdate
     ) -> Delivery:
-        """Validate state transition, record history, and release rider capacity on completion."""
+        """Validate state transition, record audit history, and update rider workloads."""
         current_status = delivery.status
         target_status = update_data.status.lower().strip()
 
         if current_status == target_status:
             return delivery
 
-        # Validate legal transition
+        # 1. Validate legal transition
         allowed_targets = self.VALID_TRANSITIONS.get(current_status, set())
         if target_status not in allowed_targets:
             raise InvalidStatusTransitionError(
                 f"Invalid state transition from '{current_status}' to '{target_status}'. Allowed transitions: {list(allowed_targets)}"
             )
 
-        # Handle completion or cancellation resource releases
+        # 2. Handle completion, cancellation, failure, or re-queuing capacity releases
         if target_status in ("delivered", "failed", "cancelled"):
             if delivery.assigned_rider_id:
                 rider = db.query(Rider).filter(Rider.id == delivery.assigned_rider_id).first()
@@ -191,6 +213,39 @@ class DeliveryService:
                     active_asg.status = "completed" if target_status == "delivered" else target_status
                     active_asg.completed_at = datetime.utcnow()
 
+        elif target_status == "pending" and current_status in ("assigned", "failed"):
+            # Re-queued or unassigned delivery
+            if delivery.assigned_rider_id:
+                rider = db.query(Rider).filter(Rider.id == delivery.assigned_rider_id).first()
+                if rider:
+                    rider.current_workload_count = max(0, rider.current_workload_count - 1)
+                    if rider.status == "busy" and rider.current_workload_count < rider.max_concurrent_orders:
+                        rider.status = "available"
+
+                active_asg = db.query(RiderAssignment).filter(
+                    RiderAssignment.delivery_id == delivery.id,
+                    RiderAssignment.rider_id == delivery.assigned_rider_id,
+                    RiderAssignment.status.in_(["assigned", "active"])
+                ).first()
+                if active_asg:
+                    active_asg.status = "reassigned"
+                    active_asg.reassigned_at = datetime.utcnow()
+                    active_asg.reassignment_reason = update_data.reason or "Unassigned back to pending pool"
+
+                delivery.assigned_rider_id = None
+
+        elif target_status in ("picked_up", "in_transit"):
+            # Mark active assignment as active
+            if delivery.assigned_rider_id:
+                active_asg = db.query(RiderAssignment).filter(
+                    RiderAssignment.delivery_id == delivery.id,
+                    RiderAssignment.rider_id == delivery.assigned_rider_id,
+                    RiderAssignment.status == "assigned"
+                ).first()
+                if active_asg:
+                    active_asg.status = "active"
+
+        # 3. Apply status-specific fields
         if target_status == "delivered":
             if update_data.proof_of_delivery:
                 delivery.proof_of_delivery = update_data.proof_of_delivery
@@ -201,7 +256,7 @@ class DeliveryService:
 
         delivery.status = target_status
 
-        # Append status audit log
+        # 4. Append status audit log
         history = DeliveryStatusHistory(
             delivery_id=delivery.id,
             from_status=current_status,
@@ -216,12 +271,71 @@ class DeliveryService:
         db.refresh(delivery)
         logger.info(f"Delivery {delivery.id} transitioned: {current_status} -> {target_status}")
 
+        # 5. Publish event to WebSocket consumers
         self.publish_status_event("DELIVERY_STATUS_CHANGED", {
             "delivery_id": delivery.id,
             "order_id": delivery.order_id,
             "from_status": current_status,
             "to_status": target_status,
+            "changed_by": update_data.actor_id or "system",
             "reason": update_data.reason
         })
 
         return delivery
+
+    def get_dashboard_metrics(self, db: Session) -> Dict[str, Any]:
+        """Aggregate operational KPIs for dispatch and logistics management."""
+        now = datetime.utcnow()
+
+        deliveries = db.query(Delivery.status, Delivery.priority, Delivery.deadline).all()
+        status_counts = {
+            "pending": 0,
+            "assigned": 0,
+            "picked_up": 0,
+            "in_transit": 0,
+            "delivered": 0,
+            "failed": 0,
+            "cancelled": 0,
+        }
+        delayed_count = 0
+        high_priority_count = 0
+
+        for d_status, d_priority, d_deadline in deliveries:
+            norm_status = (d_status or "").lower()
+            if norm_status in status_counts:
+                status_counts[norm_status] += 1
+
+            if norm_status in ("pending", "assigned", "picked_up", "in_transit"):
+                if d_deadline and d_deadline < now:
+                    delayed_count += 1
+                if (d_priority or "").lower() in ("high", "urgent", "same_day", "express"):
+                    high_priority_count += 1
+
+        riders = db.query(Rider.status, Rider.is_online, Rider.current_workload_count).all()
+        total_riders = len(riders)
+        available_riders = sum(1 for r in riders if r[1] and r[0] == "available")
+        active_riders = sum(1 for r in riders if r[1] and (r[2] > 0 or r[0] == "busy"))
+
+        recent_history = (
+            db.query(DeliveryStatusHistory)
+            .order_by(desc(DeliveryStatusHistory.created_at))
+            .limit(10)
+            .all()
+        )
+
+        return {
+            "total_deliveries": len(deliveries),
+            "pending": status_counts["pending"],
+            "assigned": status_counts["assigned"],
+            "picked_up": status_counts["picked_up"],
+            "in_transit": status_counts["in_transit"],
+            "delivered": status_counts["delivered"],
+            "failed": status_counts["failed"],
+            "cancelled": status_counts["cancelled"],
+            "active_riders": active_riders,
+            "available_riders": available_riders,
+            "total_riders": total_riders,
+            "delayed_deliveries": delayed_count,
+            "high_priority_deliveries": high_priority_count,
+            "recent_activity": recent_history,
+        }

@@ -9,10 +9,12 @@ import { latLngToScreen } from "./MercatorProjection";
 
 interface RouteLayerProps {
   waypoints?: Waypoint[] | null;
+  routeGeometry?: Array<{ lat?: number; lng?: number; latitude?: number; longitude?: number }> | null;
   pickup?: LatLng | null;
   dropoff?: LatLng | null;
   riderPosition?: LatLng | null;
   isDeviating?: boolean;
+  isDelivered?: boolean;
   center: LatLng;
   zoom: number;
   viewWidth: number;
@@ -21,24 +23,43 @@ interface RouteLayerProps {
 
 export function RouteLayer({
   waypoints,
+  routeGeometry,
   pickup,
   dropoff,
   riderPosition,
   isDeviating,
+  isDelivered = false,
   center,
   zoom,
   viewWidth,
   viewHeight,
 }: RouteLayerProps) {
-  // Assemble full sequence of ordered route points
+  // Assemble full sequence of ordered route points using real road geometry
   const points: LatLng[] = useMemo(() => {
     const list: LatLng[] = [];
+
+    // Prioritize high-fidelity road route geometry over sparse waypoints
+    const geometrySource = routeGeometry && routeGeometry.length > 0 ? routeGeometry : waypoints;
+
     if (pickup) list.push({ lat: pickup.lat, lng: pickup.lng });
 
-    if (waypoints && waypoints.length > 0) {
-      for (const wp of waypoints) {
-        if (typeof wp.lat === "number" && typeof wp.lng === "number") {
-          list.push({ lat: wp.lat, lng: wp.lng });
+    if (geometrySource && geometrySource.length > 0) {
+      for (const pt of geometrySource) {
+        const lat =
+          typeof pt.lat === "number"
+            ? pt.lat
+            : typeof (pt as { latitude?: number }).latitude === "number"
+              ? (pt as { latitude?: number }).latitude!
+              : undefined;
+        const lng =
+          typeof pt.lng === "number"
+            ? pt.lng
+            : typeof (pt as { longitude?: number }).longitude === "number"
+              ? (pt as { longitude?: number }).longitude!
+              : undefined;
+
+        if (typeof lat === "number" && typeof lng === "number") {
+          list.push({ lat, lng });
         }
       }
     }
@@ -51,24 +72,101 @@ export function RouteLayer({
       const prev = list[i - 1];
       return Math.abs(pt.lat - prev.lat) > 1e-6 || Math.abs(pt.lng - prev.lng) > 1e-6;
     });
-  }, [waypoints, pickup, dropoff]);
+  }, [routeGeometry, waypoints, pickup, dropoff]);
+
+  // Split points into: Completed (traveled) and Remaining (ahead) based on rider location
+  const { completedPoints, remainingPoints, nearestRoutePoint } = useMemo(() => {
+    if (points.length < 2) {
+      return { completedPoints: [], remainingPoints: points, nearestRoutePoint: null };
+    }
+
+    if (isDelivered) {
+      return { completedPoints: points, remainingPoints: [], nearestRoutePoint: null };
+    }
+
+    if (!riderPosition) {
+      return { completedPoints: [], remainingPoints: points, nearestRoutePoint: null };
+    }
+
+    // Find nearest segment on the route to the rider
+    let minDistanceSq = Infinity;
+    let bestSegIdx = 0;
+    let bestProj: LatLng = points[0];
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const p1 = points[i];
+      const p2 = points[i + 1];
+
+      const dx = p2.lng - p1.lng;
+      const dy = p2.lat - p1.lat;
+      const lenSq = dx * dx + dy * dy;
+
+      let t = 0;
+      if (lenSq > 1e-13) {
+        t = Math.max(0, Math.min(1, ((riderPosition.lng - p1.lng) * dx + (riderPosition.lat - p1.lat) * dy) / lenSq));
+      }
+
+      const projLat = p1.lat + t * dy;
+      const projLng = p1.lng + t * dx;
+
+      const distSq =
+        Math.pow(riderPosition.lat - projLat, 2) + Math.pow(riderPosition.lng - projLng, 2);
+
+      if (distSq < minDistanceSq) {
+        minDistanceSq = distSq;
+        bestSegIdx = i;
+        bestProj = { lat: projLat, lng: projLng };
+      }
+    }
+
+    // Build completed points list
+    const completed: LatLng[] = points.slice(0, bestSegIdx + 1);
+    completed.push(bestProj);
+    completed.push(riderPosition);
+
+    // Build remaining points list
+    const remaining: LatLng[] = [riderPosition, bestProj, ...points.slice(bestSegIdx + 1)];
+
+    return {
+      completedPoints: completed,
+      remainingPoints: remaining,
+      nearestRoutePoint: bestProj,
+    };
+  }, [points, riderPosition, isDelivered]);
 
   // Project points to screen coordinates
-  const screenPoints = useMemo(() => {
-    return points.map((pt) => latLngToScreen(pt.lat, pt.lng, center, zoom, viewWidth, viewHeight));
-  }, [points, center, zoom, viewWidth, viewHeight]);
+  const completedScreen = useMemo(() => {
+    if (completedPoints.length < 2) return [];
+    return completedPoints.map((pt) =>
+      latLngToScreen(pt.lat, pt.lng, center, zoom, viewWidth, viewHeight),
+    );
+  }, [completedPoints, center, zoom, viewWidth, viewHeight]);
 
-  // Build SVG path string
-  const svgPath = useMemo(() => {
-    if (screenPoints.length < 2) return "";
-    return screenPoints
+  const remainingScreen = useMemo(() => {
+    if (remainingPoints.length < 2) return [];
+    return remainingPoints.map((pt) =>
+      latLngToScreen(pt.lat, pt.lng, center, zoom, viewWidth, viewHeight),
+    );
+  }, [remainingPoints, center, zoom, viewWidth, viewHeight]);
+
+  // Build SVG path strings
+  const completedSvgPath = useMemo(() => {
+    if (completedScreen.length < 2) return "";
+    return completedScreen
       .map((pt, i) => `${i === 0 ? "M" : "L"} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`)
       .join(" ");
-  }, [screenPoints]);
+  }, [completedScreen]);
 
-  // Find nearest route point to rider when deviating to draw projection line
+  const remainingSvgPath = useMemo(() => {
+    if (remainingScreen.length < 2) return "";
+    return remainingScreen
+      .map((pt, i) => `${i === 0 ? "M" : "L"} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`)
+      .join(" ");
+  }, [remainingScreen]);
+
+  // Find projection line for off-route warning
   const deviationProjection = useMemo(() => {
-    if (!isDeviating || !riderPosition || screenPoints.length === 0) return null;
+    if (!isDeviating || !riderPosition || !nearestRoutePoint) return null;
 
     const riderScreen = latLngToScreen(
       riderPosition.lat,
@@ -79,23 +177,19 @@ export function RouteLayer({
       viewHeight,
     );
 
-    let nearestPt = screenPoints[0];
-    let minDistSq = Infinity;
+    const nearestScreen = latLngToScreen(
+      nearestRoutePoint.lat,
+      nearestRoutePoint.lng,
+      center,
+      zoom,
+      viewWidth,
+      viewHeight,
+    );
 
-    for (const pt of screenPoints) {
-      const dx = pt.x - riderScreen.x;
-      const dy = pt.y - riderScreen.y;
-      const distSq = dx * dx + dy * dy;
-      if (distSq < minDistSq) {
-        minDistSq = distSq;
-        nearestPt = pt;
-      }
-    }
+    return { from: riderScreen, to: nearestScreen };
+  }, [isDeviating, riderPosition, nearestRoutePoint, center, zoom, viewWidth, viewHeight]);
 
-    return { from: riderScreen, to: nearestPt };
-  }, [isDeviating, riderPosition, screenPoints, center, zoom, viewWidth, viewHeight]);
-
-  if (screenPoints.length < 2) return null;
+  if (completedScreen.length < 2 && remainingScreen.length < 2) return null;
 
   return (
     <svg
@@ -104,53 +198,90 @@ export function RouteLayer({
       height={viewHeight}
     >
       <defs>
-        <linearGradient id="routeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#3b82f6" />
-          <stop offset="50%" stopColor="#6366f1" />
-          <stop offset="100%" stopColor="#10b981" />
+        {/* Modern Vibrant Gradient for Active Ahead Route */}
+        <linearGradient id="remainingRouteGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#2563eb" />
+          <stop offset="60%" stopColor="#3b82f6" />
+          <stop offset="100%" stopColor="#06b6d4" />
         </linearGradient>
 
-        <filter id="routeGlow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="3" result="blur" />
+        {/* Soft Modern Glow Filter */}
+        <filter id="routeGlowSoft" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="2.5" result="blur" />
           <feComposite in="SourceGraphic" in2="blur" operator="over" />
         </filter>
       </defs>
 
-      {/* Route Corridor Casing / Outline */}
-      <path
-        d={svgPath}
-        fill="none"
-        stroke="rgba(0, 0, 0, 0.4)"
-        strokeWidth="9"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      {/* ======================================================== */}
+      {/* 1. COMPLETED TRAVELED ROUTE (Sleek Slate Trail)          */}
+      {/* ======================================================== */}
+      {completedSvgPath && (
+        <g opacity="0.8">
+          {/* Subtle Casing */}
+          <path
+            d={completedSvgPath}
+            fill="none"
+            stroke="#e2e8f0"
+            strokeWidth="7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {/* Traveled Polyline */}
+          <path
+            d={completedSvgPath}
+            fill="none"
+            stroke="#94a3b8"
+            strokeWidth="4.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </g>
+      )}
 
-      {/* Outer Glow Line */}
-      <path
-        d={svgPath}
-        fill="none"
-        stroke="url(#routeGradient)"
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        filter="url(#routeGlow)"
-        opacity="0.95"
-      />
+      {/* ======================================================== */}
+      {/* 2. REMAINING ACTIVE ROUTE (Vibrant Swiggy/Uber Blue)     */}
+      {/* ======================================================== */}
+      {remainingSvgPath && (
+        <g>
+          {/* Subtle Outer Drop Shadow */}
+          <path
+            d={remainingSvgPath}
+            fill="none"
+            stroke="rgba(15, 23, 42, 0.15)"
+            strokeWidth="9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
 
-      {/* Inner Active Directional Dash Line */}
-      <path
-        d={svgPath}
-        fill="none"
-        stroke="#ffffff"
-        strokeWidth="2"
-        strokeDasharray="6 8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity="0.8"
-      />
+          {/* Active Glowing Route Line */}
+          <path
+            d={remainingSvgPath}
+            fill="none"
+            stroke="url(#remainingRouteGrad)"
+            strokeWidth="5.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            filter="url(#routeGlowSoft)"
+          />
 
-      {/* Route Deviation Warning Projection Line */}
+          {/* Inner Animated Directional Dashes */}
+          <path
+            d={remainingSvgPath}
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="2"
+            strokeDasharray="6 8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.9"
+            className="animate-[dash_20s_linear_infinite]"
+          />
+        </g>
+      )}
+
+      {/* ======================================================== */}
+      {/* 3. OFF-ROUTE DEVIATION WARNING PROJECTION                */}
+      {/* ======================================================== */}
       {deviationProjection && (
         <g>
           <line
@@ -161,15 +292,15 @@ export function RouteLayer({
             stroke="#f59e0b"
             strokeWidth="2.5"
             strokeDasharray="4 4"
-            opacity="0.9"
+            opacity="0.95"
           />
           <circle
             cx={deviationProjection.to.x}
             cy={deviationProjection.to.y}
-            r="4"
+            r="4.5"
             fill="#f59e0b"
             stroke="#ffffff"
-            strokeWidth="1.5"
+            strokeWidth="2"
           />
         </g>
       )}

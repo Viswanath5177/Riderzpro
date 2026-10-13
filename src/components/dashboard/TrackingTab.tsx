@@ -210,7 +210,7 @@ export function TrackingTab() {
                 </span>
               </div>
               <div className="rounded-xl overflow-hidden border border-gray-200">
-                <LiveMap stops={1} progress={0.65} className="h-64 sm:h-80 w-full" />
+                <LiveMap deliveryId="delivery_vijayawada_amaravati_live" className="h-64 sm:h-80 w-full" />
               </div>
             </div>
           ) : (

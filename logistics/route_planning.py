@@ -105,15 +105,22 @@ class HaversineRoutingProvider(RoutingProvider):
             "duration_minutes": duration_mins,
             "energy_consumption_kwh": total_energy_kwh,
             "waypoints": waypoints,
+            "geometry": [
+                {"lat": wp["lat"], "lng": wp["lng"], "latitude": wp["lat"], "longitude": wp["lng"]}
+                for wp in waypoints
+            ],
             "status": "success"
         }
+
+
+DEFAULT_OSRM_URL = "https://router.project-osrm.org"
 
 
 class OSRMRoutingProvider(RoutingProvider):
     """OSRM (Open Source Routing Machine) external API integration with graceful fallback."""
 
     def __init__(self, api_url: Optional[str] = None):
-        self.api_url = api_url or os.getenv("OSRM_API_URL")
+        self.api_url = api_url or os.getenv("OSRM_API_URL") or DEFAULT_OSRM_URL
         self.fallback = HaversineRoutingProvider()
 
     def calculate_route(
@@ -131,25 +138,67 @@ class OSRMRoutingProvider(RoutingProvider):
 
         try:
             import requests
-            url = f"{self.api_url.rstrip('/')}/route/v1/driving/{origin_lng},{origin_lat};{dest_lng},{dest_lat}?overview=full&geometries=geojson"
-            response = requests.get(url, timeout=3.0)
+            url = f"{self.api_url.rstrip('/')}/route/v1/driving/{origin_lng},{origin_lat};{dest_lng},{dest_lat}?overview=full&geometries=geojson&steps=true"
+            response = requests.get(url, timeout=5.0)
             if response.status_code == 200:
                 data = response.json()
-                route = data.get("routes", [{}])[0]
-                distance_km = round(route.get("distance", 0) / 1000.0, 2)
-                duration_mins = round(route.get("duration", 0) / 60.0, 1)
-                coordinates = route.get("geometry", {}).get("coordinates", [])
-                waypoints = [{"step": idx, "lng": c[0], "lat": c[1]} for idx, c in enumerate(coordinates)]
+                routes = data.get("routes", [])
+                if routes:
+                    route = routes[0]
+                    distance_km = round(route.get("distance", 0) / 1000.0, 2)
+                    duration_mins = round(route.get("duration", 0) / 60.0, 1)
+                    coordinates = route.get("geometry", {}).get("coordinates", [])
+                    # In GeoJSON coordinates are [lng, lat]
+                    geometry = [
+                        {
+                            "lat": round(c[1], 6),
+                            "lng": round(c[0], 6),
+                            "latitude": round(c[1], 6),
+                            "longitude": round(c[0], 6)
+                        }
+                        for c in coordinates
+                    ]
 
-                energy_per_km = ENERGY_CONSUMPTION_PROFILES.get(vehicle_type, 0.022)
-                return {
-                    "provider": "osrm_external",
-                    "distance_km": distance_km,
-                    "duration_minutes": duration_mins,
-                    "energy_consumption_kwh": round(distance_km * energy_per_km, 3),
-                    "waypoints": waypoints,
-                    "status": "success"
-                }
+                    legs = route.get("legs", [])
+                    steps = legs[0].get("steps", []) if legs else []
+                    if steps:
+                        waypoints = []
+                        for idx, s in enumerate(steps):
+                            maneuver = s.get("maneuver", {})
+                            loc = maneuver.get("location", [0, 0])
+                            waypoints.append({
+                                "step": idx,
+                                "lat": round(loc[1], 6),
+                                "lng": round(loc[0], 6),
+                                "latitude": round(loc[1], 6),
+                                "longitude": round(loc[0], 6),
+                                "name": s.get("name", ""),
+                                "instruction": maneuver.get("type", "") + (" " + maneuver.get("modifier", "") if maneuver.get("modifier") else ""),
+                                "distance_meters": s.get("distance", 0),
+                                "duration_seconds": s.get("duration", 0)
+                            })
+                    else:
+                        waypoints = [
+                            {
+                                "step": idx,
+                                "lat": g["lat"],
+                                "lng": g["lng"],
+                                "latitude": g["lat"],
+                                "longitude": g["lng"]
+                            }
+                            for idx, g in enumerate(geometry)
+                        ]
+
+                    energy_per_km = ENERGY_CONSUMPTION_PROFILES.get(vehicle_type, 0.022)
+                    return {
+                        "provider": "osrm_external",
+                        "distance_km": distance_km,
+                        "duration_minutes": duration_mins,
+                        "energy_consumption_kwh": round(distance_km * energy_per_km, 3),
+                        "waypoints": waypoints,
+                        "geometry": geometry,
+                        "status": "success"
+                    }
         except Exception as e:
             logger.warning(f"OSRM route calculation failed ({e}), falling back to Haversine.")
 
@@ -163,19 +212,19 @@ class RoutePlanningService:
 
     def __init__(self):
         self.providers = {
-            "haversine_builtin": HaversineRoutingProvider(),
             "osrm": OSRMRoutingProvider(),
+            "haversine_builtin": HaversineRoutingProvider(),
             "google_maps": HaversineRoutingProvider(),  # Safe fallback default
         }
 
     def get_provider(self, name: str) -> RoutingProvider:
-        return self.providers.get(name.lower(), self.providers["haversine_builtin"])
+        return self.providers.get(name.lower(), self.providers["osrm"])
 
     def plan_route_for_delivery(
         self,
         db: Session,
         delivery: Delivery,
-        provider_name: str = "haversine_builtin",
+        provider_name: str = "osrm",
         vehicle_type: Optional[str] = None
     ) -> DeliveryRoute:
         """Calculate and persist an optimized route for a specific delivery task."""
@@ -191,6 +240,11 @@ class RoutePlanningService:
             vehicle_type=vehicle_type
         )
 
+        payload = {
+            "waypoints": result.get("waypoints", []),
+            "geometry": result.get("geometry", result.get("waypoints", [])),
+        }
+
         route_record = DeliveryRoute(
             delivery_id=delivery.id,
             rider_id=delivery.assigned_rider_id,
@@ -198,7 +252,7 @@ class RoutePlanningService:
             distance_km=result["distance_km"],
             duration_minutes=result["duration_minutes"],
             energy_consumption_kwh=result["energy_consumption_kwh"],
-            waypoints_json=json.dumps(result["waypoints"])
+            waypoints_json=json.dumps(payload)
         )
         db.add(route_record)
         db.commit()

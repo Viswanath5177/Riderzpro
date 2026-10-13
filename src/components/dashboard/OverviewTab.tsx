@@ -302,7 +302,7 @@ export function OverviewTab({
             <div className="mt-4 space-y-4">
               {/* Live Map Frame */}
               <div className="overflow-hidden rounded-2xl border border-gray-200">
-                <LiveMap stops={liveOrder.groups.length} className="aspect-video w-full" />
+                <LiveMap deliveryId="delivery_vijayawada_amaravati_live" className="aspect-video w-full" />
               </div>
 
               {/* Order Info & ETA Header */}

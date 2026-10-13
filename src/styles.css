@@ -241,3 +241,9 @@
   animation: vision-mic-pulse 2.2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
 }
 
+@keyframes dash {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+

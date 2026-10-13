@@ -11,6 +11,7 @@ from logistics.database import init_db
 from logistics.router import (
     router as logistics_router,
     riders_router,
+    dashboard_router,
     location_service,
     delivery_service
 )
@@ -55,6 +56,7 @@ app.add_middleware(
 app.include_router(logistics_router)
 app.include_router(riders_router)
 app.include_router(realtime_router)
+app.include_router(dashboard_router)
 
 
 @app.get("/health", tags=["System Health"])

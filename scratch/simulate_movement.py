@@ -1,6 +1,7 @@
-"""Temporary Movement Simulator for Sathesh Ittraju on Vijayawada -> Amaravati route.
-Reads actual backend route_waypoints, smoothly interpolates intermediate GPS coordinates,
-calculates heading/bearing, and sends live GPS pings to the backend API.
+"""Movement Simulator for Sathesh Ittraju on Vijayawada -> Amaravati route.
+Reads actual backend road route_geometry, smoothly walks along the road polyline
+by cumulative distance steps, calculates road heading/bearing on turns,
+and sends live GPS telemetry pings to the backend API.
 """
 
 import math
@@ -13,6 +14,19 @@ DELIVERY_ID = "delivery_vijayawada_amaravati_live"
 RIDER_ID = "rider_sathesh"
 BASE_URL = "http://127.0.0.1:8000"
 
+def haversine_distance_meters(lat1, lon1, lat2, lon2):
+    """Calculate great-circle distance between two points in meters."""
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+    a = (
+        math.sin(delta_phi / 2.0) ** 2
+        + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0) ** 2
+    )
+    c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
+    return 6371000.0 * c
+
 def calculate_bearing(lat1, lon1, lat2, lon2):
     """Calculate forward azimuth / bearing in degrees [0, 360)."""
     phi1 = math.radians(lat1)
@@ -24,17 +38,23 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
     bearing = math.degrees(math.atan2(y, x))
     return round((bearing + 360.0) % 360.0, 1)
 
-def get_route_waypoints():
-    """Fetch canonical waypoints directly from backend tracking API."""
+def get_route_geometry():
+    """Fetch full road route geometry directly from backend tracking API."""
     url = f"{BASE_URL}/api/deliveries/{DELIVERY_ID}/tracking"
     req = urllib.request.Request(url, headers={"X-User-Role": "admin"})
     with urllib.request.urlopen(req) as resp:
         data = json.loads(resp.read().decode("utf-8"))
-        waypoints = data.get("route_waypoints") or []
-        print(f"Loaded {len(waypoints)} route waypoints from backend for delivery '{DELIVERY_ID}'")
-        return waypoints
+        raw_pts = data.get("route_geometry") or data.get("route_waypoints") or []
+        coords = []
+        for p in raw_pts:
+            lat = p.get("lat") if p.get("lat") is not None else p.get("latitude")
+            lng = p.get("lng") if p.get("lng") is not None else p.get("longitude")
+            if lat is not None and lng is not None:
+                coords.append((float(lat), float(lng)))
+        print(f"Loaded {len(coords)} road geometry coordinates from backend for '{DELIVERY_ID}'")
+        return coords
 
-def send_gps_update(lat, lng, heading, speed_kmh=30.0):
+def send_gps_update(lat, lng, heading, speed_kmh=32.0):
     """Post GPS coordinate update for rider Sathesh Ittraju."""
     payload = {
         "latitude": round(lat, 6),
@@ -57,41 +77,56 @@ def send_gps_update(lat, lng, heading, speed_kmh=30.0):
         print(f"Error sending GPS: {e}")
         return False
 
-def generate_interpolated_trajectory(waypoints, steps_per_segment=10):
-    """Generate fine-grained intermediate coordinates along route corridor."""
+def generate_road_trajectory(coords, step_meters=250.0):
+    """Generate fine-grained intermediate coordinates by walking along the actual road polyline."""
+    if len(coords) < 2:
+        return []
+
+    # 1. Compute cumulative distance at each vertex
+    cum_dists = [0.0]
+    for i in range(len(coords) - 1):
+        d = haversine_distance_meters(coords[i][0], coords[i][1], coords[i+1][0], coords[i+1][1])
+        cum_dists.append(cum_dists[-1] + d)
+
+    total_len = cum_dists[-1]
+
+    # 2. Sample target distances along the road network
+    target_dists = []
+    curr = 0.0
+    while curr < total_len:
+        target_dists.append(curr)
+        curr += step_meters
+    if not target_dists or target_dists[-1] < total_len:
+        target_dists.append(total_len)
+
+    # 3. For each target distance, locate the segment and interpolate along the road
     trajectory = []
-    if len(waypoints) < 2:
-        return trajectory
+    seg_idx = 0
+    for td in target_dists:
+        while seg_idx < len(cum_dists) - 2 and cum_dists[seg_idx + 1] < td:
+            seg_idx += 1
+        p1 = coords[seg_idx]
+        p2 = coords[seg_idx + 1]
+        seg_len = cum_dists[seg_idx + 1] - cum_dists[seg_idx]
+        frac = 0.0 if seg_len < 1e-4 else (td - cum_dists[seg_idx]) / seg_len
+        frac = max(0.0, min(1.0, frac))
+        lat = p1[0] + frac * (p2[0] - p1[0])
+        lng = p1[1] + frac * (p2[1] - p1[1])
+        bearing = calculate_bearing(p1[0], p1[1], p2[0], p2[1])
+        trajectory.append((lat, lng, bearing))
 
-    for i in range(len(waypoints) - 1):
-        p1 = waypoints[i]
-        p2 = waypoints[i + 1]
-        lat1, lng1 = p1["lat"], p1["lng"]
-        lat2, lng2 = p2["lat"], p2["lng"]
-        bearing = calculate_bearing(lat1, lng1, lat2, lng2)
-
-        for step in range(steps_per_segment):
-            fraction = step / float(steps_per_segment)
-            interp_lat = lat1 + fraction * (lat2 - lat1)
-            interp_lng = lng1 + fraction * (lng2 - lng1)
-            trajectory.append((interp_lat, interp_lng, bearing))
-
-    # Add final destination waypoint
-    dest = waypoints[-1]
-    last_bearing = trajectory[-1][2] if trajectory else 0.0
-    trajectory.append((dest["lat"], dest["lng"], last_bearing))
     return trajectory
 
-def run_simulation(interval_sec=1.0, steps_per_segment=8, loop=False):
-    """Continuously stream rider movement along route."""
-    waypoints = get_route_waypoints()
-    if not waypoints:
-        print("No waypoints found!")
+def run_simulation(interval_sec=1.0, step_meters=250.0, loop=False):
+    """Continuously stream rider movement along the road route."""
+    coords = get_route_geometry()
+    if not coords:
+        print("No route geometry found! Please run python scratch/setup_live_test.py first.")
         return
 
-    trajectory = generate_interpolated_trajectory(waypoints, steps_per_segment=steps_per_segment)
+    trajectory = generate_road_trajectory(coords, step_meters=step_meters)
     total_points = len(trajectory)
-    print(f"Generated {total_points} interpolated GPS steps across Vijayawada -> Amaravati route.")
+    print(f"Generated {total_points} road-following GPS steps across Vijayawada -> Amaravati route.")
     print(f"Streaming live updates every {interval_sec}s for Sathesh Ittraju...\n")
 
     iteration = 0
@@ -111,10 +146,10 @@ def run_simulation(interval_sec=1.0, steps_per_segment=8, loop=False):
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Live movement simulator for Sathesh Ittraju")
+    parser = argparse.ArgumentParser(description="Live road movement simulator for Sathesh Ittraju")
     parser.add_argument("--interval", type=float, default=1.0, help="Seconds between GPS pings")
-    parser.add_argument("--steps", type=int, default=8, help="Interpolation points per waypoint segment")
+    parser.add_argument("--step-meters", type=float, default=250.0, help="Meters to advance per step along road")
     parser.add_argument("--loop", action="store_true", help="Loop continuously")
     args = parser.parse_args()
 
-    run_simulation(interval_sec=args.interval, steps_per_segment=args.steps, loop=args.loop)
+    run_simulation(interval_sec=args.interval, step_meters=args.step_meters, loop=args.loop)

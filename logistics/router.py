@@ -24,14 +24,20 @@ from logistics.schemas import (
     RiderLocationUpdateResponse,
     RiderCurrentLocationResponse,
     DeliveryTrackingResponse,
-    RiderLocationHistoryResponse
+    RiderLocationHistoryResponse,
+    DeliveryStatusHistoryResponse,
+    LogisticsDashboardResponse
 )
 from logistics.service import (
     DeliveryService,
     DuplicateDeliveryError,
     InvalidStatusTransitionError
 )
-from logistics.assignment import RiderAssignmentService, AssignmentError
+from logistics.assignment import (
+    RiderAssignmentService,
+    AssignmentError,
+    register_assignment_status_publisher
+)
 from logistics.route_planning import RoutePlanningService
 from logistics.location_service import (
     LocationTrackingService,
@@ -51,8 +57,10 @@ from logistics.optimizer import (
 
 router = APIRouter(prefix="/api/deliveries", tags=["Logistics & Deliveries"])
 riders_router = APIRouter(prefix="/api/riders", tags=["Rider Tracking & Fleet"])
+dashboard_router = APIRouter(prefix="/api/logistics", tags=["Logistics Operations Dashboard"])
 
 delivery_service = DeliveryService()
+register_assignment_status_publisher(delivery_service.publish_status_event)
 location_service = LocationTrackingService()
 route_service = RoutePlanningService()
 ortools_optimizer = ClassicalORToolsOptimizer()
@@ -68,7 +76,13 @@ def serialize_delivery(delivery: Delivery) -> Dict[str, Any]:
         waypoints = []
         if rt.waypoints_json:
             try:
-                waypoints = json.loads(rt.waypoints_json)
+                parsed = json.loads(rt.waypoints_json)
+                if isinstance(parsed, dict):
+                    waypoints = parsed.get("waypoints", [])
+                elif isinstance(parsed, list):
+                    waypoints = parsed
+                else:
+                    waypoints = []
             except Exception:
                 waypoints = []
 
@@ -114,12 +128,17 @@ def serialize_delivery(delivery: Delivery) -> Dict[str, Any]:
     history_data = [
         {
             "id": h.id,
+            "delivery_id": h.delivery_id,
             "from_status": h.from_status,
             "to_status": h.to_status,
+            "previous_status": h.from_status,
+            "new_status": h.to_status,
             "changed_by_user_id": h.changed_by_user_id,
             "changed_by_role": h.changed_by_role,
+            "changed_by": h.changed_by_user_id,
             "reason": h.reason,
-            "created_at": h.created_at
+            "created_at": h.created_at,
+            "timestamp": h.created_at
         }
         for h in delivery.status_history
     ]
@@ -142,6 +161,9 @@ def serialize_delivery(delivery: Delivery) -> Dict[str, Any]:
         "package_dimensions": delivery.package_dimensions,
         "priority": delivery.priority,
         "deadline": delivery.deadline,
+        "delivery_deadline": delivery.deadline,
+        "pickup_window_start": delivery.pickup_window_start,
+        "pickup_window_end": delivery.pickup_window_end,
         "status": delivery.status,
         "assigned_rider_id": delivery.assigned_rider_id,
         "assigned_rider": rider_data,
@@ -175,14 +197,16 @@ def list_deliveries(
     status: Optional[str] = Query(None, description="Filter by status (pending, assigned, in_transit, etc.)"),
     order_id: Optional[str] = Query(None, description="Filter by order ID"),
     vendor_id: Optional[str] = Query(None, description="Filter by seller/vendor ID"),
+    customer_id: Optional[str] = Query(None, description="Filter by customer ID"),
     rider_id: Optional[str] = Query(None, description="Filter by assigned rider ID"),
-    priority: Optional[str] = Query(None, description="Filter by priority (standard, express, same_day)"),
+    priority: Optional[str] = Query(None, description="Filter by priority (low, normal, high, urgent, etc.)"),
     db: Session = Depends(get_db)
 ):
     """Retrieve paginated delivery tasks with optional filtering."""
     items, total = delivery_service.list_deliveries(
         db, page=page, limit=limit, status=status,
-        order_id=order_id, vendor_id=vendor_id, rider_id=rider_id, priority=priority
+        order_id=order_id, vendor_id=vendor_id, customer_id=customer_id,
+        rider_id=rider_id, priority=priority
     )
     total_pages = math.ceil(total / limit) if total > 0 else 1
     return {
@@ -201,6 +225,32 @@ def get_delivery_details(delivery_id: str, db: Session = Depends(get_db)):
     if not delivery:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Delivery '{delivery_id}' not found.")
     return serialize_delivery(delivery)
+
+
+@router.get("/{delivery_id}/history", response_model=List[DeliveryStatusHistoryResponse])
+def get_delivery_history(delivery_id: str, db: Session = Depends(get_db)):
+    """Retrieve chronological audit history logs for a delivery."""
+    delivery = delivery_service.get_delivery(db, delivery_id)
+    if not delivery:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Delivery '{delivery_id}' not found.")
+    history = delivery_service.get_delivery_history(db, delivery_id)
+    return [
+        {
+            "id": h.id,
+            "delivery_id": h.delivery_id,
+            "from_status": h.from_status,
+            "to_status": h.to_status,
+            "previous_status": h.from_status,
+            "new_status": h.to_status,
+            "changed_by_user_id": h.changed_by_user_id,
+            "changed_by_role": h.changed_by_role,
+            "changed_by": h.changed_by_user_id,
+            "reason": h.reason,
+            "created_at": h.created_at,
+            "timestamp": h.created_at
+        }
+        for h in history
+    ]
 
 
 @router.patch("/{delivery_id}/status", response_model=DeliveryResponse)
@@ -289,7 +339,13 @@ def optimize_delivery_route(
     waypoints = []
     if route.waypoints_json:
         try:
-            waypoints = json.loads(route.waypoints_json)
+            parsed = json.loads(route.waypoints_json)
+            if isinstance(parsed, dict):
+                waypoints = parsed.get("waypoints", [])
+            elif isinstance(parsed, list):
+                waypoints = parsed
+            else:
+                waypoints = []
         except Exception:
             waypoints = []
 
@@ -460,4 +516,37 @@ def get_rider_location_history(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=e.message)
     except LocationTrackingError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
+# ==========================================
+# Logistics Operations Dashboard Endpoints
+# ==========================================
+
+@dashboard_router.get("/dashboard", response_model=LogisticsDashboardResponse)
+def get_logistics_dashboard(db: Session = Depends(get_db)):
+    """
+    Retrieve aggregated operational metrics:
+    total deliveries, counts by status, active/available fleet riders,
+    delayed deliveries, and recent audit activity.
+    """
+    metrics = delivery_service.get_dashboard_metrics(db)
+    metrics["recent_activity"] = [
+        {
+            "id": h.id,
+            "delivery_id": h.delivery_id,
+            "from_status": h.from_status,
+            "to_status": h.to_status,
+            "previous_status": h.from_status,
+            "new_status": h.to_status,
+            "changed_by_user_id": h.changed_by_user_id,
+            "changed_by_role": h.changed_by_role,
+            "changed_by": h.changed_by_user_id,
+            "reason": h.reason,
+            "created_at": h.created_at,
+            "timestamp": h.created_at
+        }
+        for h in metrics.get("recent_activity", [])
+    ]
+    return metrics
+
 

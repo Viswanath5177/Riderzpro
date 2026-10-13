@@ -423,16 +423,71 @@ class LocationTrackingService:
             distance_km = latest_route.distance_km
             eta_minutes = latest_route.duration_minutes
 
-        # Extract waypoints from route if available
+        # Extract waypoints and geometry from route if available
         waypoints: List[Dict[str, Any]] = []
+        route_geometry: Optional[List[Dict[str, Any]]] = None
+
         if delivery.routes:
             latest_route = sorted(delivery.routes, key=lambda rt: rt.created_at, reverse=True)[0]
             if latest_route.waypoints_json:
                 import json
                 try:
-                    waypoints = json.loads(latest_route.waypoints_json)
+                    parsed = json.loads(latest_route.waypoints_json)
+                    if isinstance(parsed, dict):
+                        waypoints = parsed.get("waypoints", [])
+                        raw_geom = parsed.get("geometry") or parsed.get("route_geometry") or waypoints
+                    elif isinstance(parsed, list):
+                        waypoints = parsed
+                        raw_geom = parsed
+                    else:
+                        waypoints = []
+                        raw_geom = []
+
+                    if raw_geom:
+                        route_geometry = [
+                            {
+                                "lat": wp.get("lat") if wp.get("lat") is not None else wp.get("latitude"),
+                                "lng": wp.get("lng") if wp.get("lng") is not None else wp.get("longitude"),
+                                "latitude": wp.get("lat") if wp.get("lat") is not None else wp.get("latitude"),
+                                "longitude": wp.get("lng") if wp.get("lng") is not None else wp.get("longitude"),
+                            }
+                            for wp in raw_geom
+                            if (wp.get("lat") is not None or wp.get("latitude") is not None)
+                        ]
                 except Exception:
                     waypoints = []
+                    route_geometry = None
+
+        # On-demand OSRM road route planning if no route exists
+        if not waypoints and delivery.pickup_lat and delivery.dropoff_lat:
+            try:
+                from logistics.route_planning import RoutePlanningService
+                planner = RoutePlanningService()
+                new_rt = planner.plan_route_for_delivery(db, delivery, provider_name="osrm")
+                if new_rt and new_rt.waypoints_json:
+                    import json
+                    parsed = json.loads(new_rt.waypoints_json)
+                    if isinstance(parsed, dict):
+                        waypoints = parsed.get("waypoints", [])
+                        raw_geom = parsed.get("geometry") or waypoints
+                    else:
+                        waypoints = parsed
+                        raw_geom = parsed
+                    route_geometry = [
+                        {
+                            "lat": wp.get("lat") if wp.get("lat") is not None else wp.get("latitude"),
+                            "lng": wp.get("lng") if wp.get("lng") is not None else wp.get("longitude"),
+                            "latitude": wp.get("lat") if wp.get("lat") is not None else wp.get("latitude"),
+                            "longitude": wp.get("lng") if wp.get("lng") is not None else wp.get("longitude"),
+                        }
+                        for wp in raw_geom
+                        if (wp.get("lat") is not None or wp.get("latitude") is not None)
+                    ]
+                    if distance_km is None:
+                        distance_km = new_rt.distance_km
+                        eta_minutes = new_rt.duration_minutes
+            except Exception as e:
+                logger.warning(f"On-demand OSRM route calculation skipped: {e}")
 
         # Populate geofence proximity status for tracking response
         rider_lat = None
@@ -446,7 +501,7 @@ class LocationTrackingService:
             delivery=delivery,
             lat=rider_lat,
             lng=rider_lng,
-            waypoints=waypoints
+            waypoints=route_geometry or waypoints
         )
 
         return DeliveryTrackingResponse(
@@ -467,6 +522,7 @@ class LocationTrackingService:
             eta_minutes=eta_minutes,
             distance_km=distance_km,
             route_waypoints=waypoints if waypoints else None,
+            route_geometry=route_geometry if route_geometry else None,
             distance_to_dropoff_meters=gf_status["distance_to_dropoff_meters"],
             is_approaching=gf_status["is_approaching"],
             is_arrived=gf_status["is_arrived"],

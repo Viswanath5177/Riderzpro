@@ -9,8 +9,12 @@ export interface LatLng {
 
 export interface Waypoint {
   step?: number;
-  lat: number;
-  lng: number;
+  lat?: number;
+  lng?: number;
+  latitude?: number;
+  longitude?: number;
+  sequence?: number;
+  label?: string;
   eta_minute_offset?: number;
   [key: string]: unknown;
 }
@@ -48,6 +52,7 @@ export interface DeliveryTrackingData {
   eta_minutes?: number | null;
   distance_km?: number | null;
   route_waypoints?: Waypoint[] | null;
+  route_geometry?: Array<{ lat: number; lng: number; latitude?: number; longitude?: number }> | null;
   distance_to_dropoff_meters?: number | null;
   is_approaching?: boolean | null;
   is_arrived?: boolean | null;
@@ -116,6 +121,6 @@ export interface MapProviderConfig {
 export const DEFAULT_MAP_CONFIG: MapProviderConfig = {
   tileUrlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
   attribution: "© OpenStreetMap contributors",
-  maxZoom: 18,
+  maxZoom: 19,
   minZoom: 4,
 };

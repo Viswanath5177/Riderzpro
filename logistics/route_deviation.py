@@ -47,6 +47,9 @@ def extract_route_coordinates(waypoints: Any) -> List[Tuple[float, float]]:
         except Exception:
             return []
 
+    if isinstance(waypoints, dict):
+        waypoints = waypoints.get("geometry") or waypoints.get("route_geometry") or waypoints.get("waypoints") or []
+
     if not isinstance(waypoints, (list, tuple)):
         return []
 
@@ -232,7 +235,11 @@ class RouteDeviationService:
                     latest = sorted(routes, key=lambda rt: rt.created_at, reverse=True)[0]
                     if latest and latest.waypoints_json:
                         try:
-                            route_waypoints = json.loads(latest.waypoints_json)
+                            raw = json.loads(latest.waypoints_json)
+                            if isinstance(raw, dict):
+                                route_waypoints = raw.get("geometry") or raw.get("route_geometry") or raw.get("waypoints")
+                            else:
+                                route_waypoints = raw
                         except Exception:
                             route_waypoints = None
         else:
@@ -306,7 +313,11 @@ class RouteDeviationService:
                 latest = sorted(routes, key=lambda rt: rt.created_at, reverse=True)[0]
                 if latest and latest.waypoints_json:
                     try:
-                        wp = json.loads(latest.waypoints_json)
+                        raw = json.loads(latest.waypoints_json)
+                        if isinstance(raw, dict):
+                            wp = raw.get("geometry") or raw.get("route_geometry") or raw.get("waypoints")
+                        else:
+                            wp = raw
                     except Exception:
                         wp = None
 

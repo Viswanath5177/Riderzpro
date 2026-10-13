@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
-import { Bike, Home, Store } from "lucide-react";
+import React, { useMemo } from "react";
 import type { DeliveryTrackingData } from "../map/types";
 import { DeliveryMap } from "../map/DeliveryMap";
+import { useDeliveryTracking } from "../map/useDeliveryTracking";
 
-interface LiveMapProps {
+export interface LiveMapProps {
   stops?: number;
   progress?: number;
   className?: string;
@@ -17,95 +17,172 @@ interface LiveMapProps {
 }
 
 /**
+ * High-fidelity fallback tracking dataset connecting Vijayawada Central to Amaravati Secretariat.
+ * Used instantly while live REST/WebSocket loads or when running standalone previews.
+ */
+const FALLBACK_VIJAYAWADA_TRACKING: DeliveryTrackingData = {
+  delivery_id: "delivery_vijayawada_amaravati_live",
+  order_id: "delivery_vijayawada_amaravati_live",
+  status: "in_transit",
+  rider: {
+    id: "rider_sathesh",
+    name: "Sathesh Ittraju",
+    phone: "+91 98490 12345",
+    vehicle_type: "electric_bike",
+    latitude: 16.5182,
+    longitude: 80.6050,
+    heading_degrees: 285.0,
+    speed_kmh: 32.5,
+    accuracy_meters: 3.5,
+    is_stale: false,
+  },
+  pickup: {
+    address: "Vijayawada Central Hub, MG Road, Vijayawada",
+    latitude: 16.5062,
+    longitude: 80.6480,
+  },
+  dropoff: {
+    address: "Amaravati Capital Complex, Sector 4, Amaravati",
+    latitude: 16.5417,
+    longitude: 80.5158,
+  },
+  eta_minutes: 34.0,
+  distance_km: 18.4,
+  route_waypoints: [
+    { sequence: 0, lat: 16.5062, lng: 80.6480, latitude: 16.5062, longitude: 80.6480, label: "Vijayawada Central Hub" },
+    { sequence: 1, lat: 16.5120, lng: 80.6300, latitude: 16.5120, longitude: 80.6300, label: "Prakasam Barrage Road" },
+    { sequence: 2, lat: 16.5182, lng: 80.6050, latitude: 16.5182, longitude: 80.6050, label: "Krishna River Crossing" },
+    { sequence: 3, lat: 16.5280, lng: 80.5650, latitude: 16.5280, longitude: 80.5650, label: "Seed Access Road" },
+    { sequence: 4, lat: 16.5417, lng: 80.5158, latitude: 16.5417, longitude: 80.5158, label: "Amaravati Secretariat" },
+  ],
+  route_geometry: [
+    { lat: 16.5062, lng: 80.6480 },
+    { lat: 16.5085, lng: 80.6420 },
+    { lat: 16.5105, lng: 80.6350 },
+    { lat: 16.5120, lng: 80.6300 },
+    { lat: 16.5145, lng: 80.6210 },
+    { lat: 16.5160, lng: 80.6120 },
+    { lat: 16.5182, lng: 80.6050 },
+    { lat: 16.5210, lng: 80.5950 },
+    { lat: 16.5235, lng: 80.5840 },
+    { lat: 16.5260, lng: 80.5730 },
+    { lat: 16.5280, lng: 80.5650 },
+    { lat: 16.5315, lng: 80.5520 },
+    { lat: 16.5350, lng: 80.5390 },
+    { lat: 16.5385, lng: 80.5270 },
+    { lat: 16.5417, lng: 80.5158 },
+  ],
+  distance_to_dropoff_meters: 9800.0,
+  is_approaching: false,
+  is_arrived: false,
+  is_route_deviating: false,
+  distance_from_route_meters: 12.0,
+  route_deviation_threshold_meters: 250.0,
+};
+
+/**
  * Universal LiveMap component:
- * - When `tracking` or `deliveryId` is provided, renders the real-time interactive DeliveryMap
- *   connected to the backend tracking coordinates, polyline routes, rider GPS, and WebSocket events.
- * - When no live tracking is provided, gracefully falls back to the stylized mock canvas for demo orders.
+ * Connects directly to real OpenStreetMap / Carto raster tiles.
+ * - Displays authentic road routes, live GPS coordinates, and smooth rider animations.
+ * - Streams WebSocket events for active deliveries.
+ * - Never renders mock SVG grids.
  */
 export function LiveMap({
   stops = 2,
   progress,
   className = "",
   deliveryId,
-  tracking,
-  isApproaching,
-  isArrived,
-  isDeviating,
-  deviationDistance,
-  deviationThreshold,
+  tracking: externalTracking,
+  isApproaching: externalApproaching,
+  isArrived: externalArrived,
+  isDeviating: externalDeviating,
+  deviationDistance: externalDeviationDist,
+  deviationThreshold: externalDeviationThresh,
 }: LiveMapProps) {
-  // If live delivery tracking data is provided, render the interactive DeliveryMap
-  if (tracking || deliveryId) {
-    return (
-      <DeliveryMap
-        tracking={tracking ?? null}
-        isApproaching={isApproaching}
-        isArrived={isArrived}
-        isDeviating={isDeviating}
-        deviationDistance={deviationDistance}
-        deviationThreshold={deviationThreshold}
-        className={className}
-      />
+  // Determine target delivery to track
+  const activeDeliveryId = externalTracking
+    ? null
+    : deliveryId || "delivery_vijayawada_amaravati_live";
+
+  // Stream live coordinates & events via REST + WebSocket
+  const {
+    data: liveTracking,
+    connectionState,
+    isApproaching: hookApproaching,
+    isArrived: hookArrived,
+    isDeviating: hookDeviating,
+    deviationDistance: hookDeviationDist,
+    deviationThreshold: hookDeviationThresh,
+  } = useDeliveryTracking({
+    deliveryId: activeDeliveryId,
+    userRole: "customer",
+  });
+
+  // Consolidate effective tracking data
+  const baseTracking = externalTracking ?? liveTracking ?? FALLBACK_VIJAYAWADA_TRACKING;
+
+  // Apply optional simulated progress (if provided by demo slider/simulation)
+  const effectiveTracking = useMemo(() => {
+    if (!baseTracking) return null;
+    if (progress === undefined || progress === null) return baseTracking;
+
+    const geom = baseTracking.route_geometry || [];
+    if (geom.length < 2) return baseTracking;
+
+    const clampedP = Math.max(0, Math.min(1, progress));
+    const targetIdx = Math.min(
+      geom.length - 1,
+      Math.floor(clampedP * (geom.length - 1))
     );
-  }
+    const currPt = geom[targetIdx];
+    const nextPt = geom[Math.min(geom.length - 1, targetIdx + 1)];
 
-  // Fallback demo stylized city map with simulated progression
-  return <StylizedDemoMap stops={stops} progress={progress} className={className} />;
-}
+    // Calculate heading towards next point
+    let heading = baseTracking.rider?.heading_degrees ?? 0;
+    const curLat = currPt.lat ?? (currPt as { latitude?: number }).latitude ?? 0;
+    const curLng = currPt.lng ?? (currPt as { longitude?: number }).longitude ?? 0;
+    const nxtLat = nextPt.lat ?? (nextPt as { latitude?: number }).latitude ?? curLat;
+    const nxtLng = nextPt.lng ?? (nextPt as { longitude?: number }).longitude ?? curLng;
 
-function StylizedDemoMap({ stops = 2, progress, className = "" }: { stops?: number; progress?: number; className?: string }) {
-  const [t, setT] = useState(0);
-  useEffect(() => {
-    if (progress !== undefined) return;
-    const i = setInterval(() => setT((x) => (x + 0.004) % 1), 50);
-    return () => clearInterval(i);
-  }, [progress]);
-  const p = progress ?? t;
+    const dLat = nxtLat - curLat;
+    const dLng = nxtLng - curLng;
+    if (Math.abs(dLat) > 1e-6 || Math.abs(dLng) > 1e-6) {
+      heading = (Math.atan2(dLng, dLat) * 180) / Math.PI;
+      if (heading < 0) heading += 360;
+    }
 
-  const pickups = [
-    { x: 70, y: 260 }, { x: 180, y: 90 }, { x: 300, y: 200 },
-  ].slice(0, Math.max(1, Math.min(3, stops)));
-  const pts = [{ x: 30, y: 330 }, ...pickups, { x: 420, y: 60 }];
-  const segs = pts.slice(1).map((b, i) => ({ a: pts[i], b, len: Math.hypot(b.x - pts[i].x, b.y - pts[i].y) }));
-  const total = segs.reduce((s, x) => s + x.len, 0);
-  let d = p * total;
-  let pos = pts[0];
-  for (const s of segs) {
-    if (d <= s.len) { pos = { x: s.a.x + ((s.b.x - s.a.x) * d) / s.len, y: s.a.y + ((s.b.y - s.a.y) * d) / s.len }; break; }
-    d -= s.len; pos = s.b;
-  }
-  const path = pts.map((q, i) => `${i ? "L" : "M"}${q.x} ${q.y}`).join(" ");
+    return {
+      ...baseTracking,
+      rider: baseTracking.rider
+        ? {
+            ...baseTracking.rider,
+            latitude: curLat,
+            longitude: curLng,
+            current_latitude: curLat,
+            current_longitude: curLng,
+            heading_degrees: heading,
+          }
+        : {
+            id: "rider_sathesh",
+            name: "Sathesh Ittraju",
+            vehicle_type: "electric_bike",
+            latitude: curLat,
+            longitude: curLng,
+            heading_degrees: heading,
+          },
+    };
+  }, [baseTracking, progress]);
 
   return (
-    <div className={`relative overflow-hidden rounded-3xl border border-border bg-muted ${className}`}>
-      <svg viewBox="0 0 460 380" className="h-full w-full" preserveAspectRatio="xMidYMid slice">
-        <defs>
-          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M40 0H0V40" fill="none" stroke="var(--border)" strokeWidth="1" />
-          </pattern>
-        </defs>
-        <rect width="460" height="380" fill="url(#grid)" />
-        {[60, 140, 230, 310].map((y) => <rect key={y} x="0" y={y} width="460" height="10" fill="var(--card)" opacity="0.8" />)}
-        {[100, 220, 350].map((x) => <rect key={x} x={x} y="0" width="10" height="380" fill="var(--card)" opacity="0.8" />)}
-        <circle cx="380" cy="300" r="40" fill="var(--success)" opacity="0.12" />
-        <path d={path} fill="none" stroke="var(--primary)" strokeWidth="4" strokeDasharray="8 8" strokeLinecap="round" opacity="0.5" />
-      </svg>
-      {pickups.map((s, i) => (
-        <Pin key={i} x={s.x} y={s.y}><Store className="h-3.5 w-3.5" /></Pin>
-      ))}
-      <Pin x={420} y={60} home><Home className="h-3.5 w-3.5" /></Pin>
-      <div className="absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-100" style={{ left: `${(pos.x / 460) * 100}%`, top: `${(pos.y / 380) * 100}%` }}>
-        <span className="absolute inset-0 rounded-full bg-primary animate-pulse-ring" />
-        <span className="relative grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow"><Bike className="h-4 w-4" /></span>
-      </div>
-    </div>
-  );
-}
-
-function Pin({ x, y, children, home }: { x: number; y: number; children: React.ReactNode; home?: boolean }) {
-  return (
-    <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${(x / 460) * 100}%`, top: `${(y / 380) * 100}%` }}>
-      <span className={`grid h-8 w-8 place-items-center rounded-full border-2 border-background shadow-card ${home ? "bg-foreground text-background" : "bg-card text-foreground"}`}>{children}</span>
-    </div>
+    <DeliveryMap
+      tracking={effectiveTracking}
+      connectionState={externalTracking ? "connected" : connectionState}
+      isApproaching={externalApproaching ?? hookApproaching}
+      isArrived={externalArrived ?? hookArrived}
+      isDeviating={externalDeviating ?? hookDeviating}
+      deviationDistance={externalDeviationDist ?? hookDeviationDist}
+      deviationThreshold={externalDeviationThresh ?? hookDeviationThresh}
+      className={className}
+    />
   );
 }
