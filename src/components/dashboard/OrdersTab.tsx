@@ -48,7 +48,7 @@ export function OrdersTab() {
           </button>
           <Link
             to="/shop"
-            className="px-4 py-2 rounded-2xl bg-primary text-white text-xs font-semibold shadow-xs hover:bg-emerald-600 transition"
+            className="px-4 py-2 rounded-2xl bg-[#E31E24] text-white text-xs font-semibold shadow-xs hover:bg-red-700 transition"
           >
             Shop Parts
           </Link>
@@ -158,9 +158,9 @@ export function OrdersTab() {
                           <div
                             className={`h-6 w-6 rounded-full grid place-items-center text-[10px] font-bold transition-all ${
                               isCurrent
-                                ? "bg-primary text-white ring-4 ring-emerald-100 scale-105"
+                                ? "bg-[#E31E24] text-white ring-4 ring-red-100 scale-105"
                                 : isPassed
-                                ? "bg-emerald-600 text-white"
+                                ? "bg-[#E31E24] text-white"
                                 : "bg-gray-100 text-gray-400"
                             }`}
                           >
@@ -227,7 +227,7 @@ export function OrdersTab() {
                   <Link
                     to="/track/$id"
                     params={{ id: o.id }}
-                    className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold shadow-xs hover:bg-emerald-600 transition flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-xl bg-[#E31E24] text-white text-xs font-semibold shadow-xs hover:bg-red-700 transition flex items-center gap-1.5"
                   >
                     <MapPin className="h-3.5 w-3.5" />
                     <span>Track Live GPS Courier</span>
