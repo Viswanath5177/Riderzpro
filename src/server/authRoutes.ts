@@ -366,7 +366,10 @@ export async function handleAuthRoute(
       // Seller
       if (session.user_role === "seller") {
         const selRes = await query(
-          "SELECT id, email, store_name, owner_name, status, phone, is_active FROM sellers WHERE id = $1 LIMIT 1",
+          `SELECT id, email, store_name, owner_name, status, phone, city, state, gstin, is_active 
+           FROM sellers 
+           WHERE id = $1 OR email = (SELECT email FROM users WHERE id = $1 LIMIT 1) 
+           LIMIT 1`,
           [session.user_id]
         );
         if (selRes.rows.length > 0 && selRes.rows[0].is_active) {
@@ -379,6 +382,9 @@ export async function handleAuthRoute(
               email: s.email,
               fullName: s.owner_name,
               storeName: s.store_name,
+              city: s.city,
+              state: s.state,
+              gstin: s.gstin,
               sellerStatus: s.status,
               phone: s.phone,
               role: "seller",

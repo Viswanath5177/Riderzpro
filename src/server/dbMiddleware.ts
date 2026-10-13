@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "http";
+import crypto from "node:crypto";
 import { initializeDatabaseSchema, query } from "./db";
 import { ProductModel, CategoryModel, GarageModel } from "./models";
 import {
@@ -281,6 +282,147 @@ export function pgApiMiddleware() {
           } catch (error: any) {
             console.error("[PostgreSQL Public Sellers Error]:", error);
             return sendJson(res, 500, { success: false, error: error.message });
+          }
+        }
+
+        // ====================================================================
+        // 3.8 VENDOR DASHBOARD & STATS API: /api/vendor/dashboard
+        // ====================================================================
+        if (cleanUrl === "/api/vendor/dashboard" && method === "GET") {
+          try {
+            let sellerId: string | null = null;
+            let sellerEmail: string | null = null;
+
+            const cookieHeader = req.headers.cookie || "";
+            const tokenMatch = cookieHeader.match(/riderzpro_session=([^;]+)/);
+            if (tokenMatch) {
+              const token = tokenMatch[1].trim();
+              const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+              const sessRes = await query(
+                "SELECT user_id, user_role FROM auth_sessions WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now() LIMIT 1",
+                [tokenHash]
+              );
+              if (sessRes.rows[0]) {
+                const uid = sessRes.rows[0].user_id;
+                const sCheck = await query(
+                  "SELECT id, email FROM sellers WHERE id = $1 OR email = (SELECT email FROM users WHERE id = $1 LIMIT 1) LIMIT 1",
+                  [uid]
+                );
+                if (sCheck.rows[0]) {
+                  sellerId = sCheck.rows[0].id;
+                  sellerEmail = sCheck.rows[0].email;
+                }
+              }
+            }
+
+            // Fallback: If not authenticated or previewing, resolve latest registered seller
+            let sellerRow: any = null;
+            if (sellerId) {
+              const res = await query("SELECT * FROM sellers WHERE id = $1 LIMIT 1", [sellerId]);
+              sellerRow = res.rows[0];
+            }
+            if (!sellerRow) {
+              const res = await query("SELECT * FROM sellers ORDER BY created_at DESC LIMIT 1");
+              sellerRow = res.rows[0];
+              if (sellerRow) {
+                sellerId = sellerRow.id;
+                sellerEmail = sellerRow.email;
+              }
+            }
+
+            if (!sellerRow) {
+              return sendJson(res, 200, {
+                success: true,
+                data: {
+                  vendor: null,
+                  metrics: {
+                    totalGrossSales: 0,
+                    activeListings: 0,
+                    pendingOrders: 0,
+                    inPreparation: 0,
+                    outForDelivery: 0,
+                    deliveredOrders: 0,
+                    unitsInStock: 0,
+                    rating: 0,
+                    reviewCount: 0,
+                  },
+                  orders: [],
+                  shipments: [],
+                  reviews: [],
+                  settlements: [],
+                },
+              });
+            }
+
+            // Real products from DB for this vendor
+            const prodRes = await query(
+              `SELECT p.id, p.name, p.sku, p.price, p.mrp, p.stock, c.name AS category_name, p.verification_status, p.created_at 
+               FROM products p 
+               LEFT JOIN categories c ON p.category_id = c.id 
+               WHERE p.seller_id = $1`,
+              [sellerId]
+            );
+            const vendorProducts = prodRes.rows;
+            const activeListings = vendorProducts.filter((p: any) => p.verification_status === "approved").length;
+            const unitsInStock = vendorProducts.reduce((sum: number, p: any) => sum + (Number(p.stock) || 0), 0);
+
+            // Real orders from DB for this vendor
+            const ordersRes = await query(
+              `SELECT o.id, o.order_number, o.status, o.total_amount, o.delivery_address, o.created_at,
+                      u.full_name AS customer_name, u.phone AS customer_phone
+               FROM orders o
+               LEFT JOIN users u ON o.customer_id = u.id
+               WHERE o.seller_id = $1 OR o.seller_id IN (SELECT id FROM users WHERE email = $2)
+               ORDER BY o.created_at DESC`,
+              [sellerId, sellerEmail]
+            );
+            const vendorOrders = ordersRes.rows;
+            const totalGrossSales = vendorOrders
+              .filter((o: any) => o.status !== "cancelled")
+              .reduce((sum: number, o: any) => sum + (Number(o.total_amount) || 0), 0);
+
+            const pendingOrders = vendorOrders.filter((o: any) => o.status === "pending").length;
+            const inPreparation = vendorOrders.filter((o: any) => o.status === "processing").length;
+            const outForDelivery = vendorOrders.filter((o: any) => o.status === "shipped").length;
+            const deliveredOrders = vendorOrders.filter((o: any) => o.status === "delivered").length;
+
+            return sendJson(res, 200, {
+              success: true,
+              data: {
+                vendor: {
+                  id: sellerRow.id,
+                  storeName: sellerRow.store_name,
+                  ownerName: sellerRow.owner_name,
+                  email: sellerRow.email,
+                  phone: sellerRow.phone,
+                  city: sellerRow.city,
+                  state: sellerRow.state,
+                  pincode: sellerRow.pincode,
+                  address: sellerRow.business_address,
+                  gstin: sellerRow.gstin,
+                  status: sellerRow.status,
+                  created_at: sellerRow.created_at,
+                },
+                metrics: {
+                  totalGrossSales,
+                  activeListings,
+                  pendingOrders,
+                  inPreparation,
+                  outForDelivery,
+                  deliveredOrders,
+                  unitsInStock,
+                  rating: 0,
+                  reviewCount: 0,
+                },
+                orders: vendorOrders,
+                shipments: [],
+                reviews: [],
+                settlements: [],
+              },
+            });
+          } catch (err: any) {
+            console.error("[Vendor Dashboard API Error]:", err);
+            return sendJson(res, 500, { success: false, error: err.message });
           }
         }
 

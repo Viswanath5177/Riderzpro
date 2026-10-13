@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { Bike, Shield, ArrowLeft, LogOut, Sparkles, Menu, X, MoreHorizontal, type LucideIcon } from "lucide-react";
-import { Logo, ThemeToggle } from "./bits";
+import { Logo } from "./bits";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/lib/auth";
 
@@ -144,7 +144,6 @@ export function DashboardShell({
               <LogOut className="h-3.5 sm:h-4 w-3.5 sm:w-4" />
               <span className="hidden sm:inline">Sign out</span>
             </button>
-            <ThemeToggle />
           </div>
         </header>
 

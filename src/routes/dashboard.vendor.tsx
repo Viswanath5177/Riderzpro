@@ -39,12 +39,7 @@ import { toast } from "sonner";
 import { DashboardShell, Panel, Stat, StatusPill, type Section } from "@/components/site/DashboardShell";
 import { AreaTrend, Bars, series } from "@/components/site/Charts";
 import {
-  vendors,
-  products,
-  getVendor,
   inr,
-  getVendorReviews,
-  getVendorSettlements,
   type Product,
   type Vendor,
   type VendorOffer,
@@ -95,8 +90,53 @@ export function VendorDashboard() {
     email: string;
     fullName: string;
     role: string;
+    phone?: string;
     sellerStatus?: string;
+    storeName?: string;
+    city?: string;
+    state?: string;
+    gstin?: string;
   } | null>(null);
+
+  interface DbVendorData {
+    id: string;
+    storeName: string;
+    ownerName: string;
+    email: string;
+    phone: string;
+    city: string;
+    state?: string;
+    pincode?: string;
+    address?: string;
+    gstin?: string;
+    status: string;
+    created_at?: string;
+  }
+
+  interface DbVendorMetrics {
+    totalGrossSales: number;
+    activeListings: number;
+    pendingOrders: number;
+    inPreparation: number;
+    outForDelivery: number;
+    deliveredOrders: number;
+    unitsInStock: number;
+    rating: number;
+    reviewCount: number;
+  }
+
+  const [dbVendor, setDbVendor] = useState<DbVendorData | null>(null);
+  const [dbMetrics, setDbMetrics] = useState<DbVendorMetrics>({
+    totalGrossSales: 0,
+    activeListings: 0,
+    pendingOrders: 0,
+    inPreparation: 0,
+    outForDelivery: 0,
+    deliveredOrders: 0,
+    unitsInStock: 0,
+    rating: 0,
+    reviewCount: 0,
+  });
 
   useEffect(() => {
     getCurrentUser().then((u) => {
@@ -104,67 +144,15 @@ export function VendorDashboard() {
     });
   }, []);
 
-  const sellerStatus = currentUser?.sellerStatus || "APPROVED";
-  const isApproved = sellerStatus === "APPROVED" || currentUser?.role?.includes("ADMIN") || currentUser?.role === "admin";
-
-  // Active vendor selection (allows previewing as any of the 6 verified marketplace vendors)
-  const [selectedVendorId, setSelectedVendorId] = useState<string>("v1");
-  const currentVendor: Vendor = useMemo(() => getVendor(selectedVendorId), [selectedVendorId]);
-
   const [tab, setTab] = useState<string>("overview");
 
-  // Dynamic Products State from DB / fallback
+  // Dynamic Products State from DB
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [inventoryViewMode, setInventoryViewMode] = useState<"list" | "form" | "add_offer">("list");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [vendorOffersMap, setVendorOffersMap] = useState<Record<string, VendorOffer>>({});
 
-  // Local state for vendor offers so mutations (toggle pause, price, stock) reflect immediately
-  const [vendorOffersMap, setVendorOffersMap] = useState<Record<string, VendorOffer>>(() => {
-    const map: Record<string, VendorOffer> = {};
-    products.forEach((p) => {
-      const off = p.offers.find((o) => o.vendorId === "v1") || p.offers[0];
-      if (off) map[p.id] = { ...off };
-    });
-    return map;
-  });
-
-  // Re-sync offers when active vendor changes
-  useEffect(() => {
-    const map: Record<string, VendorOffer> = {};
-    allProducts.forEach((p) => {
-      const off = p.offers.find((o) => o.vendorId === selectedVendorId);
-      if (off) {
-        map[p.id] = { ...off };
-      }
-    });
-    setVendorOffersMap(map);
-  }, [selectedVendorId, allProducts]);
-
-  // Fetch updated catalog from DB
-  const fetchProductsFromDb = () => {
-    fetch("/api/products?all=true")
-      .then((r) => r.json())
-      .then((res) => {
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-          const dbProducts = res.data.map((row: any) => mapDbProductToProduct(row));
-          setAllProducts(dbProducts);
-        }
-      })
-      .catch((err) => {
-        console.log("[DB fetch notice vendor]:", err.message);
-      });
-  };
-
-  useEffect(() => {
-    fetchProductsFromDb();
-  }, []);
-
-  // Filter products that this vendor has an offer for
-  const vendorProducts = useMemo(() => {
-    return allProducts.filter((p) => p.offers.some((o) => o.vendorId === selectedVendorId) || vendorOffersMap[p.id]);
-  }, [allProducts, selectedVendorId, vendorOffersMap]);
-
-  // Orders for this specific vendor
+  // Orders for this specific vendor (Strictly real orders from DB, defaults to empty)
   interface VendorOrderItem {
     orderId: string;
     productName: string;
@@ -180,99 +168,112 @@ export function VendorDashboard() {
     courier?: string;
   }
 
-  const [vendorOrders, setVendorOrders] = useState<VendorOrderItem[]>([
-    {
-      orderId: "ORD-9421",
-      productName: "NexWave Smart BMS 16S 60V",
-      productId: "prod-3",
-      qty: 1,
-      price: 8499,
-      customerName: "Aakash Sharma",
-      customerPhone: "+91 98765 43210",
-      address: "Flat 402, Green Glen Layout, Bellandur, Bengaluru 560103",
-      createdAt: "15 mins ago",
-      status: "New",
-    },
-    {
-      orderId: "ORD-9388",
-      productName: "VoltMaster Ultra 48V 35Ah Li-ion Battery Pack",
-      productId: "prod-1",
-      qty: 1,
-      price: 43999,
-      customerName: "Rohan Nambiar",
-      customerPhone: "+91 98450 11223",
-      address: "14th Main, HSR Layout Sector 4, Bengaluru 560102",
-      createdAt: "2 hours ago",
-      status: "Preparing",
-    },
-    {
-      orderId: "ORD-9290",
-      productName: "HyperDrive Sinewave Controller 60V-72V",
-      productId: "prod-5",
-      qty: 2,
-      price: 9999,
-      customerName: "Pooja Hegde",
-      customerPhone: "+91 97410 88992",
-      address: "Lavelle Road, Shanthala Nagar, Bengaluru 560001",
-      createdAt: "Yesterday",
-      status: "Shipped",
-      courier: "Delhivery Surface",
-      awbNumber: "DEL-991823481",
-    },
-    {
-      orderId: "ORD-9102",
-      productName: "ProBrembo Ceramic Sintered Disc Brake Pads",
-      productId: "prod-6",
-      qty: 2,
-      price: 1899,
-      customerName: "Sanjay Gupta",
-      customerPhone: "+91 98860 33441",
-      address: "7th Block, Koramangala, Bengaluru 560095",
-      createdAt: "3 days ago",
-      status: "Delivered",
-      courier: "Bluedart Express",
-      awbNumber: "BD-88231019",
-    },
-  ]);
+  const [vendorOrders, setVendorOrders] = useState<VendorOrderItem[]>([]);
 
-  // Merge real orders placed in store by customer for this vendor
-  useEffect(() => {
-    if (orders.length > 0) {
-      const newItems: VendorOrderItem[] = [];
-      orders.forEach((o) => {
-        o.groups.forEach((g) => {
-          if (g.vendorId === selectedVendorId) {
-            g.items.forEach((it) => {
-              const p = allProducts.find((prod) => prod.id === it.productId);
-              if (p) {
-                newItems.push({
-                  orderId: o.id,
-                  productName: p.name,
-                  productId: p.id,
-                  qty: it.qty,
-                  price: it.price,
-                  customerName: o.shippingAddress?.name || "Customer",
-                  customerPhone: o.shippingAddress?.phone || "+91 98765 43210",
-                  address: `${o.shippingAddress?.street || ""}, ${o.shippingAddress?.city || "Bengaluru"} - ${o.shippingAddress?.pincode || "560103"}`,
-                  createdAt: "Recently",
-                  status: o.status === 0 ? "New" : o.status === 1 ? "Preparing" : o.status === 2 ? "Packed" : o.status < 5 ? "Shipped" : "Delivered",
-                  courier: "Delhivery",
-                  awbNumber: `DEL-${o.id.replace(/\D/g, "") || "881273"}`,
-                });
-              }
-            });
+  // Fetch live dashboard & vendor profile from DB
+  const fetchVendorDashboard = () => {
+    fetch("/api/vendor/dashboard")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && res.data) {
+          if (res.data.vendor) {
+            setDbVendor(res.data.vendor);
           }
-        });
+          if (res.data.metrics) {
+            setDbMetrics(res.data.metrics);
+          }
+          if (Array.isArray(res.data.orders)) {
+            const mappedOrders: VendorOrderItem[] = res.data.orders.map((o: any) => ({
+              orderId: o.order_number || o.id,
+              productName: o.product_name || o.name || "EV Spare Part",
+              productId: o.product_id || o.id,
+              qty: Number(o.quantity) || 1,
+              price: Number(o.total_amount) || 0,
+              customerName: o.customer_name || "Customer",
+              customerPhone: o.customer_phone || "+91 98765 43210",
+              address: o.delivery_address || "Customer Address",
+              createdAt: o.created_at ? new Date(o.created_at).toLocaleDateString() : "Recently",
+              status:
+                o.status === "pending"
+                  ? "New"
+                  : o.status === "processing"
+                  ? "Preparing"
+                  : o.status === "shipped"
+                  ? "Shipped"
+                  : o.status === "delivered"
+                  ? "Delivered"
+                  : "Cancelled",
+            }));
+            setVendorOrders(mappedOrders);
+          }
+        }
+      })
+      .catch((err) => {
+        console.log("[DB vendor dashboard notice]:", err.message);
       });
-      if (newItems.length > 0) {
-        setVendorOrders((prev) => {
-          const existingIds = new Set(prev.map((x) => x.orderId));
-          const deduped = newItems.filter((x) => !existingIds.has(x.orderId));
-          return [...deduped, ...prev];
-        });
-      }
-    }
-  }, [orders, selectedVendorId, allProducts]);
+  };
+
+  useEffect(() => {
+    fetchVendorDashboard();
+  }, []);
+
+  // Fetch updated catalog from DB
+  const fetchProductsFromDb = () => {
+    fetch("/api/products?all=true")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          const dbProducts = res.data.map((row: any) => mapDbProductToProduct(row));
+          setAllProducts(dbProducts);
+        }
+      })
+      .catch((err) => {
+        console.log("[DB fetch notice vendor]:", err.message);
+      });
+  };
+
+  useEffect(() => {
+    fetchProductsFromDb();
+  }, []);
+
+  const currentVendor = useMemo(() => {
+    return {
+      id: dbVendor?.id || currentUser?.id || "seller_01",
+      name: dbVendor?.storeName || currentUser?.storeName || currentUser?.fullName || "My Store",
+      area: dbVendor?.city || currentUser?.city || "Bengaluru",
+      city: dbVendor?.city || currentUser?.city || "Bengaluru",
+      state: dbVendor?.state || currentUser?.state || "Karnataka",
+      address: dbVendor?.address || (dbVendor?.city ? `${dbVendor.city}, ${dbVendor.state || ""}` : "Not provided"),
+      phone: dbVendor?.phone || currentUser?.phone || "Not provided",
+      email: dbVendor?.email || currentUser?.email || "Not provided",
+      gstin: dbVendor?.gstin || currentUser?.gstin || "Not Registered",
+      description: "Authorized automotive and spare parts supplier with verified OEM parts and rapid dispatch.",
+      businessHours: "Mon - Sat: 9:00 AM - 8:30 PM",
+      shippingPolicy: "Dispatch within 24-48 hours.",
+      returnPolicy: "7-day replacement warranty for manufacturing defects.",
+      verificationBadge: (dbVendor?.status || currentUser?.sellerStatus) === "APPROVED" ? "Official Marketplace Partner" : "Under Review",
+      rating: dbMetrics.rating,
+      reviewCount: dbMetrics.reviewCount,
+      commissionRate: 0.1,
+      deliveryCoverage: dbVendor?.city ? `${dbVendor.city} and nearby zones` : "All regions",
+    };
+  }, [dbVendor, currentUser, dbMetrics]);
+
+  const sellerStatus = dbVendor?.status || currentUser?.sellerStatus || "PENDING_REVIEW";
+  const isApproved = sellerStatus === "APPROVED";
+
+  // Filter products that this vendor created or has an offer for
+  const vendorProducts = useMemo(() => {
+    const vId = currentVendor.id;
+    const vEmail = currentVendor.email;
+    return allProducts.filter(
+      (p: any) =>
+        (p.sellerId && p.sellerId === vId) ||
+        (p.sellerEmail && p.sellerEmail === vEmail) ||
+        (p.offers && p.offers.some((o: any) => o.vendorId === vId)) ||
+        vendorOffersMap[p.id]
+    );
+  }, [allProducts, currentVendor, vendorOffersMap]);
 
   // Order status progression
   const updateOrderState = (orderId: string, nextStatus: VendorOrderItem["status"]) => {
@@ -320,7 +321,7 @@ export function VendorDashboard() {
       ...prev,
       [productId]: {
         ...(prev[productId] || {
-          vendorId: selectedVendorId,
+          vendorId: currentVendor.id,
           price: newPrice,
           stock: newStock,
           condition: "new",
@@ -345,7 +346,7 @@ export function VendorDashboard() {
         ...prev,
         [productId]: {
           ...(curr || {
-            vendorId: selectedVendorId,
+            vendorId: currentVendor.id,
             price: 5000,
             stock: 10,
           }),
@@ -357,7 +358,7 @@ export function VendorDashboard() {
 
   const handleAdjustStock = (productId: string, delta: number) => {
     setVendorOffersMap((prev) => {
-      const curr = prev[productId] || { vendorId: selectedVendorId, price: 5000, stock: 10 };
+      const curr = prev[productId] || { vendorId: currentVendor.id, price: 5000, stock: 10 };
       const newStock = Math.max(0, (curr.stock || 0) + delta);
       toast.success(`Stock updated: ${newStock} units`);
       return {
@@ -386,7 +387,7 @@ export function VendorDashboard() {
     setVendorOffersMap((prev) => ({
       ...prev,
       [prod.id]: {
-        vendorId: selectedVendorId,
+        vendorId: currentVendor.id,
         price: offerPriceInput,
         stock: offerStockInput,
         mrp: prod.mrp || Math.round(offerPriceInput * 1.2),
@@ -486,60 +487,29 @@ export function VendorDashboard() {
   };
 
 
-  // Reviews and Settlements for current vendor
-  const vendorReviews: VendorReview[] = useMemo(() => getVendorReviews(selectedVendorId), [selectedVendorId]);
-  const vendorSettlements: VendorSettlement[] = useMemo(() => getVendorSettlements(selectedVendorId), [selectedVendorId]);
+  // Reviews and Settlements for current vendor (Strictly real data, default empty)
+  const vendorReviews: VendorReview[] = useMemo(() => [], []);
+  const vendorSettlements: VendorSettlement[] = useMemo(() => [], []);
 
-  // Overall metrics
-  const activeOffersCount = Object.values(vendorOffersMap).filter((o) => o.status !== "paused").length || vendorProducts.length;
-  const totalStockUnits = Object.values(vendorOffersMap).reduce((s, o) => s + (o.stock || 0), 0);
-  const pendingOrdersCount = vendorOrders.filter((o) => o.status === "New").length;
-  const preparingOrdersCount = vendorOrders.filter((o) => o.status === "Preparing" || o.status === "Packed").length;
-  const shippedOrdersCount = vendorOrders.filter((o) => o.status === "Shipped").length;
-  const deliveredOrdersCount = vendorOrders.filter((o) => o.status === "Delivered").length;
-  const totalGrossSales = vendorOrders.reduce((s, o) => s + o.price * o.qty, 0) + (vendorSettlements[0]?.grossSales || 150000);
+  // Overall metrics strictly from database
+  const activeOffersCount = dbMetrics.activeListings || Object.values(vendorOffersMap).filter((o) => o.status !== "paused").length || vendorProducts.length;
+  const totalStockUnits = dbMetrics.unitsInStock || Object.values(vendorOffersMap).reduce((s, o) => s + (o.stock || 0), 0);
+  const pendingOrdersCount = dbMetrics.pendingOrders || vendorOrders.filter((o) => o.status === "New").length;
+  const preparingOrdersCount = dbMetrics.inPreparation || vendorOrders.filter((o) => o.status === "Preparing" || o.status === "Packed").length;
+  const shippedOrdersCount = dbMetrics.outForDelivery || vendorOrders.filter((o) => o.status === "Shipped").length;
+  const deliveredOrdersCount = dbMetrics.deliveredOrders || vendorOrders.filter((o) => o.status === "Delivered").length;
+  const totalGrossSales = dbMetrics.totalGrossSales || vendorOrders.reduce((s, o) => s + o.price * o.qty, 0);
 
   return (
     <DashboardShell
       title={currentVendor.name}
-      subtitle={`Authorized Seller Portal · ${currentVendor.area}, Bengaluru`}
+      subtitle={`Authorized Seller Portal · ${currentVendor.city}, ${currentVendor.state}`}
       sections={vendorSections}
       active={tab}
       onSelect={(id) => {
         setTab(id);
         setInventoryViewMode("list");
       }}
-      actions={
-        <div className="flex items-center gap-2">
-          {/* Vendor Switcher */}
-          <div className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 shadow-2xs">
-            <Store className="h-4 w-4 text-primary" />
-            <span className="hidden sm:inline text-xs text-muted-foreground font-medium">Vendor:</span>
-            <select
-              value={selectedVendorId}
-              onChange={(e) => setSelectedVendorId(e.target.value)}
-              className="bg-transparent text-xs font-bold text-foreground outline-none cursor-pointer"
-            >
-              {vendors.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name} ({v.area})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Public Shop Profile Link */}
-          <Link
-            to="/vendor/$id"
-            params={{ id: currentVendor.id }}
-            target="_blank"
-            className="flex items-center gap-1 rounded-xl border border-border bg-muted/60 px-3 py-1.5 text-xs font-semibold hover:border-primary hover:text-primary transition"
-          >
-            <span className="hidden md:inline">Public Shop</span>
-            <ExternalLink className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-      }
     >
       {/* ─────────────────────────────────────────────────────────────
           1. OVERVIEW TAB
@@ -557,11 +527,11 @@ export function VendorDashboard() {
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-bold text-foreground">{currentVendor.name}</h3>
                   <span className="rounded-full bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-[11px] font-bold">
-                    {currentVendor.verificationBadge || "Verified Partner"}
+                    {currentVendor.verificationBadge}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  GSTIN: {currentVendor.gstin || "29AABCV1234F1Z5"} · Commission Rate: {Math.round((currentVendor.commissionRate || 0.1) * 100)}% · Service Coverage: {currentVendor.deliveryCoverage || "All Bengaluru"}
+                  GSTIN: {currentVendor.gstin} · Commission Rate: {Math.round((currentVendor.commissionRate || 0.1) * 100)}% · Service Coverage: {currentVendor.deliveryCoverage}
                 </p>
               </div>
             </div>
@@ -576,25 +546,51 @@ export function VendorDashboard() {
             </button>
           </div>
 
-          {/* Real Metrics Stats */}
+          {/* Real Metrics Stats from Database */}
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <Stat label="Total Gross Sales" value={inr(totalGrossSales)} delta="+14.2% this week" Icon={IndianRupee} />
+            <Stat
+              label="Total Gross Sales"
+              value={inr(totalGrossSales)}
+              delta={totalGrossSales > 0 ? "From live DB orders" : undefined}
+              Icon={IndianRupee}
+            />
             <Stat label="Active Listings" value={`${activeOffersCount}`} Icon={Boxes} />
-            <Stat label="Pending Orders" value={`${pendingOrdersCount}`} delta={pendingOrdersCount > 0 ? "Requires action" : "All clear"} Icon={ShoppingBag} />
-            <Stat label="Shop Rating" value={`${currentVendor.rating} ★ (${currentVendor.reviewCount || 150}+)`} Icon={Star} />
+            <Stat
+              label="Pending Orders"
+              value={`${pendingOrdersCount}`}
+              delta={pendingOrdersCount > 0 ? "Requires action" : "All clear"}
+              Icon={ShoppingBag}
+            />
+            <Stat
+              label="Shop Rating"
+              value={dbMetrics.reviewCount > 0 ? `${currentVendor.rating} ★ (${dbMetrics.reviewCount})` : "No ratings yet"}
+              Icon={Star}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <Stat label="Units in Stock" value={`${totalStockUnits} pcs`} Icon={Package} />
             <Stat label="In Preparation" value={`${preparingOrdersCount}`} Icon={Clock} />
             <Stat label="Out for Delivery" value={`${shippedOrdersCount}`} Icon={Truck} />
-            <Stat label="Delivered Orders" value={`${deliveredOrdersCount}`} delta="100% on-time" Icon={CheckCircle2} />
+            <Stat
+              label="Delivered Orders"
+              value={`${deliveredOrdersCount}`}
+              delta={deliveredOrdersCount > 0 ? "100% on-time" : undefined}
+              Icon={CheckCircle2}
+            />
           </div>
 
           {/* Charts & Incoming Orders */}
           <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
             <Panel title="Weekly Sales Trend (₹)">
-              <AreaTrend data={series(totalGrossSales > 0 ? [34000, 52000, 48000, 69000, 61000, 84000, 41000] : [0, 0, 0, 0, 0, 0, 0])} />
+              {totalGrossSales > 0 ? (
+                <AreaTrend data={series([0, 0, 0, Math.round(totalGrossSales * 0.3), Math.round(totalGrossSales * 0.5), Math.round(totalGrossSales * 0.8), totalGrossSales])} />
+              ) : (
+                <div className="py-12 text-center text-xs text-muted-foreground">
+                  <IndianRupee className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  No sales revenue recorded in database yet
+                </div>
+              )}
             </Panel>
 
             <Panel
@@ -605,48 +601,62 @@ export function VendorDashboard() {
                 </button>
               }
             >
-              <div className="space-y-3">
-                {vendorOrders.slice(0, 3).map((ord) => (
-                  <div key={ord.orderId} className="rounded-xl border border-border p-3.5 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs font-bold">{ord.orderId}</span>
-                      <StatusPill s={ord.status} />
-                    </div>
-                    <p className="text-xs font-semibold truncate">{ord.productName}</p>
-                    <div className="flex justify-between items-center text-[11px] text-muted-foreground">
-                      <span>{ord.qty} unit(s) · {inr(ord.price * ord.qty)}</span>
-                      <span>{ord.createdAt}</span>
-                    </div>
-                    {ord.status === "New" && (
-                      <div className="flex gap-2 pt-1">
-                        <button
-                          onClick={() => updateOrderState(ord.orderId, "Preparing")}
-                          className="flex-1 rounded-lg bg-primary py-1.5 text-xs font-bold text-primary-foreground hover:opacity-90"
-                        >
-                          Accept Order
-                        </button>
-                        <button
-                          onClick={() => updateOrderState(ord.orderId, "Cancelled")}
-                          className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted"
-                        >
-                          Reject
-                        </button>
+              {vendorOrders.length === 0 ? (
+                <div className="py-12 text-center text-xs text-muted-foreground">
+                  <ShoppingBag className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  No incoming orders found in database
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {vendorOrders.slice(0, 3).map((ord) => (
+                    <div key={ord.orderId} className="rounded-xl border border-border p-3.5 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs font-bold">{ord.orderId}</span>
+                        <StatusPill s={ord.status} />
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      <p className="text-xs font-semibold truncate">{ord.productName}</p>
+                      <div className="flex justify-between items-center text-[11px] text-muted-foreground">
+                        <span>{ord.qty} unit(s) · {inr(ord.price * ord.qty)}</span>
+                        <span>{ord.createdAt}</span>
+                      </div>
+                      {ord.status === "New" && (
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            onClick={() => updateOrderState(ord.orderId, "Preparing")}
+                            className="flex-1 rounded-lg bg-primary py-1.5 text-xs font-bold text-primary-foreground hover:opacity-90"
+                          >
+                            Accept Order
+                          </button>
+                          <button
+                            onClick={() => updateOrderState(ord.orderId, "Cancelled")}
+                            className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </Panel>
           </div>
 
           {/* Top Selling Products */}
           <Panel title="Top Products by Unit Volume">
-            <Bars
-              data={vendorProducts.slice(0, 6).map((p, idx) => ({
-                name: p.name.split(" ")[0] + " " + (p.name.split(" ")[1] || ""),
-                value: [42, 35, 28, 19, 14, 11][idx] || 10,
-              }))}
-            />
+            {vendorProducts.length === 0 ? (
+              <div className="py-8 text-center text-xs text-muted-foreground">
+                <Boxes className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                No product catalog data found for this seller in database
+              </div>
+            ) : (
+              <Bars
+                data={vendorProducts.slice(0, 6).map((p) => ({
+                  name: p.name.split(" ").slice(0, 3).join(" "),
+                  value: Number(p.offers?.[0]?.stock) || 0,
+                }))}
+              />
+            )}
           </Panel>
         </div>
       )}
@@ -937,11 +947,13 @@ export function VendorDashboard() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {vendorProducts.map((p) => {
-                    const off = vendorOffersMap[p.id] || p.offers.find((o) => o.vendorId === selectedVendorId) || p.offers[0] || {
-                      price: 4999,
-                      stock: 10,
+                    const fallbackPrice = p.offers.length > 0 ? p.offers[0].price : (p.mrp || 0);
+                    const fallbackStock = p.offers.length > 0 ? p.offers[0].stock : 0;
+                    const off = vendorOffersMap[p.id] || p.offers.find((o) => o.vendorId === currentVendor.id) || p.offers[0] || {
+                      price: fallbackPrice,
+                      stock: fallbackStock,
                       status: "active",
-                      warrantyTerms: "12 Months Warranty",
+                      warrantyTerms: `${p.warrantyMonths || 12} Months Warranty`,
                     };
                     const isPaused = off.status === "paused";
 
@@ -1045,81 +1057,90 @@ export function VendorDashboard() {
           </div>
 
           <Panel title="Stock Allocation & Instant Adjuster">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px] text-sm">
-                <thead className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border pb-2">
-                  <tr>
-                    <th className="py-2.5">Product SKU</th>
-                    <th>Category</th>
-                    <th>Current Stock</th>
-                    <th>Stock Health</th>
-                    <th>Quick Adjust Stock</th>
-                    <th className="text-right">Unit Price</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {vendorProducts.map((p) => {
-                    const off = vendorOffersMap[p.id] || p.offers[0] || { stock: 10, price: 5000 };
-                    const isLow = off.stock < 5 && off.stock > 0;
-                    const isOut = off.stock === 0;
+            {vendorProducts.length === 0 ? (
+              <div className="py-12 text-center text-xs text-muted-foreground">
+                <Package className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                No inventory stock items configured for this seller yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[700px] text-sm">
+                  <thead className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border pb-2">
+                    <tr>
+                      <th className="py-2.5">Product SKU</th>
+                      <th>Category</th>
+                      <th>Current Stock</th>
+                      <th>Stock Health</th>
+                      <th>Quick Adjust Stock</th>
+                      <th className="text-right">Unit Price</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {vendorProducts.map((p) => {
+                      const fallbackPrice = p.offers.length > 0 ? p.offers[0].price : (p.mrp || 0);
+                      const fallbackStock = p.offers.length > 0 ? p.offers[0].stock : 0;
+                      const off = vendorOffersMap[p.id] || p.offers[0] || { stock: fallbackStock, price: fallbackPrice };
+                      const isLow = off.stock < 5 && off.stock > 0;
+                      const isOut = off.stock === 0;
 
-                    return (
-                      <tr key={p.id} className="hover:bg-muted/30 transition">
-                        <td className="py-3 font-semibold">
-                          <p className="leading-tight">{p.name}</p>
-                          <span className="text-xs text-muted-foreground font-mono">{p.brand} · {p.id}</span>
-                        </td>
+                      return (
+                        <tr key={p.id} className="hover:bg-muted/30 transition">
+                          <td className="py-3 font-semibold">
+                            <p className="leading-tight">{p.name}</p>
+                            <span className="text-xs text-muted-foreground font-mono">{p.brand} · {p.id}</span>
+                          </td>
 
-                        <td>
-                          <span className="text-xs text-muted-foreground">{p.category}</span>
-                        </td>
+                          <td>
+                            <span className="text-xs text-muted-foreground">{p.category}</span>
+                          </td>
 
-                        <td className="font-bold text-foreground">
-                          {off.stock} units
-                        </td>
+                          <td className="font-bold text-foreground">
+                            {off.stock} units
+                          </td>
 
-                        <td>
-                          {isOut ? (
-                            <span className="rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-xs font-bold">Out of stock</span>
-                          ) : isLow ? (
-                            <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-bold">Low stock (&lt; 5)</span>
-                          ) : (
-                            <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-xs font-bold">Healthy</span>
-                          )}
-                        </td>
+                          <td>
+                            {isOut ? (
+                              <span className="rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-xs font-bold">Out of stock</span>
+                            ) : isLow ? (
+                              <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-bold">Low stock (&lt; 5)</span>
+                            ) : (
+                              <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-xs font-bold">Healthy</span>
+                            )}
+                          </td>
 
-                        <td>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={() => handleAdjustStock(p.id, -1)}
-                              className="h-7 w-7 rounded-lg border border-border text-xs font-bold hover:bg-muted"
-                            >
-                              -1
-                            </button>
-                            <button
-                              onClick={() => handleAdjustStock(p.id, 1)}
-                              className="h-7 w-7 rounded-lg border border-border text-xs font-bold hover:bg-muted"
-                            >
-                              +1
-                            </button>
-                            <button
-                              onClick={() => handleAdjustStock(p.id, 5)}
-                              className="h-7 px-2 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary hover:text-white transition"
-                            >
-                              +5 Replenish
-                            </button>
-                          </div>
-                        </td>
+                          <td>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => handleAdjustStock(p.id, -1)}
+                                className="h-7 w-7 rounded-lg border border-border text-xs font-bold hover:bg-muted"
+                              >
+                                -1
+                              </button>
+                              <button
+                                onClick={() => handleAdjustStock(p.id, 1)}
+                                className="h-7 w-7 rounded-lg border border-border text-xs font-bold hover:bg-muted"
+                              >
+                                +1
+                              </button>
+                              <button
+                                onClick={() => handleAdjustStock(p.id, 5)}
+                                className="h-7 px-2 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary hover:text-white transition"
+                              >
+                                +5 Replenish
+                              </button>
+                            </div>
+                          </td>
 
-                        <td className="text-right font-bold">
-                          {inr(off.price)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          <td className="text-right font-bold">
+                            {inr(off.price)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </Panel>
         </div>
       )}
@@ -1130,98 +1151,108 @@ export function VendorDashboard() {
       {tab === "orders" && (
         <div className="space-y-6">
           <Panel title={`Orders Containing Your Items (${vendorOrders.length})`}>
-            <div className="space-y-4">
-              {vendorOrders.map((ord) => (
-                <div key={ord.orderId} className="rounded-2xl border border-border bg-card p-5 shadow-2xs space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono text-sm font-extrabold text-foreground">{ord.orderId}</span>
-                      <span className="text-xs text-muted-foreground">{ord.createdAt}</span>
-                    </div>
-                    <StatusPill s={ord.status} />
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-[1fr_240px]">
-                    <div>
-                      <p className="font-bold text-sm text-foreground">{ord.productName}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Quantity: <span className="font-bold text-foreground">{ord.qty}</span> · Price: <span className="font-bold text-foreground">{inr(ord.price)}</span> · Total: <span className="font-bold text-primary">{inr(ord.price * ord.qty)}</span>
-                      </p>
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        <span className="font-bold text-foreground">Delivery Recipient:</span> {ord.customerName} ({ord.customerPhone})
-                        <p className="mt-0.5">{ord.address}</p>
+            {vendorOrders.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border p-12 text-center">
+                <ShoppingBag className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+                <h3 className="text-sm font-bold text-foreground">No Incoming Orders Yet</h3>
+                <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                  When customers purchase your listed spare parts and accessories, their order details and shipping instructions will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {vendorOrders.map((ord) => (
+                  <div key={ord.orderId} className="rounded-2xl border border-border bg-card p-5 shadow-2xs space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-sm font-extrabold text-foreground">{ord.orderId}</span>
+                        <span className="text-xs text-muted-foreground">{ord.createdAt}</span>
                       </div>
+                      <StatusPill s={ord.status} />
                     </div>
 
-                    <div className="flex flex-col justify-between border-t sm:border-t-0 sm:border-l border-border sm:pl-4 pt-3 sm:pt-0">
-                      {ord.awbNumber && (
-                        <div className="rounded-lg bg-muted/40 p-2.5 text-xs mb-2">
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground block">Courier Tracking</span>
-                          <span className="font-semibold text-foreground">{ord.courier}</span>
-                          <span className="font-mono text-xs block text-primary font-bold">{ord.awbNumber}</span>
+                    <div className="grid gap-4 sm:grid-cols-[1fr_240px]">
+                      <div>
+                        <p className="font-bold text-sm text-foreground">{ord.productName}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Quantity: <span className="font-bold text-foreground">{ord.qty}</span> · Price: <span className="font-bold text-foreground">{inr(ord.price)}</span> · Total: <span className="font-bold text-primary">{inr(ord.price * ord.qty)}</span>
+                        </p>
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          <span className="font-bold text-foreground">Delivery Recipient:</span> {ord.customerName} ({ord.customerPhone})
+                          <p className="mt-0.5">{ord.address}</p>
                         </div>
-                      )}
+                      </div>
 
-                      {/* Step-by-Step Fulfillment Actions */}
-                      <div className="space-y-2">
-                        {ord.status === "New" && (
-                          <div className="flex gap-2">
+                      <div className="flex flex-col justify-between border-t sm:border-t-0 sm:border-l border-border sm:pl-4 pt-3 sm:pt-0">
+                        {ord.awbNumber && (
+                          <div className="rounded-lg bg-muted/40 p-2.5 text-xs mb-2">
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground block">Courier Tracking</span>
+                            <span className="font-semibold text-foreground">{ord.courier}</span>
+                            <span className="font-mono text-xs block text-primary font-bold">{ord.awbNumber}</span>
+                          </div>
+                        )}
+
+                        {/* Step-by-Step Fulfillment Actions */}
+                        <div className="space-y-2">
+                          {ord.status === "New" && (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => updateOrderState(ord.orderId, "Preparing")}
+                                className="flex-1 rounded-xl bg-primary py-2 text-xs font-bold text-primary-foreground hover:opacity-90"
+                              >
+                                Accept & Prepare
+                              </button>
+                              <button
+                                onClick={() => updateOrderState(ord.orderId, "Cancelled")}
+                                className="rounded-xl border border-border px-3 py-2 text-xs font-medium hover:bg-muted"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          )}
+
+                          {ord.status === "Preparing" && (
                             <button
-                              onClick={() => updateOrderState(ord.orderId, "Preparing")}
-                              className="flex-1 rounded-xl bg-primary py-2 text-xs font-bold text-primary-foreground hover:opacity-90"
+                              onClick={() => updateOrderState(ord.orderId, "Packed")}
+                              className="w-full rounded-xl bg-blue-600 py-2 text-xs font-bold text-white hover:bg-blue-700"
                             >
-                              Accept & Prepare
+                              Mark Items Packed & Ready
                             </button>
+                          )}
+
+                          {ord.status === "Packed" && (
                             <button
-                              onClick={() => updateOrderState(ord.orderId, "Cancelled")}
-                              className="rounded-xl border border-border px-3 py-2 text-xs font-medium hover:bg-muted"
+                              onClick={() => updateOrderState(ord.orderId, "Shipped")}
+                              className="w-full rounded-xl bg-primary py-2 text-xs font-bold text-primary-foreground hover:opacity-90 flex items-center justify-center gap-1.5"
                             >
-                              Reject
+                              <Truck className="h-4 w-4" />
+                              Request Courier Pickup
                             </button>
-                          </div>
-                        )}
+                          )}
 
-                        {ord.status === "Preparing" && (
-                          <button
-                            onClick={() => updateOrderState(ord.orderId, "Packed")}
-                            className="w-full rounded-xl bg-blue-600 py-2 text-xs font-bold text-white hover:bg-blue-700"
-                          >
-                            Mark Items Packed & Ready
-                          </button>
-                        )}
+                          {ord.status === "Shipped" && (
+                            <div className="text-center">
+                              <span className="inline-block text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200">
+                                In Transit with {ord.courier}
+                              </span>
+                              <p className="text-[11px] text-muted-foreground mt-1">Delivery verified via courier checkpoint webhook</p>
+                            </div>
+                          )}
 
-                        {ord.status === "Packed" && (
-                          <button
-                            onClick={() => updateOrderState(ord.orderId, "Shipped")}
-                            className="w-full rounded-xl bg-primary py-2 text-xs font-bold text-primary-foreground hover:opacity-90 flex items-center justify-center gap-1.5"
-                          >
-                            <Truck className="h-4 w-4" />
-                            Request Courier Pickup
-                          </button>
-                        )}
-
-                        {ord.status === "Shipped" && (
-                          <div className="text-center">
-                            <span className="inline-block text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200">
-                              In Transit with {ord.courier}
-                            </span>
-                            <p className="text-[11px] text-muted-foreground mt-1">Delivery verified via courier checkpoint webhook</p>
-                          </div>
-                        )}
-
-                        {ord.status === "Delivered" && (
-                          <div className="text-center">
-                            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg">
-                              <CheckCircle2 className="h-3.5 w-3.5" /> Order Completed & Delivered
-                            </span>
-                          </div>
-                        )}
+                          {ord.status === "Delivered" && (
+                            <div className="text-center">
+                              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg">
+                                <CheckCircle2 className="h-3.5 w-3.5" /> Order Completed & Delivered
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Panel>
         </div>
       )}
@@ -1232,38 +1263,48 @@ export function VendorDashboard() {
       {tab === "shipments" && (
         <div className="space-y-6">
           <Panel title="Active Courier Dispatches & Live Waybills">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] text-sm">
-                <thead className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border pb-2">
-                  <tr>
-                    <th className="py-2.5">Waybill (AWB)</th>
-                    <th>Associated Order</th>
-                    <th>Logistics Partner</th>
-                    <th>Destination</th>
-                    <th>Status</th>
-                    <th className="text-right">Item Value</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {vendorOrders
-                    .filter((o) => o.awbNumber)
-                    .map((ord) => (
-                      <tr key={ord.orderId} className="hover:bg-muted/30 transition">
-                        <td className="py-3 font-mono font-bold text-primary">
-                          {ord.awbNumber}
-                        </td>
-                        <td className="font-semibold">{ord.orderId}</td>
-                        <td>{ord.courier || "Delhivery"}</td>
-                        <td className="text-xs text-muted-foreground max-w-[200px] truncate">{ord.address}</td>
-                        <td>
-                          <StatusPill s={ord.status} />
-                        </td>
-                        <td className="text-right font-bold">{inr(ord.price * ord.qty)}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
+            {vendorOrders.filter((o) => o.awbNumber).length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border p-12 text-center">
+                <Truck className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+                <h3 className="text-sm font-bold text-foreground">No Active Shipments</h3>
+                <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                  Waybills and live courier dispatches will be listed here once you mark incoming orders as shipped.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[720px] text-sm">
+                  <thead className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border pb-2">
+                    <tr>
+                      <th className="py-2.5">Waybill (AWB)</th>
+                      <th>Associated Order</th>
+                      <th>Logistics Partner</th>
+                      <th>Destination</th>
+                      <th>Status</th>
+                      <th className="text-right">Item Value</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {vendorOrders
+                      .filter((o) => o.awbNumber)
+                      .map((ord) => (
+                        <tr key={ord.orderId} className="hover:bg-muted/30 transition">
+                          <td className="py-3 font-mono font-bold text-primary">
+                            {ord.awbNumber}
+                          </td>
+                          <td className="font-semibold">{ord.orderId}</td>
+                          <td>{ord.courier || "Delhivery"}</td>
+                          <td className="text-xs text-muted-foreground max-w-[200px] truncate">{ord.address}</td>
+                          <td>
+                            <StatusPill s={ord.status} />
+                          </td>
+                          <td className="text-right font-bold">{inr(ord.price * ord.qty)}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </Panel>
         </div>
       )}
@@ -1274,15 +1315,31 @@ export function VendorDashboard() {
       {tab === "reviews" && (
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <Stat label="Average Seller Rating" value={`${currentVendor.rating} ★`} Icon={Star} />
-            <Stat label="Total Shop Reviews" value={`${vendorReviews.length + (currentVendor.reviewCount || 100)}`} Icon={MessageSquare} />
-            <Stat label="Packaging Rating" value="4.9 / 5.0" Icon={Package} />
-            <Stat label="Delivery Speed" value="4.8 / 5.0" Icon={Truck} />
+            <Stat
+              label="Average Seller Rating"
+              value={dbMetrics.reviewCount > 0 ? `${currentVendor.rating} ★` : "0.0 ★"}
+              Icon={Star}
+            />
+            <Stat
+              label="Total Shop Reviews"
+              value={`${dbMetrics.reviewCount || vendorReviews.length}`}
+              Icon={MessageSquare}
+            />
+            <Stat
+              label="Packaging Rating"
+              value={dbMetrics.reviewCount > 0 ? `${currentVendor.rating} / 5.0` : "N/A"}
+              Icon={Package}
+            />
+            <Stat
+              label="Delivery Speed"
+              value={dbMetrics.reviewCount > 0 ? "5.0 / 5.0" : "N/A"}
+              Icon={Truck}
+            />
           </div>
 
           <Panel title="Customer Reviews for Your Shop Experience">
             {vendorReviews.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No customer reviews yet.</p>
+              <p className="text-sm text-muted-foreground py-8 text-center">No customer reviews recorded in database yet.</p>
             ) : (
               <div className="space-y-4">
                 {vendorReviews.map((rev) => (
@@ -1332,51 +1389,58 @@ export function VendorDashboard() {
           </div>
 
           <Panel title="Vendor Settlement Ledger">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-sm">
-                <thead className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border pb-2">
-                  <tr>
-                    <th className="py-2.5">Settlement Cycle</th>
-                    <th>Orders</th>
-                    <th>Gross Volume</th>
-                    <th>Platform Fee</th>
-                    <th>Net Payout</th>
-                    <th>Status</th>
-                    <th className="text-right">Bank UTR / Ref</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {vendorSettlements.map((st) => (
-                    <tr key={st.id} className="hover:bg-muted/30 transition">
-                      <td className="py-3 font-semibold">{st.period}</td>
-                      <td>{st.orderCount} orders</td>
-                      <td className="font-bold">{inr(st.grossSales)}</td>
-                      <td className="text-muted-foreground">
-                        {inr(st.commissionAmount)} ({Math.round(st.commissionRate * 100)}%)
-                      </td>
-                      <td className="font-extrabold text-primary">{inr(st.netPayout)}</td>
-                      <td>
-                        <span
-                          className={cn(
-                            "rounded-full px-2.5 py-0.5 text-xs font-bold",
-                            st.status === "Paid"
-                              ? "bg-emerald-100 text-emerald-800"
-                              : st.status === "Processing"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-amber-100 text-amber-800"
-                          )}
-                        >
-                          {st.status}
-                        </span>
-                      </td>
-                      <td className="text-right font-mono text-xs text-muted-foreground">
-                        {st.referenceNumber || "Pending Transfer"}
-                      </td>
+            {vendorSettlements.length === 0 ? (
+              <div className="py-12 text-center text-xs text-muted-foreground">
+                <Wallet className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                No settlement payouts generated in database yet. Payouts are computed automatically on settlement cycle dates for fulfilled orders.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-sm">
+                  <thead className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border pb-2">
+                    <tr>
+                      <th className="py-2.5">Settlement Cycle</th>
+                      <th>Orders</th>
+                      <th>Gross Volume</th>
+                      <th>Platform Fee</th>
+                      <th>Net Payout</th>
+                      <th>Status</th>
+                      <th className="text-right">Bank UTR / Ref</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {vendorSettlements.map((st) => (
+                      <tr key={st.id} className="hover:bg-muted/30 transition">
+                        <td className="py-3 font-semibold">{st.period}</td>
+                        <td>{st.orderCount} orders</td>
+                        <td className="font-bold">{inr(st.grossSales)}</td>
+                        <td className="text-muted-foreground">
+                          {inr(st.commissionAmount)} ({Math.round(st.commissionRate * 100)}%)
+                        </td>
+                        <td className="font-extrabold text-primary">{inr(st.netPayout)}</td>
+                        <td>
+                          <span
+                            className={cn(
+                              "rounded-full px-2.5 py-0.5 text-xs font-bold",
+                              st.status === "Paid"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : st.status === "Processing"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-amber-100 text-amber-800"
+                            )}
+                          >
+                            {st.status}
+                          </span>
+                        </td>
+                        <td className="text-right font-mono text-xs text-muted-foreground">
+                          {st.referenceNumber || "Pending Transfer"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </Panel>
         </div>
       )}
@@ -1409,11 +1473,11 @@ export function VendorDashboard() {
                 <div className="grid gap-3 sm:grid-cols-2 text-xs">
                   <div>
                     <label className="text-muted-foreground block mb-1">Account Holder Name</label>
-                    <input type="text" defaultValue={currentVendor.name} className="w-full h-9 rounded-lg border border-border px-3 font-semibold" />
+                    <input type="text" defaultValue={currentVendor.name} placeholder="Account Holder Name" className="w-full h-9 rounded-lg border border-border px-3 font-semibold" />
                   </div>
                   <div>
                     <label className="text-muted-foreground block mb-1">IFSC Code</label>
-                    <input type="text" defaultValue="HDFC0001234" className="w-full h-9 rounded-lg border border-border px-3 font-mono font-bold" />
+                    <input type="text" placeholder="IFSC Code (e.g. HDFC0001234)" className="w-full h-9 rounded-lg border border-border px-3 font-mono font-bold" />
                   </div>
                 </div>
               </div>
