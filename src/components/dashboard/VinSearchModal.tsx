@@ -12,7 +12,12 @@ interface VinSearchModalProps {
 
 export function VinSearchModal({ isOpen, onClose, onViewInGarage }: VinSearchModalProps) {
   const { addToCart, toggleSaved, isSaved, addBike, garage } = useStore();
-  const [vin, setVin] = useState("P6R1S1PR2PN000001"); // Default to Ola S1 Pro sample VIN
+  const [vin, setVin] = useState(""); // Starts empty with no default context
+
+  const handleClose = () => {
+    setVin("");
+    onClose();
+  };
 
   const decodedResult = useMemo(() => {
     if (!vin.trim()) return null;
@@ -70,7 +75,7 @@ export function VinSearchModal({ isOpen, onClose, onViewInGarage }: VinSearchMod
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition"
           >
             <X className="h-5 w-5" />
@@ -270,7 +275,7 @@ export function VinSearchModal({ isOpen, onClose, onViewInGarage }: VinSearchMod
             )}
           </span>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="px-4 py-1.5 rounded-xl border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition"
           >
             Close

@@ -88,21 +88,21 @@ export function SettingsTab() {
         <div className="absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white to-transparent opacity-90 pointer-events-none" />
 
         {/* Multi-layered Apple ambient illumination glows */}
-        <div className="absolute -top-16 -left-16 h-64 w-64 rounded-full bg-[#E31E24]/[0.06] blur-3xl pointer-events-none" />
-        <div className="absolute -top-16 -right-16 h-64 w-64 rounded-full bg-indigo-500/[0.06] blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 left-1/3 h-64 w-64 rounded-full bg-emerald-500/[0.05] blur-3xl pointer-events-none" />
+        <div className="absolute -top-16 -left-16 h-64 w-64 rounded-full bg-[#E31E24]/[0.08] blur-3xl pointer-events-none" />
+        <div className="absolute -top-16 -right-16 h-64 w-64 rounded-full bg-[#E31E24]/[0.05] blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 left-1/3 h-64 w-64 rounded-full bg-rose-500/[0.06] blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           {/* Left: Avatar & Identity Details */}
           <div className="flex items-center gap-5">
             <div className="relative group shrink-0">
-              <div className="grid h-20 w-20 sm:h-24 sm:w-24 place-items-center rounded-3xl bg-gradient-to-tr from-[#E31E24] via-rose-500 to-red-500 text-white font-black text-2xl sm:text-3xl shadow-[0_12px_32px_rgba(227,30,36,0.35)] ring-4 ring-white">
+              <div className="grid h-20 w-20 sm:h-24 sm:w-24 place-items-center rounded-3xl bg-[#E31E24] text-white font-black text-2xl sm:text-3xl shadow-[0_12px_32px_rgba(227,30,36,0.4)] ring-4 ring-white">
                 {initials}
               </div>
               <button
                 type="button"
                 onClick={() => toast.info("Profile photo upload: In demo mode, avatar is generated from initials.")}
-                className="absolute -bottom-1 -right-1 grid h-7.5 w-7.5 place-items-center rounded-full bg-white text-gray-700 shadow-md hover:text-[#E31E24] hover:scale-110 active:scale-95 transition cursor-pointer border border-black/[0.08]"
+                className="absolute -bottom-1 -right-1 grid h-7.5 w-7.5 place-items-center rounded-full bg-white text-[#E31E24] shadow-md hover:bg-red-50 hover:scale-110 active:scale-95 transition cursor-pointer border border-black/[0.08]"
                 title="Change Avatar"
               >
                 <Camera className="h-3.5 w-3.5" />
@@ -114,8 +114,8 @@ export function SettingsTab() {
                 <h1 className="text-2xl sm:text-3xl font-black text-gray-950 font-display tracking-tight">
                   {name || "Aakash Sharma"}
                 </h1>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/12 px-3 py-1 text-xs font-bold text-emerald-800 border border-emerald-500/25 shadow-2xs backdrop-blur-sm">
-                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-[#E31E24] border border-red-200 shadow-2xs backdrop-blur-sm">
+                  <ShieldCheck className="h-3.5 w-3.5 text-[#E31E24]" />
                   <span>Verified EV Rider</span>
                 </span>
               </div>
@@ -129,8 +129,8 @@ export function SettingsTab() {
               </p>
 
               <div className="pt-1 flex flex-wrap items-center gap-2 text-xs">
-                <span className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500/15 px-3 py-1.5 text-xs font-bold text-amber-900 border border-amber-500/30 shadow-2xs backdrop-blur-sm">
-                  <Award className="h-3.5 w-3.5 text-amber-600" />
+                <span className="inline-flex items-center gap-1.5 rounded-xl bg-red-500/10 px-3 py-1.5 text-xs font-bold text-[#E31E24] border border-red-500/25 shadow-2xs backdrop-blur-sm">
+                  <Award className="h-3.5 w-3.5 text-[#E31E24]" />
                   <span>Gold Tier Member · {userProfile.points || 450} ProPoints</span>
                 </span>
                 <span className="text-[11px] text-gray-500 font-medium">
@@ -140,16 +140,19 @@ export function SettingsTab() {
             </div>
           </div>
 
-          {/* Right: Tier Progress Bar & Action */}
-          <div className="md:w-80 space-y-2.5 rounded-2xl bg-white/80 hover:bg-white/95 p-4 border border-black/[0.06] shadow-2xs backdrop-blur-md transition-all duration-200">
+          {/* Right: Tier Progress Bar & Action (Red Theme) */}
+          <div className="md:w-80 space-y-2.5 rounded-2xl bg-white/90 hover:bg-white p-4 border border-red-100 shadow-2xs backdrop-blur-md transition-all duration-200">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-gray-700 font-bold">Loyalty Tier Progress</span>
-              <span className="font-black text-white bg-gradient-to-r from-amber-500 via-orange-500 to-[#E31E24] px-2.5 py-0.5 rounded-md text-[11px] shadow-xs">
+              <span className="text-gray-900 font-bold flex items-center gap-1.5">
+                <Award className="h-3.5 w-3.5 text-[#E31E24]" />
+                Loyalty Tier Progress
+              </span>
+              <span className="font-black text-white bg-[#E31E24] px-2.5 py-0.5 rounded-md text-[11px] shadow-xs">
                 90%
               </span>
             </div>
-            <div className="h-2.5 w-full rounded-full bg-gray-100 overflow-hidden border border-black/[0.04] p-0.5">
-              <div className="h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-[#E31E24] shadow-xs" style={{ width: "90%" }} />
+            <div className="h-2.5 w-full rounded-full bg-red-50 overflow-hidden border border-red-200/60 p-0.5">
+              <div className="h-full rounded-full bg-[#E31E24] shadow-[0_0_10px_rgba(227,30,36,0.4)]" style={{ width: "90%" }} />
             </div>
             <p className="text-[11px] text-gray-500 leading-snug font-medium">
               Earn 10 pts per ₹1,000 order to unlock free doorstep technician visits.
