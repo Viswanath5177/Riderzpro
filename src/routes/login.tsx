@@ -54,11 +54,17 @@ export const Route = createFileRoute("/login")({
       redirect: typeof rawRedirect === "string" ? rawRedirect : undefined,
     };
   },
-  beforeLoad: async () => {
+  beforeLoad: async ({ search }) => {
     try {
       const role = await getCurrentRole();
+      if (role === "PRODUCT_ADMIN") throw redirect({ to: "/admin/products" });
+      if (role === "SELLER_ADMIN") throw redirect({ to: "/admin/sellers" });
+      if (role === "seller") throw redirect({ to: "/dashboard/vendor" });
       if (role === "admin") throw redirect({ to: "/dashboard/admin" });
-      if (role === "customer") throw redirect({ to: "/dashboard/customer" });
+      if (role === "customer") {
+        const target = (search as any)?.redirect || "/dashboard/customer";
+        throw redirect({ to: target });
+      }
     } catch (e) {
       if ((e as any)?.to) throw e;
     }
@@ -213,62 +219,124 @@ export function CustomerLogin({ defaultTab }: CustomerLoginProps) {
     setIsLoading(true);
 
     try {
-      // 1. Authenticate with backend PostgreSQL customer database
-      const res = await customerSignIn(signInContact.trim(), signInPassword);
-      updateUserProfile({
-        name: res.fullName,
-        email: res.email,
-        phone: res.phone || "",
+      // Authenticate with PostgreSQL database backend across admins, sellers, customers, and users
+      const response = await fetch("/api/auth/signin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email: signInContact.trim(),
+          password: signInPassword.trim(),
+        }),
       });
-      signIn();
-      setRole("customer");
-      toast.success(`Welcome back, ${res.fullName.split(" ")[0]}!`);
-      const target = getRedirectTarget();
-      navigate({ to: target as any });
-      return;
-    } catch (backendErr: any) {
-      // 2. Check if admin credentials were provided
-      try {
-        const adminRes = await adminSignIn(signInContact.trim(), signInPassword);
-        if (adminRes) {
-          signIn();
-          setRole("admin");
-          toast.success(`Welcome back, ${adminRes.fullName}! (${adminRes.role})`);
-          navigate({ to: "/admin" as any });
-          return;
-        }
-      } catch {}
 
-      // 3. Check if seller / vendor credentials were provided
-      try {
-        const sellerRes = await sellerSignIn(signInContact.trim(), signInPassword);
-        if (sellerRes) {
-          signIn();
-          setRole("seller");
-          toast.success(`Welcome back, ${sellerRes.storeName}!`);
-          navigate({ to: "/dashboard/vendor" as any });
-          return;
-        }
-      } catch {}
+      const data = await response.json();
 
-      // Fallback for mock demo accounts
-      const isEmail = signInContact.includes("@");
-      if (isEmail && !userProfile?.email) {
-        updateUserProfile({ email: signInContact.trim() });
-      } else if (!isEmail && !userProfile?.phone) {
-        updateUserProfile({ phone: signInContact.trim() });
+      if (!response.ok || !data.success) {
+        toast.error(data.error || "Invalid email or password. Please verify your database credentials.");
+        return;
       }
 
+      const user = data.user;
+      const role = data.role;
+      const redirectUrl = data.redirectUrl || "/dashboard/customer";
+
+      // 1. Update store profile with real user data from database
+      updateUserProfile({
+        name: user.fullName || user.storeName || "Rider",
+        email: user.email,
+        phone: user.phone || "",
+      });
       signIn();
-      setRole("customer");
 
-      const welcomeName = userProfile?.name?.trim()
-        ? userProfile.name.trim().split(" ")[0]
-        : "Rider";
-      toast.success(`Welcome back, ${welcomeName}!`);
+      // 2. Set role & persistence based on database role
+      if (
+        role === "PRODUCT_ADMIN" ||
+        role === "SELLER_ADMIN" ||
+        role === "SUPPORT_ADMIN" ||
+        role === "SUPER_ADMIN" ||
+        role === "admin"
+      ) {
+        setRole("admin");
+        const adminSession = {
+          token: `sess_adm_${Date.now()}`,
+          role: "admin",
+          user: {
+            id: user.id,
+            name: user.fullName,
+            email: user.email,
+            role: "admin",
+            roleTitle:
+              role === "PRODUCT_ADMIN"
+                ? "Product Administrator"
+                : role === "SELLER_ADMIN"
+                ? "Seller Administrator"
+                : "System Administrator",
+            department:
+              role === "PRODUCT_ADMIN"
+                ? "Product Catalog & Inventory Review"
+                : role === "SELLER_ADMIN"
+                ? "Seller Verification & Compliance"
+                : "Operations & Platform Oversight",
+          },
+          loginTime: Date.now(),
+        };
+        localStorage.setItem("riderzpro_admin_session", JSON.stringify(adminSession));
+        localStorage.setItem(
+          "riderzpro_auth_user",
+          JSON.stringify({
+            id: user.id,
+            name: user.fullName,
+            email: user.email,
+            phone: user.phone || "",
+            role: "admin",
+          })
+        );
+        localStorage.setItem("riderzpro_auth_token", "session_active");
 
-      const target = getRedirectTarget();
-      navigate({ to: target as any });
+        const displayRole =
+          role === "PRODUCT_ADMIN"
+            ? "Product Admin"
+            : role === "SELLER_ADMIN"
+            ? "Seller Admin"
+            : "Admin";
+        toast.success(`Welcome back, ${user.fullName}! (${displayRole})`);
+        navigate({ to: redirectUrl as any });
+      } else if (role === "seller") {
+        setRole("seller");
+        localStorage.setItem(
+          "riderzpro_auth_user",
+          JSON.stringify({
+            id: user.id,
+            name: user.fullName || user.storeName,
+            email: user.email,
+            phone: user.phone || "",
+            role: "seller",
+          })
+        );
+        localStorage.setItem("riderzpro_auth_token", "session_active");
+        toast.success(`Welcome back, ${user.storeName || user.fullName}! (Vendor Portal)`);
+        navigate({ to: redirectUrl as any });
+      } else {
+        setRole("customer");
+        localStorage.setItem(
+          "riderzpro_auth_user",
+          JSON.stringify({
+            id: user.id,
+            name: user.fullName,
+            email: user.email,
+            phone: user.phone || "",
+            role: "customer",
+          })
+        );
+        localStorage.setItem("riderzpro_auth_token", "session_active");
+        toast.success(`Welcome back, ${user.fullName.split(" ")[0]}!`);
+        const target = getRedirectTarget();
+        navigate({ to: target as any });
+      }
+    } catch (err: any) {
+      console.error("[Login Error]:", err);
+      toast.error(err.message || "Failed to authenticate with database.");
     } finally {
       setIsLoading(false);
     }

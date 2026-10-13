@@ -76,8 +76,13 @@ import { getCurrentRole } from "@/lib/auth";
 export const Route = createFileRoute("/dashboard/admin")({
   beforeLoad: async () => {
     const role = await getCurrentRole();
-    if (!role) throw redirect({ to: "/login" });
-    if (role !== "admin") throw redirect({ to: "/dashboard/customer" });
+    if (!role) throw redirect({ to: "/login", search: { redirect: "/dashboard/admin" } });
+    if (role === "PRODUCT_ADMIN") throw redirect({ to: "/admin/products" });
+    if (role === "SELLER_ADMIN") throw redirect({ to: "/admin/sellers" });
+    if (role === "seller") throw redirect({ to: "/dashboard/vendor" });
+    if (role !== "admin" && role !== "SUPER_ADMIN" && role !== "SUPPORT_ADMIN") {
+      throw redirect({ to: "/dashboard/customer" });
+    }
   },
   head: () => ({
     meta: [

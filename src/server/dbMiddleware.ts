@@ -7,6 +7,7 @@ import {
   sendVendorMoreInfoEmail,
   sendProductApprovalEmail,
 } from "../lib/email.server";
+import { handleAuthRoute } from "./authRoutes";
 
 async function parseBody(req: IncomingMessage): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -53,6 +54,14 @@ export function pgApiMiddleware() {
         const method = req.method?.toUpperCase();
         const [cleanUrl, queryString = ""] = url.split("?");
         const queryParams = new URLSearchParams(queryString);
+
+        // ====================================================================
+        // 0. AUTHENTICATION API: /api/auth/*
+        // ====================================================================
+        if (cleanUrl.startsWith("/api/auth")) {
+          const handled = await handleAuthRoute(req, res, cleanUrl, method || "GET");
+          if (handled) return;
+        }
 
         // ====================================================================
         // 1. PRODUCTS API: /api/products
