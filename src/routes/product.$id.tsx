@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Clock, MapPin, ShieldCheck, Star, Truck } from "lucide-react";
 import { toast } from "sonner";
@@ -27,9 +28,11 @@ export const Route = createFileRoute("/product/$id")({
 function ProductPage() {
   const { id } = Route.useParams();
   const p = getProduct(id)!;
+  const [imageFailed, setImageFailed] = useState(false);
   const { activeBikeId, addToCart } = useStore();
   const fit = fitmentFor(p, activeBikeId);
   const bike = activeBikeId ? getBike(activeBikeId) : null;
+  const hasValidImage = Boolean(p.image && p.image.trim() !== "" && !imageFailed);
   const offers = p.offers
     .map((o) => {
       const v = getVendor(o.vendorId);
@@ -44,8 +47,8 @@ function ProductPage() {
     ["Energy", p.voltage && p.capacityAh ? `${((p.voltage * p.capacityAh) / 1000).toFixed(2)} kWh` : "—"],
     ["Chemistry", p.chemistry ?? "—"],
     ["Est. range", p.rangeKm ? `${p.rangeKm} km` : "—"],
-    ["Weight", `${p.weightKg} kg`],
-    ["Warranty", `${p.warrantyMonths} months`],
+    ["Weight", p.weightKg > 0 ? `${p.weightKg} kg` : "—"],
+    ["Warranty", p.warrantyMonths > 0 ? `${p.warrantyMonths} months` : "—"],
     ["Brand", p.brand],
   ];
 
@@ -54,8 +57,27 @@ function ProductPage() {
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
         <Link to="/shop" className="text-sm text-muted-foreground hover:text-primary">← Back to shop</Link>
         <div className="mt-4 grid gap-10 lg:grid-cols-2">
-          <div className="overflow-hidden rounded-3xl border border-border bg-muted">
-            <img src={p.image} alt={p.name} width={1024} height={1024} className="aspect-square w-full object-cover" />
+          <div className="relative aspect-square overflow-hidden rounded-3xl border border-border bg-[#F5F6F8] flex items-center justify-center p-4">
+            {hasValidImage ? (
+              <img
+                src={p.image}
+                alt={p.name}
+                width={1024}
+                height={1024}
+                onError={() => setImageFailed(true)}
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-center p-6 bg-gradient-to-b from-[#FAFAFA] to-[#F1F3F5] rounded-2xl">
+                <div className="grid h-20 w-20 place-items-center rounded-3xl bg-white border border-[#E5E7EB] text-4xl shadow-sm">
+                  🧰
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-[#111111]">Product image not available</p>
+                  <p className="mt-1 text-xs text-[#6B7280]">Genuine catalog item · {p.brand}</p>
+                </div>
+              </div>
+            )}
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-primary">{p.category} · {p.brand}</p>
@@ -65,7 +87,11 @@ function ProductPage() {
               <FitmentBadge fit={fit} />
               <span className="text-sm text-muted-foreground">{bike ? `for ${bike.make} ${bike.model}` : <Link to="/garage" className="text-primary">Add your bike to check fit</Link>}</span>
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">Fits: {p.fits.map((f) => bikes.find((b) => b.id === f)?.model).join(", ")}</p>
+            {p.fits.length > 0 ? (
+              <p className="mt-3 text-xs text-muted-foreground">Verified bike fit: {p.fits.map((f) => bikes.find((b) => b.id === f)?.model).filter(Boolean).join(", ")}</p>
+            ) : p.vehicleType !== "car" ? (
+              <p className="mt-3 text-xs text-amber-700">Bike fitment has not been verified. Confirm compatibility with the seller before ordering.</p>
+            ) : null}
 
             <h2 className="mt-8 font-display text-3xl">Sellers near you</h2>
             <div className="mt-3 space-y-3">

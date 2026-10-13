@@ -895,7 +895,7 @@ export function AdminDashboard() {
               <h1 className="font-display text-2xl font-extrabold text-[#111111]">Category Architecture</h1>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {[
-                  { name: "Electric Bikes", count: 3, desc: "Certified high-speed & commuter electric motorbikes & scooters" },
+                  { name: "Electric Bikes", count: products.filter((product) => product.category === "Electric Bikes").length, desc: "Certified high-speed & commuter electric motorbikes & scooters" },
                   { name: "Car Accessories", count: 3, desc: "Dashcams, tire inflators, level-2 wallbox chargers" },
                   { name: "Bike Accessories", count: 3, desc: "All-weather covers, alarm disc locks, wireless phone mounts" },
                   { name: "Spare Parts", count: 4, desc: "Brembo rotors, ceramic pads, Gates kevlar drive belts" },

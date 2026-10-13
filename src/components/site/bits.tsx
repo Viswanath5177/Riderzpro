@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Moon, Sun, Zap, CheckCircle2, XCircle, HelpCircle, Star, Heart, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
@@ -47,7 +48,7 @@ const fitMeta: Record<Fitment, { label: string; cls: string; Icon: typeof CheckC
     Icon: XCircle,
   },
   unknown: {
-    label: "Universal Fit",
+    label: "Fitment unverified",
     cls: "bg-gray-100 text-gray-700 border-gray-200",
     Icon: HelpCircle,
   },
@@ -70,26 +71,46 @@ export function FitmentBadge({ fit, className }: { fit: Fitment; className?: str
 
 export function ProductCard({ p }: { p: Product }) {
   const { activeBikeId, addToCart, toggleSaved, isSaved } = useStore();
+  const [imageFailed, setImageFailed] = useState(false);
   const offer = bestOffer(p);
   const fit = fitmentFor(p, activeBikeId);
   const mrp = Math.round((offer.price * 1.14) / 100) * 100;
   const discountPct = Math.round(((mrp - offer.price) / mrp) * 100);
   const saved = isSaved(p.id);
+  const vendor = getVendor(offer.vendorId);
+  const hasImage = Boolean(p.image && p.image.trim() !== "" && !imageFailed);
 
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-2xs transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-gray-300">
       {/* Product Image Area */}
       <div className="relative block aspect-square overflow-hidden bg-[#F5F6F8]">
-        <Link to="/product/$id" params={{ id: p.id }} className="block h-full w-full">
-          <img
-            src={p.image}
-            alt={p.name}
-            loading="lazy"
-            width={600}
-            height={600}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-          />
-        </Link>
+        {hasImage ? (
+          <Link to="/product/$id" params={{ id: p.id }} className="block h-full w-full">
+            <img
+              src={p.image}
+              alt={p.name}
+              loading="lazy"
+              width={600}
+              height={600}
+              onError={() => setImageFailed(true)}
+              className="h-full w-full object-contain p-2 transition duration-500 group-hover:scale-105"
+            />
+          </Link>
+        ) : (
+          <Link
+            to="/product/$id"
+            params={{ id: p.id }}
+            className="flex h-full w-full flex-col items-center justify-center p-3 text-center bg-gradient-to-b from-[#FAFAFA] to-[#F1F3F5] transition group-hover:bg-[#E5E7EB]"
+          >
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white border border-[#E5E7EB] text-2xl shadow-2xs">
+              🧰
+            </div>
+            <span className="mt-2 text-xs font-semibold text-[#4B5563] leading-snug">
+              Product image not available
+            </span>
+            <span className="mt-0.5 text-[10px] text-[#9CA3AF]">Verified Genuine Spares</span>
+          </Link>
+        )}
         {/* Top Badges */}
         <div className="absolute left-2.5 top-2.5 flex flex-col gap-1 items-start z-10 pointer-events-none">
           {discountPct > 0 && (
@@ -135,7 +156,7 @@ export function ProductCard({ p }: { p: Product }) {
           </span>
           <span className="flex items-center gap-1 font-semibold text-gray-700 shrink-0">
             <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-            {getVendor(offer.vendorId).rating}
+            {vendor.rating}
           </span>
         </div>
 
@@ -147,28 +168,21 @@ export function ProductCard({ p }: { p: Product }) {
           {p.name}
         </Link>
 
-        {/* Availability status */}
         <div className="mt-2 flex items-center gap-1.5 text-[11px]">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
           <span className="text-emerald-700 font-medium">In Stock</span>
           <span className="text-gray-400">·</span>
-          <span className="text-[#6B7280]">{p.warrantyMonths}m Warranty</span>
+          {p.warrantyMonths > 0 && <span className="text-[#6B7280]">{p.warrantyMonths}m Warranty</span>}
         </div>
 
         {/* Price and Add to Cart Area */}
         <div className="mt-auto pt-3 border-t border-gray-100 flex items-end justify-between gap-2">
           <div>
             <div className="flex items-baseline gap-1.5">
-              <span className="font-display text-lg font-extrabold text-[#111111]">
-                {inr(offer.price)}
-              </span>
-              <span className="text-xs text-gray-400 line-through">
-                {inr(mrp)}
-              </span>
+              <span className="font-display text-lg font-extrabold text-[#111111]">{inr(offer.price)}</span>
+              <span className="text-xs text-gray-400 line-through">{inr(mrp)}</span>
             </div>
-            <p className="text-[10px] text-[#6B7280]">
-              From {getVendor(offer.vendorId).name}
-            </p>
+            <p className="text-[10px] text-[#6B7280]">From {vendor.name}</p>
           </div>
 
           <button

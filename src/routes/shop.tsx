@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { SlidersHorizontal, Search, Bike, Check, X, ShieldCheck } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { SlidersHorizontal, Search, Check, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { ProductCard } from "@/components/site/bits";
-import { bestOffer, bikes, getBike, products, type Category } from "@/lib/data";
+import { bestOffer, bikes, getBike, products, ALL_PRODUCT_CATEGORIES, type Category } from "@/lib/data";
 import { useStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/shop")({
   head: () => ({
@@ -18,20 +19,15 @@ export const Route = createFileRoute("/shop")({
   component: Shop,
 });
 
-const CATS: (Category | "All")[] = [
+const CATS = [
   "All",
   "Electric Bikes",
+  "EV Batteries",
   "Car Accessories",
   "Bike Accessories",
-  "Riding Gear & Helmets",
-  "Spare Parts",
-  "Battery",
-  "Charger",
-  "BMS",
-  "Motor",
-  "Controller",
-  "Brakes",
-];
+] as const;
+
+const PAGE_SIZE = 40;
 
 function Shop() {
   const { activeBikeId, setActiveBikeId } = useStore();
@@ -48,14 +44,16 @@ function Shop() {
     if (typeof window !== "undefined") {
       const p = new URLSearchParams(window.location.search);
       const c = p.get("cat");
-      if (c && CATS.includes(c as any)) return c as any;
+      if (c && (CATS as readonly string[]).includes(c)) return c as any;
     }
     return "All";
   });
 
+  const [subcat, setSubcat] = useState<string>("All");
   const [volt, setVolt] = useState<number | null>(null);
   const [onlyFit, setOnlyFit] = useState(false);
   const [sort, setSort] = useState("relevance");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   useEffect(() => {
     const handleUrl = () => {
@@ -64,7 +62,7 @@ function Shop() {
         const urlQ = p.get("q");
         const urlCat = p.get("cat");
         if (urlQ !== null) setQ(urlQ);
-        if (urlCat !== null && CATS.includes(urlCat as any)) setCat(urlCat as any);
+        if (urlCat !== null && (CATS as readonly string[]).includes(urlCat)) setCat(urlCat as any);
       }
     };
     handleUrl();
@@ -73,17 +71,33 @@ function Shop() {
   }, []);
 
   const list = useMemo(() => {
-    let l = products.filter(
-      (p) =>
-        (cat === "All" || p.category === cat) &&
-        (!volt || p.voltage === volt) &&
-        (!onlyFit || !activeBikeId || p.fits.includes(activeBikeId)) &&
-        (q === "" || `${p.name} ${p.brand} ${p.category} ${p.description}`.toLowerCase().includes(q.toLowerCase())),
-    );
+    let l = products.filter((p) => {
+      const matchesCat =
+        cat === "All" ||
+        (cat === "Electric Bikes" && p.category === "Electric Bikes") ||
+        (cat === "EV Batteries" && (p.category === "Battery" || (p.category as string) === "EV Batteries")) ||
+        (cat === "Car Accessories" && (p.vehicleType === "car" || p.vehicleType === "both" || p.category === "Car Accessories")) ||
+        (cat === "Bike Accessories" && (p.vehicleType === "bike" || p.vehicleType === "both" || p.category === "Bike Accessories"));
+
+      const matchesSubcat =
+        subcat === "All" ||
+        p.category.toLowerCase() === subcat.toLowerCase() ||
+        (p.subcategory && p.subcategory.toLowerCase() === subcat.toLowerCase()) ||
+        (Array.isArray(p.subcategories) && p.subcategories.some((s) => s.toLowerCase() === subcat.toLowerCase()));
+
+      const matchesVolt = !volt || p.voltage === volt;
+      const matchesFit = !onlyFit || !activeBikeId || p.fits.includes(activeBikeId);
+      const matchesQ =
+        q === "" ||
+        `${p.name} ${p.brand} ${p.category} ${p.subcategory || ""} ${p.description}`
+          .toLowerCase()
+          .includes(q.toLowerCase());
+      return matchesCat && matchesSubcat && matchesVolt && matchesFit && matchesQ;
+    });
     if (sort === "low") l = [...l].sort((a, b) => bestOffer(a).price - bestOffer(b).price);
     if (sort === "high") l = [...l].sort((a, b) => bestOffer(b).price - bestOffer(a).price);
     return l;
-  }, [q, cat, volt, onlyFit, activeBikeId, sort]);
+  }, [q, cat, subcat, volt, onlyFit, activeBikeId, sort]);
 
   const bike = activeBikeId ? getBike(activeBikeId) : null;
 
@@ -104,24 +118,6 @@ function Shop() {
             <p className="mt-1 text-sm text-[#6B7280]">
               Browse high-grade electric bikes, genuine spares, accessories, and certified fast chargers.
             </p>
-          </div>
-
-          {/* Active vehicle filter pill */}
-          <div className="flex items-center gap-2.5 rounded-xl border border-[#E5E7EB] bg-white px-3.5 py-2 shadow-2xs">
-            <Bike className="h-4 w-4 text-[#E31E24]" />
-            <span className="text-xs text-[#6B7280]">Vehicle Fitment:</span>
-            <select
-              value={activeBikeId ?? ""}
-              onChange={(e) => setActiveBikeId(e.target.value || null)}
-              className="bg-transparent text-xs font-semibold text-[#111111] outline-none cursor-pointer"
-            >
-              <option value="">Any Vehicle (Show all)</option>
-              {bikes.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.make} {b.model} ({b.voltage}V)
-                </option>
-              ))}
-            </select>
           </div>
         </div>
 
@@ -147,6 +143,25 @@ function Shop() {
               )}
             </div>
 
+            {/* Product Category Dropdown */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-[#6B7280] hidden sm:inline whitespace-nowrap">Category:</span>
+              <select
+                value={subcat}
+                onChange={(e) => {
+                  setSubcat(e.target.value);
+                  setVisibleCount(PAGE_SIZE);
+                }}
+                aria-label="Filter by product category"
+                className="h-10 rounded-lg border border-[#E5E7EB] bg-white px-3 text-xs font-semibold text-[#111111] outline-none cursor-pointer hover:border-gray-400 max-w-[200px]"
+              >
+                <option value="All">All Categories ({ALL_PRODUCT_CATEGORIES.length})</option>
+                {ALL_PRODUCT_CATEGORIES.map((sc) => (
+                  <option key={sc} value={sc}>{sc}</option>
+                ))}
+              </select>
+            </div>
+
             {/* Department Category Pills */}
             <div className="flex gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
               {CATS.map((c) => {
@@ -154,7 +169,10 @@ function Shop() {
                 return (
                   <button
                     key={c}
-                    onClick={() => setCat(c)}
+                    onClick={() => {
+                      setCat(c);
+                      setVisibleCount(PAGE_SIZE);
+                    }}
                     className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                       isActive
                         ? "bg-[#E31E24] text-white font-semibold shadow-2xs"
@@ -175,7 +193,10 @@ function Shop() {
             {[48, 60, 72].map((v) => (
               <button
                 key={v}
-                onClick={() => setVolt(volt === v ? null : v)}
+                onClick={() => {
+                  setVolt(volt === v ? null : v);
+                  setVisibleCount(PAGE_SIZE);
+                }}
                 className={`rounded-md border px-2.5 py-1 font-semibold leading-none ${
                   volt === v
                     ? "border-[#E31E24] bg-red-50 text-[#E31E24]"
@@ -191,7 +212,10 @@ function Shop() {
                 <input
                   type="checkbox"
                   checked={onlyFit}
-                  onChange={(e) => setOnlyFit(e.target.checked)}
+                  onChange={(e) => {
+                    setOnlyFit(e.target.checked);
+                    setVisibleCount(PAGE_SIZE);
+                  }}
                   className="rounded border-gray-300 accent-[#E31E24]"
                 />
                 <span>Only compatible with {bike.make} {bike.model}</span>
@@ -215,14 +239,21 @@ function Shop() {
 
         {/* Results Count */}
         <div className="mt-5 flex items-center justify-between text-xs text-[#6B7280]">
-          <p>Showing <span className="font-semibold text-[#111111]">{list.length}</span> products</p>
-          {(cat !== "All" || q || volt !== null || onlyFit) && (
+          <p>
+            Showing <span className="font-semibold text-[#111111]">{Math.min(visibleCount, list.length)}</span> of <span className="font-semibold text-[#111111]">{list.length}</span> products
+            {subcat !== "All" && (
+              <span> in <strong className="text-[#E31E24]">{subcat}</strong></span>
+            )}
+          </p>
+          {(cat !== "All" || subcat !== "All" || q || volt !== null || onlyFit) && (
             <button
               onClick={() => {
                 setCat("All");
+                setSubcat("All");
                 setQ("");
                 setVolt(null);
                 setOnlyFit(false);
+                setVisibleCount(PAGE_SIZE);
               }}
               className="font-medium text-[#E31E24] hover:underline"
             >
@@ -241,9 +272,11 @@ function Shop() {
             <button
               onClick={() => {
                 setCat("All");
+                setSubcat("All");
                 setQ("");
                 setVolt(null);
                 setOnlyFit(false);
+                setVisibleCount(PAGE_SIZE);
               }}
               className="mt-4 rounded-lg bg-[#E31E24] px-4 py-2 text-xs font-semibold text-white hover:bg-red-700"
             >
@@ -251,11 +284,30 @@ function Shop() {
             </button>
           </div>
         ) : (
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {list.map((p) => (
-              <ProductCard key={p.id} p={p} />
-            ))}
-          </div>
+          <>
+            <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {list.slice(0, visibleCount).map((p) => (
+                <ProductCard key={p.id} p={p} />
+              ))}
+            </div>
+
+            {visibleCount < list.length && (
+              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button
+                  onClick={() => setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, list.length))}
+                  className="rounded-xl border border-[#E5E7EB] bg-white px-6 py-2.5 text-xs font-bold text-[#111111] shadow-2xs hover:border-[#111111] hover:bg-gray-50 cursor-pointer transition"
+                >
+                  Load More Products ({list.length - visibleCount} remaining)
+                </button>
+                <button
+                  onClick={() => setVisibleCount(list.length)}
+                  className="rounded-xl bg-[#E31E24] px-6 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-red-700 cursor-pointer transition"
+                >
+                  Show All {list.length} Items
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </SiteLayout>

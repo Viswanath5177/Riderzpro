@@ -220,12 +220,9 @@ function LandingProductCard({ product }: { product: Product }) {
           {product.name}
         </Link>
 
-        {/* Stock Availability */}
         <div className="mt-2 flex items-center gap-1.5 text-[11px]">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          <span className="font-medium text-emerald-700">
-            {offer.stock > 0 ? "In Stock" : "Available to Order"}
-          </span>
+          <span className="font-medium text-emerald-700">{offer.stock > 0 ? "In Stock" : "Available to Order"}</span>
           <span className="text-gray-300">·</span>
           <span className="text-[#6B7280]">{product.warrantyMonths}m Warranty</span>
         </div>
@@ -236,11 +233,7 @@ function LandingProductCard({ product }: { product: Product }) {
             <span className="text-base font-bold text-[#111111]">
               {inr(offer.price)}
             </span>
-            {mrp > offer.price && (
-              <span className="text-xs text-[#6B7280] line-through">
-                {inr(mrp)}
-              </span>
-            )}
+            {mrp > offer.price && <span className="text-xs text-[#6B7280] line-through">{inr(mrp)}</span>}
           </div>
 
           <button
