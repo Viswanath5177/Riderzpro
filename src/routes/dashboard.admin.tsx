@@ -341,6 +341,13 @@ export function AdminDashboard() {
               <span>Customer Portal</span>
               <ExternalLink className="h-3.5 w-3.5" />
             </Link>
+            <Link
+              to="/admin/riders"
+              className="hidden md:flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 transition"
+            >
+              <span>Rider applications</span>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Link>
 
             {/* Admin Profile */}
             <div className="flex items-center gap-2 pl-2 border-l border-gray-200">

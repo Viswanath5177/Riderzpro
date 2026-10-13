@@ -48,6 +48,10 @@ function Dashboards() {
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Workspaces</p>
         <h1 className="mb-8 font-display text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight">Choose a dashboard</h1>
         <RolePicker />
+        <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 sm:flex sm:items-center sm:justify-between">
+          <div><h2 className="font-semibold text-emerald-950">Deliver with Riderzpro</h2><p className="mt-1 text-sm text-emerald-900/75">Open the separate rider application and approval portal.</p></div>
+          <Link to="/rider" className="mt-4 inline-flex items-center gap-2 font-semibold text-emerald-900 sm:mt-0">Rider portal <ArrowRight className="h-4 w-4" /></Link>
+        </div>
       </div>
     </SiteLayout>
   );

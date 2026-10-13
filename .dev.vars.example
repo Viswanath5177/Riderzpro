@@ -1,5 +1,6 @@
 DATABASE_URL=file:./database/riderzpro-dev.db
 APP_ENV=development
+RIDER_APPROVALS_ENABLED=false
 OTP_HASH_SECRET=replace-with-a-random-secret-at-least-32-characters
 
 # Email option: configure a Resend API key and an allowed sender.

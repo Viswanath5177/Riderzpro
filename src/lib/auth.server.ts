@@ -169,14 +169,70 @@ export async function verifySignInCodeServer(input: string, rawCode: string): Pr
   return role;
 }
 
-export async function getCurrentUserServer(): Promise<{ id: string; role: AppRole } | null> {
+export async function getCurrentUserServer(): Promise<{ id: string; role: AppRole; phone: string | null } | null> {
   const token = getCookie(SESSION_COOKIE);
   if (!token) return null;
-  const result = await getDatabase().query<{ id: string; role: AppRole }>(
-    "select u.id, u.role from auth_sessions s join app_users u on u.id = s.user_id where s.token_hash = $1 and s.revoked_at is null and s.expires_at > now() limit 1",
+  const result = await getDatabase().query<{ id: string; role: AppRole; phone: string | null }>(
+    "select u.id, u.role, u.phone from auth_sessions s join app_users u on u.id = s.user_id where s.token_hash = $1 and s.revoked_at is null and s.expires_at > now() limit 1",
     [await digest(token)],
   );
   return result.rows[0] ?? null;
+}
+
+export async function linkVerifiedPhoneServer(rawPhone: string, rawCode: string) {
+  const user = await getCurrentUserServer();
+  if (!user) throw new Error("Sign in before verifying a mobile number.");
+  const identity = normalizeIdentity(rawPhone);
+  if (identity.channel !== "sms" || !/^\+91[6-9]\d{9}$/.test(identity.value)) {
+    throw new Error("Enter a valid Indian mobile number with its +91 country code.");
+  }
+  const code = rawCode.trim();
+  if (!/^\d{6}$/.test(code)) throw new Error("Enter the six-digit code sent to your mobile.");
+
+  const db = getDatabase();
+  const client = await db.connect();
+  let committed = false;
+  try {
+    if (db.dialect === "postgres") await client.query("begin");
+    const challengeResult = await client.query<{ id: string; code_hash: string; attempts: number }>(
+      "select id, code_hash, attempts from auth_otp_challenges where identity = $1 and channel = 'sms' and consumed_at is null and expires_at > now() order by created_at desc limit 1 for update",
+      [identity.value],
+    );
+    const challenge = challengeResult.rows[0];
+    if (!challenge) throw new Error("That verification code is invalid or expired. Request a new one.");
+    if (challenge.attempts >= 5) {
+      await client.query("update auth_otp_challenges set consumed_at = now() where id = $1", [challenge.id]);
+      if (db.dialect === "postgres") await client.query("commit");
+      else await client.commit?.();
+      committed = true;
+      throw new Error("Too many incorrect attempts. Request a new verification code.");
+    }
+    if (!constantTimeEqual(await hashOtp(identity.value, code), challenge.code_hash)) {
+      await client.query("update auth_otp_challenges set attempts = attempts + 1 where id = $1", [challenge.id]);
+      if (db.dialect === "postgres") await client.query("commit");
+      else await client.commit?.();
+      committed = true;
+      throw new Error("That verification code is incorrect.");
+    }
+    const otherAccount = await client.query<{ id: string }>(
+      "select id from app_users where phone = $1 and id <> $2 limit 1", [identity.value, user.id],
+    );
+    if (otherAccount.rows[0]) throw new Error("That mobile number is already linked to another account. Sign in with that number instead.");
+    await client.query("update app_users set phone = $2, updated_at = now() where id = $1", [user.id, identity.value]);
+    await client.query("update auth_otp_challenges set consumed_at = now() where id = $1", [challenge.id]);
+    if (db.dialect === "postgres") await client.query("commit");
+    else await client.commit?.();
+    committed = true;
+    return { phone: identity.value };
+  } catch (error) {
+    if (!committed) {
+      if (db.dialect === "postgres") await client.query("rollback").catch(() => undefined);
+      else await client.rollback?.().catch(() => undefined);
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function getCurrentRoleServer(): Promise<AppRole | null> {

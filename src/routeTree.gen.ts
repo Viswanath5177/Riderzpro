@@ -17,15 +17,22 @@ import { Route as GarageRouteImport } from './routes/garage'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RiderRouteImport } from './routes/rider'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as AdminRiderDeliveriesRouteImport } from './routes/admin.rider-deliveries'
+import { Route as AdminRidersRouteImport } from './routes/admin.riders'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard.admin'
 import { Route as DashboardCustomerRouteImport } from './routes/dashboard.customer'
 import { Route as DashboardRiderRouteImport } from './routes/dashboard.rider'
 import { Route as DashboardVendorRouteImport } from './routes/dashboard.vendor'
 import { Route as DashboardWorkshopRouteImport } from './routes/dashboard.workshop'
 import { Route as ProductIdRouteImport } from './routes/product.$id'
+import { Route as RiderIndexRouteImport } from './routes/rider.index'
+import { Route as RiderApplyRouteImport } from './routes/rider.apply'
+import { Route as RiderDashboardRouteImport } from './routes/rider.dashboard'
+import { Route as RiderStatusRouteImport } from './routes/rider.status'
 import { Route as TrackIdRouteImport } from './routes/track.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -68,6 +75,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
   path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RiderRoute = RiderRouteImport.update({
+  id: '/rider',
+  path: '/rider',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShopRoute = ShopRouteImport.update({
   id: '/shop',
   path: '/shop',
@@ -81,6 +93,16 @@ const SupportRoute = SupportRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRiderDeliveriesRoute = AdminRiderDeliveriesRouteImport.update({
+  id: '/admin/rider-deliveries',
+  path: '/admin/rider-deliveries',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRidersRoute = AdminRidersRouteImport.update({
+  id: '/admin/riders',
+  path: '/admin/riders',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardAdminRoute = DashboardAdminRouteImport.update({
@@ -113,6 +135,26 @@ const ProductIdRoute = ProductIdRouteImport.update({
   path: '/product/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RiderIndexRoute = RiderIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RiderRoute,
+} as any)
+const RiderApplyRoute = RiderApplyRouteImport.update({
+  id: '/apply',
+  path: '/apply',
+  getParentRoute: () => RiderRoute,
+} as any)
+const RiderDashboardRoute = RiderDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => RiderRoute,
+} as any)
+const RiderStatusRoute = RiderStatusRouteImport.update({
+  id: '/status',
+  path: '/status',
+  getParentRoute: () => RiderRoute,
+} as any)
 const TrackIdRoute = TrackIdRouteImport.update({
   id: '/track/$id',
   path: '/track/$id',
@@ -128,16 +170,23 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
   '/privacy': typeof PrivacyRoute
+  '/rider': typeof RiderRouteWithChildren
   '/shop': typeof ShopRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
+  '/admin/rider-deliveries': typeof AdminRiderDeliveriesRoute
+  '/admin/riders': typeof AdminRidersRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/customer': typeof DashboardCustomerRoute
   '/dashboard/rider': typeof DashboardRiderRoute
   '/dashboard/vendor': typeof DashboardVendorRoute
   '/dashboard/workshop': typeof DashboardWorkshopRoute
   '/product/$id': typeof ProductIdRoute
+  '/rider/apply': typeof RiderApplyRoute
+  '/rider/dashboard': typeof RiderDashboardRoute
+  '/rider/status': typeof RiderStatusRoute
   '/track/$id': typeof TrackIdRoute
+  '/rider/': typeof RiderIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -151,13 +200,19 @@ export interface FileRoutesByTo {
   '/shop': typeof ShopRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
+  '/admin/rider-deliveries': typeof AdminRiderDeliveriesRoute
+  '/admin/riders': typeof AdminRidersRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/customer': typeof DashboardCustomerRoute
   '/dashboard/rider': typeof DashboardRiderRoute
   '/dashboard/vendor': typeof DashboardVendorRoute
   '/dashboard/workshop': typeof DashboardWorkshopRoute
   '/product/$id': typeof ProductIdRoute
+  '/rider/apply': typeof RiderApplyRoute
+  '/rider/dashboard': typeof RiderDashboardRoute
+  '/rider/status': typeof RiderStatusRoute
   '/track/$id': typeof TrackIdRoute
+  '/rider': typeof RiderIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -169,16 +224,23 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/orders': typeof OrdersRoute
   '/privacy': typeof PrivacyRoute
+  '/rider': typeof RiderRouteWithChildren
   '/shop': typeof ShopRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
+  '/admin/rider-deliveries': typeof AdminRiderDeliveriesRoute
+  '/admin/riders': typeof AdminRidersRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/customer': typeof DashboardCustomerRoute
   '/dashboard/rider': typeof DashboardRiderRoute
   '/dashboard/vendor': typeof DashboardVendorRoute
   '/dashboard/workshop': typeof DashboardWorkshopRoute
   '/product/$id': typeof ProductIdRoute
+  '/rider/apply': typeof RiderApplyRoute
+  '/rider/dashboard': typeof RiderDashboardRoute
+  '/rider/status': typeof RiderStatusRoute
   '/track/$id': typeof TrackIdRoute
+  '/rider/': typeof RiderIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -191,16 +253,23 @@ export interface FileRouteTypes {
     | '/login'
     | '/orders'
     | '/privacy'
+    | '/rider'
     | '/shop'
     | '/support'
     | '/terms'
+    | '/admin/rider-deliveries'
+    | '/admin/riders'
     | '/dashboard/admin'
     | '/dashboard/customer'
     | '/dashboard/rider'
     | '/dashboard/vendor'
     | '/dashboard/workshop'
     | '/product/$id'
+    | '/rider/apply'
+    | '/rider/dashboard'
+    | '/rider/status'
     | '/track/$id'
+    | '/rider/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -214,13 +283,19 @@ export interface FileRouteTypes {
     | '/shop'
     | '/support'
     | '/terms'
+    | '/admin/rider-deliveries'
+    | '/admin/riders'
     | '/dashboard/admin'
     | '/dashboard/customer'
     | '/dashboard/rider'
     | '/dashboard/vendor'
     | '/dashboard/workshop'
     | '/product/$id'
+    | '/rider/apply'
+    | '/rider/dashboard'
+    | '/rider/status'
     | '/track/$id'
+    | '/rider'
   id:
     | '__root__'
     | '/'
@@ -231,16 +306,23 @@ export interface FileRouteTypes {
     | '/login'
     | '/orders'
     | '/privacy'
+    | '/rider'
     | '/shop'
     | '/support'
     | '/terms'
+    | '/admin/rider-deliveries'
+    | '/admin/riders'
     | '/dashboard/admin'
     | '/dashboard/customer'
     | '/dashboard/rider'
     | '/dashboard/vendor'
     | '/dashboard/workshop'
     | '/product/$id'
+    | '/rider/apply'
+    | '/rider/dashboard'
+    | '/rider/status'
     | '/track/$id'
+    | '/rider/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -252,9 +334,12 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   OrdersRoute: typeof OrdersRoute
   PrivacyRoute: typeof PrivacyRoute
+  RiderRoute: typeof RiderRouteWithChildren
   ShopRoute: typeof ShopRoute
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
+  AdminRiderDeliveriesRoute: typeof AdminRiderDeliveriesRoute
+  AdminRidersRoute: typeof AdminRidersRoute
   DashboardAdminRoute: typeof DashboardAdminRoute
   DashboardCustomerRoute: typeof DashboardCustomerRoute
   DashboardRiderRoute: typeof DashboardRiderRoute
@@ -322,6 +407,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rider': {
+      id: '/rider'
+      path: '/rider'
+      fullPath: '/rider'
+      preLoaderRoute: typeof RiderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/shop': {
       id: '/shop'
       path: '/shop'
@@ -341,6 +433,20 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/rider-deliveries': {
+      id: '/admin/rider-deliveries'
+      path: '/admin/rider-deliveries'
+      fullPath: '/admin/rider-deliveries'
+      preLoaderRoute: typeof AdminRiderDeliveriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/riders': {
+      id: '/admin/riders'
+      path: '/admin/riders'
+      fullPath: '/admin/riders'
+      preLoaderRoute: typeof AdminRidersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard/admin': {
@@ -385,6 +491,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProductIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rider/': {
+      id: '/rider/'
+      path: '/'
+      fullPath: '/rider/'
+      preLoaderRoute: typeof RiderIndexRouteImport
+      parentRoute: typeof RiderRoute
+    }
+    '/rider/apply': {
+      id: '/rider/apply'
+      path: '/apply'
+      fullPath: '/rider/apply'
+      preLoaderRoute: typeof RiderApplyRouteImport
+      parentRoute: typeof RiderRoute
+    }
+    '/rider/dashboard': {
+      id: '/rider/dashboard'
+      path: '/dashboard'
+      fullPath: '/rider/dashboard'
+      preLoaderRoute: typeof RiderDashboardRouteImport
+      parentRoute: typeof RiderRoute
+    }
+    '/rider/status': {
+      id: '/rider/status'
+      path: '/status'
+      fullPath: '/rider/status'
+      preLoaderRoute: typeof RiderStatusRouteImport
+      parentRoute: typeof RiderRoute
+    }
     '/track/$id': {
       id: '/track/$id'
       path: '/track/$id'
@@ -395,6 +529,22 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface RiderRouteChildren {
+  RiderApplyRoute: typeof RiderApplyRoute
+  RiderDashboardRoute: typeof RiderDashboardRoute
+  RiderStatusRoute: typeof RiderStatusRoute
+  RiderIndexRoute: typeof RiderIndexRoute
+}
+
+const RiderRouteChildren: RiderRouteChildren = {
+  RiderApplyRoute: RiderApplyRoute,
+  RiderDashboardRoute: RiderDashboardRoute,
+  RiderStatusRoute: RiderStatusRoute,
+  RiderIndexRoute: RiderIndexRoute,
+}
+
+const RiderRouteWithChildren = RiderRoute._addFileChildren(RiderRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AssistantRoute: AssistantRoute,
@@ -404,9 +554,12 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   OrdersRoute: OrdersRoute,
   PrivacyRoute: PrivacyRoute,
+  RiderRoute: RiderRouteWithChildren,
   ShopRoute: ShopRoute,
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
+  AdminRiderDeliveriesRoute: AdminRiderDeliveriesRoute,
+  AdminRidersRoute: AdminRidersRoute,
   DashboardAdminRoute: DashboardAdminRoute,
   DashboardCustomerRoute: DashboardCustomerRoute,
   DashboardRiderRoute: DashboardRiderRoute,

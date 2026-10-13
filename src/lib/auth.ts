@@ -5,6 +5,7 @@ import {
   requestSignInCodeServer,
   signOutServer,
   verifySignInCodeServer,
+  linkVerifiedPhoneServer,
 } from "./auth.server";
 
 const requestSignInCode = createServerFn({ method: "POST" })
@@ -25,6 +26,13 @@ const readRole = createServerFn({ method: "GET" }).handler(() => getCurrentRoleS
 const readCurrentUser = createServerFn({ method: "GET" }).handler(() => getCurrentUserServer());
 const endSession = createServerFn({ method: "POST" }).handler(() => signOutServer());
 
+const linkPhone = createServerFn({ method: "POST" })
+  .validator((data: { phone: string; code: string }) => {
+    if (typeof data.phone !== "string" || typeof data.code !== "string") throw new Error("Enter your mobile number and verification code.");
+    return { phone: data.phone, code: data.code };
+  })
+  .handler(({ data }) => linkVerifiedPhoneServer(data.phone, data.code));
+
 export function sendSignInCode(identity: string) {
   return requestSignInCode({ data: { identity } });
 }
@@ -43,4 +51,8 @@ export function getCurrentUser() {
 
 export function signOut() {
   return endSession();
+}
+
+export function linkVerifiedPhone(phone: string, code: string) {
+  return linkPhone({ data: { phone, code } });
 }

@@ -1,8 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ShieldCheck, Trash2, Mail, Lock, Phone } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
-import { useState } from "react";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/privacy")({
   head: () => ({
@@ -24,16 +22,6 @@ export const Route = createFileRoute("/privacy")({
 });
 
 function PrivacyPolicy() {
-  const [deleted, setDeleted] = useState(false);
-
-  const handleDeleteRequest = () => {
-    setDeleted(true);
-    toast.success("Account deletion request submitted", {
-      description:
-        "Our privacy team will purge all personal records within 48 hours according to regulations.",
-    });
-  };
-
   return (
     <SiteLayout>
       <div className="mx-auto max-w-4xl px-4 py-12 md:px-6">
@@ -106,6 +94,20 @@ function PrivacyPolicy() {
           </section>
 
           <section className="rounded-2xl border border-border bg-card p-6 shadow-card space-y-3">
+            <h2 className="font-display text-2xl text-foreground">Rider applications</h2>
+            <p>
+              If you apply to deliver with Riderzpro, we use your legal name, OTP-verified mobile
+              number, service city and state, vehicle type, and (for motorized vehicles) registration
+              number to process and review the application. We record your accuracy confirmation,
+              privacy notice acknowledgement, and application review decisions. In this prototype,
+              Riderzpro does not accept identity, driving licence, insurance, or vehicle document
+              uploads. Do not send those documents by email. If additional checks are required, the
+              approved secure submission method and retention period must be provided before you
+              submit them.
+            </p>
+          </section>
+
+          <section className="rounded-2xl border border-border bg-card p-6 shadow-card space-y-3">
             <h2 className="font-display text-2xl text-foreground">4. Third-Party Disclosures</h2>
             <p>
               We do not sell your personal data. We only share information with critical fulfillment
@@ -141,18 +143,10 @@ function PrivacyPolicy() {
                 login sessions. Tax and invoice records will be retained solely for statutory audit
                 compliance.
               </p>
-              {deleted ? (
-                <div className="text-xs font-semibold text-success">
-                  Request registered. Confirmation sent to your registered contact.
-                </div>
-              ) : (
-                <button
-                  onClick={handleDeleteRequest}
-                  className="rounded-full bg-destructive px-4 py-2 text-xs font-semibold text-destructive-foreground hover:bg-destructive/90 transition"
-                >
-                  Delete My Account
-                </button>
-              )}
+              <a href="mailto:privacy@riderzpro.com?subject=Account%20and%20data%20deletion%20request" className="inline-flex rounded-full bg-destructive px-4 py-2 text-xs font-semibold text-destructive-foreground hover:bg-destructive/90 transition">
+                Contact privacy team
+              </a>
+              <p className="text-xs text-muted-foreground">This prototype does not submit deletion requests automatically. Email the privacy team to make a request.</p>
             </div>
           </section>
 
