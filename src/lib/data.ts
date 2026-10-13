@@ -38,7 +38,10 @@ export type Product = {
   fits: string[]; // bike or car ids
   description: string;
   offers: { vendorId: string; price: number; stock: number }[];
-  vehicleType?: "bike" | "car" | "universal";
+  vehicleType?: "bike" | "car" | "both" | "universal" | string;
+  department?: string;
+  availability?: string;
+  priceType?: string;
   isAccessory?: boolean;
   accessoryDetails?: {
     type?: string;
@@ -195,6 +198,10 @@ export function mapDbProductToProduct(row: any): Product {
     verificationStatus: row.verification_status || "approved",
     sku: row.sku,
     variantModel: row.variant_model,
+    vehicleType: row.vehicle_type || (row.category_name?.toLowerCase().includes("car") ? "car" : "universal"),
+    department: row.department || undefined,
+    availability: row.availability || undefined,
+    priceType: row.price_type || undefined,
   };
 }
 

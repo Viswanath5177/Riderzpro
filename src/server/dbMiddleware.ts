@@ -116,10 +116,45 @@ export function pgApiMiddleware() {
               });
             }
 
-            // DELETE /api/products/:id
-            if (method === "DELETE" && productId) {
-              const ok = await ProductModel.delete(productId);
-              return sendJson(res, 200, { success: ok, message: "Product deleted", id: productId });
+            // DELETE /api/products/:id or DELETE /api/products (batch/all)
+            if (method === "DELETE") {
+              if (productId) {
+                const ok = await ProductModel.delete(productId);
+                return sendJson(res, 200, { success: ok, message: "Product deleted", id: productId });
+              }
+
+              const body = await parseBody(req).catch(() => ({}));
+              let ids: string[] = [];
+              if (Array.isArray(body?.ids)) {
+                ids = body.ids;
+              } else if (parsedUrl.searchParams.get("ids")) {
+                ids = parsedUrl.searchParams.get("ids")!.split(",").filter(Boolean);
+              } else if (body?.all === true || parsedUrl.searchParams.get("all") === "true") {
+                const deletedCount = await ProductModel.deleteAll();
+                return sendJson(res, 200, { success: true, message: `All ${deletedCount} products deleted`, deletedCount });
+              }
+
+              if (ids.length > 0) {
+                const deletedCount = await ProductModel.deleteMany(ids);
+                return sendJson(res, 200, { success: true, message: `${deletedCount} product(s) deleted`, deletedCount, ids });
+              }
+
+              return sendJson(res, 400, { success: false, error: "No product IDs specified for deletion" });
+            }
+
+            // POST /api/products/batch-delete alternative
+            if (method === "POST" && cleanUrl === "/api/products/batch-delete") {
+              const body = await parseBody(req).catch(() => ({}));
+              if (body?.all === true) {
+                const deletedCount = await ProductModel.deleteAll();
+                return sendJson(res, 200, { success: true, message: `All ${deletedCount} products deleted`, deletedCount });
+              }
+              const ids = Array.isArray(body?.ids) ? body.ids : [];
+              if (ids.length > 0) {
+                const deletedCount = await ProductModel.deleteMany(ids);
+                return sendJson(res, 200, { success: true, message: `${deletedCount} product(s) deleted`, deletedCount, ids });
+              }
+              return sendJson(res, 400, { success: false, error: "No product IDs specified for batch deletion" });
             }
 
             return sendJson(res, 405, { success: false, error: `Method ${method} not allowed` });

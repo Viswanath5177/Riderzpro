@@ -37,10 +37,9 @@ function Track() {
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-primary">Order {o.id}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#E31E24]">Order {o.id}</p>
             <h1 className="font-display text-5xl md:text-7xl">{o.status === 5 ? "Delivered!" : `Arriving in ${remaining} min`}</h1>
           </div>
-          {o.status < 5 && <button onClick={() => advanceOrder(o.id)} className="rounded-full border border-border px-4 py-2 text-sm hover:border-primary">Simulate next step →</button>}
         </div>
         <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_380px]">
           <LiveMap stops={o.groups.length} progress={o.status >= 3 ? undefined : progress} className="aspect-[4/3] lg:aspect-auto lg:min-h-[520px]" />

@@ -434,10 +434,37 @@ export class ProductModel {
   }
 
   /**
-   * Deletes a product by ID.
+   * Deletes a single product by ID.
    */
   static async delete(id: string): Promise<boolean> {
+    await pool.query("DELETE FROM cart_items WHERE product_id = $1", [id]).catch(() => {});
+    await pool.query("DELETE FROM order_items WHERE product_id = $1", [id]).catch(() => {});
     const result = await pool.query("DELETE FROM products WHERE id = $1", [id]);
+    await pool.query('DELETE FROM riderzpro_catalogue_import WHERE "Product ID" = $1', [id]).catch(() => {});
     return (result.rowCount ?? 0) > 0;
   }
+
+  /**
+   * Deletes multiple products by an array of IDs.
+   */
+  static async deleteMany(ids: string[]): Promise<number> {
+    if (!ids.length) return 0;
+    await pool.query("DELETE FROM cart_items WHERE product_id = ANY($1)", [ids]).catch(() => {});
+    await pool.query("DELETE FROM order_items WHERE product_id = ANY($1)", [ids]).catch(() => {});
+    const result = await pool.query("DELETE FROM products WHERE id = ANY($1)", [ids]);
+    await pool.query('DELETE FROM riderzpro_catalogue_import WHERE "Product ID" = ANY($1)', [ids]).catch(() => {});
+    return result.rowCount ?? 0;
+  }
+
+  /**
+   * Deletes all products from the catalog.
+   */
+  static async deleteAll(): Promise<number> {
+    await pool.query("DELETE FROM cart_items").catch(() => {});
+    await pool.query("DELETE FROM order_items").catch(() => {});
+    const result = await pool.query("DELETE FROM products");
+    await pool.query("DELETE FROM riderzpro_catalogue_import").catch(() => {});
+    return result.rowCount ?? 0;
+  }
 }
+
