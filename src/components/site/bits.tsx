@@ -97,7 +97,13 @@ export function ProductCard({ p }: { p: Product }) {
               loading="lazy"
               width={600}
               height={600}
-              onError={() => setImageFailed(true)}
+              onError={(event) => {
+                if (p.imageFallback && event.currentTarget.src !== p.imageFallback) {
+                  event.currentTarget.src = p.imageFallback;
+                  return;
+                }
+                setImageFailed(true);
+              }}
               className="h-full w-full object-contain p-2 transition duration-500 group-hover:scale-105"
             />
           </Link>

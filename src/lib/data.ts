@@ -35,6 +35,7 @@ export type Product = {
   subcategories?: string[];
   vehicleType?: "car" | "bike" | "both";
   image: string;
+  imageFallback?: string;
   voltage?: number;
   capacityAh?: number;
   batteryCapacityKwh?: number;
@@ -93,13 +94,13 @@ const coreSeeds: Seed[] = [
   { name: "QS 3000W 72V Hub Motor", brand: "QS Motor", category: "Motor", subcategory: "Utilities", vehicleType: "bike", image: img.pt, voltage: 72, warrantyMonths: 18, weightKg: 9, fits: ["revolt-rv400"], description: "Brushless hub motor rated 3kW continuous with hall sensors.", base: 28000, vendors: ["v4", "v5"] },
   { name: "Kelly 72V 80A Controller", brand: "Kelly", category: "Controller", subcategory: "Utilities", vehicleType: "bike", image: img.pt, voltage: 72, warrantyMonths: 12, weightKg: 1.6, fits: ["revolt-rv400"], description: "Programmable sinusoidal controller with regen braking.", base: 9500, vendors: ["v2", "v4"] },
   { name: "Wave Disc Brake Rotor 220mm", brand: "Brembo", category: "Brakes", subcategory: "Utilities", vehicleType: "bike", image: img.pt, warrantyMonths: 6, weightKg: 0.8, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "Stainless wave rotor for improved heat dissipation.", base: 2400, vendors: ["v1", "v3", "v6"] },
-  { name: "Ather 450X Gen 3 Smart Electric Scooter", brand: "Ather Energy", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/272x153/n/cw/ec/196337/450x-right-side-view-2.png?isig=0&q=80", voltage: 48, capacityAh: 78, chemistry: "Li-ion", warrantyMonths: 36, rangeKm: 150, weightKg: 108, fits: ["ather-450x"], description: "Flagship 450X with Warp Mode, 7-inch TFT touchscreen and IP67 battery pack.", base: 145000, vendors: ["v1", "v6"] },
-  { name: "Ather Konarc", brand: "Ather", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/272x153/n/cw/ec/209108/konarc-right-side-view-16.jpeg?isig=0&q=80", warrantyMonths: 0, weightKg: 0, fits: [], description: "Starting ex-showroom price from the supplied catalog; city and variant pricing may differ.", base: 99999, vendors: ["v1", "v6"] },
-  { name: "Ather 450", brand: "Ather", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/272x153/n/cw/ec/196337/450x-right-side-view-2.png?isig=0&q=80", warrantyMonths: 0, weightKg: 0, fits: [], description: "Starting ex-showroom price from the supplied catalog; confirm the selected battery and city price.", base: 135999, vendors: ["v1", "v6"] },
-  { name: "Ather Rizta", brand: "Ather", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/272x153/n/cw/ec/168965/rizta-right-side-view-4.png?isig=0&q=80", warrantyMonths: 0, weightKg: 0, fits: [], description: "Rizta S starting ex-showroom price from the supplied catalog; other variants are priced separately.", base: 121999, vendors: ["v1", "v6"] },
-  { name: "Ather 450S", brand: "Ather", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/272x153/n/cw/ec/149605/450s-right-side-view-2.png?isig=0&q=80", warrantyMonths: 0, rangeKm: 161, weightKg: 0, fits: [], description: "Starting ex-showroom listing price; verify current price and availability with a dealer. Claimed range: 161 km. Top speed: 90 km/h. Charging time: 5.15 hours.", base: 127888, vendors: ["v1", "v6"] },
-  { name: "Ather 450 Apex", brand: "Ather", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/272x153/n/cw/ec/167915/450-apex-right-side-view.png?isig=0&q=80", warrantyMonths: 0, rangeKm: 165, weightKg: 0, fits: [], description: "Starting ex-showroom listing price; verify current price and availability with a dealer. Claimed range: 165 km. Top speed: 100 km/h. Charging time: 5.15 hours.", base: 194946, vendors: ["v1", "v6"] },
-  { name: "TVS iQube 2.3 kWh", brand: "TVS", category: "Electric Bikes", vehicleType: "bike", image: "https://www.tvsmotor.com/electric-scooters/tvs-iqube/-/media/Vehicles/Feature/Iqube/Variant/Comparison/23new.webp?h=260&la=en&w=380", voltage: 52, capacityAh: 44, chemistry: "Li-ion", warrantyMonths: 36, rangeKm: 114, weightKg: 109, fits: [], description: "TVS iQube electric scooter with 2.3 kWh battery and up to 114 km IDC range. Price and availability can vary by city.", base: 116310, vendors: ["v2", "v6"] },
+  { name: "Ather 450X Gen 3 Smart Electric Scooter", brand: "Ather Energy", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/1280x720/n/cw/ec/196337/450x-right-side-view-2.png?isig=0&q=90", voltage: 48, capacityAh: 78, chemistry: "Li-ion", warrantyMonths: 36, rangeKm: 150, weightKg: 108, fits: ["ather-450x"], description: "Flagship 450X with Warp Mode, 7-inch TFT touchscreen and IP67 battery pack.", base: 145000, vendors: ["v1", "v6"] },
+  { name: "Ather Konarc", brand: "Ather", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/1280x720/n/cw/ec/209108/konarc-right-side-view-16.jpeg?isig=0&q=90", warrantyMonths: 0, weightKg: 0, fits: [], description: "Starting ex-showroom price from the supplied catalog; city and variant pricing may differ.", base: 99999, vendors: ["v1", "v6"] },
+  { name: "Ather 450", brand: "Ather", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/1280x720/n/cw/ec/196337/450x-right-side-view-2.png?isig=0&q=90", warrantyMonths: 0, weightKg: 0, fits: [], description: "Starting ex-showroom price from the supplied catalog; confirm the selected battery and city price.", base: 135999, vendors: ["v1", "v6"] },
+  { name: "Ather Rizta", brand: "Ather", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/1280x720/n/cw/ec/168965/rizta-right-side-view-4.png?isig=0&q=90", warrantyMonths: 0, weightKg: 0, fits: [], description: "Rizta S starting ex-showroom price from the supplied catalog; other variants are priced separately.", base: 121999, vendors: ["v1", "v6"] },
+  { name: "Ather 450S", brand: "Ather", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/1280x720/n/cw/ec/149605/450s-right-side-view-2.png?isig=0&q=90", warrantyMonths: 0, rangeKm: 161, weightKg: 0, fits: [], description: "Starting ex-showroom listing price; verify current price and availability with a dealer. Claimed range: 161 km. Top speed: 90 km/h. Charging time: 5.15 hours.", base: 127888, vendors: ["v1", "v6"] },
+  { name: "Ather 450 Apex", brand: "Ather", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/1280x720/n/cw/ec/167915/450-apex-right-side-view.png?isig=0&q=90", warrantyMonths: 0, rangeKm: 165, weightKg: 0, fits: [], description: "Starting ex-showroom listing price; verify current price and availability with a dealer. Claimed range: 165 km. Top speed: 100 km/h. Charging time: 5.15 hours.", base: 194946, vendors: ["v1", "v6"] },
+  { name: "TVS iQube 2.3 kWh", brand: "TVS", category: "Electric Bikes", vehicleType: "bike", image: "https://www.tvsmotor.com/electric-scooters/tvs-iqube/-/media/Vehicles/Feature/Iqube/Variant/Comparison/23new.webp?h=820&la=en&w=1200", voltage: 52, capacityAh: 44, chemistry: "Li-ion", warrantyMonths: 36, rangeKm: 114, weightKg: 109, fits: [], description: "TVS iQube electric scooter with 2.3 kWh battery and up to 114 km IDC range. Price and availability can vary by city.", base: 116310, vendors: ["v2", "v6"] },
   { name: "TVS X Electric Scooter", brand: "TVS", category: "Electric Bikes", vehicleType: "bike", image: "https://www.tvsmotor.com/U388_Assets/images/360images/28.webp", voltage: 72, capacityAh: 53, chemistry: "Li-ion", warrantyMonths: 36, rangeKm: 140, weightKg: 140, fits: [], description: "Premium electric scooter with 3.8 kWh battery, 140 km IDC range and 105 km/h top speed. Starting ex-showroom price; final price varies by city.", base: 266141, vendors: ["v2", "v6"] },
   { name: "TVS Orbiter V2 Electric Scooter", brand: "TVS", category: "Electric Bikes", vehicleType: "bike", image: "https://asset.autocarindia.com/static/image-galleries/images/20251216_111800_4c55f888.png?q=75&w=728", voltage: 48, capacityAh: 65, chemistry: "Li-ion", warrantyMonths: 60, rangeKm: 158, weightKg: 112, fits: [], description: "TVS Orbiter V2 with 3.1 kWh battery and up to 158 km IDC range. Price and availability can vary by city.", base: 103650, vendors: ["v2", "v6"] },
   { name: "Revolt RV400 Electric Motorcycle", brand: "Revolt Motors", category: "Electric Bikes", vehicleType: "bike", image: heroBike, batteryCapacityKwh: 3.24, chemistry: "NMC", warrantyMonths: 36, rangeKm: 150, weightKg: 115, fits: ["revolt-rv400"], description: "AI-enabled electric performance motorcycle with a 3.24 kWh NMC battery, MyRevolt connectivity and 85 km/h top speed.", base: 139000, vendors: ["v4", "v6"] },
@@ -150,11 +151,21 @@ const verifiedBatterySpecs: Record<string, Partial<Pick<Product, "voltage" | "ca
   "vida-vx2-plus": { batteryCapacityKwh: 3.4 },
   "vida-hero-v2": { batteryCapacityKwh: 3.94 },
 };
+
+function higherResolutionBikeImage(url: string): string {
+  return url
+    .replace(/\/272x153\//, "/1280x720/")
+    .replace(/\/0x0\//, "/1280x720/")
+    .replace(/([?&]q=)80\b/, (_match, prefix: string) => `${prefix}90`);
+}
+
 const uploadedBrandProducts: Product[] = vehicleCatalog.products
   .filter((item) => requestedVehicleBrands.has(item.brand) && !(item.brand === "Revolt" && item.model === "RV400"))
   .map((item, index) => {
     const variant = item.variant && !["Base", "Base / listing entry"].includes(item.variant) ? ` ${item.variant}` : "";
     const battery = verifiedBatterySpecs[item.id] ?? {};
+    const sourceImage = typeof item.image_url === "string" ? item.image_url : "";
+    const image = higherResolutionBikeImage(sourceImage);
     const specs = [
       battery.batteryCapacityKwh ? `${battery.batteryCapacityKwh} kWh ${battery.chemistry ?? ""} battery` : "",
       battery.batterySpec ?? "",
@@ -170,7 +181,8 @@ const uploadedBrandProducts: Product[] = vehicleCatalog.products
       brand: item.brand,
       category: "Electric Bikes",
       vehicleType: "bike",
-      image: item.image_url,
+      image,
+      ...(image !== sourceImage ? { imageFallback: sourceImage } : {}),
       ...battery,
       ...(typeof item.claimed_range_km === "number" ? { rangeKm: item.claimed_range_km } : {}),
       warrantyMonths: 0,
