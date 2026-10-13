@@ -6,17 +6,29 @@ dotenv.config();
 const env = process.env;
 const rawUrl = env["DATABASE_URL"];
 const isSqlite = (rawUrl || "").startsWith("file:");
+// Only configure PostgreSQL connection string if explicitly requested and not SQLite
+const hasExplicitPg = Boolean(!isSqlite && (rawUrl?.startsWith("postgres") || env["PGPASSWORD"]));
 const connectionString =
   (!isSqlite && rawUrl ? rawUrl : null) ||
-  `postgresql://${env["PGUSER"] || "postgres"}:${encodeURIComponent(env["PGPASSWORD"] || "Vsvg@db1")}@${env["PGHOST"] || "localhost"}:${env["PGPORT"] || "5432"}/${env["PGDATABASE"] || "riderzpro"}`;
+  (hasExplicitPg
+    ? `postgresql://${env["PGUSER"] || "postgres"}:${encodeURIComponent(env["PGPASSWORD"] || "")}@${env["PGHOST"] || "localhost"}:${env["PGPORT"] || "5432"}/${env["PGDATABASE"] || "riderzpro"}`
+    : null);
 
-export const pool = new pg.Pool({
-  connectionString,
-  max: 15,
-  idleTimeoutMillis: 30000,
-});
+export let isPostgresAvailable = false;
+
+export const pool = new pg.Pool(
+  connectionString
+    ? { connectionString, max: 15, idleTimeoutMillis: 30000 }
+    : { connectionString: "postgresql://localhost:5432/none", max: 1 }
+);
+
+// Prevent unhandled error events from crashing the process
+pool.on("error", () => {});
 
 export async function query<T extends pg.QueryResultRow = any>(text: string, params?: any[]): Promise<pg.QueryResult<T>> {
+  if (!isPostgresAvailable || !connectionString) {
+    return { rows: [] as T[], rowCount: 0, command: "", oid: 0, fields: [] };
+  }
   return pool.query<T>(text, params);
 }
 
@@ -24,10 +36,18 @@ export async function query<T extends pg.QueryResultRow = any>(text: string, par
  * Initializes and ensures all required database tables exist with proper schema and indexes.
  */
 export async function initializeDatabaseSchema() {
+  if (isSqlite || !connectionString) {
+    isPostgresAvailable = false;
+    console.log("[Database] Running with local SQLite/in-memory marketplace fallback (DATABASE_URL=file:...).");
+    return;
+  }
+
   let client: any;
   try {
     client = await pool.connect();
+    isPostgresAvailable = true;
   } catch (err: any) {
+    isPostgresAvailable = false;
     console.warn("[PostgreSQL] Local PostgreSQL not reached. Running with local SQLite/in-memory marketplace fallback.", err.message);
     return;
   }
