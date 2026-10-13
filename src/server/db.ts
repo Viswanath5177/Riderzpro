@@ -133,6 +133,20 @@ export async function initializeDatabaseSchema() {
 
     // 4. Customer Garage Table
     await client.query(`
+      CREATE TABLE IF NOT EXISTS email_verification_attempts (
+        id VARCHAR(64) PRIMARY KEY DEFAULT ('otp_' || substr(md5(random()::text || clock_timestamp()::text), 1, 16)),
+        email VARCHAR(255) NOT NULL,
+        purpose VARCHAR(32) NOT NULL,
+        code_hash VARCHAR(128) NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        consumed_at TIMESTAMPTZ,
+        verified BOOLEAN DEFAULT FALSE,
+        attempts INT DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      ALTER TABLE email_verification_attempts ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT FALSE;
+      ALTER TABLE email_verification_attempts ADD COLUMN IF NOT EXISTS consumed_at TIMESTAMPTZ;
+
       CREATE TABLE IF NOT EXISTS customer_garage (
         id VARCHAR(64) PRIMARY KEY,
         customer_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -245,7 +259,7 @@ export async function initializeDatabaseSchema() {
     await client.query(`
       INSERT INTO users (id, email, phone, password_hash, full_name, role, store_name, is_active)
       VALUES 
-        ('usr_seller_01', 'seller@riderzpro.com', '+91 98450 11223', 'hash', 'NexGen EV Store', 'seller', 'NexGen EV Store', TRUE),
+
         ('usr_customer_demo', 'customer@riderzpro.com', '+91 98450 99887', 'hash', 'Arjun Sharma', 'customer', NULL, TRUE)
       ON CONFLICT (id) DO NOTHING;
     `);
