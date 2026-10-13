@@ -73,8 +73,7 @@ export function Header() {
     <>
       <header className="sticky top-0 z-40 h-[72px] border-b border-[#ececec] bg-white/95 backdrop-blur-md transition-shadow">
         <div className="mx-auto flex h-full max-w-[1200px] items-center justify-between px-4 sm:px-6 lg:px-8">
-          {/* Left: Brand Logo */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
             <button
               onClick={() => setIsMobileDrawerOpen(true)}
               className="flex h-10 w-10 items-center justify-center rounded-xl text-[#111111] hover:bg-[#f7f7f8] lg:hidden cursor-pointer"
@@ -82,7 +81,7 @@ export function Header() {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <Logo imgClassName="h-8 sm:h-9" />
+            <Logo className="flex items-center" imgClassName="h-11 sm:h-12 md:h-13.5 w-auto" />
           </div>
 
           {/* Center: 5 Nav Links Only (Desktop) */}
@@ -144,7 +143,6 @@ export function Header() {
             >
               Help
             </Link>
-
             {/* 6. Sell on RiderzPro */}
             <Link
               to="/vendor/auth"
@@ -270,7 +268,7 @@ export function Header() {
               </DropdownMenu>
             ) : (
               <Link
-                to="/auth"
+                to="/login"
                 className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#e11d2a] hover:bg-[#c91823] px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-xs transition active:scale-95"
               >
                 <User className="h-3.5 w-3.5" />

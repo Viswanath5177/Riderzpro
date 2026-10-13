@@ -69,7 +69,7 @@ export function MobileDrawer({
       <div className="relative flex w-full max-w-sm flex-1 flex-col bg-white shadow-2xl animate-in slide-in-from-left duration-200">
         {/* Header */}
         <div className="flex h-[72px] items-center justify-between border-b border-[#ececec] px-5">
-          <Logo imgClassName="h-8" />
+          <Logo className="flex items-center" imgClassName="h-10 sm:h-11 w-auto" />
           <button
             onClick={onClose}
             className="flex h-10 w-10 items-center justify-center rounded-xl text-[#6b7280] hover:bg-[#f7f7f8] hover:text-[#111111] transition cursor-pointer"
@@ -165,7 +165,6 @@ export function MobileDrawer({
             <HelpCircle className="h-4 w-4 text-[#6b7280]" />
             <span>Help & Support</span>
           </Link>
-
           {/* Sell on RiderzPro */}
           <Link
             to="/vendor/auth"
@@ -210,7 +209,7 @@ export function MobileDrawer({
             </div>
           ) : (
             <Link
-              to="/auth"
+              to="/login"
               onClick={onClose}
               className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#e11d2a] text-xs font-semibold text-white transition hover:bg-[#c91823]"
             >

@@ -1,6 +1,16 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   CUSTOMER_LOCATION,
+  DEFAULT_LOCATION,
+  type LocationArea,
   GST_RATE,
   deliveryFee,
   distanceKm,
@@ -202,9 +212,16 @@ export type GarageBike = {
   batteryHealth?: number;
   nextServiceDays?: number;
 };
-export type Role = "customer" | "workshop" | "vendor" | "rider" | "admin";
+export type Role = "customer" | "seller" | "admin";
 
-export const ORDER_STEPS = ["Placed", "Vendor accepted", "Rider assigned", "Picked up", "On the way", "Delivered"] as const;
+export const ORDER_STEPS = [
+  "Placed",
+  "Vendor accepted",
+  "Rider assigned",
+  "Picked up",
+  "On the way",
+  "Delivered",
+] as const;
 
 export type ServiceBooking = {
   id: string;
@@ -228,16 +245,6 @@ export type CustomerNotification = {
   actionUrl?: string;
 };
 
-export type UserAddress = {
-  id: string;
-  tag: string;
-  name: string;
-  phone: string;
-  street: string;
-  city: string;
-  pincode: string;
-};
-
 export type UserProfile = {
   name: string;
   phone: string;
@@ -245,8 +252,6 @@ export type UserProfile = {
   city: string;
   address: string;
   points: number;
-  addresses?: UserAddress[];
-  selectedAddressId?: string;
 };
 
 export type VendorGroup = {
@@ -282,7 +287,7 @@ export type Order = {
   refundReason?: string;
 };
 
-export function quoteCart(cart: CartItem[], discount = 0) {
+export function quoteCart(cart: CartItem[], discount = 0, loc: { lat: number; lng: number } = CUSTOMER_LOCATION) {
   const map = new Map<string, VendorGroup>();
   for (const c of cart) {
     const p = getProduct(c.productId);
@@ -291,8 +296,15 @@ export function quoteCart(cart: CartItem[], discount = 0) {
     let g = map.get(c.vendorId);
     if (!g) {
       const v = getVendor(c.vendorId);
-      const km = Math.round(distanceKm(v, CUSTOMER_LOCATION) * 10) / 10;
-      g = { vendorId: c.vendorId, items: [], subtotal: 0, km, fee: deliveryFee(km), eta: etaMinutes(km, v.prepMins) };
+      const km = Math.round(distanceKm(v, loc) * 10) / 10;
+      g = {
+        vendorId: c.vendorId,
+        items: [],
+        subtotal: 0,
+        km,
+        fee: deliveryFee(km),
+        eta: etaMinutes(km, v.prepMins),
+      };
       map.set(c.vendorId, g);
     }
     g.items.push({ productId: c.productId, qty: c.qty, price: offer.price });
@@ -353,45 +365,44 @@ type Ctx = {
   updateUserProfile: (p: Partial<UserProfile>) => void;
   role: Role;
   setRole: (r: Role) => void;
+  isCartOpen: boolean;
+  setIsCartOpen: (open: boolean) => void;
   isLoggedIn: boolean;
-  setIsLoggedIn: (v: boolean) => void;
   signIn: () => void;
   signOut: () => void;
-  selectAddress: (id: string) => void;
-  addAddress: (addr: Omit<UserAddress, "id">) => void;
-  updateAddress: (id: string, updated: Partial<UserAddress>) => void;
-  removeAddress: (id: string) => void;
+  deleteOrder: (id: string) => void;
+  clearOrders: () => void;
+  userLocation: LocationArea;
+  setUserLocation: (loc: LocationArea) => void;
+  isLocationModalOpen: boolean;
+  setIsLocationModalOpen: (open: boolean) => void;
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
-const KEY = "riderzpro-v2";
+const KEY = "riderzpro-v7";
 
-export const DEFAULT_PROFILE: UserProfile = {
-  name: "",
+const DEFAULT_PROFILE: UserProfile = {
+  name: "Rider",
   phone: "",
   email: "",
-  city: "",
+  city: "Bengaluru, KA",
   address: "",
   points: 0,
-  selectedAddressId: "",
-  addresses: [],
 };
 
 const DEFAULT_ADDRESS: AddressRef = {
-  name: "",
+  name: "Rider",
   street: "",
-  city: "",
-  state: "",
-  pincode: "",
+  city: "Bengaluru",
+  state: "Karnataka",
+  pincode: "560001",
   phone: "",
 };
 
+export const DEFAULT_GARAGE: GarageBike[] = [];
 const DEFAULT_BOOKINGS: ServiceBooking[] = [];
-
 const DEFAULT_NOTIFICATIONS: CustomerNotification[] = [];
-
 export const DEFAULT_ORDERS: Order[] = [];
-
 export const DEFAULT_SHIPMENTS: NormalizedShipment[] = [];
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -401,13 +412,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [activeBikeId, setActiveBikeId] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [shipments, setShipments] = useState<NormalizedShipment[]>([]);
-  const [inventoryStock, setInventoryStock] = useState<Record<string, number>>(() => {
-    const initial: Record<string, number> = {};
-    products.forEach((p) => {
-      initial[p.id] = p.offers.reduce((s, o) => s + o.stock, 0) || 12;
-    });
-    return initial;
-  });
+  const [inventoryStock, setInventoryStock] = useState<Record<string, number>>({});
   const [savedProductIds, setSavedProductIds] = useState<string[]>([]);
   const [serviceBookings, setServiceBookings] = useState<ServiceBooking[]>([]);
   const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
@@ -425,6 +430,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     return false;
   });
+  const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
+  const [userLocation, setUserLocation] = useState<LocationArea>(DEFAULT_LOCATION);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -462,6 +470,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             }
           }
           if (s.role) setRole(s.role);
+          if (s.userLocation && s.userLocation.name) setUserLocation(s.userLocation);
         } else {
           // Reset legacy mock state
           localStorage.removeItem(KEY);
@@ -493,8 +502,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         } catch {}
       }
 
-      setTheme("light");
-    } catch {}
+      const t = localStorage.getItem("riderzpro-theme");
+      if (t === "light" || t === "dark") setTheme(t);
+      else setTheme("light");
+    } catch (_err) {}
     setLoaded(true);
   }, []);
 
@@ -560,13 +571,39 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         notifications,
         userProfile,
         role,
+        userLocation,
       }),
     );
-  }, [cart, garage, activeBikeId, orders, shipments, inventoryStock, savedProductIds, serviceBookings, notifications, userProfile, role, loaded]);
+
+    // Persist cart to PostgreSQL backend
+    try {
+      const customerId = userProfile?.email || "usr_customer_demo";
+      fetch(`/api/cart?customer_id=${encodeURIComponent(customerId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: cart }),
+      }).catch(() => {});
+    } catch {}
+  }, [cart, garage, activeBikeId, orders, shipments, inventoryStock, savedProductIds, serviceBookings, notifications, userProfile, role, userLocation, loaded]);
 
   useEffect(() => {
     document.documentElement.classList.remove("dark");
   }, [theme, loaded]);
+
+  // simulate live order progress
+  useEffect(() => {
+    const t = setInterval(() => {
+      setOrders((os) =>
+        os.map((o) => {
+          if (o.status >= ORDER_STEPS.length - 1) return o;
+          if (Date.now() - o.createdAt < (o.status + 1) * 12000) return o;
+          const status = o.status + 1;
+          return { ...o, status, riderId: status >= 2 ? (o.riderId ?? riders[0].id) : undefined };
+        }),
+      );
+    }, 3000);
+    return () => clearInterval(t);
+  }, []);
 
   const addToCart = useCallback((productId: string, vendorId: string, qty = 1) => {
     setCart((c) => {
@@ -882,82 +919,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   }, []);
 
-  const signIn = useCallback(() => {
-    setIsLoggedIn(true);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("riderzpro_auth", "true");
-    }
-  }, []);
-
-  const signOut = useCallback(() => {
-    setIsLoggedIn(false);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("riderzpro_auth");
-    }
-  }, []);
-
   const updateUserProfile = useCallback((p: Partial<UserProfile>) => {
     setUserProfile((prev) => ({ ...prev, ...p }));
-  }, []);
-
-  const selectAddress = useCallback((id: string) => {
-    setUserProfile((prev) => {
-      const target = (prev.addresses || DEFAULT_PROFILE.addresses || []).find((a) => a.id === id);
-      if (!target) return prev;
-      return {
-        ...prev,
-        selectedAddressId: id,
-        address: target.street,
-        city: `${target.city} - ${target.pincode}`,
-      };
-    });
-  }, []);
-
-  const addAddress = useCallback((addr: Omit<UserAddress, "id">) => {
-    const newAddr: UserAddress = {
-      ...addr,
-      id: `addr-${Date.now()}`,
-    };
-    setUserProfile((prev) => {
-      const currentList = prev.addresses || DEFAULT_PROFILE.addresses || [];
-      return {
-        ...prev,
-        addresses: [...currentList, newAddr],
-        selectedAddressId: newAddr.id,
-        address: newAddr.street,
-        city: `${newAddr.city} - ${newAddr.pincode}`,
-      };
-    });
-  }, []);
-
-  const updateAddress = useCallback((id: string, updated: Partial<UserAddress>) => {
-    setUserProfile((prev) => {
-      const currentList = prev.addresses || DEFAULT_PROFILE.addresses || [];
-      const newList = currentList.map((a) => (a.id === id ? { ...a, ...updated } : a));
-      const target = newList.find((a) => a.id === id);
-      const isCurrentlySelected = prev.selectedAddressId === id;
-      return {
-        ...prev,
-        addresses: newList,
-        address: isCurrentlySelected && target ? target.street : prev.address,
-        city: isCurrentlySelected && target ? `${target.city} - ${target.pincode}` : prev.city,
-      };
-    });
-  }, []);
-
-  const removeAddress = useCallback((id: string) => {
-    setUserProfile((prev) => {
-      const currentList = prev.addresses || DEFAULT_PROFILE.addresses || [];
-      const newList = currentList.filter((a) => a.id !== id);
-      const fallback = newList[0];
-      return {
-        ...prev,
-        addresses: newList,
-        selectedAddressId: prev.selectedAddressId === id ? (fallback?.id || "") : prev.selectedAddressId,
-        address: prev.selectedAddressId === id && fallback ? fallback.street : prev.address,
-        city: prev.selectedAddressId === id && fallback ? `${fallback.city} - ${fallback.pincode}` : prev.city,
-      };
-    });
   }, []);
 
   const simulateDemoOrder = useCallback(() => {
@@ -983,6 +946,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       paymentStatus: "Paid",
       status: 4,
       fulfillmentStatus: "Dispatched",
+      riderId: riders[0]?.id || "r1",
       customerName: userProfile?.name?.trim() || "Aakash Sharma",
       customerPhone: userProfile?.phone?.trim() || "+91 98765 43210",
       shippingAddress: {
@@ -1064,6 +1028,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return demoOrder;
   }, [userProfile]);
 
+  const signIn = useCallback(() => setIsLoggedIn(true), []);
+  const signOut = useCallback(() => setIsLoggedIn(false), []);
+  const deleteOrder = useCallback((id: string) => setOrders((os) => os.filter((o) => o.id !== id)), []);
+  const clearOrders = useCallback(() => setOrders([]), []);
+
   const value = useMemo<Ctx>(
     () => ({
       theme,
@@ -1133,6 +1102,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       cancelOrder,
       refundOrder,
       simulateDemoOrder,
+      deleteOrder,
+      clearOrders,
       shipments,
       createShipment,
       updateShipmentStatus,
@@ -1152,14 +1123,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       updateUserProfile,
       role,
       setRole,
+      isCartOpen,
+      setIsCartOpen,
       isLoggedIn,
-      setIsLoggedIn,
       signIn,
       signOut,
-      selectAddress,
-      addAddress,
-      updateAddress,
-      removeAddress,
+      userLocation,
+      setUserLocation,
+      isLocationModalOpen,
+      setIsLocationModalOpen,
     }),
     [
       theme,
@@ -1193,13 +1165,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       userProfile,
       updateUserProfile,
       role,
+      isCartOpen,
+      setIsCartOpen,
+      deleteOrder,
+      clearOrders,
       isLoggedIn,
       signIn,
       signOut,
-      selectAddress,
-      addAddress,
-      updateAddress,
-      removeAddress,
+      userLocation,
+      isLocationModalOpen,
     ],
   );
 

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { Navigate, useLocation } from "@tanstack/react-router";
+import { adminSignIn } from "./auth";
 
 export interface AdminUser {
   id: string;
@@ -78,8 +79,39 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(
     async (email: string, pass: string): Promise<{ success: boolean; error?: string; requireOtp?: boolean }> => {
       const trimmedEmail = email.trim().toLowerCase();
-      // Delay simulation for realistic UX
-      await new Promise((res) => setTimeout(res, 400));
+
+      try {
+        const backendRes = await adminSignIn(trimmedEmail, pass);
+        if (backendRes) {
+          const userObj: AdminUser = {
+            id: backendRes.id,
+            name: backendRes.fullName,
+            email: backendRes.email,
+            role: "admin",
+            roleTitle:
+              backendRes.role === "PRODUCT_ADMIN"
+                ? "Product Administrator"
+                : backendRes.role === "SELLER_ADMIN"
+                ? "Seller Administrator"
+                : "Operations Admin",
+            department:
+              backendRes.role === "PRODUCT_ADMIN"
+                ? "Product Catalog & Inventory Review"
+                : backendRes.role === "SELLER_ADMIN"
+                ? "Seller Verification & Compliance"
+                : "Operations & Platform Oversight",
+          };
+          setPendingUser(userObj);
+          return { success: true, requireOtp: true };
+        }
+      } catch (err: any) {
+        // Fallback for default local test account
+        if (trimmedEmail === "admin@riderzpro.com" && pass === "Admin@123") {
+          setPendingUser(DEFAULT_SUPER_ADMIN);
+          return { success: true, requireOtp: true };
+        }
+        return { success: false, error: err?.message || "Invalid admin credentials" };
+      }
 
       if (trimmedEmail === "admin@riderzpro.com" && pass === "Admin@123") {
         setPendingUser(DEFAULT_SUPER_ADMIN);

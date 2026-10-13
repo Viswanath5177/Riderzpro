@@ -21,8 +21,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  LogOut,
   CheckCircle2,
+  LogOut,
 } from "lucide-react";
 import { Logo } from "@/components/site/bits";
 import { useAdminAuth } from "@/lib/adminAuth";
@@ -38,6 +38,52 @@ export interface NavGroup {
     badge?: string;
   }[];
 }
+
+export const ADMIN_NAV_GROUPS: NavGroup[] = [
+  {
+    title: "Core Operations",
+    items: [
+      { title: "Dashboard", to: "/admin", icon: <LayoutDashboard className="h-4 w-4" /> },
+      { title: "Orders", to: "/admin/orders", icon: <Package className="h-4 w-4" />, badge: "42" },
+      { title: "Riders & Fleet", to: "/admin/riders", icon: <Bike className="h-4 w-4" />, badge: "142" },
+      { title: "Sellers & KYC", to: "/admin/sellers", icon: <Store className="h-4 w-4" />, badge: "2" },
+      { title: "Customers", to: "/admin/customers", icon: <Users className="h-4 w-4" /> },
+    ],
+  },
+  {
+    title: "Catalog & Fitment",
+    items: [
+      { title: "Product Approvals", to: "/admin/approvals", icon: <CheckCircle2 className="h-4 w-4" /> },
+      { title: "Products & Stock", to: "/admin/products", icon: <Box className="h-4 w-4" /> },
+      { title: "Bikes & Fitment", to: "/admin/fitment", icon: <Wrench className="h-4 w-4" /> },
+    ],
+  },
+  {
+    title: "Finance & Growth",
+    items: [
+      { title: "Payments & Payouts", to: "/admin/payments", icon: <CreditCard className="h-4 w-4" /> },
+      { title: "Offers & Coupons", to: "/admin/offers", icon: <Tag className="h-4 w-4" /> },
+      { title: "Analytics & SLA", to: "/admin/analytics", icon: <BarChart3 className="h-4 w-4" /> },
+    ],
+  },
+  {
+    title: "Customer Quality",
+    items: [
+      { title: "Support Tickets", to: "/admin/support", icon: <Headphones className="h-4 w-4" />, badge: "3" },
+      { title: "Review Moderation", to: "/admin/reviews", icon: <Star className="h-4 w-4" /> },
+      { title: "Warranty & Returns", to: "/admin/warranty", icon: <ShieldCheck className="h-4 w-4" /> },
+    ],
+  },
+  {
+    title: "Platform Administration",
+    items: [
+      { title: "AI Assistant Logs", to: "/admin/ai-assistant", icon: <Bot className="h-4 w-4" /> },
+      { title: "Notifications", to: "/admin/notifications", icon: <Bell className="h-4 w-4" /> },
+      { title: "Team & Roles", to: "/admin/team", icon: <ShieldAlert className="h-4 w-4" /> },
+      { title: "Settings", to: "/admin/settings", icon: <Settings className="h-4 w-4" /> },
+    ],
+  },
+];
 
 export interface AdminSidebarProps {
   isCollapsed: boolean;
@@ -124,7 +170,7 @@ export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: Adm
         <div className="flex items-center justify-between pb-4 border-b border-[#E5E7EB] dark:border-white/10">
           {!isCollapsed ? (
             <div className="flex items-center gap-2">
-              <Logo imgClassName="h-8" />
+              <Logo className="flex items-center" imgClassName="h-10 sm:h-11 w-auto" />
               <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[9px] font-extrabold uppercase text-[#E31E24] border border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30">
                 ADMIN
               </span>

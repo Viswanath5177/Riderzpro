@@ -128,8 +128,8 @@ export function AdminLogin() {
       >
         {/* Card Header */}
         <div className="flex flex-col items-center text-center">
-          <div className="flex items-center gap-2">
-            <Logo imgClassName="h-9" />
+          <div className="flex items-center justify-center">
+            <Logo className="flex items-center justify-center" imgClassName="h-12 sm:h-14 w-auto" />
           </div>
 
           <div className="mt-3.5 inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/15 px-3 py-1 text-[10px] font-bold tracking-wider text-red-400 uppercase">

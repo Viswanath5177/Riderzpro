@@ -1,4 +1,5 @@
 <!-- LOVABLE:BEGIN -->
+
 > [!IMPORTANT]
 > This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
 > published git history — force pushing, or rebasing/amending/squashing commits
@@ -7,6 +8,7 @@
 >
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
+
 <!-- LOVABLE:END -->
 
 - Marketplace data and pricing live in `src/lib/data.ts`, `src/lib/store.tsx`, `src/lib/vendor/` and `src/lib/catalogue.ts` (browser-side demo state); replace them with server-side SQL queries (SQLite locally, PostgreSQL in production) when the database is ready — keeps every screen on one data seam.
