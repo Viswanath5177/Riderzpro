@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Sparkles } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 
 export function AIChatButton() {
   const [showTooltip, setShowTooltip] = useState(false);
@@ -23,7 +23,7 @@ export function AIChatButton() {
         aria-label="Ask AI Automotive Assistant"
         className="flex h-13 w-13 items-center justify-center rounded-full bg-[#e11d2a] hover:bg-[#c91823] text-white shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-red-400/30"
       >
-        <Sparkles className="h-6 w-6" />
+        <MessageSquare className="h-6 w-6" />
       </Link>
     </div>
   );

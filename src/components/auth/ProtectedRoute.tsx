@@ -1,15 +1,26 @@
-import React from "react";
-import { Navigate, useRouterState } from "@tanstack/react-router";
+import React, { useEffect } from "react";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import { Zap } from "lucide-react";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
-  const currentPath = useRouterState({
-    select: (s) => s.location.pathname + (s.location.searchStr ? `?${s.location.searchStr}` : ""),
-  });
+  const navigate = useNavigate();
+  const router = useRouter();
 
-  if (loading) {
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      const loc = router.state.location;
+      const currentPath = loc.pathname + (loc.searchStr ? `?${loc.searchStr}` : "");
+      navigate({
+        to: "/auth",
+        search: { redirect: currentPath } as any,
+        replace: true,
+      });
+    }
+  }, [loading, isAuthenticated, navigate, router]);
+
+  if (loading || !isAuthenticated) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
         <div className="flex flex-col items-center gap-4">
@@ -21,10 +32,6 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/auth" search={{ redirect: currentPath }} replace />;
   }
 
   return <>{children}</>;

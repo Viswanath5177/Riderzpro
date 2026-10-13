@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Package, ArrowRight } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { inr } from "@/lib/data";
 import { ORDER_STEPS, useStore } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/orders")({
   head: () => ({
@@ -14,24 +14,31 @@ export const Route = createFileRoute("/orders")({
       { property: "og:description", content: "Track all your Riderzpro orders." },
     ],
   }),
-  component: OrdersRoute,
+  component: Orders,
 });
-
-function OrdersRoute() {
-  return (
-    <ProtectedRoute>
-      <Orders />
-    </ProtectedRoute>
-  );
-}
 
 function Orders() {
   const { orders } = useStore();
+  const { isAuthenticated } = useAuth();
+
   return (
     <SiteLayout>
       <div className="mx-auto max-w-4xl px-4 py-8 md:px-6">
-        <h1 className="font-display text-5xl md:text-7xl">My orders</h1>
-        {orders.length === 0 ? (
+        <h1 className="font-display text-4xl sm:text-5xl md:text-7xl font-extrabold text-[#111111]">My orders</h1>
+        {!isAuthenticated ? (
+          <div className="mt-10 rounded-3xl border border-dashed border-[#ececec] bg-white p-12 text-center shadow-xs">
+            <Package className="mx-auto h-12 w-12 text-[#e11d2a]" />
+            <p className="mt-4 font-display text-2xl sm:text-3xl font-bold text-[#111111]">Sign in to view orders</p>
+            <p className="mt-2 text-sm text-[#6b7280]">Sign in to your customer account to track your orders, live rider GPS and dispatches.</p>
+            <Link
+              to="/auth"
+              search={{ redirect: "/orders" } as any}
+              className="mt-6 inline-flex rounded-xl bg-[#e11d2a] hover:bg-[#c91823] px-6 py-3 font-semibold text-white shadow-xs transition"
+            >
+              Sign in to your account
+            </Link>
+          </div>
+        ) : orders.length === 0 ? (
           <div className="mt-10 rounded-3xl border border-dashed border-border p-16 text-center">
             <Package className="mx-auto h-12 w-12 text-primary" />
             <p className="mt-3 font-display text-3xl">No orders yet</p>
