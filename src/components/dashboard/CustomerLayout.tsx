@@ -43,6 +43,7 @@ import { cn } from "@/lib/utils";
 import { VinSearchModal } from "./VinSearchModal";
 import { CartDrawer } from "@/components/common/CartDrawer";
 import { AiChatbotWidget } from "@/components/common/AiChatbotWidget";
+import { LocationPickerModal } from "@/components/common/LocationPickerModal";
 
 export type CustomerTab =
   | "overview"
@@ -84,6 +85,9 @@ export function CustomerLayout({
     cart,
     setIsCartOpen,
     signOut: storeSignOut,
+    userLocation,
+    isLocationModalOpen,
+    setIsLocationModalOpen,
   } = useStore();
   const { user: authUser, signOut } = useAuth();
   const navigate = useNavigate();
@@ -319,10 +323,10 @@ export function CustomerLayout({
 
       {/* Main Container with Solid Clean Neutral Backdrop */}
       <div className="flex flex-1 min-h-screen bg-[#F5F6F8] relative">
-        {/* Desktop Left Sidebar (Static Container Pinned to Viewport) */}
+        {/* Desktop Left Sidebar (Static Fixed Container Pinned to Viewport) */}
         <aside
           className={cn(
-            "hidden md:flex flex-col bg-white/80 backdrop-blur-xl backdrop-saturate-150 border-r border-black/[0.06] shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 z-30 shrink-0 select-none sticky top-0 h-screen",
+            "hidden md:flex flex-col bg-white/95 backdrop-blur-xl backdrop-saturate-150 border-r border-black/[0.06] shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 z-30 select-none fixed inset-y-0 left-0 h-screen",
             isCollapsed ? "w-20" : "w-64"
           )}
         >
@@ -455,8 +459,13 @@ export function CustomerLayout({
           </div>
         </aside>
 
-        {/* Right Content Area */}
-        <div className="flex-1 flex flex-col min-w-0">
+        {/* Right Content Area (Scrolls independently while navbar stays static) */}
+        <div
+          className={cn(
+            "flex-1 flex flex-col min-w-0 transition-all duration-300",
+            isCollapsed ? "md:pl-20" : "md:pl-64"
+          )}
+        >
           {/* Top Header (Apple Glassmorphic Theme) */}
           <header className="sticky top-0 z-20 h-18 sm:h-20 bg-white/65 backdrop-blur-2xl backdrop-saturate-180 border-b border-black/[0.06] px-3 sm:px-4 md:px-8 flex items-center justify-between gap-2 sm:gap-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.85),0_10px_30px_-10px_rgba(0,0,0,0.04)] transition-all duration-200">
             {/* Left: Mobile hamburger & breadcrumbs */}
@@ -479,6 +488,21 @@ export function CustomerLayout({
                   Welcome back, <span className="text-[#111111]">{userProfile.name.split(" ")[0]}</span>
                 </h1>
               </div>
+
+              {/* Zomato-style Header Location Pill */}
+              <button
+                onClick={() => setIsLocationModalOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full bg-white/80 hover:bg-white active:bg-white/95 border border-black/[0.08] hover:border-black/[0.18] shadow-2xs hover:shadow-xs text-xs font-semibold text-gray-800 transition-all cursor-pointer shrink-0 max-w-[140px] sm:max-w-[180px] md:max-w-[210px] group"
+                title="Change delivery area"
+              >
+                <MapPin className="h-3.5 w-3.5 text-[#E31E24] group-hover:scale-110 transition-transform shrink-0" />
+                <div className="text-left min-w-0 flex-1 hidden sm:block">
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider leading-none">Delivering to</p>
+                  <p className="text-xs font-bold text-gray-900 truncate leading-tight mt-0.5">{userLocation?.name || "Indiranagar"}</p>
+                </div>
+                <span className="sm:hidden text-xs font-bold text-gray-900 truncate">{userLocation?.name?.split(" ")[0] || "Indiranagar"}</span>
+                <ChevronDown className="h-3 w-3 text-gray-400 group-hover:text-gray-700 shrink-0" />
+              </button>
             </div>
 
             {/* Center: Command Search Bar (Spotlight Glass) */}
@@ -999,6 +1023,12 @@ export function CustomerLayout({
 
       {/* Floating AI Assistant Copilot Chatbot */}
       <AiChatbotWidget />
+
+      {/* Global Location Picker Modal */}
+      <LocationPickerModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+      />
     </div>
   );
 }

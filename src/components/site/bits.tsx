@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router";
-import { Moon, Sun, Zap, CheckCircle2, XCircle, HelpCircle, Star, Heart, ShoppingCart } from "lucide-react";
+import { Moon, Sun, Zap, CheckCircle2, XCircle, HelpCircle, Star, Heart, ShoppingCart, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
-import { bestOffer, fitmentFor, getVendor, inr, type Fitment, type Product } from "@/lib/data";
+import { bestOffer, fitmentFor, getVendor, inr, distanceKm, etaMinutes, type Fitment, type Product } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 import logoImg from "@/assets/riderzpro-logo.png";
@@ -70,13 +70,17 @@ export function FitmentBadge({ fit, className }: { fit: Fitment; className?: str
 }
 
 export function ProductCard({ p }: { p: Product }) {
-  const { activeBikeId, addToCart, toggleSaved, isSaved, inventoryStock } = useStore();
+  const { activeBikeId, addToCart, toggleSaved, isSaved, inventoryStock, userLocation } = useStore();
   const offer = bestOffer(p);
   const fit = fitmentFor(p, activeBikeId);
   const offerPrice = offer?.price || 0;
   const mrp = p.mrp || (offerPrice > 0 ? Math.round((offerPrice * 1.14) / 100) * 100 : 0);
   const discountPct = p.discountPercent || (mrp > offerPrice && offerPrice > 0 ? Math.round(((mrp - offerPrice) / mrp) * 100) : 0);
   const saved = isSaved(p.id);
+
+  const vendor = getVendor(offer.vendorId);
+  const vendorDist = userLocation ? Math.round(distanceKm(vendor, userLocation) * 10) / 10 : null;
+  const deliveryEta = vendorDist !== null ? etaMinutes(vendorDist, vendor.prepMins) : null;
 
   const currentStock = inventoryStock?.[p.id] ?? offer?.stock ?? p.offers?.[0]?.stock ?? 0;
   const isLowStock = currentStock < 5;
@@ -103,6 +107,12 @@ export function ProductCard({ p }: { p: Product }) {
           {discountPct > 0 && (
             <span className="rounded-md bg-[#E31E24] px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
               {discountPct}% OFF
+            </span>
+          )}
+          {vendorDist !== null && vendorDist <= 4 && (
+            <span className="rounded-md bg-emerald-600 text-white px-2 py-0.5 text-[10px] font-bold shadow-xs flex items-center gap-1">
+              <Zap className="h-2.5 w-2.5 fill-white text-white" />
+              ⚡ {deliveryEta}m
             </span>
           )}
           {isLowStock && (
@@ -199,9 +209,15 @@ export function ProductCard({ p }: { p: Product }) {
                 Price on Req.
               </span>
             )}
-            <p className="text-[9.5px] sm:text-[10px] text-[#6B7280] truncate max-w-[95px] sm:max-w-[130px]">
-              From {getVendor(offer.vendorId).name}
-            </p>
+            <div className="flex items-center gap-1 text-[9.5px] sm:text-[10px] text-[#6B7280] truncate max-w-[125px] sm:max-w-[150px] mt-0.5">
+              <span className="truncate">{vendor.name}</span>
+              {vendorDist !== null && (
+                <span className="shrink-0 text-emerald-700 font-bold bg-emerald-50 px-1 py-0.2 rounded text-[9px] flex items-center gap-0.5">
+                  <MapPin className="h-2.5 w-2.5 text-emerald-600" />
+                  {vendorDist}km
+                </span>
+              )}
+            </div>
           </div>
 
           <button

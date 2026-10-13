@@ -163,6 +163,45 @@ export type Rider = { id: string; name: string; phone: string; vehicle: string; 
 
 export const CUSTOMER_LOCATION = { lat: 12.9716, lng: 77.5946, label: "MG Road, Bengaluru" };
 
+export type LocationArea = {
+  id: string;
+  name: string;
+  city: string;
+  lat: number;
+  lng: number;
+  pincode?: string;
+  tag?: string;
+  isPopular?: boolean;
+};
+
+export const DEFAULT_LOCATION: LocationArea = {
+  id: "indiranagar",
+  name: "Indiranagar",
+  city: "Bengaluru",
+  lat: 12.9784,
+  lng: 77.6408,
+  pincode: "560038",
+  tag: "Central-East Hub",
+  isPopular: true,
+};
+
+export const POPULAR_LOCATIONS: LocationArea[] = [
+  { id: "indiranagar", name: "Indiranagar", city: "Bengaluru", lat: 12.9784, lng: 77.6408, pincode: "560038", tag: "Central-East", isPopular: true },
+  { id: "koramangala", name: "Koramangala", city: "Bengaluru", lat: 12.9352, lng: 77.6245, pincode: "560034", tag: "South-East", isPopular: true },
+  { id: "mg-road", name: "MG Road / CBD", city: "Bengaluru", lat: 12.9716, lng: 77.5946, pincode: "560001", tag: "Central CBD", isPopular: true },
+  { id: "jayanagar", name: "Jayanagar", city: "Bengaluru", lat: 12.9250, lng: 77.5938, pincode: "560011", tag: "South Hub", isPopular: true },
+  { id: "whitefield", name: "Whitefield", city: "Bengaluru", lat: 12.9698, lng: 77.7500, pincode: "560066", tag: "East Tech Hub", isPopular: true },
+  { id: "malleshwaram", name: "Malleshwaram", city: "Bengaluru", lat: 13.0035, lng: 77.5709, pincode: "560003", tag: "North-West", isPopular: true },
+  { id: "hebbal", name: "Hebbal", city: "Bengaluru", lat: 13.0358, lng: 77.5970, pincode: "560024", tag: "North Hub", isPopular: true },
+  { id: "hsr-layout", name: "HSR Layout", city: "Bengaluru", lat: 12.9121, lng: 77.6446, pincode: "560102", tag: "South-East", isPopular: true },
+  { id: "bellandur", name: "Bellandur / Green Glen", city: "Bengaluru", lat: 12.9304, lng: 77.6784, pincode: "560103", tag: "Outer Ring Rd", isPopular: true },
+  { id: "electronic-city", name: "Electronic City Phase 1", city: "Bengaluru", lat: 12.8399, lng: 77.6770, pincode: "560100", tag: "South Tech Corridor", isPopular: false },
+  { id: "rajajinagar", name: "Rajajinagar", city: "Bengaluru", lat: 12.9982, lng: 77.5530, pincode: "560010", tag: "West Commercial", isPopular: false },
+  { id: "banashankari", name: "Banashankari", city: "Bengaluru", lat: 12.9150, lng: 77.5736, pincode: "560070", tag: "South Corridor", isPopular: false },
+  { id: "marathahalli", name: "Marathahalli", city: "Bengaluru", lat: 12.9591, lng: 77.6974, pincode: "560037", tag: "East Junction", isPopular: false },
+  { id: "yelahanka", name: "Yelahanka", city: "Bengaluru", lat: 13.1007, lng: 77.5963, pincode: "560064", tag: "North Suburbs", isPopular: false },
+];
+
 export const bikes: Bike[] = [
   { id: "ather-450x", make: "Ather", model: "450X", years: [2021, 2022, 2023, 2024, 2025], voltage: 48, wmi: "MD9" },
   { id: "ola-s1pro", make: "Ola", model: "S1 Pro", years: [2022, 2023, 2024, 2025], voltage: 60, wmi: "P6R" },

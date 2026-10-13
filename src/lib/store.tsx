@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   CUSTOMER_LOCATION,
+  DEFAULT_LOCATION,
+  type LocationArea,
   GST_RATE,
   deliveryFee,
   distanceKm,
@@ -102,7 +104,7 @@ export type Order = {
   refundReason?: string;
 };
 
-export function quoteCart(cart: CartItem[], discount = 0) {
+export function quoteCart(cart: CartItem[], discount = 0, loc: { lat: number; lng: number } = CUSTOMER_LOCATION) {
   const map = new Map<string, VendorGroup>();
   for (const c of cart) {
     const p = getProduct(c.productId);
@@ -111,7 +113,7 @@ export function quoteCart(cart: CartItem[], discount = 0) {
     let g = map.get(c.vendorId);
     if (!g) {
       const v = getVendor(c.vendorId);
-      const km = Math.round(distanceKm(v, CUSTOMER_LOCATION) * 10) / 10;
+      const km = Math.round(distanceKm(v, loc) * 10) / 10;
       g = { vendorId: c.vendorId, items: [], subtotal: 0, km, fee: deliveryFee(km), eta: etaMinutes(km, v.prepMins) };
       map.set(c.vendorId, g);
     }
@@ -180,6 +182,10 @@ type Ctx = {
   signOut: () => void;
   deleteOrder: (id: string) => void;
   clearOrders: () => void;
+  userLocation: LocationArea;
+  setUserLocation: (loc: LocationArea) => void;
+  isLocationModalOpen: boolean;
+  setIsLocationModalOpen: (open: boolean) => void;
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
@@ -417,6 +423,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role>("customer");
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
+  const [userLocation, setUserLocation] = useState<LocationArea>(DEFAULT_LOCATION);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -435,6 +443,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (s.notifications && s.notifications.length > 0) setNotifications(s.notifications);
         if (s.userProfile && s.userProfile.name && s.userProfile.name !== "Guest Rider") setUserProfile(s.userProfile);
         if (s.role) setRole(s.role);
+        if (s.userLocation && s.userLocation.name) setUserLocation(s.userLocation);
       }
       setTheme("light");
     } catch {}
@@ -457,6 +466,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         notifications,
         userProfile,
         role,
+        userLocation,
       }),
     );
 
@@ -469,7 +479,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ items: cart }),
       }).catch(() => {});
     } catch {}
-  }, [cart, garage, activeBikeId, orders, shipments, inventoryStock, savedProductIds, serviceBookings, notifications, userProfile, role, loaded]);
+  }, [cart, garage, activeBikeId, orders, shipments, inventoryStock, savedProductIds, serviceBookings, notifications, userProfile, role, userLocation, loaded]);
 
   useEffect(() => {
     document.documentElement.classList.remove("dark");
@@ -886,6 +896,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       isLoggedIn,
       signIn,
       signOut,
+      userLocation,
+      setUserLocation,
+      isLocationModalOpen,
+      setIsLocationModalOpen,
     }),
     [
       theme,
@@ -926,6 +940,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       isLoggedIn,
       signIn,
       signOut,
+      userLocation,
+      isLocationModalOpen,
     ],
   );
 
