@@ -9,6 +9,8 @@ import {
 } from "react";
 import {
   CUSTOMER_LOCATION,
+  DEFAULT_LOCATION,
+  type LocationArea,
   GST_RATE,
   deliveryFee,
   distanceKm,
@@ -42,7 +44,7 @@ export type GarageBike = {
   batteryHealth?: number;
   nextServiceDays?: number;
 };
-export type Role = "customer" | "workshop" | "vendor" | "rider" | "admin";
+export type Role = "customer" | "seller" | "admin";
 
 export const ORDER_STEPS = [
   "Placed",
@@ -75,16 +77,6 @@ export type CustomerNotification = {
   actionUrl?: string;
 };
 
-export type UserAddress = {
-  id: string;
-  tag: string;
-  name: string;
-  phone: string;
-  street: string;
-  city: string;
-  pincode: string;
-};
-
 export type UserProfile = {
   name: string;
   phone: string;
@@ -92,8 +84,6 @@ export type UserProfile = {
   city: string;
   address: string;
   points: number;
-  addresses?: UserAddress[];
-  selectedAddressId?: string;
 };
 
 export type VendorGroup = {
@@ -129,7 +119,7 @@ export type Order = {
   refundReason?: string;
 };
 
-export function quoteCart(cart: CartItem[], discount = 0) {
+export function quoteCart(cart: CartItem[], discount = 0, loc: { lat: number; lng: number } = CUSTOMER_LOCATION) {
   const map = new Map<string, VendorGroup>();
   for (const c of cart) {
     const p = getProduct(c.productId);
@@ -138,7 +128,7 @@ export function quoteCart(cart: CartItem[], discount = 0) {
     let g = map.get(c.vendorId);
     if (!g) {
       const v = getVendor(c.vendorId);
-      const km = Math.round(distanceKm(v, CUSTOMER_LOCATION) * 10) / 10;
+      const km = Math.round(distanceKm(v, loc) * 10) / 10;
       g = {
         vendorId: c.vendorId,
         items: [],
@@ -207,278 +197,63 @@ type Ctx = {
   updateUserProfile: (p: Partial<UserProfile>) => void;
   role: Role;
   setRole: (r: Role) => void;
+  isCartOpen: boolean;
+  setIsCartOpen: (open: boolean) => void;
   isLoggedIn: boolean;
-  setIsLoggedIn: (v: boolean) => void;
   signIn: () => void;
   signOut: () => void;
-  selectAddress: (id: string) => void;
-  addAddress: (addr: Omit<UserAddress, "id">) => void;
-  updateAddress: (id: string, updated: Partial<UserAddress>) => void;
-  removeAddress: (id: string) => void;
+  deleteOrder: (id: string) => void;
+  clearOrders: () => void;
+  userLocation: LocationArea;
+  setUserLocation: (loc: LocationArea) => void;
+  isLocationModalOpen: boolean;
+  setIsLocationModalOpen: (open: boolean) => void;
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
-const KEY = "riderzpro-v2";
+const KEY = "riderzpro-v7";
 
-export const DEFAULT_PROFILE: UserProfile = {
-  name: "",
+const DEFAULT_PROFILE: UserProfile = {
+  name: "Rider",
   phone: "",
   email: "",
-  city: "",
+  city: "Bengaluru, KA",
   address: "",
   points: 0,
-  selectedAddressId: "",
-  addresses: [],
 };
 
 const DEFAULT_ADDRESS: AddressRef = {
-  name: "",
+  name: "Rider",
   street: "",
-  city: "",
-  state: "",
-  pincode: "",
+  city: "Bengaluru",
+  state: "Karnataka",
+  pincode: "560001",
   phone: "",
 };
 
-const DEFAULT_BOOKINGS: ServiceBooking[] = [
-  {
-    id: "SB-1042",
-    bikeId: "ola-s1pro",
-    serviceType: "24-Point EV Health & BMS Diagnostic",
-    slot: "Tomorrow, 10:30 AM",
-    location: "Doorstep (Bellandur)",
-    status: "Confirmed",
-    technician: "Manoj Swamy (Certified EV Tech)",
-    cost: 299,
-    createdAt: Date.now() - 3600000,
-  },
-];
-
-const DEFAULT_NOTIFICATIONS: CustomerNotification[] = [
-  {
-    id: "notif-1",
-    title: "Technician Confirmed",
-    message: "Manoj Swamy is assigned for your doorstep BMS diagnostic tomorrow at 10:30 AM.",
-    time: "25m ago",
-    read: false,
-    type: "service",
-  },
-  {
-    id: "notif-2",
-    title: "Battery Health Alert",
-    message: "Your Ola S1 Pro battery is running optimal at 96% state of health. Regular monsoon maintenance recommended.",
-    time: "3h ago",
-    read: false,
-    type: "system",
-  },
-  {
-    id: "notif-3",
-    title: "Monsoon Exclusive Offer",
-    message: "Get ₹500 off on 60V fast chargers with code EVSAFE. Valid until Sunday.",
-    time: "1d ago",
-    read: true,
-    type: "offer",
-  },
-];
-
-export const DEFAULT_ORDERS: Order[] = [
-  {
-    id: "RZ-849201",
-    createdAt: Date.now() - 48 * 60 * 1000,
-    groups: [
-      {
-        vendorId: "v1",
-        items: [{ productId: "p7", qty: 1, price: 14500 }],
-        subtotal: 14500,
-        km: 4.2,
-        fee: 90,
-        eta: 25,
-      },
-    ],
-    itemsTotal: 14500,
-    deliveryTotal: 90,
-    tax: 2610,
-    total: 17200,
-    eta: 25,
-    payment: "UPI · Google Pay",
-    paymentStatus: "Paid",
-    status: 3, // Picked up / In transit
-    fulfillmentStatus: "Dispatched",
-    riderId: "r1",
-    customerName: "Aakash Sharma",
-    customerPhone: "+91 98765 43210",
-    shippingAddress: DEFAULT_ADDRESS,
-    shipmentId: "SHP-9201-DEL",
-  },
-  {
-    id: "RZ-793420",
-    createdAt: Date.now() - 4 * 24 * 60 * 60 * 1000,
-    groups: [
-      {
-        vendorId: "v3",
-        items: [{ productId: "p12", qty: 1, price: 2400 }],
-        subtotal: 2400,
-        km: 3.1,
-        fee: 77,
-        eta: 30,
-      },
-    ],
-    itemsTotal: 2400,
-    deliveryTotal: 77,
-    tax: 432,
-    total: 2909,
-    eta: 30,
-    payment: "Credit Card (HDFC)",
-    paymentStatus: "Paid",
-    status: 5, // Delivered
-    fulfillmentStatus: "Delivered",
-    riderId: "r2",
-    customerName: "Aakash Sharma",
-    customerPhone: "+91 98765 43210",
-    shippingAddress: DEFAULT_ADDRESS,
-    shipmentId: "SHP-3420-BLU",
-  },
-];
-
-export const DEFAULT_SHIPMENTS: NormalizedShipment[] = [
-  {
-    shipmentId: "SHP-9201-DEL",
-    orderId: "RZ-849201",
-    provider: "Delhivery",
-    providerReference: "DEL-WAYBILL-984128471",
-    trackingNumber: "DEL984128471",
-    trackingUrl: "https://www.delhivery.com/track/package/DEL984128471",
-    pickupAddress: {
-      name: "VoltHub Indiranagar",
-      street: "100ft Road, HAL 2nd Stage",
-      city: "Bengaluru",
-      pincode: "560038",
-      phone: "+91 80 4123 9901",
-    },
-    destinationAddress: DEFAULT_ADDRESS,
-    status: "In Transit",
-    locationType: "Facility Checkpoint",
-    latestLocation: "Bommasandra Hub Facility (Bengaluru)",
-    lastEventTimestamp: "24m ago",
-    estimatedDelivery: "Today, 5:30 PM",
-    events: [
-      {
-        id: "evt-del-1",
-        timestamp: "Today, 09:15 AM",
-        status: "Manifested",
-        location: "VoltHub Indiranagar",
-        description: "Package Picked Up from Vendor Facility",
-        isGps: false,
-        facilityName: "Indiranagar Inbound Sort Hub",
-      },
-      {
-        id: "evt-del-2",
-        timestamp: "Today, 11:30 AM",
-        status: "In Transit",
-        location: "Central Sort Facility",
-        description: "Inbound Scan & Sort Completed into Mother Bag",
-        isGps: false,
-        facilityName: "Central Sort Facility (Bengaluru East)",
-      },
-      {
-        id: "evt-del-3",
-        timestamp: "Today, 01:10 PM",
-        status: "In Transit",
-        location: "Bommasandra Hub Facility",
-        description: "Bagging for Local Route Dispatch to Bellandur",
-        isGps: false,
-        facilityName: "Bommasandra Hub Facility",
-      },
-    ],
-  },
-  {
-    shipmentId: "SHP-3420-BLU",
-    orderId: "RZ-793420",
-    provider: "Bluedart",
-    providerReference: "BLU-AWB-7749021",
-    trackingNumber: "BLU7749021",
-    trackingUrl: "https://www.bluedart.com/tracking?trackNumber=BLU7749021",
-    pickupAddress: {
-      name: "EV Spares Jayanagar",
-      street: "9th Block, Jayanagar",
-      city: "Bengaluru",
-      pincode: "560069",
-      phone: "+91 80 2654 8831",
-    },
-    destinationAddress: DEFAULT_ADDRESS,
-    status: "Delivered",
-    locationType: "Facility Checkpoint",
-    latestLocation: "Bellandur Destination Facility",
-    lastEventTimestamp: "4 days ago",
-    estimatedDelivery: "Delivered on Oct 8",
-    actualDeliveryTimestamp: "Oct 8, 02:45 PM",
-    events: [
-      {
-        id: "evt-blu-1",
-        timestamp: "Oct 7, 03:00 PM",
-        status: "Manifested",
-        location: "Jayanagar Logistics Desk",
-        description: "Air/Surface Manifest Created",
-        isGps: false,
-      },
-      {
-        id: "evt-blu-2",
-        timestamp: "Oct 8, 10:00 AM",
-        status: "Out for Delivery",
-        location: "Bellandur Delivery Center",
-        description: "Out for delivery with Blue Dart Field Executive",
-        isGps: false,
-      },
-      {
-        id: "evt-blu-3",
-        timestamp: "Oct 8, 02:45 PM",
-        status: "Delivered",
-        location: "Customer Doorstep (Bellandur)",
-        description: "Delivered & Signed by Aakash Sharma. OTP Verified.",
-        isGps: false,
-      },
-    ],
-    proofOfDelivery: {
-      signedBy: "Aakash Sharma",
-      timestamp: "Oct 8, 02:45 PM",
-      otpVerified: true,
-    },
-  },
-];
+export const DEFAULT_GARAGE: GarageBike[] = [];
+const DEFAULT_BOOKINGS: ServiceBooking[] = [];
+const DEFAULT_NOTIFICATIONS: CustomerNotification[] = [];
+export const DEFAULT_ORDERS: Order[] = [];
+export const DEFAULT_SHIPMENTS: NormalizedShipment[] = [];
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [garage, setGarage] = useState<GarageBike[]>([
-    {
-      bikeId: "ola-s1pro",
-      year: 2023,
-      nickname: "Daily Ride",
-      vin: "P6R1S1PR2PN000001",
-      regNo: "KA 01 EQ 8821",
-      odoKm: 12450,
-      batteryHealth: 96,
-      nextServiceDays: 42,
-    },
-  ]);
-  const [activeBikeId, setActiveBikeId] = useState<string | null>("ola-s1pro");
-  const [orders, setOrders] = useState<Order[]>(DEFAULT_ORDERS);
-  const [shipments, setShipments] = useState<NormalizedShipment[]>(DEFAULT_SHIPMENTS);
-  const [inventoryStock, setInventoryStock] = useState<Record<string, number>>(() => {
-    const initial: Record<string, number> = {};
-    products.forEach((p) => {
-      initial[p.id] = p.offers.reduce((s, o) => s + o.stock, 0) || 12;
-    });
-    return initial;
-  });
-  const [savedProductIds, setSavedProductIds] = useState<string[]>(["p1", "p8"]);
-  const [serviceBookings, setServiceBookings] = useState<ServiceBooking[]>(DEFAULT_BOOKINGS);
-  const [notifications, setNotifications] = useState<CustomerNotification[]>(DEFAULT_NOTIFICATIONS);
+  const [garage, setGarage] = useState<GarageBike[]>([]);
+  const [activeBikeId, setActiveBikeId] = useState<string | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [shipments, setShipments] = useState<NormalizedShipment[]>([]);
+  const [inventoryStock, setInventoryStock] = useState<Record<string, number>>({});
+  const [savedProductIds, setSavedProductIds] = useState<string[]>([]);
+  const [serviceBookings, setServiceBookings] = useState<ServiceBooking[]>([]);
+  const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [role, setRole] = useState<Role>("customer");
-  // A browser-local flag is not an authentication credential. The navbar hydrates
-  // this state from the server session cookie after the app loads.
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
+  const [userLocation, setUserLocation] = useState<LocationArea>(DEFAULT_LOCATION);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -487,30 +262,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (raw) {
         const s = JSON.parse(raw);
         if (s.cart) setCart(s.cart);
-        if (s.garage) setGarage(s.garage);
-        if ("activeBikeId" in s) setActiveBikeId(s.activeBikeId);
-        if (s.orders && s.orders.length > 0) setOrders(s.orders);
-        if (s.shipments && s.shipments.length > 0) setShipments(s.shipments);
-        if (s.inventoryStock) setInventoryStock(s.inventoryStock);
-        if (s.savedProductIds) setSavedProductIds(s.savedProductIds);
-        if (s.serviceBookings) setServiceBookings(s.serviceBookings);
-        if (s.notifications) setNotifications(s.notifications);
-        if (s.userProfile) {
-          const isMock =
-            s.userProfile.name === "Aakash Sharma" ||
-            s.userProfile.email === "aakash.sharma@example.com";
-          if (!isMock) {
-            setUserProfile({
-              ...DEFAULT_PROFILE,
-              ...s.userProfile,
-              addresses: Array.isArray(s.userProfile.addresses) ? s.userProfile.addresses : [],
-              selectedAddressId: s.userProfile.selectedAddressId || "",
-            });
-          } else {
-            setUserProfile(DEFAULT_PROFILE);
-          }
+        if (s.garage && s.garage.length > 0) setGarage(s.garage);
+        if ("activeBikeId" in s && s.activeBikeId) setActiveBikeId(s.activeBikeId);
+        if (s.shipments && s.shipments.length > 0) {
+          const sanitized = s.shipments.map((sh: any) => ({
+            ...DEFAULT_SHIPMENTS[0],
+            ...sh,
+            pickupAddress: sh.pickupAddress?.name ? sh.pickupAddress : DEFAULT_SHIPMENTS[0].pickupAddress,
+            destinationAddress: sh.destinationAddress?.name ? sh.destinationAddress : DEFAULT_SHIPMENTS[0].destinationAddress,
+            events: Array.isArray(sh.events) ? sh.events : DEFAULT_SHIPMENTS[0].events,
+          }));
+          setShipments(sanitized);
         }
+        if (s.inventoryStock) setInventoryStock(s.inventoryStock);
+        if (s.savedProductIds && s.savedProductIds.length > 0) setSavedProductIds(s.savedProductIds);
+        if (s.serviceBookings && s.serviceBookings.length > 0) setServiceBookings(s.serviceBookings);
+        if (s.notifications && s.notifications.length > 0) setNotifications(s.notifications);
+        if (s.userProfile && s.userProfile.name && s.userProfile.name !== "Guest Rider") setUserProfile(s.userProfile);
         if (s.role) setRole(s.role);
+        if (s.userLocation && s.userLocation.name) setUserLocation(s.userLocation);
       }
       const t = localStorage.getItem("riderzpro-theme");
       if (t === "light" || t === "dark") setTheme(t);
@@ -537,9 +307,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         notifications,
         userProfile,
         role,
+        userLocation,
       }),
     );
-  }, [cart, garage, activeBikeId, orders, shipments, inventoryStock, savedProductIds, serviceBookings, notifications, userProfile, role, loaded]);
+
+    // Persist cart to PostgreSQL backend
+    try {
+      const customerId = userProfile?.email || "usr_customer_demo";
+      fetch(`/api/cart?customer_id=${encodeURIComponent(customerId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: cart }),
+      }).catch(() => {});
+    } catch {}
+  }, [cart, garage, activeBikeId, orders, shipments, inventoryStock, savedProductIds, serviceBookings, notifications, userProfile, role, userLocation, loaded]);
 
   useEffect(() => {
     document.documentElement.classList.remove("dark");
@@ -827,82 +608,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   }, []);
 
-  const signIn = useCallback(() => {
-    setIsLoggedIn(true);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("riderzpro_auth", "true");
-    }
-  }, []);
-
-  const signOut = useCallback(() => {
-    setIsLoggedIn(false);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("riderzpro_auth");
-    }
-  }, []);
-
   const updateUserProfile = useCallback((p: Partial<UserProfile>) => {
     setUserProfile((prev) => ({ ...prev, ...p }));
-  }, []);
-
-  const selectAddress = useCallback((id: string) => {
-    setUserProfile((prev) => {
-      const target = (prev.addresses || DEFAULT_PROFILE.addresses || []).find((a) => a.id === id);
-      if (!target) return prev;
-      return {
-        ...prev,
-        selectedAddressId: id,
-        address: target.street,
-        city: `${target.city} - ${target.pincode}`,
-      };
-    });
-  }, []);
-
-  const addAddress = useCallback((addr: Omit<UserAddress, "id">) => {
-    const newAddr: UserAddress = {
-      ...addr,
-      id: `addr-${Date.now()}`,
-    };
-    setUserProfile((prev) => {
-      const currentList = prev.addresses || DEFAULT_PROFILE.addresses || [];
-      return {
-        ...prev,
-        addresses: [...currentList, newAddr],
-        selectedAddressId: newAddr.id,
-        address: newAddr.street,
-        city: `${newAddr.city} - ${newAddr.pincode}`,
-      };
-    });
-  }, []);
-
-  const updateAddress = useCallback((id: string, updated: Partial<UserAddress>) => {
-    setUserProfile((prev) => {
-      const currentList = prev.addresses || DEFAULT_PROFILE.addresses || [];
-      const newList = currentList.map((a) => (a.id === id ? { ...a, ...updated } : a));
-      const target = newList.find((a) => a.id === id);
-      const isCurrentlySelected = prev.selectedAddressId === id;
-      return {
-        ...prev,
-        addresses: newList,
-        address: isCurrentlySelected && target ? target.street : prev.address,
-        city: isCurrentlySelected && target ? `${target.city} - ${target.pincode}` : prev.city,
-      };
-    });
-  }, []);
-
-  const removeAddress = useCallback((id: string) => {
-    setUserProfile((prev) => {
-      const currentList = prev.addresses || DEFAULT_PROFILE.addresses || [];
-      const newList = currentList.filter((a) => a.id !== id);
-      const fallback = newList[0];
-      return {
-        ...prev,
-        addresses: newList,
-        selectedAddressId: prev.selectedAddressId === id ? (fallback?.id || "") : prev.selectedAddressId,
-        address: prev.selectedAddressId === id && fallback ? fallback.street : prev.address,
-        city: prev.selectedAddressId === id && fallback ? `${fallback.city} - ${fallback.pincode}` : prev.city,
-      };
-    });
   }, []);
 
   const simulateDemoOrder = useCallback(() => {
@@ -983,6 +690,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return demoOrder;
   }, []);
 
+  const signIn = useCallback(() => setIsLoggedIn(true), []);
+  const signOut = useCallback(() => setIsLoggedIn(false), []);
+  const deleteOrder = useCallback((id: string) => setOrders((os) => os.filter((o) => o.id !== id)), []);
+  const clearOrders = useCallback(() => setOrders([]), []);
+
   const value = useMemo<Ctx>(
     () => ({
       theme,
@@ -1018,6 +730,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       cancelOrder,
       refundOrder,
       simulateDemoOrder,
+      deleteOrder,
+      clearOrders,
       shipments,
       createShipment,
       updateShipmentStatus,
@@ -1037,14 +751,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       updateUserProfile,
       role,
       setRole,
+      isCartOpen,
+      setIsCartOpen,
       isLoggedIn,
-      setIsLoggedIn,
       signIn,
       signOut,
-      selectAddress,
-      addAddress,
-      updateAddress,
-      removeAddress,
+      userLocation,
+      setUserLocation,
+      isLocationModalOpen,
+      setIsLocationModalOpen,
     }),
     [
       theme,
@@ -1078,13 +793,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       userProfile,
       updateUserProfile,
       role,
+      isCartOpen,
+      setIsCartOpen,
+      deleteOrder,
+      clearOrders,
       isLoggedIn,
       signIn,
       signOut,
-      selectAddress,
-      addAddress,
-      updateAddress,
-      removeAddress,
+      userLocation,
+      isLocationModalOpen,
     ],
   );
 

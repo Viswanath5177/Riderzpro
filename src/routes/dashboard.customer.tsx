@@ -17,11 +17,15 @@ import { AddressesTab } from "@/components/dashboard/AddressesTab";
 import { BookingModal } from "@/components/dashboard/BookingModal";
 import { AddBikeModal } from "@/components/dashboard/AddBikeModal";
 import { getCurrentRole } from "@/lib/auth";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 export const Route = createFileRoute("/dashboard/customer")({
   beforeLoad: async () => {
     const role = await getCurrentRole();
-    if (!role) throw redirect({ to: "/login" });
+    if (!role) throw redirect({ to: "/login", search: { redirect: "/dashboard/customer" } });
+    if (role === "PRODUCT_ADMIN") throw redirect({ to: "/admin/products" });
+    if (role === "SELLER_ADMIN") throw redirect({ to: "/admin/sellers" });
+    if (role === "seller") throw redirect({ to: "/dashboard/vendor" });
     if (role !== "customer") throw redirect({ to: "/dashboard/admin" });
   },
   head: () => ({
@@ -35,8 +39,16 @@ export const Route = createFileRoute("/dashboard/customer")({
       { property: "og:description", content: "Automotive e-commerce and bike ownership platform." },
     ],
   }),
-  component: CustomerDashboard,
+  component: CustomerDashboardRoute,
 });
+
+function CustomerDashboardRoute() {
+  return (
+    <ProtectedRoute>
+      <CustomerDashboard />
+    </ProtectedRoute>
+  );
+}
 
 function CustomerDashboard() {
   const [tab, setTab] = useState<CustomerTab>("overview");

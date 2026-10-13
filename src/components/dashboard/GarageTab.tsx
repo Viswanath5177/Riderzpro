@@ -1,8 +1,7 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Bike,
-  Car,
   Check,
   Trash2,
   Plus,
@@ -24,7 +23,6 @@ import scooterImg from "@/assets/scooter.jpg";
 import { useStore } from "@/lib/store";
 import { getBike, bikes, products, inr, type Product, type Category } from "@/lib/data";
 import { VinSearchModal } from "./VinSearchModal";
-import { CarAccessoriesCatalog } from "@/components/site/CarAccessoriesCatalog";
 
 interface GarageTabProps {
   onOpenAddBikeModal: () => void;
@@ -42,10 +40,9 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
     isSaved,
   } = useStore();
 
-  const [selectedBikeId, setSelectedBikeId] = useState<string>(activeBikeId || garage[0]?.bikeId || "ola-s1pro");
+  const [selectedBikeId, setSelectedBikeId] = useState<string | null>(activeBikeId || garage[0]?.bikeId || null);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [partsSearch, setPartsSearch] = useState<string>("");
-  const [accessoryVehicleType, setAccessoryVehicleType] = useState<"car" | "bike">("car");
   const [isVinModalOpen, setIsVinModalOpen] = useState(false);
 
   const partsSectionRef = useRef<HTMLDivElement>(null);
@@ -54,10 +51,64 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
   const activeBike = garage.find((b) => b.bikeId === selectedBikeId) || garage[0];
   const activeBikeMeta = activeBike ? getBike(activeBike.bikeId) : null;
 
+  const [dbProducts, setDbProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    fetch("/api/products")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          const mapped: Product[] = res.data.map((row: any) => {
+            let primaryImg = "/src/assets/battery-1.jpg";
+            if (row.image_url) {
+              try {
+                if (row.image_url.startsWith("[")) {
+                  primaryImg = JSON.parse(row.image_url)[0] || primaryImg;
+                } else {
+                  primaryImg = row.image_url;
+                }
+              } catch {
+                primaryImg = row.image_url;
+              }
+            }
+
+            let fitsArr: string[] = ["universal"];
+            if (row.compatible_vehicles) {
+              fitsArr = Array.isArray(row.compatible_vehicles) 
+                ? row.compatible_vehicles 
+                : [row.compatible_vehicles];
+            }
+
+            return {
+              id: row.id,
+              name: row.name,
+              brand: row.brand || "Riderz Armor",
+              category: (row.category_name as any) || "Car Accessories",
+              image: primaryImg,
+              warrantyMonths: row.warranty?.includes("year") ? 12 : 6,
+              weightKg: Number(row.weight_kg) || 4.5,
+              fits: fitsArr,
+              description: row.description || "",
+              offers: [{ vendorId: "v1", price: Number(row.price), stock: Number(row.stock) }],
+              variantModel: row.variant_model,
+              material: row.material,
+              fitmentSize: row.fitment_size,
+              moq: row.moq,
+              supplier: row.supplier,
+              colorOptions: Array.isArray(row.color_options) ? row.color_options : [],
+              discountPercent: row.discount_percent,
+            };
+          });
+          setDbProducts(mapped);
+        }
+      })
+      .catch((err) => console.log("GarageTab DB sync notice:", err.message));
+  }, []);
+
   // Filter parts compatible with the chosen bike
   const compatibleProducts = useMemo(() => {
     if (!activeBike) return [];
-    let items = products.filter((p) => p.fits.includes(activeBike.bikeId));
+    let items = dbProducts.filter((p) => p.fits.includes("universal") || p.fits.includes(activeBike.bikeId));
 
     if (selectedCategory !== "All") {
       items = items.filter((p) => {
@@ -79,7 +130,7 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
     }
 
     return items;
-  }, [activeBike, selectedCategory, partsSearch]);
+  }, [activeBike, selectedCategory, partsSearch, dbProducts]);
 
   const categories = [
     "All",
@@ -285,7 +336,9 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50 text-primary mb-3">
               <Plus className="h-6 w-6" />
             </span>
-            <p className="text-base font-bold text-gray-900 font-display">Add Another EV</p>
+            <p className="text-base font-bold text-gray-900 font-display">
+              {garage.length === 0 ? "Add Your Electric Vehicle" : "Add Another EV"}
+            </p>
             <p className="text-xs text-gray-500 mt-1 max-w-xs">
               Enter VIN or select your model to unlock verified batteries, chargers, and spare parts.
             </p>
@@ -307,11 +360,13 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
                 <ShoppingBag className="h-4 w-4" />
               </span>
               <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 font-display">
-                Compatible Spares & Parts for {activeBikeMeta ? `${activeBikeMeta.make} ${activeBikeMeta.model}` : "Your Bike"}
+                {activeBikeMeta ? `Compatible Spares & Parts for ${activeBikeMeta.make} ${activeBikeMeta.model}` : "Compatible Spares & Parts"}
               </h2>
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Guaranteed 100% fitment for your {activeBikeMeta ? `${activeBikeMeta.voltage}V system` : "vehicle"}. Zero guesswork — verified against chassis and connector pinouts.
+              {activeBikeMeta
+                ? `Guaranteed 100% fitment for your ${activeBikeMeta.voltage}V system. Zero guesswork — verified against chassis and connector pinouts.`
+                : "Register a vehicle in your garage above to view custom-fit compatible spare parts."}
             </p>
           </div>
 
@@ -380,7 +435,15 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
         </div>
 
         {/* Parts Grid */}
-        {compatibleProducts.length === 0 ? (
+        {garage.length === 0 ? (
+          <div className="p-12 rounded-3xl border border-dashed border-gray-300 bg-white text-center">
+            <Bike className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+            <p className="text-base font-bold text-gray-800 font-display">No EV Registered Yet</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Please register your electric vehicle above to unlock verified compatible batteries, chargers, and parts.
+            </p>
+          </div>
+        ) : compatibleProducts.length === 0 ? (
           <div className="p-12 rounded-3xl border border-dashed border-gray-300 bg-white text-center">
             <ShoppingBag className="h-10 w-10 text-gray-300 mx-auto mb-2" />
             <p className="text-base font-bold text-gray-800 font-display">No Parts Found</p>
@@ -495,36 +558,6 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
             })}
           </div>
         )}
-      </section>
-
-      {/* 509 deduplicated catalogue entries for car, bike, and shared accessories. */}
-      <section className="space-y-4 border-t border-gray-200 pt-8" aria-label="Car and bike accessories">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Customer garage catalogue</p>
-            <h2 className="mt-1 font-display text-2xl font-extrabold text-gray-900">Car &amp; bike accessories</h2>
-            <p className="mt-1 text-sm text-gray-500">Browse all 509 deduplicated products with supplied images, specifications, availability, and pricing. Shared-fitment products appear in both views.</p>
-          </div>
-          <div className="inline-flex rounded-xl border border-gray-200 bg-white p-1 shadow-2xs" role="group" aria-label="Choose accessory vehicle type">
-            <button
-              type="button"
-              aria-pressed={accessoryVehicleType === "car"}
-              onClick={() => setAccessoryVehicleType("car")}
-              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${accessoryVehicleType === "car" ? "bg-primary text-white shadow-2xs" : "text-gray-600 hover:bg-gray-50"}`}
-            >
-              <Car className="h-4 w-4" /> Car accessories
-            </button>
-            <button
-              type="button"
-              aria-pressed={accessoryVehicleType === "bike"}
-              onClick={() => setAccessoryVehicleType("bike")}
-              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${accessoryVehicleType === "bike" ? "bg-primary text-white shadow-2xs" : "text-gray-600 hover:bg-gray-50"}`}
-            >
-              <Bike className="h-4 w-4" /> Bike accessories
-            </button>
-          </div>
-        </div>
-        <CarAccessoriesCatalog key={accessoryVehicleType} vehicleType={accessoryVehicleType} />
       </section>
 
       {/* Global Vin Search Modal triggerable from Garage */}

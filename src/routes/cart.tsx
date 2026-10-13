@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Minus,
   Plus,
@@ -17,13 +17,13 @@ import {
   Tag,
   ArrowRight,
   Package,
-  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/site/SiteLayout";
-import { DELIVERY_BASE, DELIVERY_PER_KM, getProduct, getVendor, inr } from "@/lib/data";
+import { DELIVERY_BASE, DELIVERY_PER_KM, getProduct, getVendor, inr, products } from "@/lib/data";
 import { quoteCart, useStore, type Order } from "@/lib/store";
 import type { AddressRef } from "@/lib/logistics/types";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -38,14 +38,9 @@ export const Route = createFileRoute("/cart")({
 });
 
 function CartPage() {
-  const { cart, setQty, placeOrderWithOptions, userProfile, inventoryStock, isLoggedIn } = useStore();
+  const { cart, setQty, placeOrderWithOptions, userProfile, inventoryStock, addToCart } = useStore();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (isLoggedIn) {
-      navigate({ to: "/dashboard/customer", search: { tab: "orders" } as any, replace: true });
-    }
-  }, [isLoggedIn, navigate]);
 
   const [paymentMethod, setPaymentMethod] = useState<string>("UPI");
   const [couponInput, setCouponInput] = useState<string>("EVSAFE");
@@ -56,40 +51,6 @@ function CartPage() {
   const [couponError, setCouponError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
-
-  if (!isLoggedIn) {
-    return (
-      <SiteLayout>
-        <div className="mx-auto max-w-md px-4 py-20 text-center">
-          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-red-50 text-[#E31E24] shadow-xs">
-            <Lock className="h-8 w-8" />
-          </div>
-          <h1 className="mt-5 font-display text-2xl sm:text-3xl font-extrabold text-[#111111]">
-            Sign in to view orders & tracking
-          </h1>
-          <p className="mt-2 text-sm text-[#6B7280]">
-            Please sign in to access your orders, live courier dispatch milestones, and tax invoices.
-          </p>
-          <div className="mt-6 flex flex-col gap-3">
-            <Link
-              to="/login"
-              search={{ redirect: "/dashboard/customer?tab=orders" } as any}
-              className="inline-flex items-center justify-center rounded-lg bg-[#E31E24] px-6 py-3 text-sm font-semibold text-white shadow-xs hover:bg-red-700 transition"
-            >
-              Sign In to Continue
-            </Link>
-            <Link
-              to="/"
-              className="inline-flex items-center justify-center rounded-lg border border-[#E5E7EB] bg-white px-6 py-3 text-sm font-semibold text-[#111111] hover:bg-gray-50 transition"
-            >
-              Back to Storefront
-            </Link>
-          </div>
-        </div>
-      </SiteLayout>
-    );
-  }
-
   // Address state prefilled from profile
   const [address, setAddress] = useState<AddressRef>({
     name: userProfile.name || "Aakash Sharma",
@@ -132,6 +93,11 @@ function CartPage() {
   };
 
   const handlePlaceOrder = () => {
+    if (!isAuthenticated) {
+      toast.info("Please sign in to place your order.");
+      navigate({ to: "/login", search: { redirect: "/cart" } });
+      return;
+    }
     if (stockErrors.length > 0) {
       toast.error("Please adjust quantities to match available inventory.");
       return;
@@ -220,22 +186,92 @@ function CartPage() {
   }
 
   if (cart.length === 0) {
+    const recommendedSpares = products.slice(0, 3);
+
     return (
       <SiteLayout>
-        <div className="mx-auto max-w-lg px-4 py-24 text-center">
-          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-red-50 text-[#E31E24]">
-            <ShoppingCart className="h-8 w-8" />
+        <div className="mx-auto max-w-4xl px-4 py-12 md:py-16">
+          <div className="rounded-3xl border border-[#E5E7EB] bg-white p-8 sm:p-12 text-center shadow-2xs space-y-4">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-red-50 text-[#E31E24]">
+              <ShoppingCart className="h-8 w-8" />
+            </div>
+            <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[#111111]">
+              Your Cart is Currently Empty
+            </h1>
+            <p className="text-sm text-[#6B7280] max-w-md mx-auto">
+              You don't have any items in your cart. You can check your existing order status in My Orders, or add genuine EV spares below.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <Link
+                to="/shop"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#E31E24] px-6 py-3 text-xs sm:text-sm font-bold text-white shadow-xs hover:bg-red-700 transition"
+              >
+                <span>Shop Catalog & Spares</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/dashboard/customer"
+                search={{ tab: "orders" } as any}
+                className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] bg-white px-5 py-3 text-xs sm:text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
+              >
+                <Package className="h-4 w-4 text-[#E31E24]" />
+                <span>View My Orders & Deliveries</span>
+              </Link>
+            </div>
           </div>
-          <h1 className="mt-4 font-display text-3xl sm:text-4xl font-extrabold text-[#111111]">Your cart is empty</h1>
-          <p className="mt-2 text-sm text-[#6B7280]">
-            Browse our catalog of electric bikes, lithium batteries, fast chargers, and verified spare parts.
-          </p>
-          <Link
-            to="/shop"
-            className="mt-6 inline-flex rounded-xl bg-[#E31E24] px-6 py-3 text-xs sm:text-sm font-bold text-white shadow-xs hover:bg-red-700 transition"
-          >
-            Shop Electric Bikes & Parts →
-          </Link>
+
+          {/* Recommended EV Spares with 1-click Quick Add */}
+          <div className="mt-10 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-gray-900 font-display">
+                  Recommended EV Spares & Fast Delivery Parts
+                </h2>
+                <p className="text-xs text-gray-500">
+                  Ready for immediate courier dispatch with verified fitment.
+                </p>
+              </div>
+              <Link to="/shop" className="text-xs font-semibold text-[#E31E24] hover:underline">
+                View All →
+              </Link>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              {recommendedSpares.map((p) => {
+                const primaryOffer = p.offers[0];
+                return (
+                  <div
+                    key={p.id}
+                    className="flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs hover:shadow-xs transition space-y-3"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] text-gray-400">
+                        <span className="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                          In Stock ({inventoryStock[p.id] ?? 10})
+                        </span>
+                        <span>{p.category}</span>
+                      </div>
+                      <p className="font-bold text-xs text-gray-900 mt-2 line-clamp-1">{p.name}</p>
+                      <p className="text-[11px] text-gray-500 line-clamp-2 mt-0.5">{p.description}</p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                      <span className="font-extrabold text-xs text-gray-900">{inr(primaryOffer.price)}</span>
+                      <button
+                        onClick={() => {
+                          addToCart(p.id, primaryOffer.vendorId, 1);
+                          toast.success(`Added ${p.name} to cart!`);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-[#E31E24] hover:bg-red-700 text-white text-[11px] font-bold transition shadow-2xs cursor-pointer"
+                      >
+                        + Add to Cart
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </SiteLayout>
     );
@@ -380,52 +416,62 @@ function CartPage() {
                     <div className="divide-y divide-[#E5E7EB]">
                       {g.items.map((it) => {
                         const p = getProduct(it.productId)!;
-                        const availableStock = inventoryStock[it.productId] ?? 10;
-                        const isStockLow = availableStock <= 3;
+                        const availableStock = inventoryStock[it.productId] ?? p?.offers?.[0]?.stock ?? 10;
+                        const isStockLow = availableStock < 5;
                         return (
-                          <div key={it.productId} className="flex items-center gap-3 py-3">
-                            <img
-                              src={p.image}
-                              alt={p.name}
-                              loading="lazy"
-                              width={70}
-                              height={70}
-                              className="h-14 w-14 rounded-xl object-cover border border-[#E5E7EB] shrink-0"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-bold text-xs text-[#111111] leading-tight truncate">
-                                {p.name}
-                              </p>
-                              <div className="mt-0.5 flex items-center gap-2 text-[11px] text-[#6B7280]">
-                                <span>{inr(it.price)} each</span>
-                                <span>·</span>
-                                {isStockLow ? (
-                                  <span className="text-amber-600 font-semibold">Only {availableStock} left in stock</span>
-                                ) : (
-                                  <span className="text-emerald-600 font-semibold">In Stock ({availableStock})</span>
-                                )}
+                          <div key={it.productId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3.5">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <img
+                                src={p?.image}
+                                alt={p?.name}
+                                loading="lazy"
+                                width={70}
+                                height={70}
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src = "/src/assets/parts.jpg";
+                                }}
+                                className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl object-cover border border-[#E5E7EB] shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-xs text-[#111111] leading-tight truncate">
+                                  {p?.name}
+                                </p>
+                                <div className="mt-0.5 flex items-center gap-2 text-[10.5px] sm:text-[11px] text-[#6B7280]">
+                                  <span>{inr(it.price)} each</span>
+                                  <span>·</span>
+                                  {isStockLow ? (
+                                    <span className="text-amber-700 font-bold flex items-center gap-1 truncate">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                                      Hurry limited Stock ({availableStock} left)
+                                    </span>
+                                  ) : (
+                                    <span className="text-emerald-600 font-semibold truncate">In Stock ({availableStock})</span>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 rounded-lg border border-[#E5E7EB] p-0.5 bg-gray-50">
-                              <button
-                                aria-label="Decrease"
-                                onClick={() => setQty(it.productId, g.vendorId, it.qty - 1)}
-                                className="grid h-6 w-6 place-items-center rounded hover:bg-gray-200 text-gray-600 transition cursor-pointer"
-                              >
-                                <Minus className="h-3 w-3" />
-                              </button>
-                              <span className="w-5 text-center text-xs font-bold text-gray-900">{it.qty}</span>
-                              <button
-                                aria-label="Increase"
-                                onClick={() => setQty(it.productId, g.vendorId, it.qty + 1)}
-                                className="grid h-6 w-6 place-items-center rounded hover:bg-gray-200 text-gray-600 transition cursor-pointer"
-                              >
-                                <Plus className="h-3 w-3" />
-                              </button>
+                            <div className="flex items-center justify-between sm:justify-end gap-3 self-stretch sm:self-auto pl-15 sm:pl-0">
+                              <div className="flex items-center gap-2 rounded-lg border border-[#E5E7EB] p-0.5 bg-gray-50">
+                                <button
+                                  aria-label="Decrease"
+                                  onClick={() => setQty(it.productId, g.vendorId, it.qty - 1)}
+                                  className="grid h-6 w-6 place-items-center rounded hover:bg-gray-200 text-gray-600 transition cursor-pointer"
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </button>
+                                <span className="w-5 text-center text-xs font-bold text-gray-900">{it.qty}</span>
+                                <button
+                                  aria-label="Increase"
+                                  onClick={() => setQty(it.productId, g.vendorId, it.qty + 1)}
+                                  className="grid h-6 w-6 place-items-center rounded hover:bg-gray-200 text-gray-600 transition cursor-pointer"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </button>
+                              </div>
+                              <p className="w-20 text-right font-extrabold text-xs text-[#111111]">
+                                {inr(it.price * it.qty)}
+                              </p>
                             </div>
-                            <p className="w-20 text-right font-extrabold text-xs text-[#111111]">
-                              {inr(it.price * it.qty)}
-                            </p>
                           </div>
                         );
                       })}
@@ -537,6 +583,11 @@ function CartPage() {
               >
                 {isSubmitting ? (
                   <span>Securing Order & Manifesting...</span>
+                ) : !isAuthenticated ? (
+                  <>
+                    <span>Sign in to Checkout · {inr(quote.total)}</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </>
                 ) : (
                   <>
                     <span>Confirm Order · {inr(quote.total)}</span>
