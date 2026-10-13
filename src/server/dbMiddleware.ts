@@ -127,9 +127,9 @@ export function pgApiMiddleware() {
               let ids: string[] = [];
               if (Array.isArray(body?.ids)) {
                 ids = body.ids;
-              } else if (parsedUrl.searchParams.get("ids")) {
-                ids = parsedUrl.searchParams.get("ids")!.split(",").filter(Boolean);
-              } else if (body?.all === true || parsedUrl.searchParams.get("all") === "true") {
+              } else if (queryParams.get("ids")) {
+                ids = queryParams.get("ids")!.split(",").filter(Boolean);
+              } else if (body?.all === true || queryParams.get("all") === "true") {
                 const deletedCount = await ProductModel.deleteAll();
                 return sendJson(res, 200, { success: true, message: `All ${deletedCount} products deleted`, deletedCount });
               }

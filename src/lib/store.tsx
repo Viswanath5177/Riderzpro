@@ -175,6 +175,11 @@ type Ctx = {
   setRole: (r: Role) => void;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
+  isLoggedIn: boolean;
+  signIn: () => void;
+  signOut: () => void;
+  deleteOrder: (id: string) => void;
+  clearOrders: () => void;
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
@@ -808,6 +813,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return demoOrder;
   }, []);
 
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const signIn = useCallback(() => setIsLoggedIn(true), []);
+  const signOut = useCallback(() => setIsLoggedIn(false), []);
+  const deleteOrder = useCallback((id: string) => setOrders((os) => os.filter((o) => o.id !== id)), []);
+  const clearOrders = useCallback(() => setOrders([]), []);
+
   const value = useMemo<Ctx>(
     () => ({
       theme,
@@ -839,6 +850,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       cancelOrder,
       refundOrder,
       simulateDemoOrder,
+      deleteOrder,
+      clearOrders,
       shipments,
       createShipment,
       updateShipmentStatus,
@@ -860,6 +873,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setRole,
       isCartOpen,
       setIsCartOpen,
+      isLoggedIn,
+      signIn,
+      signOut,
     }),
     [
       theme,
@@ -895,6 +911,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       role,
       isCartOpen,
       setIsCartOpen,
+      deleteOrder,
+      clearOrders,
+      isLoggedIn,
+      signIn,
+      signOut,
     ],
   );
 
