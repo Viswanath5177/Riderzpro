@@ -88,7 +88,6 @@ export function CustomerLayout({
   const [isVinSearchOpen, setIsVinSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const activeOrdersCount = orders.filter((o) => o.status < 5).length;
   const liveOrder = orders.find((o) => o.status < 5);
@@ -130,12 +129,6 @@ export function CustomerLayout({
       Icon: ShoppingBag,
     },
     {
-      id: "orders",
-      label: "My Orders",
-      Icon: Package,
-      badge: orders.length > 0 ? `${orders.length}` : undefined,
-    },
-    {
       id: "tracking",
       label: "Track Delivery",
       Icon: Truck,
@@ -159,11 +152,6 @@ export function CustomerLayout({
       id: "invoices",
       label: "Payments & Invoices",
       Icon: Receipt,
-    },
-    {
-      id: "settings",
-      label: "Profile & Settings",
-      Icon: UserCog,
     },
     {
       id: "support",
@@ -396,6 +384,61 @@ export function CustomerLayout({
               );
             })}
           </nav>
+
+          {/* Bottom of Navbar: Profile & Account Settings */}
+          <div className="p-3 border-t border-black/[0.06] bg-white/70 backdrop-blur-md">
+            {!isCollapsed ? (
+              <button
+                onClick={() => onTabChange("settings")}
+                className={cn(
+                  "flex w-full items-center gap-3 p-2 rounded-2xl transition-all duration-200 text-left group cursor-pointer",
+                  activeTab === "settings"
+                    ? "bg-[#E31E24]/10 text-[#E31E24] ring-1 ring-[#E31E24]/30"
+                    : "hover:bg-black/[0.04] text-gray-800"
+                )}
+                title="Profile & Account Settings"
+              >
+                <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-tr from-[#E31E24] to-rose-500 text-white font-extrabold text-xs shadow-xs shrink-0 ring-2 ring-white">
+                  {userProfile.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .slice(0, 2) || "AS"}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold truncate group-hover:text-[#E31E24] transition-colors">
+                      {userProfile.name}
+                    </p>
+                    <UserCog className="h-3.5 w-3.5 text-gray-400 group-hover:text-[#E31E24] shrink-0" />
+                  </div>
+                  <p className="text-[11px] text-gray-500 truncate flex items-center gap-1 mt-0.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                    <span>{userProfile.points || 450} pts · Gold Tier</span>
+                  </p>
+                </div>
+              </button>
+            ) : (
+              <button
+                onClick={() => onTabChange("settings")}
+                className={cn(
+                  "grid h-10 w-10 mx-auto place-items-center rounded-2xl transition cursor-pointer",
+                  activeTab === "settings"
+                    ? "bg-[#E31E24] text-white shadow-xs"
+                    : "bg-gradient-to-tr from-[#E31E24] to-rose-500 text-white hover:opacity-90 shadow-xs"
+                )}
+                title={`Profile & Account: ${userProfile.name}`}
+              >
+                <span className="font-bold text-xs">
+                  {userProfile.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .slice(0, 2) || "AS"}
+                </span>
+              </button>
+            )}
+          </div>
         </aside>
 
         {/* Right Content Area */}
@@ -552,80 +595,6 @@ export function CustomerLayout({
                   </span>
                 )}
               </button>
-
-              {/* Profile Avatar & Account Menu */}
-              <div className="relative">
-                <button
-                  onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center p-0.5 rounded-full hover:ring-2 hover:ring-[#E31E24]/30 active:scale-95 transition-all duration-200"
-                  aria-label="Account menu"
-                >
-                  <span className="grid h-8.5 w-8.5 place-items-center rounded-full bg-gradient-to-tr from-[#E31E24] to-[#f43f45] text-white font-bold text-xs shadow-xs">
-                    {userProfile.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .slice(0, 2) || "AS"}
-                  </span>
-                </button>
-
-                {isProfileOpen && (
-                  <div className="absolute right-0 mt-2 w-64 rounded-3xl bg-white/90 backdrop-blur-2xl border border-black/[0.08] shadow-[0_20px_50px_rgba(0,0,0,0.12)] p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
-                    <div className="px-3 py-2.5 border-b border-gray-100">
-                      <p className="text-sm font-bold text-gray-900 truncate">{userProfile.name}</p>
-                      <p className="text-xs text-gray-500 truncate">{userProfile.email}</p>
-                      <div className="mt-2 flex items-center justify-between text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
-                        <span>ProPoints Loyalty</span>
-                        <span className="font-bold">{userProfile.points} pts</span>
-                      </div>
-                    </div>
-                    <div className="py-1 space-y-0.5">
-                      <button
-                        onClick={() => {
-                          setIsProfileOpen(false);
-                          onTabChange("garage");
-                        }}
-                        className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 rounded-xl transition"
-                      >
-                        <Bike className="h-4 w-4 text-gray-400" />
-                        <span>Manage My Garage</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsProfileOpen(false);
-                          onTabChange("orders");
-                        }}
-                        className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 rounded-xl transition"
-                      >
-                        <Package className="h-4 w-4 text-gray-400" />
-                        <span>My Orders</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsProfileOpen(false);
-                          onTabChange("settings");
-                        }}
-                        className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 rounded-xl transition"
-                      >
-                        <UserCog className="h-4 w-4 text-gray-400" />
-                        <span>Profile & Settings</span>
-                      </button>
-                    </div>
-                    <div className="pt-1 border-t border-gray-100">
-                      <button
-                        onClick={() => {
-                          setIsProfileOpen(false);
-                          toast.info("Signed out from customer session");
-                        }}
-                        className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-xl transition"
-                      >
-                        <LogOut className="h-4 w-4 text-rose-400" />
-                        <span>Sign out</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           </header>
 
@@ -684,10 +653,35 @@ export function CustomerLayout({
                 );
               })}
             </nav>
-            <div className="pt-4 border-t border-gray-100">
+            <div className="pt-4 border-t border-gray-100 space-y-2">
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  onTabChange("settings");
+                }}
+                className={cn(
+                  "flex w-full items-center gap-3 p-2.5 rounded-2xl transition text-left cursor-pointer",
+                  activeTab === "settings"
+                    ? "bg-[#E31E24]/10 text-[#E31E24] ring-1 ring-[#E31E24]/30"
+                    : "hover:bg-gray-50 text-gray-800"
+                )}
+              >
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-tr from-[#E31E24] to-rose-500 text-white font-extrabold text-xs shadow-xs shrink-0">
+                  {userProfile.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .slice(0, 2) || "AS"}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold truncate">{userProfile.name}</p>
+                  <p className="text-[11px] text-gray-500">Profile & Settings</p>
+                </div>
+              </button>
+
               <Link
                 to="/"
-                className="flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-primary transition"
+                className="flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-primary transition px-2"
               >
                 <ArrowLeft className="h-4 w-4" /> Back to store
               </Link>
