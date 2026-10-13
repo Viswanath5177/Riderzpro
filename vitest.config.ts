@@ -11,6 +11,12 @@ export default defineConfig({
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      "cloudflare:workers": path.resolve(
+        __dirname,
+        "./node_modules/nitro/dist/presets/cloudflare/runtime/shims/workers.dev.mjs"
+      ),
+    },
   },
 });

@@ -10,7 +10,6 @@ import { fileURLToPath } from "node:url";
 const cloudflareWorkersDevShim = {
   name: "riderzpro-cloudflare-workers-dev-shim",
   enforce: "pre" as const,
-  apply: "serve" as const,
   resolveId(source: string) {
     if (source === "cloudflare:workers") {
       return fileURLToPath(new URL("./node_modules/nitro/dist/presets/cloudflare/runtime/shims/workers.dev.mjs", import.meta.url));
@@ -21,8 +20,11 @@ const cloudflareWorkersDevShim = {
 export default defineConfig({
   plugins: [cloudflareWorkersDevShim],
   vite: {
-    // This runtime-only import is supplied by Nitro's Cloudflare dev shim;
-    // Vite's dependency scanner cannot resolve it as a regular package.
+    resolve: {
+      alias: {
+        "cloudflare:workers": fileURLToPath(new URL("./node_modules/nitro/dist/presets/cloudflare/runtime/shims/workers.dev.mjs", import.meta.url)),
+      },
+    },
     optimizeDeps: {
       exclude: ["cloudflare:workers"],
     },
