@@ -17,6 +17,7 @@ import { AddressesTab } from "@/components/dashboard/AddressesTab";
 import { BookingModal } from "@/components/dashboard/BookingModal";
 import { AddBikeModal } from "@/components/dashboard/AddBikeModal";
 import { getCurrentRole } from "@/lib/auth";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 export const Route = createFileRoute("/dashboard/customer")({
   beforeLoad: async () => {
@@ -35,8 +36,16 @@ export const Route = createFileRoute("/dashboard/customer")({
       { property: "og:description", content: "Automotive e-commerce and bike ownership platform." },
     ],
   }),
-  component: CustomerDashboard,
+  component: CustomerDashboardRoute,
 });
+
+function CustomerDashboardRoute() {
+  return (
+    <ProtectedRoute>
+      <CustomerDashboard />
+    </ProtectedRoute>
+  );
+}
 
 function CustomerDashboard() {
   const [tab, setTab] = useState<CustomerTab>("overview");

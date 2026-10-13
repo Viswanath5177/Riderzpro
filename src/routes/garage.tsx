@@ -10,6 +10,7 @@ import scooterImg from "@/assets/scooter.jpg";
 import heroBike from "@/assets/hero-bike.jpg";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { bikes, cars, decodeVin, getBike, inr, type Product } from "@/lib/data";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useStore } from "@/lib/store";
 
 interface GarageVehicle {
@@ -35,11 +36,19 @@ export const Route = createFileRoute("/garage")({
       { property: "og:description", content: "Decode your VIN, manage EVs in PostgreSQL, and shop live compatible parts." },
     ],
   }),
-  component: GaragePage,
+  component: GarageRoute,
 });
 
+function GarageRoute() {
+  return (
+    <ProtectedRoute>
+      <GaragePage />
+    </ProtectedRoute>
+  );
+}
+
 function GaragePage() {
-  const { addToCart } = useStore();
+  const { addToCart, garage, addBike, removeBike, activeBikeId, setActiveBikeId } = useStore();
   const [vin, setVin] = useState("");
   const [selectedVehicleId, setSelectedVehicleId] = useState("ola-s1pro");
   const [selectedYear, setSelectedYear] = useState(2023);

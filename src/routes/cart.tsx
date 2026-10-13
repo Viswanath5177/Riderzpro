@@ -23,6 +23,7 @@ import { SiteLayout } from "@/components/site/SiteLayout";
 import { DELIVERY_BASE, DELIVERY_PER_KM, getProduct, getVendor, inr, products } from "@/lib/data";
 import { quoteCart, useStore, type Order } from "@/lib/store";
 import type { AddressRef } from "@/lib/logistics/types";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -38,6 +39,7 @@ export const Route = createFileRoute("/cart")({
 
 function CartPage() {
   const { cart, setQty, placeOrderWithOptions, userProfile, inventoryStock, addToCart } = useStore();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const [paymentMethod, setPaymentMethod] = useState<string>("UPI");
@@ -49,7 +51,6 @@ function CartPage() {
   const [couponError, setCouponError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
-
   // Address state prefilled from profile
   const [address, setAddress] = useState<AddressRef>({
     name: userProfile.name || "Aakash Sharma",
@@ -92,6 +93,11 @@ function CartPage() {
   };
 
   const handlePlaceOrder = () => {
+    if (!isAuthenticated) {
+      toast.info("Please sign in to place your order.");
+      navigate({ to: "/login", search: { redirect: "/cart" } });
+      return;
+    }
     if (stockErrors.length > 0) {
       toast.error("Please adjust quantities to match available inventory.");
       return;
@@ -577,6 +583,11 @@ function CartPage() {
               >
                 {isSubmitting ? (
                   <span>Securing Order & Manifesting...</span>
+                ) : !isAuthenticated ? (
+                  <>
+                    <span>Sign in to Checkout · {inr(quote.total)}</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </>
                 ) : (
                   <>
                     <span>Confirm Order · {inr(quote.total)}</span>

@@ -439,7 +439,7 @@ export class ProductModel {
       dto.warranty || "12 Months",
       Number(dto.weight_kg) || 2.0,
       dto.image_url || null,
-      dto.verification_status || "approved",
+      dto.verification_status || "pending_approval",
       dto.is_active !== undefined ? dto.is_active : true,
     ];
 

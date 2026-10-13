@@ -51,7 +51,7 @@ export function Navbar() {
     let active = true;
     getCurrentRole().then((role) => {
       if (!active) return;
-      if (role) { setRole(role); signIn(); }
+      if (role) { setRole(role as any); signIn(); }
       else signOut();
     }).catch(() => { if (active) signOut(); });
     return () => { active = false; };

@@ -9,7 +9,6 @@ export const ROLE_LINKS = [
   { to: "/dashboard/customer", label: "Customer", Icon: Bike },
   { to: "/dashboard/admin", label: "Admin", Icon: Shield },
 ] as const;
-
 export type Section = { id: string; label: string; Icon: LucideIcon };
 
 export function DashboardShell({

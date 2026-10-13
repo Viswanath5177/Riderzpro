@@ -9,6 +9,8 @@ import {
   Check,
   X,
   ShieldCheck,
+  ShieldAlert,
+  Info,
   Clock,
   Truck,
   Plus,
@@ -51,14 +53,15 @@ import {
   mapDbProductToProduct,
 } from "@/lib/data";
 import { ProductFormPage } from "@/components/vendor/ProductFormPage";
-import { getCurrentRole } from "@/lib/auth";
+import { getCurrentRole, getCurrentUser } from "@/lib/auth";
 import { useStore, type Order } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard/vendor")({
   beforeLoad: async () => {
     const role = await getCurrentRole();
-    if (!role) throw redirect({ to: "/login" });
+    if (!role) throw redirect({ to: "/login", search: { redirect: "/dashboard/vendor" } });
+    if (role === "customer") throw redirect({ to: "/dashboard/customer" });
   },
   head: () => ({
     meta: [
@@ -85,6 +88,24 @@ const vendorSections: Section[] = [
 
 export function VendorDashboard() {
   const { orders, updateOrderStatus } = useStore();
+
+  // Current logged in user & verification status
+  const [currentUser, setCurrentUser] = useState<{
+    id: string;
+    email: string;
+    fullName: string;
+    role: string;
+    sellerStatus?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    getCurrentUser().then((u) => {
+      if (u) setCurrentUser(u as any);
+    });
+  }, []);
+
+  const sellerStatus = currentUser?.sellerStatus || "APPROVED";
+  const isApproved = sellerStatus === "APPROVED" || currentUser?.role?.includes("ADMIN") || currentUser?.role === "admin";
 
   // Active vendor selection (allows previewing as any of the 6 verified marketplace vendors)
   const [selectedVendorId, setSelectedVendorId] = useState<string>("v1");
@@ -271,6 +292,28 @@ export function VendorDashboard() {
     toast.success(`Order ${orderId} updated to ${nextStatus}`);
   };
 
+  const handleOpenAdd = () => {
+    if (!isApproved) {
+      toast.error("Product Listing Locked", {
+        description: "Your seller KYC verification is currently under review. Product creation unlocks once approved.",
+      });
+      return;
+    }
+    setEditingProduct(null);
+    setInventoryViewMode("form");
+  };
+
+  const handleOpenEdit = (p: Product) => {
+    if (!isApproved) {
+      toast.error("Product Modification Locked", {
+        description: "Your seller KYC verification is currently under review.",
+      });
+      return;
+    }
+    setEditingProduct(p);
+    setInventoryViewMode("form");
+  };
+
   // Inventory Stock & Price adjuster
   const handleUpdateOffer = (productId: string, newPrice: number, newStock: number) => {
     setVendorOffersMap((prev) => ({
@@ -358,6 +401,91 @@ export function VendorDashboard() {
     setInventoryViewMode("list");
   };
 
+  // Vendor KYC Status Banner Component
+  const renderStatusBanner = () => {
+    if (isApproved) {
+      return (
+        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 flex items-center justify-between mb-6 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-emerald-500/20 p-2 text-emerald-600 dark:text-emerald-400">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-emerald-950 dark:text-emerald-200">Verified Marketplace Vendor</h3>
+              <p className="text-xs text-emerald-700 dark:text-emerald-400">KYC documents and bank account approved. You can add and publish parts catalog.</p>
+            </div>
+          </div>
+          <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-extrabold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
+            Approved
+          </span>
+        </div>
+      );
+    }
+
+    if (sellerStatus === "REJECTED") {
+      return (
+        <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-4 sm:p-5 flex items-start gap-3.5 mb-6 shadow-sm">
+          <div className="rounded-xl bg-red-500/20 p-2 text-red-600 dark:text-red-400 shrink-0">
+            <ShieldAlert className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-red-950 dark:text-red-200">Onboarding Application Not Approved</h3>
+              <span className="rounded-full bg-red-500/20 px-2.5 py-0.5 text-[10px] font-extrabold text-red-700 dark:text-red-300 uppercase">
+                Rejected
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-red-800 dark:text-red-300 leading-relaxed">
+              Your vendor application does not meet the marketplace criteria. An email has been sent to your registered address with compliance feedback.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    if (sellerStatus === "MORE_INFORMATION_REQUIRED") {
+      return (
+        <div className="rounded-2xl border border-blue-500/40 bg-blue-500/10 p-4 sm:p-5 flex items-start gap-3.5 mb-6 shadow-sm">
+          <div className="rounded-xl bg-blue-500/20 p-2 text-blue-600 dark:text-blue-400 shrink-0">
+            <Info className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-blue-950 dark:text-blue-200">Action Required: Additional Verification Details</h3>
+              <span className="rounded-full bg-blue-500/20 px-2.5 py-0.5 text-[10px] font-extrabold text-blue-700 dark:text-blue-300 uppercase">
+                More Info Needed
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
+              Our compliance team requested updated or clearer copies of your business KYC documents. Please check your email for exact instructions.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // Default: PENDING_REVIEW / UNDER_REVIEW
+    return (
+      <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 sm:p-5 flex items-start gap-3.5 mb-6 shadow-sm">
+        <div className="rounded-xl bg-amber-500/20 p-2 text-amber-600 dark:text-amber-400 shrink-0">
+          <Clock className="h-5 w-5 animate-pulse" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-bold text-amber-950 dark:text-amber-200">KYC Verification Under Review</h3>
+            <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-extrabold text-amber-700 dark:text-amber-300 uppercase">
+              Pending Review
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+            Your vendor application and uploaded documents (PAN, Aadhaar front photo with address, GSTIN, and Bank payout details) are being reviewed by the Riderzpro operations team. Catalog publishing will unlock immediately upon approval.
+          </p>
+        </div>
+      </div>
+    );
+  };
+
+
   // Reviews and Settlements for current vendor
   const vendorReviews: VendorReview[] = useMemo(() => getVendorReviews(selectedVendorId), [selectedVendorId]);
   const vendorSettlements: VendorSettlement[] = useMemo(() => getVendorSettlements(selectedVendorId), [selectedVendorId]);
@@ -416,6 +544,7 @@ export function VendorDashboard() {
       {/* ─────────────────────────────────────────────────────────────
           1. OVERVIEW TAB
          ───────────────────────────────────────────────────────────── */}
+      {renderStatusBanner()}
       {tab === "overview" && (
         <div className="space-y-6">
           {/* Vendor verified partner status banner */}
@@ -770,12 +899,24 @@ export function VendorDashboard() {
                 </button>
                 <button
                   onClick={() => {
+                    if (!isApproved) {
+                      toast.error("Product Listing Locked", {
+                        description: "Your seller KYC verification is currently under review. Product creation unlocks once approved.",
+                      });
+                      return;
+                    }
                     setEditingProduct(null);
                     setInventoryViewMode("form");
                   }}
-                  className="rounded-xl border border-border bg-muted/40 px-3.5 py-2 text-xs font-semibold hover:bg-muted transition cursor-pointer"
+                  className={cn(
+                    "rounded-xl border border-border px-3.5 py-2 text-xs font-semibold transition cursor-pointer",
+                    isApproved
+                      ? "bg-muted/40 hover:bg-muted"
+                      : "bg-muted text-muted-foreground opacity-60 cursor-not-allowed"
+                  )}
+                  title={!isApproved ? "Account pending compliance review" : "New product submission"}
                 >
-                  + New Product Submission
+                  + New Product Submission {!isApproved && "(Locked)"}
                 </button>
               </div>
             }

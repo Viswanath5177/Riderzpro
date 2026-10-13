@@ -1,8 +1,8 @@
 // @lovable.dev/vite-tanstack-config already includes standard plugins
 // Multi-vendor marketplace API middleware enabled
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
-import { pgApiMiddleware } from "./src/server/dbMiddleware";
 import { fileURLToPath } from "node:url";
+import { pgApiMiddleware } from "./src/server/dbMiddleware";
 
 const cloudflareWorkersDevShim = {
   name: "riderzpro-cloudflare-workers-dev-shim",
@@ -18,6 +18,7 @@ const cloudflareWorkersDevShim = {
 export default defineConfig({
   plugins: [cloudflareWorkersDevShim, pgApiMiddleware()],
   vite: {
+    plugins: [pgApiMiddleware()],
     // This runtime-only import is supplied by Nitro's Cloudflare dev shim;
     // Vite's dependency scanner cannot resolve it as a regular package.
     optimizeDeps: {

@@ -1,4 +1,5 @@
-import { env } from "cloudflare:workers";
+// Safe environment resolution for both Node.js and Worker environments
+const env: DatabaseBindings = (globalThis as any)?.__env__ ?? (globalThis as any)?.env ?? {};
 import type { Client, Transaction } from "@libsql/client";
 import { Pool, type PoolClient } from "pg";
 
@@ -108,17 +109,11 @@ function createPostgresDatabase(connectionString: string): Database {
 
 export function getDatabase(): Database {
   if (database) return database;
-  const bindings = env as DatabaseBindings;
-  const url = bindings.DATABASE_URL ?? process.env["DATABASE_URL"] ?? "file:./database/riderzpro-dev.db";
-  if (url?.startsWith("file:")) {
-    database = createSqliteDatabase(url);
-    return database;
-  }
-  const connectionString = bindings.HYPERDRIVE?.connectionString ?? url;
-  if (!connectionString) {
-    database = createSqliteDatabase("file:./database/riderzpro-dev.db");
-    return database;
-  }
+  const envUrl = process.env["DATABASE_URL"];
+  const connectionString =
+    (envUrl && !envUrl.startsWith("file:") ? envUrl : null) ||
+    `postgresql://${process.env["PGUSER"] || "postgres"}:${encodeURIComponent(process.env["PGPASSWORD"] || "Vsvg@db1")}@${process.env["PGHOST"] || "localhost"}:${process.env["PGPORT"] || "5432"}/${process.env["PGDATABASE"] || "riderzpro"}`;
+
   database = createPostgresDatabase(connectionString);
   return database;
 }

@@ -4,11 +4,11 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const env = process.env;
-const isSqlite = (env["DATABASE_URL"] || "").startsWith("file:");
+const rawUrl = env["DATABASE_URL"];
+const isSqlite = (rawUrl || "").startsWith("file:");
 const connectionString =
-  !isSqlite && env["DATABASE_URL"]
-    ? env["DATABASE_URL"]
-    : `postgresql://${env["PGUSER"] || "postgres"}:${encodeURIComponent(env["PGPASSWORD"] || "Vsvg@db1")}@${env["PGHOST"] || "localhost"}:${env["PGPORT"] || "5432"}/${env["PGDATABASE"] || "riderzpro"}`;
+  (!isSqlite && rawUrl ? rawUrl : null) ||
+  `postgresql://${env["PGUSER"] || "postgres"}:${encodeURIComponent(env["PGPASSWORD"] || "Vsvg@db1")}@${env["PGHOST"] || "localhost"}:${env["PGPORT"] || "5432"}/${env["PGDATABASE"] || "riderzpro"}`;
 
 export const pool = new pg.Pool({
   connectionString,

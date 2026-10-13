@@ -10,13 +10,36 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AssistantRouteImport } from './routes/assistant'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as DashboardsRouteImport } from './routes/dashboards'
 import { Route as GarageRouteImport } from './routes/garage'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as OffersRouteImport } from './routes/offers'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as ShopRouteImport } from './routes/shop'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as VendorSignUpRouteImport } from './routes/vendor-sign-up'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminAiAssistantRouteImport } from './routes/admin.ai-assistant'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
+import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
+import { Route as AdminFitmentRouteImport } from './routes/admin.fitment'
+import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
+import { Route as AdminOffersRouteImport } from './routes/admin.offers'
+import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
+import { Route as AdminPaymentsRouteImport } from './routes/admin.payments'
+import { Route as AdminProductsRouteImport } from './routes/admin.products'
+import { Route as AdminReviewsRouteImport } from './routes/admin.reviews'
+import { Route as AdminRidersRouteImport } from './routes/admin.riders'
+import { Route as AdminSellersRouteImport } from './routes/admin.sellers'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminSupportRouteImport } from './routes/admin.support'
+import { Route as AdminTeamRouteImport } from './routes/admin.team'
+import { Route as AdminWarrantyRouteImport } from './routes/admin.warranty'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard.admin'
 import { Route as DashboardCustomerRouteImport } from './routes/dashboard.customer'
 import { Route as DashboardRiderRouteImport } from './routes/dashboard.rider'
@@ -25,15 +48,26 @@ import { Route as DashboardWorkshopRouteImport } from './routes/dashboard.worksh
 import { Route as ProductIdRouteImport } from './routes/product.$id'
 import { Route as TrackIdRouteImport } from './routes/track.$id'
 import { Route as VendorIdRouteImport } from './routes/vendor.$id'
+import { Route as VendorSignupRouteImport } from './routes/vendor.signup'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AssistantRoute = AssistantRouteImport.update({
   id: '/assistant',
   path: '/assistant',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CartRoute = CartRouteImport.update({
@@ -56,6 +90,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OffersRoute = OffersRouteImport.update({
+  id: '/offers',
+  path: '/offers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrdersRoute = OrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
@@ -65,6 +104,106 @@ const ShopRoute = ShopRouteImport.update({
   id: '/shop',
   path: '/shop',
   getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VendorSignUpRoute = VendorSignUpRouteImport.update({
+  id: '/vendor-sign-up',
+  path: '/vendor-sign-up',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAiAssistantRoute = AdminAiAssistantRouteImport.update({
+  id: '/ai-assistant',
+  path: '/ai-assistant',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCustomersRoute = AdminCustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFitmentRoute = AdminFitmentRouteImport.update({
+  id: '/fitment',
+  path: '/fitment',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOffersRoute = AdminOffersRouteImport.update({
+  id: '/offers',
+  path: '/offers',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOrdersRoute = AdminOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminProductsRoute = AdminProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminReviewsRoute = AdminReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRidersRoute = AdminRidersRouteImport.update({
+  id: '/riders',
+  path: '/riders',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSellersRoute = AdminSellersRouteImport.update({
+  id: '/sellers',
+  path: '/sellers',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSupportRoute = AdminSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTeamRoute = AdminTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminWarrantyRoute = AdminWarrantyRouteImport.update({
+  id: '/warranty',
+  path: '/warranty',
+  getParentRoute: () => AdminRoute,
 } as any)
 const DashboardAdminRoute = DashboardAdminRouteImport.update({
   id: '/dashboard/admin',
@@ -106,16 +245,43 @@ const VendorIdRoute = VendorIdRouteImport.update({
   path: '/vendor/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VendorSignupRoute = VendorSignupRouteImport.update({
+  id: '/vendor/signup',
+  path: '/vendor/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/assistant': typeof AssistantRoute
+  '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
   '/dashboards': typeof DashboardsRoute
   '/garage': typeof GarageRoute
   '/login': typeof LoginRoute
+  '/offers': typeof OffersRoute
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
+  '/signup': typeof SignupRoute
+  '/vendor-sign-up': typeof VendorSignUpRoute
+  '/admin/ai-assistant': typeof AdminAiAssistantRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/customers': typeof AdminCustomersRoute
+  '/admin/fitment': typeof AdminFitmentRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/offers': typeof AdminOffersRoute
+  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/payments': typeof AdminPaymentsRoute
+  '/admin/products': typeof AdminProductsRoute
+  '/admin/reviews': typeof AdminReviewsRoute
+  '/admin/riders': typeof AdminRidersRoute
+  '/admin/sellers': typeof AdminSellersRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/support': typeof AdminSupportRoute
+  '/admin/team': typeof AdminTeamRoute
+  '/admin/warranty': typeof AdminWarrantyRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/customer': typeof DashboardCustomerRoute
   '/dashboard/rider': typeof DashboardRiderRoute
@@ -124,16 +290,39 @@ export interface FileRoutesByFullPath {
   '/product/$id': typeof ProductIdRoute
   '/track/$id': typeof TrackIdRoute
   '/vendor/$id': typeof VendorIdRoute
+  '/vendor/signup': typeof VendorSignupRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/assistant': typeof AssistantRoute
+  '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
   '/dashboards': typeof DashboardsRoute
   '/garage': typeof GarageRoute
   '/login': typeof LoginRoute
+  '/offers': typeof OffersRoute
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
+  '/signup': typeof SignupRoute
+  '/vendor-sign-up': typeof VendorSignUpRoute
+  '/admin/ai-assistant': typeof AdminAiAssistantRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/customers': typeof AdminCustomersRoute
+  '/admin/fitment': typeof AdminFitmentRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/offers': typeof AdminOffersRoute
+  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/payments': typeof AdminPaymentsRoute
+  '/admin/products': typeof AdminProductsRoute
+  '/admin/reviews': typeof AdminReviewsRoute
+  '/admin/riders': typeof AdminRidersRoute
+  '/admin/sellers': typeof AdminSellersRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/support': typeof AdminSupportRoute
+  '/admin/team': typeof AdminTeamRoute
+  '/admin/warranty': typeof AdminWarrantyRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/customer': typeof DashboardCustomerRoute
   '/dashboard/rider': typeof DashboardRiderRoute
@@ -142,17 +331,41 @@ export interface FileRoutesByTo {
   '/product/$id': typeof ProductIdRoute
   '/track/$id': typeof TrackIdRoute
   '/vendor/$id': typeof VendorIdRoute
+  '/vendor/signup': typeof VendorSignupRoute
+  '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/assistant': typeof AssistantRoute
+  '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
   '/dashboards': typeof DashboardsRoute
   '/garage': typeof GarageRoute
   '/login': typeof LoginRoute
+  '/offers': typeof OffersRoute
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
+  '/signup': typeof SignupRoute
+  '/vendor-sign-up': typeof VendorSignUpRoute
+  '/admin/ai-assistant': typeof AdminAiAssistantRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/customers': typeof AdminCustomersRoute
+  '/admin/fitment': typeof AdminFitmentRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/offers': typeof AdminOffersRoute
+  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/payments': typeof AdminPaymentsRoute
+  '/admin/products': typeof AdminProductsRoute
+  '/admin/reviews': typeof AdminReviewsRoute
+  '/admin/riders': typeof AdminRidersRoute
+  '/admin/sellers': typeof AdminSellersRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/support': typeof AdminSupportRoute
+  '/admin/team': typeof AdminTeamRoute
+  '/admin/warranty': typeof AdminWarrantyRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/customer': typeof DashboardCustomerRoute
   '/dashboard/rider': typeof DashboardRiderRoute
@@ -161,18 +374,42 @@ export interface FileRoutesById {
   '/product/$id': typeof ProductIdRoute
   '/track/$id': typeof TrackIdRoute
   '/vendor/$id': typeof VendorIdRoute
+  '/vendor/signup': typeof VendorSignupRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/assistant'
+    | '/auth'
     | '/cart'
     | '/dashboards'
     | '/garage'
     | '/login'
+    | '/offers'
     | '/orders'
     | '/shop'
+    | '/signup'
+    | '/vendor-sign-up'
+    | '/admin/ai-assistant'
+    | '/admin/analytics'
+    | '/admin/customers'
+    | '/admin/fitment'
+    | '/admin/login'
+    | '/admin/notifications'
+    | '/admin/offers'
+    | '/admin/orders'
+    | '/admin/payments'
+    | '/admin/products'
+    | '/admin/reviews'
+    | '/admin/riders'
+    | '/admin/sellers'
+    | '/admin/settings'
+    | '/admin/support'
+    | '/admin/team'
+    | '/admin/warranty'
     | '/dashboard/admin'
     | '/dashboard/customer'
     | '/dashboard/rider'
@@ -181,16 +418,39 @@ export interface FileRouteTypes {
     | '/product/$id'
     | '/track/$id'
     | '/vendor/$id'
+    | '/vendor/signup'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/assistant'
+    | '/auth'
     | '/cart'
     | '/dashboards'
     | '/garage'
     | '/login'
+    | '/offers'
     | '/orders'
     | '/shop'
+    | '/signup'
+    | '/vendor-sign-up'
+    | '/admin/ai-assistant'
+    | '/admin/analytics'
+    | '/admin/customers'
+    | '/admin/fitment'
+    | '/admin/login'
+    | '/admin/notifications'
+    | '/admin/offers'
+    | '/admin/orders'
+    | '/admin/payments'
+    | '/admin/products'
+    | '/admin/reviews'
+    | '/admin/riders'
+    | '/admin/sellers'
+    | '/admin/settings'
+    | '/admin/support'
+    | '/admin/team'
+    | '/admin/warranty'
     | '/dashboard/admin'
     | '/dashboard/customer'
     | '/dashboard/rider'
@@ -199,16 +459,40 @@ export interface FileRouteTypes {
     | '/product/$id'
     | '/track/$id'
     | '/vendor/$id'
+    | '/vendor/signup'
+    | '/admin'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/assistant'
+    | '/auth'
     | '/cart'
     | '/dashboards'
     | '/garage'
     | '/login'
+    | '/offers'
     | '/orders'
     | '/shop'
+    | '/signup'
+    | '/vendor-sign-up'
+    | '/admin/ai-assistant'
+    | '/admin/analytics'
+    | '/admin/customers'
+    | '/admin/fitment'
+    | '/admin/login'
+    | '/admin/notifications'
+    | '/admin/offers'
+    | '/admin/orders'
+    | '/admin/payments'
+    | '/admin/products'
+    | '/admin/reviews'
+    | '/admin/riders'
+    | '/admin/sellers'
+    | '/admin/settings'
+    | '/admin/support'
+    | '/admin/team'
+    | '/admin/warranty'
     | '/dashboard/admin'
     | '/dashboard/customer'
     | '/dashboard/rider'
@@ -217,17 +501,24 @@ export interface FileRouteTypes {
     | '/product/$id'
     | '/track/$id'
     | '/vendor/$id'
+    | '/vendor/signup'
+    | '/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AssistantRoute: typeof AssistantRoute
+  AuthRoute: typeof AuthRoute
   CartRoute: typeof CartRoute
   DashboardsRoute: typeof DashboardsRoute
   GarageRoute: typeof GarageRoute
   LoginRoute: typeof LoginRoute
+  OffersRoute: typeof OffersRoute
   OrdersRoute: typeof OrdersRoute
   ShopRoute: typeof ShopRoute
+  SignupRoute: typeof SignupRoute
+  VendorSignUpRoute: typeof VendorSignUpRoute
   DashboardAdminRoute: typeof DashboardAdminRoute
   DashboardCustomerRoute: typeof DashboardCustomerRoute
   DashboardRiderRoute: typeof DashboardRiderRoute
@@ -236,6 +527,7 @@ export interface RootRouteChildren {
   ProductIdRoute: typeof ProductIdRoute
   TrackIdRoute: typeof TrackIdRoute
   VendorIdRoute: typeof VendorIdRoute
+  VendorSignupRoute: typeof VendorSignupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -247,11 +539,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/assistant': {
       id: '/assistant'
       path: '/assistant'
       fullPath: '/assistant'
       preLoaderRoute: typeof AssistantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cart': {
@@ -282,6 +588,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/offers': {
+      id: '/offers'
+      path: '/offers'
+      fullPath: '/offers'
+      preLoaderRoute: typeof OffersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/orders': {
       id: '/orders'
       path: '/orders'
@@ -295,6 +608,146 @@ declare module '@tanstack/react-router' {
       fullPath: '/shop'
       preLoaderRoute: typeof ShopRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vendor-sign-up': {
+      id: '/vendor-sign-up'
+      path: '/vendor-sign-up'
+      fullPath: '/vendor-sign-up'
+      preLoaderRoute: typeof VendorSignUpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/ai-assistant': {
+      id: '/admin/ai-assistant'
+      path: '/ai-assistant'
+      fullPath: '/admin/ai-assistant'
+      preLoaderRoute: typeof AdminAiAssistantRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/customers': {
+      id: '/admin/customers'
+      path: '/customers'
+      fullPath: '/admin/customers'
+      preLoaderRoute: typeof AdminCustomersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/fitment': {
+      id: '/admin/fitment'
+      path: '/fitment'
+      fullPath: '/admin/fitment'
+      preLoaderRoute: typeof AdminFitmentRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/notifications': {
+      id: '/admin/notifications'
+      path: '/notifications'
+      fullPath: '/admin/notifications'
+      preLoaderRoute: typeof AdminNotificationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/offers': {
+      id: '/admin/offers'
+      path: '/offers'
+      fullPath: '/admin/offers'
+      preLoaderRoute: typeof AdminOffersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/orders': {
+      id: '/admin/orders'
+      path: '/orders'
+      fullPath: '/admin/orders'
+      preLoaderRoute: typeof AdminOrdersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/payments': {
+      id: '/admin/payments'
+      path: '/payments'
+      fullPath: '/admin/payments'
+      preLoaderRoute: typeof AdminPaymentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/products': {
+      id: '/admin/products'
+      path: '/products'
+      fullPath: '/admin/products'
+      preLoaderRoute: typeof AdminProductsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/reviews': {
+      id: '/admin/reviews'
+      path: '/reviews'
+      fullPath: '/admin/reviews'
+      preLoaderRoute: typeof AdminReviewsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/riders': {
+      id: '/admin/riders'
+      path: '/riders'
+      fullPath: '/admin/riders'
+      preLoaderRoute: typeof AdminRidersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/sellers': {
+      id: '/admin/sellers'
+      path: '/sellers'
+      fullPath: '/admin/sellers'
+      preLoaderRoute: typeof AdminSellersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/support': {
+      id: '/admin/support'
+      path: '/support'
+      fullPath: '/admin/support'
+      preLoaderRoute: typeof AdminSupportRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/team': {
+      id: '/admin/team'
+      path: '/team'
+      fullPath: '/admin/team'
+      preLoaderRoute: typeof AdminTeamRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/warranty': {
+      id: '/admin/warranty'
+      path: '/warranty'
+      fullPath: '/admin/warranty'
+      preLoaderRoute: typeof AdminWarrantyRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/dashboard/admin': {
       id: '/dashboard/admin'
@@ -352,18 +805,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VendorIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vendor/signup': {
+      id: '/vendor/signup'
+      path: '/vendor/signup'
+      fullPath: '/vendor/signup'
+      preLoaderRoute: typeof VendorSignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminAiAssistantRoute: typeof AdminAiAssistantRoute
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminCustomersRoute: typeof AdminCustomersRoute
+  AdminFitmentRoute: typeof AdminFitmentRoute
+  AdminLoginRoute: typeof AdminLoginRoute
+  AdminNotificationsRoute: typeof AdminNotificationsRoute
+  AdminOffersRoute: typeof AdminOffersRoute
+  AdminOrdersRoute: typeof AdminOrdersRoute
+  AdminPaymentsRoute: typeof AdminPaymentsRoute
+  AdminProductsRoute: typeof AdminProductsRoute
+  AdminReviewsRoute: typeof AdminReviewsRoute
+  AdminRidersRoute: typeof AdminRidersRoute
+  AdminSellersRoute: typeof AdminSellersRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminSupportRoute: typeof AdminSupportRoute
+  AdminTeamRoute: typeof AdminTeamRoute
+  AdminWarrantyRoute: typeof AdminWarrantyRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAiAssistantRoute: AdminAiAssistantRoute,
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminCustomersRoute: AdminCustomersRoute,
+  AdminFitmentRoute: AdminFitmentRoute,
+  AdminLoginRoute: AdminLoginRoute,
+  AdminNotificationsRoute: AdminNotificationsRoute,
+  AdminOffersRoute: AdminOffersRoute,
+  AdminOrdersRoute: AdminOrdersRoute,
+  AdminPaymentsRoute: AdminPaymentsRoute,
+  AdminProductsRoute: AdminProductsRoute,
+  AdminReviewsRoute: AdminReviewsRoute,
+  AdminRidersRoute: AdminRidersRoute,
+  AdminSellersRoute: AdminSellersRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminSupportRoute: AdminSupportRoute,
+  AdminTeamRoute: AdminTeamRoute,
+  AdminWarrantyRoute: AdminWarrantyRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   AssistantRoute: AssistantRoute,
+  AuthRoute: AuthRoute,
   CartRoute: CartRoute,
   DashboardsRoute: DashboardsRoute,
   GarageRoute: GarageRoute,
   LoginRoute: LoginRoute,
+  OffersRoute: OffersRoute,
   OrdersRoute: OrdersRoute,
   ShopRoute: ShopRoute,
+  SignupRoute: SignupRoute,
+  VendorSignUpRoute: VendorSignUpRoute,
   DashboardAdminRoute: DashboardAdminRoute,
   DashboardCustomerRoute: DashboardCustomerRoute,
   DashboardRiderRoute: DashboardRiderRoute,
@@ -372,6 +881,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProductIdRoute: ProductIdRoute,
   TrackIdRoute: TrackIdRoute,
   VendorIdRoute: VendorIdRoute,
+  VendorSignupRoute: VendorSignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

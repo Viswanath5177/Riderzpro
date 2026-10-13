@@ -283,7 +283,7 @@ export function ProductFormPage({ product, onCancel, onSuccess }: ProductFormPag
       warranty,
       weight_kg: Number(weightKg) || 1.5,
       image_url: JSON.stringify(allImages),
-      verification_status: "approved", // Published and approved so customer garage retrieves it immediately!
+      verification_status: isEdit ? "approved" : "pending_approval",
     };
 
     try {
@@ -301,7 +301,12 @@ export function ProductFormPage({ product, onCancel, onSuccess }: ProductFormPag
         throw new Error(json.error || "Database operation failed");
       }
 
-      toast.success(`Product "${name}" successfully saved to PostgreSQL and published to Customer Garage!`, { id: toastId });
+      toast.success(
+        isEdit 
+          ? `Product "${name}" updated successfully!` 
+          : `Product "${name}" submitted for approval! Product Admin will review specifications before public display.`,
+        { id: toastId }
+      );
 
       const savedProductItem: Product = {
         id: prodId,

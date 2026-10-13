@@ -34,7 +34,7 @@ export type GarageBike = {
   batteryHealth?: number;
   nextServiceDays?: number;
 };
-export type Role = "customer" | "workshop" | "vendor" | "rider" | "admin";
+export type Role = "customer" | "seller" | "admin";
 
 export const ORDER_STEPS = ["Placed", "Vendor accepted", "Rider assigned", "Picked up", "On the way", "Delivered"] as const;
 
@@ -415,7 +415,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<CustomerNotification[]>(DEFAULT_NOTIFICATIONS);
   const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [role, setRole] = useState<Role>("customer");
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -458,6 +459,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         role,
       }),
     );
+
+    // Persist cart to PostgreSQL backend
+    try {
+      const customerId = userProfile?.email || "usr_customer_demo";
+      fetch(`/api/cart?customer_id=${encodeURIComponent(customerId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: cart }),
+      }).catch(() => {});
+    } catch {}
   }, [cart, garage, activeBikeId, orders, shipments, inventoryStock, savedProductIds, serviceBookings, notifications, userProfile, role, loaded]);
 
   useEffect(() => {
@@ -813,7 +824,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return demoOrder;
   }, []);
 
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
   const signIn = useCallback(() => setIsLoggedIn(true), []);
   const signOut = useCallback(() => setIsLoggedIn(false), []);
   const deleteOrder = useCallback((id: string) => setOrders((os) => os.filter((o) => o.id !== id)), []);
