@@ -153,8 +153,28 @@ export function verifySignInCode(identity: string, code: string) {
 }
 
 export async function getCurrentRole(): Promise<string | null> {
+  // Fast path: check local storage first for 0ms route transition latency
+  if (typeof window !== "undefined") {
+    try {
+      const adm = localStorage.getItem("riderzpro_admin_session");
+      if (adm) {
+        const parsed = JSON.parse(adm);
+        if (parsed?.role) return parsed.role;
+      }
+      const usr = localStorage.getItem("riderzpro_auth_user");
+      if (usr) {
+        const parsed = JSON.parse(usr);
+        if (parsed?.role) return parsed.role;
+      }
+    } catch {}
+  }
+
+  // Network verification with fast timeout to avoid freezing route transitions
   try {
-    const res = await fetch("/api/auth/me", { credentials: "include" });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1200);
+    const res = await fetch("/api/auth/me", { credentials: "include", signal: controller.signal });
+    clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json();
       if (data.authenticated && data.role) {
@@ -162,24 +182,29 @@ export async function getCurrentRole(): Promise<string | null> {
       }
     }
   } catch {}
-  try {
-    const adm = localStorage.getItem("riderzpro_admin_session");
-    if (adm) {
-      const parsed = JSON.parse(adm);
-      if (parsed?.role) return parsed.role;
-    }
-    const usr = localStorage.getItem("riderzpro_auth_user");
-    if (usr) {
-      const parsed = JSON.parse(usr);
-      if (parsed?.role) return parsed.role;
-    }
-  } catch {}
+
   return null;
 }
 
 export async function getCurrentUser(): Promise<any> {
+  // Fast path: local storage
+  if (typeof window !== "undefined") {
+    try {
+      const adm = localStorage.getItem("riderzpro_admin_session");
+      if (adm) {
+        const parsed = JSON.parse(adm);
+        if (parsed?.user) return parsed.user;
+      }
+      const usr = localStorage.getItem("riderzpro_auth_user");
+      if (usr) return JSON.parse(usr);
+    } catch {}
+  }
+
   try {
-    const res = await fetch("/api/auth/me", { credentials: "include" });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1200);
+    const res = await fetch("/api/auth/me", { credentials: "include", signal: controller.signal });
+    clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json();
       if (data.authenticated && data.user) {
@@ -187,14 +212,11 @@ export async function getCurrentUser(): Promise<any> {
       }
     }
   } catch {}
-  try {
-    const usr = localStorage.getItem("riderzpro_auth_user");
-    if (usr) return JSON.parse(usr);
-  } catch {}
+
   return null;
 }
 
-export async function signOut() {
+export function signOut() {
   try {
     if (typeof window !== "undefined") {
       localStorage.removeItem(AUTH_USER_KEY);
@@ -202,7 +224,7 @@ export async function signOut() {
       localStorage.removeItem("riderzpro_admin_session");
       sessionStorage.removeItem(AUTH_USER_KEY);
       sessionStorage.removeItem(AUTH_TOKEN_KEY);
-      await fetch("/api/auth/signout", { method: "POST", credentials: "include" }).catch(() => {});
+      fetch("/api/auth/signout", { method: "POST", credentials: "include" }).catch(() => {});
     }
   } catch {}
 }
@@ -228,6 +250,7 @@ export type AuthContextType = {
   signUp: (data: { name: string; email: string; phone: string; password: string }) => Promise<{ success: boolean; error?: string }>;
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
+  setUser: (user: User | null) => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -421,6 +444,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp,
       signInWithGoogle,
       signOut: handleSignOut,
+      setUser,
     }),
     [user, loading, signIn, signUp, signInWithGoogle, handleSignOut]
   );

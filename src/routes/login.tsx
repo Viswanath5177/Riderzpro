@@ -41,29 +41,47 @@ import {
   sellerSignIn,
   adminSignIn,
   getCurrentRole,
+  useAuth,
+  type User as AuthUser,
 } from "@/lib/auth";
 
 export type LoginSearch = {
   redirect?: string;
+  username?: string;
+  email?: string;
+  password?: string;
+  tab?: string;
+  mode?: string;
 };
 
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>): LoginSearch => {
-    const rawRedirect = search["redirect"];
     return {
-      redirect: typeof rawRedirect === "string" ? rawRedirect : undefined,
+      redirect: typeof search["redirect"] === "string" ? search["redirect"] : undefined,
+      username: typeof search["username"] === "string" ? search["username"] : undefined,
+      email: typeof search["email"] === "string" ? search["email"] : undefined,
+      password: typeof search["password"] === "string" ? search["password"] : undefined,
+      tab: typeof search["tab"] === "string" ? search["tab"] : undefined,
+      mode: typeof search["mode"] === "string" ? search["mode"] : undefined,
     };
   },
   beforeLoad: async ({ search }) => {
+    // If credentials are in URL or user specifically came to log in, do not bounce them
+    const hasCreds = Boolean((search as any)?.username || (search as any)?.password);
+    if (hasCreds) return;
+
     try {
       const role = await getCurrentRole();
+      if (!role) return;
       if (role === "PRODUCT_ADMIN") throw redirect({ to: "/admin/products" });
       if (role === "SELLER_ADMIN") throw redirect({ to: "/admin/sellers" });
       if (role === "seller") throw redirect({ to: "/dashboard/vendor" });
       if (role === "admin") throw redirect({ to: "/dashboard/admin" });
       if (role === "customer") {
-        const target = (search as any)?.redirect || "/dashboard/customer";
-        throw redirect({ to: target });
+        const target = (search as any)?.redirect;
+        if (target && target !== "/login") {
+          throw redirect({ to: target });
+        }
       }
     } catch (e) {
       if ((e as any)?.to) throw e;
@@ -91,9 +109,17 @@ interface CustomerLoginProps {
 export function CustomerLogin({ defaultTab }: CustomerLoginProps) {
   const navigate = useNavigate();
   const { userProfile, setRole, signIn, updateUserProfile, addBike } = useStore();
+  const { setUser: setAuthUser } = useAuth();
 
   // Tab state: "signin" | "signup"
   const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
+
+  // Sign In State
+  const [signInMode, setSignInMode] = useState<"password" | "otp">("password");
+  const [signInContact, setSignInContact] = useState("");
+  const [signInPassword, setSignInPassword] = useState("");
+  const [showSignInPassword, setShowSignInPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   // Read search params on mount
   useEffect(() => {
@@ -103,19 +129,31 @@ export function CustomerLogin({ defaultTab }: CustomerLoginProps) {
     }
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
+      const urlContact = params.get("username") || params.get("email");
+      const urlPassword = params.get("password");
       const tabParam = params.get("tab") || params.get("mode");
+
+      if (urlContact) {
+        setSignInContact(urlContact);
+      }
+      if (urlPassword) {
+        setSignInPassword(urlPassword);
+      }
       if (tabParam === "signup" || tabParam === "register") {
         setActiveTab("signup");
       }
+
+      // If sensitive credentials leaked into query params, cleanly sanitize URL bar without page reload
+      if (params.has("password") || params.has("username")) {
+        params.delete("password");
+        params.delete("username");
+        params.delete("email");
+        const remaining = params.toString();
+        const cleanPath = window.location.pathname + (remaining ? `?${remaining}` : "");
+        window.history.replaceState({}, document.title, cleanPath);
+      }
     }
   }, [defaultTab]);
-
-  // Sign In State
-  const [signInMode, setSignInMode] = useState<"password" | "otp">("password");
-  const [signInContact, setSignInContact] = useState("");
-  const [signInPassword, setSignInPassword] = useState("");
-  const [showSignInPassword, setShowSignInPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
 
   // OTP State
   const [otpPhone, setOtpPhone] = useState("");
@@ -205,8 +243,10 @@ export function CustomerLogin({ defaultTab }: CustomerLoginProps) {
   };
 
   // Handle Standard Sign In
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSignIn = async (e?: React.FormEvent) => {
+    if (e && typeof e.preventDefault === "function") {
+      e.preventDefault();
+    }
     if (!signInContact.trim()) {
       toast.error("Please enter your mobile number or email.");
       return;
@@ -319,16 +359,15 @@ export function CustomerLogin({ defaultTab }: CustomerLoginProps) {
         navigate({ to: redirectUrl as any });
       } else {
         setRole("customer");
-        localStorage.setItem(
-          "riderzpro_auth_user",
-          JSON.stringify({
-            id: user.id,
-            name: user.fullName,
-            email: user.email,
-            phone: user.phone || "",
-            role: "customer",
-          })
-        );
+        const customerAuthUser: AuthUser = {
+          id: user.id,
+          name: user.fullName,
+          email: user.email,
+          phone: user.phone || "",
+          role: "customer",
+        };
+        setAuthUser(customerAuthUser);
+        localStorage.setItem("riderzpro_auth_user", JSON.stringify(customerAuthUser));
         localStorage.setItem("riderzpro_auth_token", "session_active");
         toast.success(`Welcome back, ${user.fullName.split(" ")[0]}!`);
         const target = getRedirectTarget();
@@ -368,11 +407,22 @@ export function CustomerLogin({ defaultTab }: CustomerLoginProps) {
 
       signIn();
       setRole("customer");
+      const demoUser: AuthUser = {
+        id: "usr_demo_rahul",
+        name: "Rahul Verma",
+        phone: "+91 98450 12345",
+        email: "rahul.verma@example.com",
+        role: "customer",
+      };
+      setAuthUser(demoUser);
+      localStorage.setItem("riderzpro_auth_user", JSON.stringify(demoUser));
+      localStorage.setItem("riderzpro_auth_token", "session_active");
+
       toast.success("Signed in as Demo Rider Rahul Verma (Ather 450X owner)!");
       const target = getRedirectTarget();
       navigate({ to: target as any });
       setIsLoading(false);
-    }, 400);
+    }, 200);
   };
 
   // Handle Send OTP
@@ -832,7 +882,7 @@ export function CustomerLogin({ defaultTab }: CustomerLoginProps) {
 
                 {signInMode === "password" ? (
                   /* Standard Password Form */
-                  <form onSubmit={handleSignIn} className="space-y-4">
+                  <form action="javascript:void(0);" method="POST" onSubmit={handleSignIn} className="space-y-4">
                     <div>
                       <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                         Mobile Number or Email
@@ -920,7 +970,7 @@ export function CustomerLogin({ defaultTab }: CustomerLoginProps) {
                   </form>
                 ) : (
                   /* OTP Mobile Form */
-                  <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="space-y-4">
+                  <form action="javascript:void(0);" method="POST" onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="space-y-4">
                     <div>
                       <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                         Mobile Number
@@ -1078,7 +1128,7 @@ export function CustomerLogin({ defaultTab }: CustomerLoginProps) {
                   </p>
                 </div>
 
-                <form onSubmit={handleSignUp} className="space-y-3.5 pt-1">
+                <form action="javascript:void(0);" method="POST" onSubmit={handleSignUp} className="space-y-3.5 pt-1">
                   {/* Full Name */}
                   <div>
                     <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
