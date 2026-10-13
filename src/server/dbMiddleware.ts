@@ -285,14 +285,65 @@ export function pgApiMiddleware() {
         }
 
         // ====================================================================
-        // 4. ADMIN SELLERS & KYC REVIEW API: /api/admin/sellers
+        // 4. ADMIN SELLERS & KYC REVIEW & ANALYTICS API: /api/admin/sellers
         // ====================================================================
-        if (cleanUrl.startsWith("/api/admin/sellers")) {
+        if (cleanUrl.startsWith("/api/admin/sellers") || cleanUrl === "/api/admin/analytics/sellers") {
           const parts = cleanUrl.split("/").filter(Boolean); // ['api', 'admin', 'sellers', sellerId?, subAction?]
           const sellerId = parts.length > 3 ? parts[3] : null;
           const subAction = parts.length > 4 ? parts[4] : null;
 
           try {
+            // GET /api/admin/sellers/analytics or /api/admin/analytics/sellers
+            if (method === "GET" && (cleanUrl === "/api/admin/sellers/analytics" || cleanUrl === "/api/admin/analytics/sellers" || sellerId === "analytics")) {
+              const analyticsRes = await query(`
+                SELECT 
+                  s.id,
+                  s.store_name,
+                  s.owner_name,
+                  s.email,
+                  s.phone,
+                  s.city,
+                  s.state,
+                  s.status,
+                  s.created_at,
+                  COUNT(o.id)::int AS total_orders,
+                  COALESCE(SUM(o.total_amount), 0)::float AS total_revenue,
+                  COALESCE(SUM(CASE WHEN o.created_at >= now() - interval '7 days' THEN o.total_amount ELSE 0 END), 0)::float AS weekly_revenue,
+                  COUNT(CASE WHEN o.created_at >= now() - interval '7 days' THEN o.id ELSE NULL END)::int AS weekly_orders
+                FROM sellers s
+                LEFT JOIN orders o ON (s.id = o.seller_id OR o.seller_id IN (SELECT id FROM users WHERE email = s.email))
+                GROUP BY s.id, s.store_name, s.owner_name, s.email, s.phone, s.city, s.state, s.status, s.created_at
+                ORDER BY weekly_revenue DESC, total_revenue DESC, s.created_at DESC
+              `);
+
+              const sellersData = analyticsRes.rows;
+              const totalSellers = sellersData.length;
+              const approvedSellers = sellersData.filter((s: any) => s.status === "APPROVED").length;
+              const pendingSellers = sellersData.filter((s: any) => s.status === "PENDING_REVIEW").length;
+              const weeklyTotalRevenue = sellersData.reduce((acc: number, s: any) => acc + (Number(s.weekly_revenue) || 0), 0);
+              const allTimeTotalRevenue = sellersData.reduce((acc: number, s: any) => acc + (Number(s.total_revenue) || 0), 0);
+              const totalWeeklyOrders = sellersData.reduce((acc: number, s: any) => acc + (Number(s.weekly_orders) || 0), 0);
+
+              // Top weekly seller is #1 ranked
+              const weeklyTopSeller = sellersData[0] || null;
+
+              return sendJson(res, 200, {
+                success: true,
+                data: {
+                  sellers: sellersData,
+                  weeklyTopSeller,
+                  metrics: {
+                    totalSellers,
+                    approvedSellers,
+                    pendingSellers,
+                    weeklyTotalRevenue,
+                    allTimeTotalRevenue,
+                    totalWeeklyOrders,
+                  },
+                },
+              });
+            }
+
             // GET /api/admin/sellers
             if (method === "GET") {
               const sellersRes = await query(`
@@ -326,11 +377,11 @@ export function pgApiMiddleware() {
             }
 
             // POST /api/admin/sellers/:id/review
-            if (method === "POST" && sellerId && (subAction === "review" || parts.length === 4)) {
+            if (method === "POST" && sellerId && sellerId !== "analytics" && (subAction === "review" || parts.length === 4)) {
               const body = await parseBody(req);
               const action = body.action as "APPROVED" | "REJECTED" | "MORE_INFORMATION_REQUIRED";
               const reason = body.reason || "";
-              const adminId = body.adminId || "adm_product_01";
+              const adminId = body.adminId;
 
               const sRes = await query("SELECT email, owner_name, store_name, phone, password_hash FROM sellers WHERE id = $1", [sellerId]);
               const seller = sRes.rows[0];
@@ -338,11 +389,31 @@ export function pgApiMiddleware() {
                 return sendJson(res, 404, { success: false, error: "Seller application not found" });
               }
 
+              const isApproved = action === "APPROVED";
+
+              // Verify adminId exists in admins table or resolve to an active admin
+              let verifiedAdminId: string | null = null;
+              if (adminId) {
+                const aCheck = await query("SELECT id FROM admins WHERE id = $1", [adminId]);
+                if (aCheck.rows[0]) verifiedAdminId = aCheck.rows[0].id;
+              }
+              if (!verifiedAdminId) {
+                const fallbackAdmin = await query("SELECT id FROM admins LIMIT 1");
+                verifiedAdminId = fallbackAdmin.rows[0]?.id || null;
+              }
+
+              const approvedAt = isApproved ? new Date() : null;
+
+              // Use explicit cast $1::seller_status_enum and separate parameter for approved_at to eliminate type deduction mismatch (42P08)
               await query(
                 `UPDATE sellers 
-                 SET status = $1, approved_by = $2, approved_at = CASE WHEN $1 = 'APPROVED' THEN now() ELSE NULL END, rejection_reason = $3, updated_at = now()
-                 WHERE id = $4`,
-                [action, adminId, reason || null, sellerId]
+                 SET status = $1::seller_status_enum, 
+                     approved_by = $2, 
+                     approved_at = $3, 
+                     rejection_reason = $4, 
+                     updated_at = now()
+                 WHERE id = $5`,
+                [action, verifiedAdminId, approvedAt, reason || null, sellerId]
               );
 
               // When approved, mirror into users table so the vendor can log in via /api/auth/signin
@@ -358,7 +429,7 @@ export function pgApiMiddleware() {
               await query(
                 `INSERT INTO audit_logs (actor_id, actor_role, action, target_type, target_id, details)
                  VALUES ($1, 'admin', $2, 'seller', $3, $4)`,
-                [adminId, `VENDOR_${action}`, sellerId, JSON.stringify({ reason })]
+                [verifiedAdminId || "admin", `VENDOR_${action}`, sellerId, JSON.stringify({ reason })]
               );
 
               const host = req.headers.host || "localhost:8080";

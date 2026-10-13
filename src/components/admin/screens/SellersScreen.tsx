@@ -29,6 +29,7 @@ import { StatusBadge } from "../glass/StatusBadge";
 import { GlassModal } from "../glass/GlassModal";
 import { GlassDrawer } from "../glass/GlassDrawer";
 import { useAdminStore } from "@/mocks/admin/adminStore";
+import { useAdminAuth } from "@/lib/adminAuth";
 import { AdminSeller } from "@/mocks/admin/types";
 
 export interface DbSellerDocument {
@@ -56,6 +57,7 @@ export interface EnrichedSeller extends AdminSeller {
 }
 
 export function SellersScreen() {
+  const { adminUser } = useAdminAuth();
   const { sellers: mockSellers, approveSellerKyc: mockApprove, rejectSellerKyc: mockReject, updateSellerCommission: mockCommission } = useAdminStore();
   const [sellersList, setSellersList] = useState<EnrichedSeller[]>([]);
   const [selectedSeller, setSelectedSeller] = useState<EnrichedSeller | null>(null);
@@ -132,7 +134,7 @@ export function SellersScreen() {
       const res = await fetch(`/api/admin/sellers/${sellerId}/review`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, reason }),
+        body: JSON.stringify({ action, reason, adminId: adminUser?.id }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) {
