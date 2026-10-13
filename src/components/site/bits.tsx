@@ -79,6 +79,11 @@ export function ProductCard({ p }: { p: Product }) {
   const saved = isSaved(p.id);
   const vendor = getVendor(offer.vendorId);
   const hasImage = Boolean(p.image && p.image.trim() !== "" && !imageFailed);
+  const batterySummary = p.batterySpec || [
+    p.batteryCapacityKwh ? `${p.batteryCapacityKwh} kWh` : "",
+    p.voltage && p.capacityAh ? `${p.voltage} V · ${p.capacityAh} Ah` : "",
+    p.chemistry || "",
+  ].filter(Boolean).join(" · ");
 
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-2xs transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-gray-300">
@@ -167,6 +172,12 @@ export function ProductCard({ p }: { p: Product }) {
         >
           {p.name}
         </Link>
+
+        {batterySummary && (
+          <p className="mt-2 text-[10px] leading-snug text-[#6B7280]">
+            <span className="font-semibold text-[#111111]">Battery:</span> {batterySummary}
+          </p>
+        )}
 
         <div className="mt-2 flex items-center gap-1.5 text-[11px]">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />

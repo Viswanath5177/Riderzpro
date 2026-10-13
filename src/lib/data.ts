@@ -7,6 +7,7 @@ import parts from "@/assets/parts.jpg";
 import heroBike from "@/assets/hero-bike.jpg";
 import scooterImg from "@/assets/scooter.jpg";
 import catalog from "@/data/accessory_catalog.json";
+import vehicleCatalog from "../../web/data/ev_two_wheeler_catalog.json";
 
 export type Bike = { id: string; make: string; model: string; years: number[]; voltage: number; wmi: string };
 export type Vendor = { id: string; name: string; area: string; lat: number; lng: number; rating: number; prepMins: number };
@@ -36,6 +37,8 @@ export type Product = {
   image: string;
   voltage?: number;
   capacityAh?: number;
+  batteryCapacityKwh?: number;
+  batterySpec?: string;
   chemistry?: string;
   warrantyMonths: number;
   rangeKm?: number;
@@ -96,7 +99,10 @@ const coreSeeds: Seed[] = [
   { name: "Ather Rizta", brand: "Ather", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/272x153/n/cw/ec/168965/rizta-right-side-view-4.png?isig=0&q=80", warrantyMonths: 0, weightKg: 0, fits: [], description: "Rizta S starting ex-showroom price from the supplied catalog; other variants are priced separately.", base: 121999, vendors: ["v1", "v6"] },
   { name: "Ather 450S", brand: "Ather", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/272x153/n/cw/ec/149605/450s-right-side-view-2.png?isig=0&q=80", warrantyMonths: 0, rangeKm: 161, weightKg: 0, fits: [], description: "Starting ex-showroom listing price; verify current price and availability with a dealer. Claimed range: 161 km. Top speed: 90 km/h. Charging time: 5.15 hours.", base: 127888, vendors: ["v1", "v6"] },
   { name: "Ather 450 Apex", brand: "Ather", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/272x153/n/cw/ec/167915/450-apex-right-side-view.png?isig=0&q=80", warrantyMonths: 0, rangeKm: 165, weightKg: 0, fits: [], description: "Starting ex-showroom listing price; verify current price and availability with a dealer. Claimed range: 165 km. Top speed: 100 km/h. Charging time: 5.15 hours.", base: 194946, vendors: ["v1", "v6"] },
-  { name: "Revolt RV400 Electric Motorcycle", brand: "Revolt Motors", category: "Electric Bikes", vehicleType: "bike", image: heroBike, voltage: 72, capacityAh: 60, chemistry: "Li-ion", warrantyMonths: 36, rangeKm: 150, weightKg: 115, fits: ["revolt-rv400"], description: "AI-enabled electric performance motorcycle with MyRevolt connectivity and 85 km/h top speed.", base: 139000, vendors: ["v4", "v6"] },
+  { name: "TVS iQube 2.3 kWh", brand: "TVS", category: "Electric Bikes", vehicleType: "bike", image: "https://www.tvsmotor.com/electric-scooters/tvs-iqube/-/media/Vehicles/Feature/Iqube/Variant/Comparison/23new.webp?h=260&la=en&w=380", voltage: 52, capacityAh: 44, chemistry: "Li-ion", warrantyMonths: 36, rangeKm: 114, weightKg: 109, fits: [], description: "TVS iQube electric scooter with 2.3 kWh battery and up to 114 km IDC range. Price and availability can vary by city.", base: 116310, vendors: ["v2", "v6"] },
+  { name: "TVS X Electric Scooter", brand: "TVS", category: "Electric Bikes", vehicleType: "bike", image: "https://www.tvsmotor.com/U388_Assets/images/360images/28.webp", voltage: 72, capacityAh: 53, chemistry: "Li-ion", warrantyMonths: 36, rangeKm: 140, weightKg: 140, fits: [], description: "Premium electric scooter with 3.8 kWh battery, 140 km IDC range and 105 km/h top speed. Starting ex-showroom price; final price varies by city.", base: 266141, vendors: ["v2", "v6"] },
+  { name: "TVS Orbiter V2 Electric Scooter", brand: "TVS", category: "Electric Bikes", vehicleType: "bike", image: "https://asset.autocarindia.com/static/image-galleries/images/20251216_111800_4c55f888.png?q=75&w=728", voltage: 48, capacityAh: 65, chemistry: "Li-ion", warrantyMonths: 60, rangeKm: 158, weightKg: 112, fits: [], description: "TVS Orbiter V2 with 3.1 kWh battery and up to 158 km IDC range. Price and availability can vary by city.", base: 103650, vendors: ["v2", "v6"] },
+  { name: "Revolt RV400 Electric Motorcycle", brand: "Revolt Motors", category: "Electric Bikes", vehicleType: "bike", image: heroBike, batteryCapacityKwh: 3.24, chemistry: "NMC", warrantyMonths: 36, rangeKm: 150, weightKg: 115, fits: ["revolt-rv400"], description: "AI-enabled electric performance motorcycle with a 3.24 kWh NMC battery, MyRevolt connectivity and 85 km/h top speed.", base: 139000, vendors: ["v4", "v6"] },
   { name: "Ola S1 Pro Gen 2 Hyperdrive Scooter", brand: "Ola Electric", category: "Electric Bikes", vehicleType: "bike", image: scooterImg, voltage: 60, capacityAh: 68, chemistry: "NMC", warrantyMonths: 36, rangeKm: 195, weightKg: 116, fits: ["ola-s1pro"], description: "11kW peak power, 120 km/h top speed, MoveOS 4 navigation and cruise control.", base: 129000, vendors: ["v2", "v5"] },
 ];
 
@@ -112,6 +118,68 @@ const coreProducts: Product[] = coreSeeds.map((s, i) => {
     })),
   };
 });
+
+const requestedVehicleBrands = new Set(["Ola Electric", "Ampere", "Komaki", "Revolt", "VIDA (Hero)"]);
+const verifiedBatterySpecs: Record<string, Partial<Pick<Product, "voltage" | "capacityAh" | "batteryCapacityKwh" | "batterySpec" | "chemistry">>> = {
+  "ampere-magnus-gmax": { batteryCapacityKwh: 3, chemistry: "LFP" },
+  "ampere-nexus-explus": { batteryCapacityKwh: 3, chemistry: "LFP" },
+  "ampere-reo-vyb": { batteryCapacityKwh: 1.44, chemistry: "LFP" },
+  "ampere-reo": { batteryCapacityKwh: 1.44, chemistry: "LFP" },
+  "ampere-nexus": { batteryCapacityKwh: 3, chemistry: "LFP" },
+  "ampere-magnus-neo": { batteryCapacityKwh: 2.3, chemistry: "LFP" },
+  "komaki-xgt-cat-2-0": { batterySpec: "Variant options: 60/72 V, 20–45 Ah; gel or lithium-ion battery." },
+  "komaki-xgt-km": { voltage: 60, capacityAh: 34, chemistry: "Graphene" },
+  "komaki-xr7": { chemistry: "LiFePO4" },
+  "komaki-mg-pro": { batterySpec: "Battery chemistry and capacity vary by MG Pro variant." },
+  "komaki-ranger": { chemistry: "LiFePO4" },
+  "komaki-mx16-pro": { batteryCapacityKwh: 4.5, chemistry: "LiFePO4" },
+  "ola-s1-z": { batteryCapacityKwh: 3.1 },
+  "ola-s1-x-plus": { batteryCapacityKwh: 4 },
+  "ola-s1-pro-plus": { batteryCapacityKwh: 5.2 },
+  "ola-electric-s1-x-plus": { batteryCapacityKwh: 4 },
+  "ola-electric-s1-pro-sport": { batterySpec: "Battery variants: 4 kWh or 5.2 kWh; this catalog listing does not specify which one." },
+  "ola-electric-roadster": { batteryCapacityKwh: 3.5 },
+  "ola-electric-roadster-x": { batteryCapacityKwh: 2.5 },
+  "ola-electric-roadster-pro": { batteryCapacityKwh: 8 },
+  "revolt-rv1": { batteryCapacityKwh: 2.2, chemistry: "LFP" },
+  "revolt-rv1-plus": { batteryCapacityKwh: 3.24, chemistry: "NMC" },
+  "revolt-rv400-brz": { batteryCapacityKwh: 3.24, chemistry: "NMC" },
+  "revolt-blazex": { batteryCapacityKwh: 3.24, chemistry: "NMC" },
+  "revolt-rvx": { batteryCapacityKwh: 3.24, chemistry: "NMC" },
+  "vida-vx2-go": { batteryCapacityKwh: 2.2 },
+  "vida-vx2-plus": { batteryCapacityKwh: 3.4 },
+  "vida-hero-v2": { batteryCapacityKwh: 3.94 },
+};
+const uploadedBrandProducts: Product[] = vehicleCatalog.products
+  .filter((item) => requestedVehicleBrands.has(item.brand) && !(item.brand === "Revolt" && item.model === "RV400"))
+  .map((item, index) => {
+    const variant = item.variant && !["Base", "Base / listing entry"].includes(item.variant) ? ` ${item.variant}` : "";
+    const battery = verifiedBatterySpecs[item.id] ?? {};
+    const specs = [
+      battery.batteryCapacityKwh ? `${battery.batteryCapacityKwh} kWh ${battery.chemistry ?? ""} battery` : "",
+      battery.batterySpec ?? "",
+      battery.voltage && battery.capacityAh ? `${battery.voltage} V ${battery.capacityAh} Ah ${battery.chemistry ?? ""} battery` : "",
+      item.claimed_range_km ? `${item.claimed_range_km} km claimed range` : "",
+      item.top_speed_kmh ? `${item.top_speed_kmh} km/h top speed` : "",
+      item.charging_time_text ? `${item.charging_time_text} charging time` : "",
+    ].filter(Boolean);
+
+    return {
+      id: `catalog-${item.id}`,
+      name: `${item.brand} ${item.model}${variant}`,
+      brand: item.brand,
+      category: "Electric Bikes",
+      vehicleType: "bike",
+      image: item.image_url,
+      ...battery,
+      ...(typeof item.claimed_range_km === "number" ? { rangeKm: item.claimed_range_km } : {}),
+      warrantyMonths: 0,
+      weightKg: 0,
+      fits: [],
+      description: [item.price_note, ...specs].filter(Boolean).join(" "),
+      offers: [{ vendorId: vendors[index % vendors.length].id, price: item.price_inr, stock: 10 }],
+    };
+  });
 
 const catalogBrandNames = new Map<string, string>();
 const catalogProducts: Product[] = (catalog.products as any[]).map((p, i) => {
@@ -163,7 +231,7 @@ const catalogProducts: Product[] = (catalog.products as any[]).map((p, i) => {
   };
 });
 
-export const products: Product[] = [...coreProducts, ...catalogProducts];
+export const products: Product[] = [...coreProducts, ...uploadedBrandProducts, ...catalogProducts];
 
 export const riders: Rider[] = [
   { id: "r1", name: "Ravi Kumar", phone: "+91 98450 12345", vehicle: "Ather Rizta", plate: "KA 01 EV 4521", rating: 4.9, avatar: "RK" },
