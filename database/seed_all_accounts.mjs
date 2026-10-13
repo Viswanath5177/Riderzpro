@@ -57,42 +57,8 @@ async function seedAll() {
     }
   }
 
-  // 2. SELLERS / VENDORS
-  const sellers = [
-    {
-      id: "sel_volthub_01",
-      email: "seller@volthub.com",
-      pass: "riderzpro@vendor1",
-      storeName: "VoltHub Indiranagar",
-      ownerName: "Vikram Malhotra",
-      phone: "+91 98451 12345",
-      status: "APPROVED",
-      city: "Bengaluru",
-      gstin: "29AABCV1234F1Z5",
-    },
-    {
-      id: "sel_nexgen_01",
-      email: "seller@nexgenev.com",
-      pass: "riderzpro@vendor2",
-      storeName: "NexGen EV Store",
-      ownerName: "Anand Rathi",
-      phone: "+91 98452 23456",
-      status: "APPROVED",
-      city: "Bengaluru",
-      gstin: "29AABCN5678F1Z2",
-    },
-    {
-      id: "sel_pending_01",
-      email: "seller@pendingreview.com",
-      pass: "riderzpro@vendor3",
-      storeName: "EcoRide Spares Hub",
-      ownerName: "Rohan Verma",
-      phone: "+91 98453 34567",
-      status: "PENDING_REVIEW",
-      city: "Bengaluru",
-      gstin: "29AABCE9012F1Z9",
-    },
-  ];
+  // 2. SELLERS / VENDORS (Strictly empty - only real vendors who register through /vendor/signup appear)
+  const sellers = [];
 
   for (const s of sellers) {
     const hash = await bcrypt.hash(s.pass, 10);

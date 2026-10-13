@@ -18,10 +18,6 @@ INSERT INTO users (
 ('usr_support_01', 'support@riderzpro.com', '+91 90000 00002', crypt('SupportPass123!', gen_salt('bf')), 'Ananya Sen', 'support_admin', 
  NULL, 'Bengaluru', NULL, NULL, NULL, NULL, NULL, NULL),
 
--- Seller (Store Owner)
-('usr_seller_01', 'seller@nexgenev.com', '+91 98450 11001', crypt('SellerPass123!', gen_salt('bf')), 'NexGen EV Store', 'seller', 
- '100 Feet Road, Indiranagar', 'Bengaluru', 'NexGen EV Store', 12.9719, 77.6412, NULL, NULL, NULL),
-
 -- Rider (Technician & Delivery)
 ('usr_rider_ramesh', 'rider@riderzpro.com', '+91 98450 12345', crypt('RiderPass123!', gen_salt('bf')), 'Ramesh Kumar', 'rider', 
  'HSR Layout', 'Bengaluru', NULL, NULL, NULL, 'KA 01 EV 8899', 'Electric Cargo Scooter', 'available'),
