@@ -1,0 +1,1 @@
+import{n as e,t}from"./jsx-runtime-D3jfb0Ew.js";import{c as n}from"./index-DOvHL44d.js";e();var r=t();function i({className:e,...t}){return(0,r.jsx)(`div`,{className:n(`admin-skeleton animate-pulse rounded-xl bg-white/[0.08] backdrop-blur-md border border-white/10`,e),...t})}export{i as t};

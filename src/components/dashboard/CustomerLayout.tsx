@@ -125,8 +125,6 @@ export function CustomerLayout({
       id: "tracking" as CustomerTab,
       label: "Track Delivery",
       Icon: Truck,
-      badge: liveOrder ? "Live" : undefined,
-      badgeColor: "bg-[#E31E24] text-white",
     },
     {
       id: "garage" as CustomerTab,
