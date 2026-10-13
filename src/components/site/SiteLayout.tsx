@@ -13,6 +13,8 @@ import {
 import { useState, type ReactNode } from "react";
 import { useStore } from "@/lib/store";
 import { Logo } from "./bits";
+import { CartDrawer } from "@/components/common/CartDrawer";
+import { AiChatbotWidget } from "@/components/common/AiChatbotWidget";
 
 interface NavCategory {
   label: string;
@@ -33,7 +35,7 @@ const storeCategories: NavCategory[] = [
 ];
 
 export function SiteLayout({ children }: { children: ReactNode; transparent?: boolean }) {
-  const { cart, userProfile } = useStore();
+  const { cart, userProfile, setIsCartOpen } = useStore();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -96,12 +98,13 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
 
           {/* Right: Cart & Account Controls */}
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-            {/* Cart Icon with Item Count */}
-            <Link
-              to="/cart"
+            {/* Cart Icon with Item Count - Opens Slide-over Cart Drawer */}
+            <button
+              type="button"
+              onClick={() => setIsCartOpen(true)}
               id="navbar-cart-btn"
               aria-label="Shopping Cart"
-              className="relative flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-3.5 py-2 text-xs font-semibold text-[#111111] transition hover:border-[#E31E24] hover:text-[#E31E24] active:scale-95"
+              className="relative flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-3.5 py-2 text-xs font-semibold text-[#111111] transition hover:border-[#E31E24] hover:text-[#E31E24] active:scale-95 cursor-pointer"
             >
               <ShoppingCart className="h-4 w-4" />
               <span className="hidden sm:inline">Cart</span>
@@ -110,7 +113,7 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
                   {cartCount}
                 </span>
               )}
-            </Link>
+            </button>
 
             {/* Customer Account / Profile Menu */}
             <Link
@@ -210,13 +213,16 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
               >
                 <User className="h-4 w-4" /> Customer Dashboard
               </Link>
-              <Link
-                to="/cart"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-2 text-xs font-semibold text-[#111111] hover:text-[#E31E24]"
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setIsCartOpen(true);
+                }}
+                className="flex items-center gap-2 text-xs font-semibold text-[#111111] hover:text-[#E31E24] w-full text-left cursor-pointer"
               >
                 <ShoppingCart className="h-4 w-4" /> View Cart ({cartCount})
-              </Link>
+              </button>
             </div>
           </div>
         </div>
@@ -227,6 +233,10 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
 
       {/* FOOTER */}
       <Footer />
+
+      {/* Slide-over Cart Drawer & Floating AI Assistant Chatbot */}
+      <CartDrawer />
+      <AiChatbotWidget />
     </div>
   );
 }

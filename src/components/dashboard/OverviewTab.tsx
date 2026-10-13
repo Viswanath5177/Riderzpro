@@ -25,6 +25,9 @@ import {
   Heart,
   CheckCircle2,
   Tag,
+  Receipt,
+  Download,
+  Navigation,
 } from "lucide-react";
 import { toast } from "sonner";
 import { LiveMap } from "@/components/site/LiveMap";
@@ -60,6 +63,8 @@ export function OverviewTab({
   } = useStore();
 
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [recentOrderFilter, setRecentOrderFilter] = useState<"all" | "active" | "delivered">("all");
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
 
   const activeBike = garage.find((b) => b.bikeId === activeBikeId) || garage[0];
   const activeBikeMeta = activeBike ? getBike(activeBike.bikeId) : null;
@@ -260,38 +265,129 @@ export function OverviewTab({
       {/* ─────────────────────────────────────────────────────────────
           SECTION D & E: ORDERS & LIVE TRACKING + RECENT ORDERS
          ───────────────────────────────────────────────────────────── */}
-      <section className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
-        {/* SECTION D: Active Order & Delivery Tracking */}
-        <div className="rounded-3xl border border-[#E5E7EB] bg-white p-5 sm:p-6 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+      {/* ─────────────────────────────────────────────────────────────
+          SECTION D & E: ORDERS & LIVE TRACKING + RECENT ORDERS (REVAMPED)
+         ───────────────────────────────────────────────────────────── */}
+      {/* Tax Invoice Modal for Quick View */}
+      {selectedInvoiceOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-lg bg-white rounded-3xl border border-gray-200 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div>
+                <p className="text-base font-bold text-gray-900 font-display">Tax Invoice & Receipt</p>
+                <p className="text-xs text-gray-500 font-mono">Invoice #{selectedInvoiceOrder.id}</p>
+              </div>
+              <button
+                onClick={() => setSelectedInvoiceOrder(null)}
+                className="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="text-xs space-y-3">
+              <div className="flex justify-between text-gray-600">
+                <span>Date: {new Date(selectedInvoiceOrder.createdAt).toLocaleDateString("en-IN")}</span>
+                <span>Payment: {selectedInvoiceOrder.payment}</span>
+              </div>
+
+              <div className="border border-gray-100 rounded-2xl p-3 bg-gray-50 divide-y divide-gray-100">
+                {selectedInvoiceOrder.groups.map((g) => {
+                  const v = getVendor(g.vendorId);
+                  return (
+                    <div key={g.vendorId} className="py-2 first:pt-0 last:pb-0">
+                      <p className="font-bold text-gray-800">{v?.name || "Verified EV Vendor"}</p>
+                      {g.items.map((it) => {
+                        const p = getProduct(it.productId);
+                        return (
+                          <div key={it.productId} className="flex justify-between text-gray-600 mt-1">
+                            <span>{it.qty} × {p?.name || "EV Spare"}</span>
+                            <span className="font-semibold text-gray-900">{inr(it.price * it.qty)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="space-y-1.5 pt-2">
+                <div className="flex justify-between text-gray-500">
+                  <span>Subtotal</span>
+                  <span>{inr(selectedInvoiceOrder.itemsTotal)}</span>
+                </div>
+                <div className="flex justify-between text-gray-500">
+                  <span>Doorstep Delivery (GPS Logged)</span>
+                  <span>{inr(selectedInvoiceOrder.deliveryTotal)}</span>
+                </div>
+                <div className="flex justify-between text-gray-500">
+                  <span>GST (18% Statutory EV Tax)</span>
+                  <span>{inr(selectedInvoiceOrder.tax)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-sm text-gray-900 pt-2 border-t border-gray-100">
+                  <span>Total Amount Paid</span>
+                  <span className="text-[#E31E24]">{inr(selectedInvoiceOrder.total)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  toast.success(`Invoice ${selectedInvoiceOrder.id}.pdf downloaded`);
+                  setSelectedInvoiceOrder(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-[#E31E24] text-white text-xs font-semibold hover:bg-red-700 transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span>Download PDF Receipt</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <section className="grid gap-6 lg:grid-cols-[1.25fr_1fr]">
+        {/* SECTION D: Active Order & Live Doorstep Delivery Tracking */}
+        <div className="rounded-3xl border border-[#E5E7EB] bg-white p-5 sm:p-6 shadow-2xs flex flex-col justify-between space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-gray-100">
             <div>
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2.5 w-2.5">
                   {liveOrder && (
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                   )}
-                  <span className={cn("relative inline-flex rounded-full h-2.5 w-2.5", liveOrder ? "bg-primary" : "bg-gray-300")} />
+                  <span className={cn("relative inline-flex rounded-full h-2.5 w-2.5", liveOrder ? "bg-emerald-500" : "bg-gray-300")} />
                 </span>
                 <h2 className="text-base font-bold text-gray-900 font-display">Live Doorstep Delivery</h2>
+                {liveOrder && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <Zap className="h-3 w-3" />
+                    <span>In Transit</span>
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-gray-500 mt-0.5">GPS rider telemetry & milestone dispatch status.</p>
+              <p className="text-xs text-gray-500 mt-0.5">Real-time GPS rider telemetry & multi-vendor dispatch tracker.</p>
             </div>
+
             {liveOrder ? (
-              <Link
-                to="/track/$id"
-                params={{ id: liveOrder.id }}
-                className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
-              >
-                <span>Full Map</span>
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/track/$id"
+                  params={{ id: liveOrder.id }}
+                  className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 bg-red-50 px-3 py-1.5 rounded-xl border border-red-100"
+                >
+                  <Navigation className="h-3.5 w-3.5" />
+                  <span>Interactive Map</span>
+                </Link>
+              </div>
             ) : (
               <button
                 onClick={() => {
                   simulateDemoOrder();
                   toast.success("Sample order created! Watch live dispatch progress.");
                 }}
-                className="text-[11px] font-semibold text-primary bg-primary/10 hover:bg-primary hover:text-white px-2.5 py-1 rounded-lg transition"
+                className="text-xs font-semibold text-white bg-[#E31E24] hover:bg-red-700 px-3 py-1.5 rounded-xl transition shadow-2xs cursor-pointer"
               >
                 + Simulate Test Order
               </button>
@@ -299,64 +395,102 @@ export function OverviewTab({
           </div>
 
           {liveOrder ? (
-            <div className="mt-4 space-y-4">
-              {/* Live Map Frame */}
-              <div className="overflow-hidden rounded-2xl border border-gray-200">
-                <LiveMap stops={liveOrder.groups.length} className="aspect-video w-full" />
-              </div>
-
-              {/* Order Info & ETA Header */}
-              <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-2xl bg-gray-50 border border-gray-100 text-xs">
+            <div className="space-y-4 flex-1 flex flex-col justify-between">
+              {/* Telemetry HUD Strip */}
+              <div className="grid grid-cols-3 gap-2 p-2.5 rounded-2xl bg-gray-50 border border-gray-100 text-center text-xs">
+                <div className="border-r border-gray-200/60 pr-1">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Speed</p>
+                  <p className="font-bold text-gray-900 mt-0.5 text-xs flex items-center justify-center gap-1">
+                    <Zap className="h-3 w-3 text-emerald-500" />
+                    <span>32 km/h</span>
+                  </p>
+                </div>
+                <div className="border-r border-gray-200/60 pr-1">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Courier EV</p>
+                  <p className="font-bold text-gray-900 mt-0.5 text-xs">Ather 450X · 88%</p>
+                </div>
                 <div>
-                  <span className="text-gray-500">Order ID: </span>
-                  <span className="font-bold text-gray-900 font-mono">{liveOrder.id}</span>
-                  <span className="mx-2 text-gray-300">·</span>
-                  <span className="text-gray-500">{new Date(liveOrder.createdAt).toLocaleDateString("en-IN")}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-emerald-700 bg-emerald-100/70 px-2.5 py-0.5 rounded-full text-[11px]">
-                    ETA ~{Math.max(5, liveOrder.eta)} mins
-                  </span>
-                  <span className="font-bold text-gray-900">{inr(liveOrder.total)}</span>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">ETA</p>
+                  <p className="font-bold text-emerald-700 mt-0.5 text-xs">~{Math.max(5, liveOrder.eta)} mins</p>
                 </div>
               </div>
 
-              {/* Active Shipment Telemetry & Latest Checkpoint Widget */}
+              {/* Live Map Frame */}
+              <div className="overflow-hidden rounded-2xl border border-gray-200 relative shadow-2xs">
+                <LiveMap stops={liveOrder.groups.length} className="aspect-video w-full" />
+                <div className="absolute top-2.5 left-2.5 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-lg border border-gray-200 text-[10px] font-bold text-gray-800 shadow-2xs flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+                  <span>GPS Lock: 99.8% Accuracy</span>
+                </div>
+              </div>
+
+              {/* Order Info & Consignment Strip */}
+              <div className="p-3.5 rounded-2xl bg-gray-50/80 border border-gray-100 text-xs space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-gray-900 font-mono">#{liveOrder.id}</span>
+                    <span className="text-gray-400">·</span>
+                    <span className="text-gray-500">{new Date(liveOrder.createdAt).toLocaleDateString("en-IN")}</span>
+                    <span className="text-gray-400">·</span>
+                    <span className="text-gray-500 font-medium">Paid via {liveOrder.payment}</span>
+                  </div>
+                  <span className="font-bold text-gray-900 text-sm">{inr(liveOrder.total)}</span>
+                </div>
+
+                {/* Items in Consignment */}
+                <div className="flex flex-wrap gap-1.5 pt-1 border-t border-gray-200/60">
+                  {liveOrder.groups.flatMap((g) => g.items).map((it, idx) => {
+                    const prod = getProduct(it.productId);
+                    return (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-gray-200 text-[10px] font-medium text-gray-700"
+                      >
+                        <Package className="h-2.5 w-2.5 text-[#E31E24]" />
+                        <span>{it.qty}× {prod?.name || it.productId}</span>
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Active Shipment Telemetry if available */}
               {activeShipment && (
                 <div
                   onClick={() => onTabChange("tracking")}
-                  className="p-3.5 rounded-2xl bg-red-50/50 border border-red-200/80 hover:bg-red-50 cursor-pointer transition flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                  className="p-3 rounded-2xl bg-red-50/60 border border-red-200 hover:bg-red-50 cursor-pointer transition flex items-center justify-between gap-2 text-xs"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#E31E24] text-white shrink-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#E31E24] text-white shrink-0 shadow-2xs">
                       <Truck className="h-4 w-4" />
                     </span>
-                    <div>
-                      <p className="font-bold text-[#111111]">
+                    <div className="truncate">
+                      <p className="font-bold text-[#111111] truncate">
                         {activeShipment.provider} Courier · AWB {activeShipment.trackingNumber}
                       </p>
-                      <p className="text-[11px] text-[#6B7280]">
-                        Latest Checkpoint: <span className="font-semibold text-gray-900">{activeShipment.latestLocation}</span> ({activeShipment.lastEventTimestamp})
+                      <p className="text-[11px] text-[#6B7280] truncate">
+                        Last Checkpoint: <span className="font-semibold text-gray-900">{activeShipment.latestLocation}</span>
                       </p>
                     </div>
                   </div>
-                  <div className="sm:text-right shrink-0">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#E31E24] bg-white px-2 py-0.5 rounded border border-red-200">
+                  <div className="text-right shrink-0">
+                    <span className="text-[10px] font-bold text-[#E31E24] bg-white px-2 py-0.5 rounded border border-red-200">
                       {activeShipment.estimatedDelivery}
                     </span>
-                    <p className="text-[11px] font-semibold text-[#E31E24] mt-1 flex items-center sm:justify-end gap-1">
-                      <span>Inspect consignment</span>
-                      <ChevronRight className="h-3 w-3" />
-                    </p>
                   </div>
                 </div>
               )}
 
               {/* Horizontal Progress Timeline */}
-              <div className="pt-2">
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                  Delivery Progress Timeline
-                </p>
+              <div className="pt-1">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    Milestone Dispatch Timeline
+                  </p>
+                  <span className="text-[10px] font-semibold text-primary">
+                    Step {liveOrder.status + 1} of {ORDER_STEPS.length}
+                  </span>
+                </div>
                 <div className="grid grid-cols-6 gap-1 relative text-center">
                   {ORDER_STEPS.map((step, idx) => {
                     const isPassed = idx <= liveOrder.status;
@@ -367,7 +501,7 @@ export function OverviewTab({
                           className={cn(
                             "h-7 w-7 rounded-full grid place-items-center text-[10px] font-bold transition-all duration-300",
                             isCurrent
-                              ? "bg-primary text-white ring-4 ring-emerald-100 scale-110"
+                              ? "bg-[#E31E24] text-white ring-4 ring-red-100 scale-110 shadow-xs"
                               : isPassed
                               ? "bg-emerald-600 text-white"
                               : "bg-gray-100 text-gray-400 border border-gray-200"
@@ -377,8 +511,8 @@ export function OverviewTab({
                         </div>
                         <p
                           className={cn(
-                            "mt-2 text-[10px] leading-tight line-clamp-1",
-                            isCurrent ? "font-bold text-gray-900" : isPassed ? "font-medium text-gray-700" : "text-gray-400"
+                            "mt-1.5 text-[9px] leading-tight line-clamp-1",
+                            isCurrent ? "font-bold text-[#111111]" : isPassed ? "font-medium text-gray-700" : "text-gray-400"
                           )}
                         >
                           {step}
@@ -391,38 +525,38 @@ export function OverviewTab({
 
               {/* Rider Assigned Card */}
               {activeRider && (
-                <div className="p-3 rounded-2xl border border-gray-200 bg-white flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="grid h-10 w-10 place-items-center rounded-full bg-primary text-white font-bold text-xs shadow-xs">
+                <div className="p-3 rounded-2xl border border-gray-200 bg-white flex items-center justify-between gap-3 shadow-2xs">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 text-white font-bold text-xs shadow-xs shrink-0">
                       {activeRider.avatar}
                     </span>
-                    <div>
+                    <div className="truncate">
                       <div className="flex items-center gap-1.5">
-                        <p className="text-xs font-bold text-gray-900">{activeRider.name}</p>
-                        <span className="flex items-center text-[10px] text-amber-600 font-semibold">
-                          <Star className="h-3 w-3 fill-amber-400 text-amber-400 inline mr-0.5" />
+                        <p className="text-xs font-bold text-gray-900 truncate">{activeRider.name}</p>
+                        <span className="flex items-center text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-semibold shrink-0">
+                          <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400 inline mr-0.5" />
                           {activeRider.rating}
                         </span>
                       </div>
-                      <p className="text-[11px] text-gray-500">
+                      <p className="text-[11px] text-gray-500 truncate">
                         {activeRider.vehicle} · {activeRider.plate}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <a
                       href={`tel:${activeRider.phone}`}
-                      className="p-2 rounded-xl bg-gray-100 text-gray-700 hover:bg-primary hover:text-white transition"
-                      title="Call Rider"
+                      className="p-2 rounded-xl bg-gray-100 text-gray-700 hover:bg-[#E31E24] hover:text-white transition cursor-pointer"
+                      title="Call Delivery Partner"
                     >
                       <Phone className="h-3.5 w-3.5" />
                     </a>
                     {liveOrder.status < 5 && (
                       <button
                         onClick={() => advanceOrder(liveOrder.id)}
-                        className="px-2.5 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:border-primary hover:text-primary text-[11px] font-semibold transition"
+                        className="px-2.5 py-1.5 rounded-xl border border-gray-200 text-gray-700 hover:border-[#E31E24] hover:text-[#E31E24] text-[11px] font-semibold transition cursor-pointer"
                       >
-                        Simulate Next →
+                        Advance Step →
                       </button>
                     )}
                   </div>
@@ -430,18 +564,18 @@ export function OverviewTab({
               )}
             </div>
           ) : (
-            <div className="py-12 px-6 text-center flex flex-col items-center justify-center">
-              <span className="grid h-14 w-14 place-items-center rounded-3xl bg-gray-100 text-gray-400 mb-3">
-                <Truck className="h-7 w-7" />
+            <div className="py-14 px-6 text-center flex flex-col items-center justify-center flex-1">
+              <span className="grid h-16 w-16 place-items-center rounded-3xl bg-red-50 text-[#E31E24] mb-3">
+                <Truck className="h-8 w-8" />
               </span>
               <p className="text-base font-bold text-gray-900 font-display">No Active Deliveries Right Now</p>
               <p className="text-xs text-gray-500 mt-1 max-w-sm">
-                When you order batteries, chargers, or replacement components, real-time rider tracking and ETA countdowns will appear here.
+                When you order batteries, chargers, or replacement components, real-time rider tracking, GPS telematics, and ETA countdowns will appear here.
               </p>
               <div className="mt-5 flex items-center gap-3">
                 <button
                   onClick={() => onTabChange("garage")}
-                  className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold shadow-xs hover:bg-emerald-600 transition"
+                  className="px-4 py-2 rounded-xl bg-[#E31E24] text-white text-xs font-semibold shadow-xs hover:bg-red-700 transition cursor-pointer"
                 >
                   View Garage Spares
                 </button>
@@ -450,7 +584,7 @@ export function OverviewTab({
                     simulateDemoOrder();
                     toast.success("Demo order created! See live tracker.");
                   }}
-                  className="px-3.5 py-2 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition"
+                  className="px-3.5 py-2 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition cursor-pointer"
                 >
                   Simulate Order
                 </button>
@@ -459,79 +593,162 @@ export function OverviewTab({
           )}
         </div>
 
-        {/* SECTION E: Recent Orders */}
-        <div className="rounded-3xl border border-[#E5E7EB] bg-white p-5 sm:p-6 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+        {/* SECTION E: Recent Orders (Revamped like My Orders) */}
+        <div className="rounded-3xl border border-[#E5E7EB] bg-white p-5 sm:p-6 shadow-2xs flex flex-col justify-between space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-gray-100">
             <div>
               <h2 className="text-base font-bold text-gray-900 font-display">Recent Orders</h2>
               <p className="text-xs text-gray-500 mt-0.5">Purchases and doorstep parts delivery logs.</p>
             </div>
             <button
               onClick={() => onTabChange("orders")}
-              className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
+              className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
             >
               <span>View All</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>
 
-          <div className="mt-4 flex-1 divide-y divide-gray-100 overflow-y-auto max-h-[360px]">
-            {orders.length === 0 ? (
-              <div className="py-12 text-center text-xs text-gray-400">
+          {/* Quick Filter Pills */}
+          <div className="flex gap-1.5">
+            {[
+              { id: "all", label: `All (${orders.length})` },
+              { id: "active", label: `In Transit (${activeOrdersCount})` },
+              { id: "delivered", label: `Delivered (${deliveredCount})` },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setRecentOrderFilter(t.id as any)}
+                className={cn(
+                  "px-3 py-1 rounded-xl text-xs font-semibold border transition cursor-pointer",
+                  recentOrderFilter === t.id
+                    ? "bg-[#E31E24] text-white border-[#E31E24]"
+                    : "border-gray-200 text-gray-600 hover:bg-gray-50 bg-white"
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Orders Card Feed */}
+          <div className="flex-1 space-y-3 overflow-y-auto max-h-[460px] pr-0.5">
+            {orders.filter((o) => {
+              if (recentOrderFilter === "active") return o.status < 5;
+              if (recentOrderFilter === "delivered") return o.status === 5;
+              return true;
+            }).length === 0 ? (
+              <div className="py-12 text-center text-xs text-gray-400 border border-dashed border-gray-200 rounded-2xl p-6">
                 <Package className="h-8 w-8 mx-auto text-gray-300 mb-2" />
-                <p className="font-medium text-gray-600">No orders placed yet</p>
-                <p className="text-gray-400 mt-0.5">Browse certified EV batteries & chargers in your garage to get started.</p>
+                <p className="font-semibold text-gray-700">No orders match this filter</p>
+                <p className="text-gray-400 mt-0.5">Check our certified EV components and order doorstep delivery.</p>
                 <button
                   onClick={() => onTabChange("garage")}
-                  className="mt-3 inline-block px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-semibold text-xs hover:bg-primary hover:text-white transition"
+                  className="mt-3 inline-block px-3 py-1.5 rounded-lg bg-red-50 text-[#E31E24] font-semibold text-xs hover:bg-red-100 transition cursor-pointer"
                 >
                   Explore Garage Spares
                 </button>
               </div>
             ) : (
-              orders.slice(0, 5).map((o) => (
-                <Link
-                  key={o.id}
-                  to="/track/$id"
-                  params={{ id: o.id }}
-                  className="py-3 px-1 flex items-center justify-between gap-3 hover:bg-gray-50 rounded-xl transition group"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs font-bold text-gray-900 font-mono group-hover:text-primary transition truncate">
-                        {o.id}
-                      </p>
-                      <span
-                        className={cn(
-                          "px-2 py-0.5 rounded-full text-[10px] font-bold",
-                          o.status === 5
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-blue-100 text-blue-800"
+              orders
+                .filter((o) => {
+                  if (recentOrderFilter === "active") return o.status < 5;
+                  if (recentOrderFilter === "delivered") return o.status === 5;
+                  return true;
+                })
+                .slice(0, 4)
+                .map((o) => {
+                  const firstVendor = o.groups[0] ? getVendor(o.groups[0].vendorId) : null;
+                  const totalItems = o.groups.reduce((s, g) => s + g.items.reduce((sum, it) => sum + it.qty, 0), 0);
+
+                  return (
+                    <div
+                      key={o.id}
+                      className="rounded-2xl border border-gray-200/90 bg-white p-3.5 shadow-2xs hover:border-gray-300 hover:shadow-xs transition space-y-2.5"
+                    >
+                      {/* Top Row: ID, Status, Date */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-xs text-gray-900">
+                            #{o.id}
+                          </span>
+                          <span
+                            className={cn(
+                              "px-2 py-0.5 rounded-full text-[10px] font-bold",
+                              o.status === 5
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                : "bg-blue-50 text-blue-700 border border-blue-200 animate-pulse"
+                            )}
+                          >
+                            {ORDER_STEPS[o.status]}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-gray-400">
+                          {new Date(o.createdAt).toLocaleDateString("en-IN")}
+                        </span>
+                      </div>
+
+                      {/* Items & Vendor Pills */}
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                        <span className="text-gray-500 font-medium">
+                          {firstVendor?.name || "Verified EV Hub"}:
+                        </span>
+                        {o.groups.flatMap((g) => g.items).slice(0, 2).map((it, idx) => {
+                          const p = getProduct(it.productId);
+                          return (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 text-[10px] font-medium"
+                            >
+                              {it.qty}× {p?.name || it.productId}
+                            </span>
+                          );
+                        })}
+                        {totalItems > 2 && (
+                          <span className="text-[10px] text-gray-400">
+                            +{totalItems - 2} more
+                          </span>
                         )}
-                      >
-                        {ORDER_STEPS[o.status]}
-                      </span>
+                      </div>
+
+                      {/* Bottom Row: Price, Payment & Action Buttons */}
+                      <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-extrabold text-gray-900">{inr(o.total)}</span>
+                          <span className="text-[10px] text-gray-400 ml-1.5 font-medium">· {o.payment}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => setSelectedInvoiceOrder(o)}
+                            className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition cursor-pointer"
+                            title="View Tax Invoice"
+                          >
+                            <Receipt className="h-3.5 w-3.5" />
+                          </button>
+                          <Link
+                            to="/track/$id"
+                            params={{ id: o.id }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-[#E31E24] hover:text-white text-[11px] font-semibold text-gray-700 transition"
+                          >
+                            <span>Track</span>
+                            <ArrowRight className="h-3 w-3" />
+                          </Link>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-[11px] text-gray-500 mt-0.5 truncate">
-                      {o.groups.length} vendor{o.groups.length > 1 ? "s" : ""} · {new Date(o.createdAt).toLocaleDateString("en-IN")}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-xs font-bold text-gray-900">{inr(o.total)}</p>
-                    <span className="text-[10px] text-primary font-semibold group-hover:underline">Track →</span>
-                  </div>
-                </Link>
-              ))
+                  );
+                })
             )}
           </div>
 
-          <div className="mt-4 pt-3 border-t border-gray-100 text-center">
-            <Link
-              to="/orders"
-              className="text-xs font-semibold text-gray-600 hover:text-primary transition"
+          <div className="pt-3 border-t border-gray-100 text-center">
+            <button
+              onClick={() => onTabChange("orders")}
+              className="text-xs font-semibold text-primary hover:underline transition cursor-pointer"
             >
-              Open Orders & Tracking Center →
-            </Link>
+              Open Full Orders & Tracking Center →
+            </button>
           </div>
         </div>
       </section>

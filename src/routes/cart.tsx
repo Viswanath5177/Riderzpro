@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/site/SiteLayout";
-import { DELIVERY_BASE, DELIVERY_PER_KM, getProduct, getVendor, inr } from "@/lib/data";
+import { DELIVERY_BASE, DELIVERY_PER_KM, getProduct, getVendor, inr, products } from "@/lib/data";
 import { quoteCart, useStore, type Order } from "@/lib/store";
 import type { AddressRef } from "@/lib/logistics/types";
 
@@ -37,7 +37,7 @@ export const Route = createFileRoute("/cart")({
 });
 
 function CartPage() {
-  const { cart, setQty, placeOrderWithOptions, userProfile, inventoryStock } = useStore();
+  const { cart, setQty, placeOrderWithOptions, userProfile, inventoryStock, addToCart } = useStore();
   const navigate = useNavigate();
 
   const [paymentMethod, setPaymentMethod] = useState<string>("UPI");
@@ -180,22 +180,92 @@ function CartPage() {
   }
 
   if (cart.length === 0) {
+    const recommendedSpares = products.slice(0, 3);
+
     return (
       <SiteLayout>
-        <div className="mx-auto max-w-lg px-4 py-24 text-center">
-          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-red-50 text-[#E31E24]">
-            <ShoppingCart className="h-8 w-8" />
+        <div className="mx-auto max-w-4xl px-4 py-12 md:py-16">
+          <div className="rounded-3xl border border-[#E5E7EB] bg-white p-8 sm:p-12 text-center shadow-2xs space-y-4">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-red-50 text-[#E31E24]">
+              <ShoppingCart className="h-8 w-8" />
+            </div>
+            <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[#111111]">
+              Your Cart is Currently Empty
+            </h1>
+            <p className="text-sm text-[#6B7280] max-w-md mx-auto">
+              You don't have any items in your cart. You can check your existing order status in My Orders, or add genuine EV spares below.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <Link
+                to="/shop"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#E31E24] px-6 py-3 text-xs sm:text-sm font-bold text-white shadow-xs hover:bg-red-700 transition"
+              >
+                <span>Shop Catalog & Spares</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/dashboard/customer"
+                search={{ tab: "orders" } as any}
+                className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] bg-white px-5 py-3 text-xs sm:text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
+              >
+                <Package className="h-4 w-4 text-[#E31E24]" />
+                <span>View My Orders & Deliveries</span>
+              </Link>
+            </div>
           </div>
-          <h1 className="mt-4 font-display text-3xl sm:text-4xl font-extrabold text-[#111111]">Your cart is empty</h1>
-          <p className="mt-2 text-sm text-[#6B7280]">
-            Browse our catalog of electric bikes, lithium batteries, fast chargers, and verified spare parts.
-          </p>
-          <Link
-            to="/shop"
-            className="mt-6 inline-flex rounded-xl bg-[#E31E24] px-6 py-3 text-xs sm:text-sm font-bold text-white shadow-xs hover:bg-red-700 transition"
-          >
-            Shop Electric Bikes & Parts →
-          </Link>
+
+          {/* Recommended EV Spares with 1-click Quick Add */}
+          <div className="mt-10 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-gray-900 font-display">
+                  Recommended EV Spares & Fast Delivery Parts
+                </h2>
+                <p className="text-xs text-gray-500">
+                  Ready for immediate courier dispatch with verified fitment.
+                </p>
+              </div>
+              <Link to="/shop" className="text-xs font-semibold text-[#E31E24] hover:underline">
+                View All →
+              </Link>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              {recommendedSpares.map((p) => {
+                const primaryOffer = p.offers[0];
+                return (
+                  <div
+                    key={p.id}
+                    className="flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs hover:shadow-xs transition space-y-3"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] text-gray-400">
+                        <span className="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                          In Stock ({inventoryStock[p.id] ?? 10})
+                        </span>
+                        <span>{p.category}</span>
+                      </div>
+                      <p className="font-bold text-xs text-gray-900 mt-2 line-clamp-1">{p.name}</p>
+                      <p className="text-[11px] text-gray-500 line-clamp-2 mt-0.5">{p.description}</p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                      <span className="font-extrabold text-xs text-gray-900">{inr(primaryOffer.price)}</span>
+                      <button
+                        onClick={() => {
+                          addToCart(p.id, primaryOffer.vendorId, 1);
+                          toast.success(`Added ${p.name} to cart!`);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-[#E31E24] hover:bg-red-700 text-white text-[11px] font-bold transition shadow-2xs cursor-pointer"
+                      >
+                        + Add to Cart
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </SiteLayout>
     );

@@ -38,6 +38,8 @@ import { useStore } from "@/lib/store";
 import { inr, products, type Product } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { VinSearchModal } from "./VinSearchModal";
+import { CartDrawer } from "@/components/common/CartDrawer";
+import { AiChatbotWidget } from "@/components/common/AiChatbotWidget";
 
 export type CustomerTab =
   | "overview"
@@ -77,6 +79,7 @@ export function CustomerLayout({
     markNotificationRead,
     markAllNotificationsRead,
     cart,
+    setIsCartOpen,
   } = useStore();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -534,10 +537,11 @@ export function CustomerLayout({
                 )}
               </div>
 
-              {/* Cart Button to Open Cart */}
-              <Link
-                to="/cart"
-                className="relative p-2.5 rounded-full bg-black/[0.03] hover:bg-black/[0.07] text-gray-700 active:scale-90 transition-all duration-200"
+              {/* Cart Button to Open Cart Drawer */}
+              <button
+                type="button"
+                onClick={() => setIsCartOpen(true)}
+                className="relative p-2.5 rounded-full bg-black/[0.03] hover:bg-black/[0.07] text-gray-700 active:scale-90 transition-all duration-200 cursor-pointer"
                 aria-label="Shopping Cart"
                 title="Open Shopping Cart"
               >
@@ -547,7 +551,7 @@ export function CustomerLayout({
                     {cartCount}
                   </span>
                 )}
-              </Link>
+              </button>
 
               {/* Profile Avatar & Account Menu */}
               <div className="relative">
@@ -763,6 +767,12 @@ export function CustomerLayout({
         isOpen={isVinSearchOpen}
         onClose={() => setIsVinSearchOpen(false)}
       />
+
+      {/* Global Cart Slide-Over Drawer */}
+      <CartDrawer />
+
+      {/* Floating AI Assistant Copilot Chatbot */}
+      <AiChatbotWidget />
     </div>
   );
 }

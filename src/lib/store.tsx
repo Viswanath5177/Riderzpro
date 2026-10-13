@@ -173,6 +173,8 @@ type Ctx = {
   updateUserProfile: (p: Partial<UserProfile>) => void;
   role: Role;
   setRole: (r: Role) => void;
+  isCartOpen: boolean;
+  setIsCartOpen: (open: boolean) => void;
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
@@ -408,6 +410,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<CustomerNotification[]>(DEFAULT_NOTIFICATIONS);
   const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [role, setRole] = useState<Role>("customer");
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -855,6 +858,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       updateUserProfile,
       role,
       setRole,
+      isCartOpen,
+      setIsCartOpen,
     }),
     [
       theme,
@@ -888,6 +893,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       userProfile,
       updateUserProfile,
       role,
+      isCartOpen,
+      setIsCartOpen,
     ],
   );
 
