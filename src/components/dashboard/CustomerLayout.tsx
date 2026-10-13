@@ -30,16 +30,19 @@ import {
   ScanLine,
   Truck,
   MapPin,
+  ShoppingCart,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/site/bits";
 import { useStore } from "@/lib/store";
+import { signOut as endServerSession } from "@/lib/auth";
 import { inr, products, type Product } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { VinSearchModal } from "./VinSearchModal";
 
 export type CustomerTab =
   | "overview"
+  | "shop"
   | "garage"
   | "orders"
   | "tracking"
@@ -72,22 +75,20 @@ export function CustomerLayout({
     savedProductIds,
     serviceBookings,
     notifications,
-    markNotificationRead,
-    markAllNotificationsRead,
     cart,
+    signOut,
   } = useStore();
+  const navigate = useNavigate();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isVinSearchOpen, setIsVinSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const activeOrdersCount = orders.filter((o) => o.status < 5).length;
+  const cartCount = cart.reduce((s, c) => s + c.qty, 0);
   const liveOrder = orders.find((o) => o.status < 5);
-  const unreadNotifsCount = notifications.filter((n) => !n.read).length;
   const upcomingServicesCount = serviceBookings.filter(
     (s) => s.status === "Confirmed" || s.status === "In progress"
   ).length;
@@ -103,8 +104,6 @@ export function CustomerLayout({
     );
   }, [searchQuery]);
 
-  const navigate = useNavigate();
-
   const navItems = [
     {
       id: "overview" as CustomerTab,
@@ -112,7 +111,7 @@ export function CustomerLayout({
       Icon: LayoutGrid,
     },
     {
-      id: "shop" as any,
+      id: "shop" as CustomerTab,
       label: "Shop Bikes & Parts",
       Icon: ShoppingBag,
     },
@@ -130,12 +129,6 @@ export function CustomerLayout({
       badgeColor: "bg-[#E31E24] text-white",
     },
     {
-      id: "saved" as CustomerTab,
-      label: "Saved Items",
-      Icon: Heart,
-      badge: savedProductIds.length > 0 ? `${savedProductIds.length}` : undefined,
-    },
-    {
       id: "garage" as CustomerTab,
       label: "My Garage",
       Icon: Bike,
@@ -149,25 +142,13 @@ export function CustomerLayout({
       badgeColor: "bg-blue-600 text-white",
     },
     {
-      id: "addresses" as CustomerTab,
-      label: "Addresses",
-      Icon: MapPin,
-    },
-    {
       id: "invoices" as CustomerTab,
       label: "Payments & Invoices",
       Icon: Receipt,
     },
     {
-      id: "notifications" as CustomerTab,
-      label: "Notifications",
-      Icon: Bell,
-      badge: unreadNotifsCount > 0 ? `${unreadNotifsCount}` : undefined,
-      badgeColor: "bg-[#E31E24] text-white",
-    },
-    {
       id: "settings" as CustomerTab,
-      label: "Profile & Settings",
+      label: "Profile & Addresses",
       Icon: UserCog,
     },
     {
@@ -177,12 +158,7 @@ export function CustomerLayout({
     },
   ];
 
-  const handleNavClick = (tabId: CustomerTab | "shop") => {
-    if (tabId === "shop") {
-      navigate({ to: "/shop" });
-      setIsMobileMenuOpen(false);
-      return;
-    }
+  const handleNavClick = (tabId: CustomerTab) => {
     onTabChange(tabId);
     setIsMobileMenuOpen(false);
   };
@@ -191,6 +167,8 @@ export function CustomerLayout({
     switch (activeTab) {
       case "overview":
         return "Dashboard Overview";
+      case "shop":
+        return "Shop Bikes & Parts";
       case "garage":
         return "My Registered EV Garage";
       case "orders":
@@ -319,27 +297,24 @@ export function CustomerLayout({
         </div>
       )}
 
-      {/* Main Container with Spatial Mesh Backdrop */}
-      <div className="flex flex-1 min-h-screen bg-gradient-to-br from-[#F4F6F9] via-[#F8F9FB] to-[#EDF2F7] relative overflow-hidden">
-        {/* Ambient Spatial Lighting Orbs */}
-        <div className="pointer-events-none fixed -top-40 -left-40 h-[500px] w-[500px] rounded-full bg-red-400/8 blur-[140px] z-0" />
-        <div className="pointer-events-none fixed top-1/2 -right-40 h-[450px] w-[450px] rounded-full bg-blue-400/8 blur-[140px] z-0" />
-
-        {/* Desktop Left Sidebar (VisionOS Glass) */}
+      {/* Main Container with Ambient Apple Glassmorphic Canvas Backdrop */}
+      <div className="flex flex-1 min-h-screen bg-[#F6F8FB] bg-[radial-gradient(circle_at_0%_0%,rgba(227,30,36,0.06),transparent_45%),radial-gradient(circle_at_0%_100%,rgba(37,99,235,0.05),transparent_45%),radial-gradient(circle_at_100%_0%,rgba(249,115,22,0.03),transparent_45%)] relative">
+        {/* Desktop Left Sidebar (Static Container with Apple Glassmorphic Theme) */}
         <aside
           className={cn(
-            "hidden md:flex flex-col bg-white/75 backdrop-blur-2xl border-r border-white/70 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 z-30 shrink-0 select-none",
+            "hidden md:flex flex-col sticky top-0 h-screen shrink-0 z-30 select-none",
+            "bg-white/65 backdrop-blur-3xl backdrop-saturate-200 border-r border-slate-200/80 shadow-[2px_0_20px_rgba(15,23,42,0.03)] transition-all duration-300",
             isCollapsed ? "w-20" : "w-64"
           )}
         >
           {/* Logo & Header */}
-          <div className="h-18 flex items-center justify-between px-5 border-b border-white/60">
+          <div className="relative h-18 shrink-0 flex items-center justify-center px-4 border-b border-slate-200/70 bg-white/50 backdrop-blur-md">
             {!isCollapsed ? (
-              <div className="flex items-center gap-2.5">
-                <Logo />
+              <div className="flex items-center justify-center">
+                <Logo className="justify-center" imgClassName="h-9 w-auto" />
               </div>
             ) : (
-              <div className="mx-auto">
+              <div className="flex items-center justify-center">
                 <span className="grid h-10 w-10 place-items-center rounded-2xl bg-primary text-white font-bold text-lg shadow-sm">
                   R
                 </span>
@@ -348,14 +323,17 @@ export function CustomerLayout({
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
               aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              className="hidden lg:grid h-7 w-7 place-items-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white/80 transition"
+              className={cn(
+                "hidden lg:grid h-7 w-7 place-items-center rounded-xl text-slate-500 hover:text-slate-900 hover:bg-white hover:border hover:border-slate-200 hover:shadow-2xs transition-all duration-150 absolute top-1/2 -translate-y-1/2 cursor-pointer",
+                isCollapsed ? "right-1.5" : "right-3"
+              )}
             >
               {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+          {/* Navigation Links with Refined Apple Glassmorphic Hovers & Active State */}
+          <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5">
             {navItems.map((item) => {
               const isActive = activeTab === item.id;
               return (
@@ -363,30 +341,53 @@ export function CustomerLayout({
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition group relative",
+                    "group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-150 ease-out cursor-pointer select-none",
                     isActive
-                      ? "vision-pill text-[#E31E24] font-bold shadow-[0_2px_10px_rgba(227,30,36,0.08)] border-l-4 border-[#E31E24] pl-2.5 bg-white/90"
-                      : "text-[#6B7280] hover:bg-white/70 hover:text-[#111111]",
+                      ? "bg-red-500/10 text-[#E31E24] font-bold border border-red-500/25 shadow-xs backdrop-blur-md"
+                      : "text-slate-600 border border-transparent hover:bg-white hover:text-slate-950 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:border-slate-200/80 active:scale-[0.98]",
                     isCollapsed && "justify-center px-0"
                   )}
                   title={isCollapsed ? item.label : undefined}
                 >
+                  {/* Apple-style smooth capsule indicator on active item */}
+                  {isActive && (
+                    <span
+                      className={cn(
+                        "absolute left-1.5 top-2.5 bottom-2.5 w-1.25 rounded-full bg-[#E31E24] shadow-[0_0_8px_rgba(227,30,36,0.6)] animate-in fade-in duration-200",
+                        isCollapsed && "left-1"
+                      )}
+                    />
+                  )}
+
                   <item.Icon
                     className={cn(
-                      "h-4 w-4 shrink-0 transition",
-                      isActive ? "text-[#E31E24]" : "text-[#6B7280] group-hover:text-[#111111]"
+                      "h-4 w-4 shrink-0 transition-all duration-150 ease-out",
+                      isActive
+                        ? "text-[#E31E24] scale-110 drop-shadow-xs"
+                        : "text-slate-500 group-hover:text-[#E31E24] group-hover:scale-110"
                     )}
                   />
+
                   {!isCollapsed && (
-                    <span className="flex-1 text-left flex items-center justify-between">
-                      <span>{item.label}</span>
+                    <span className="flex-1 text-left flex items-center justify-between min-w-0">
+                      <span
+                        className={cn(
+                          "truncate transition-all duration-150",
+                          isActive
+                            ? "font-bold text-[#E31E24]"
+                            : "font-medium group-hover:text-slate-950 group-hover:translate-x-0.5 group-hover:font-semibold"
+                        )}
+                      >
+                        {item.label}
+                      </span>
                       {item.badge && (
                         <span
                           className={cn(
-                            "px-2 py-0.5 rounded-full text-[10px] font-bold tracking-tight",
+                            "px-2 py-0.5 rounded-full text-[10px] font-bold tracking-tight shrink-0 transition-all duration-150",
                             isActive
-                              ? "bg-white/20 text-white"
-                              : item.badgeColor || "bg-gray-100 text-gray-700"
+                              ? "bg-[#E31E24]/15 text-[#E31E24] border border-[#E31E24]/25 shadow-2xs"
+                              : item.badgeColor ||
+                                  "bg-slate-100 text-slate-700 border border-slate-200/70 group-hover:bg-slate-50 group-hover:border-slate-300 group-hover:shadow-2xs"
                           )}
                         >
                           {item.badge}
@@ -400,30 +401,30 @@ export function CustomerLayout({
           </nav>
 
           {/* Sidebar Footer */}
-          <div className="p-3 border-t border-[#E5E7EB]/80 space-y-1">
+          <div className="shrink-0 p-3 border-t border-slate-200/70 bg-white/50 backdrop-blur-md space-y-1">
             <Link
               to="/"
               className={cn(
-                "flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-xs font-semibold text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition",
+                "group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-500 border border-transparent hover:bg-white hover:text-slate-950 hover:border-slate-200/80 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all duration-150",
                 isCollapsed && "justify-center px-0"
               )}
               title={isCollapsed ? "Back to store" : undefined}
             >
-              <ArrowLeft className="h-4 w-4 shrink-0" />
+              <ArrowLeft className="h-4 w-4 shrink-0 transition-transform duration-150 group-hover:-translate-x-1 group-hover:text-[#E31E24]" />
               {!isCollapsed && <span>Back to store</span>}
             </Link>
           </div>
         </aside>
 
         {/* Right Content Area */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Top Header with VisionOS Frosted Glass */}
-          <header className="sticky top-0 z-20 h-18 bg-white/75 backdrop-blur-2xl border-b border-white/70 px-4 md:px-8 flex items-center justify-between gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+        <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+          {/* Top Header (Static - Apple Glassmorphic bar that stays fixed) */}
+          <header className="sticky top-0 z-20 h-18 bg-white/70 backdrop-blur-2xl backdrop-saturate-180 border-b border-slate-200/70 px-4 md:px-8 flex items-center justify-between gap-4 shadow-[0_2px_12px_rgba(15,23,42,0.03)]">
             {/* Left: Mobile hamburger & breadcrumbs */}
             <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="md:hidden p-2 rounded-xl text-gray-600 hover:bg-white/80 active:scale-95 transition"
+                className="md:hidden p-2 rounded-xl text-gray-700 hover:bg-gray-100 active:scale-95 transition"
                 aria-label="Open navigation menu"
               >
                 <Menu className="h-5 w-5" />
@@ -436,33 +437,33 @@ export function CustomerLayout({
                   <span className="text-gray-900 font-semibold truncate">{getBreadcrumbTitle()}</span>
                 </div>
                 <h1 className="text-base font-bold text-gray-900 leading-tight">
-                  Welcome back, {userProfile.name.split(" ")[0]}
+                  Welcome back{userProfile?.name?.trim() ? `, ${userProfile.name.trim().split(" ")[0]}` : ""}
                 </h1>
               </div>
             </div>
 
-            {/* Center: Command Search Bar (VisionOS Glass Pill) */}
+            {/* Center: Command Search Bar */}
             <div className="flex-1 max-w-md hidden md:block">
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="w-full flex items-center justify-between px-4 py-2 rounded-full vision-glass-subtle hover:bg-white/95 text-sm text-gray-500 transition shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] group border border-white/80"
+                className="w-full flex items-center justify-between px-4 py-2 rounded-full bg-[#F5F6F8] hover:bg-white text-sm text-gray-700 transition shadow-2xs group border border-[#E5E7EB] hover:border-gray-400"
               >
                 <span className="flex items-center gap-2.5">
-                  <Search className="h-4 w-4 text-gray-400 group-hover:text-primary transition" />
-                  <span className="text-xs text-gray-500 font-medium">Search EV batteries, chargers, fitments...</span>
+                  <Search className="h-4 w-4 text-gray-500 group-hover:text-primary transition" />
+                  <span className="text-xs text-gray-600 font-medium">Search EV batteries, chargers, fitments...</span>
                 </span>
-                <kbd className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono text-gray-500 bg-white/80 border border-white/90 rounded-full shadow-2xs">
+                <kbd className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono text-gray-600 bg-white border border-[#E5E7EB] rounded-full shadow-2xs">
                   ⌘K
                 </kbd>
               </button>
             </div>
 
-            {/* Right: Actions, Search by VIN, AI Voice, Notifications, Avatar */}
+            {/* Right: Actions, Search by VIN, AI Voice, Cart, Avatar */}
             <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
               {/* Search by VIN Button in Navbar */}
               <button
                 onClick={() => setIsVinSearchOpen(true)}
-                className="vision-pill flex items-center gap-1.5 px-3.5 py-1.5 rounded-full hover:bg-primary hover:text-white hover:border-primary text-xs font-semibold text-emerald-800 transition active:scale-95"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#E5E7EB] bg-white hover:border-[#E31E24] hover:text-[#E31E24] text-xs font-semibold text-[#111111] transition active:scale-95 shadow-2xs"
                 title="Search items based on 17-digit VIN number"
               >
                 <ScanLine className="h-3.5 w-3.5 text-primary" />
@@ -473,7 +474,7 @@ export function CustomerLayout({
               {/* Mobile Search trigger */}
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="md:hidden p-2 rounded-xl text-gray-600 hover:bg-white/80 transition"
+                className="md:hidden p-2 rounded-xl text-gray-700 hover:bg-gray-100 transition"
                 aria-label="Search products"
               >
                 <Search className="h-5 w-5" />
@@ -482,86 +483,34 @@ export function CustomerLayout({
               {/* AI Assistant Button with Voice Mic */}
               <Link
                 to="/assistant"
-                className="vision-pill group flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold text-primary transition-all hover:bg-primary hover:text-white hover:shadow-[0_4px_16px_rgba(227,30,36,0.35)] active:scale-95"
+                className="group flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#111111] hover:border-[#E31E24] hover:text-[#E31E24] transition shadow-2xs active:scale-95"
               >
-                <Mic className="h-3.5 w-3.5 text-primary transition group-hover:text-white" />
+                <Mic className="h-3.5 w-3.5 text-primary transition group-hover:scale-110" />
                 <span className="hidden sm:inline">AI Voice</span>
                 <span className="sm:hidden font-bold">Ask AI</span>
               </Link>
 
-              {/* Notifications Bell with Popover */}
-              <div className="relative">
-                <button
-                  onClick={() => setIsNotifOpen(!isNotifOpen)}
-                  className="relative p-2 rounded-xl text-gray-600 hover:bg-gray-100 transition"
-                  aria-label="Notifications"
-                >
-                  <Bell className="h-5 w-5" />
-                  {unreadNotifsCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 grid h-4 w-4 place-items-center rounded-full bg-rose-500 text-[9px] font-bold text-white ring-2 ring-white">
-                      {unreadNotifsCount}
-                    </span>
-                  )}
-                </button>
-
-                {isNotifOpen && (
-                  <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-3xl bg-white border border-gray-200 shadow-2xl p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
-                    <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                      <div>
-                        <p className="text-sm font-bold text-gray-900">Notifications</p>
-                        <p className="text-xs text-gray-500">{unreadNotifsCount} unread alerts</p>
-                      </div>
-                      {unreadNotifsCount > 0 && (
-                        <button
-                          onClick={markAllNotificationsRead}
-                          className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
-                        >
-                          <CheckCheck className="h-3.5 w-3.5" /> Mark all read
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-72 overflow-y-auto divide-y divide-gray-50 py-1">
-                      {notifications.length === 0 ? (
-                        <p className="py-6 text-center text-xs text-gray-500">No notifications yet.</p>
-                      ) : (
-                        notifications.slice(0, 5).map((notif) => (
-                          <div
-                            key={notif.id}
-                            onClick={() => markNotificationRead(notif.id)}
-                            className={cn(
-                              "py-3 px-2 rounded-xl cursor-pointer transition flex items-start gap-3",
-                              notif.read ? "opacity-75 hover:bg-gray-50" : "bg-emerald-50/50 hover:bg-emerald-50"
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                "h-2 w-2 rounded-full mt-1.5 shrink-0",
-                                notif.read ? "bg-gray-300" : "bg-primary"
-                              )}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold text-gray-900">{notif.title}</p>
-                              <p className="text-xs text-gray-600 line-clamp-2 mt-0.5">{notif.message}</p>
-                              <span className="text-[10px] text-gray-400 mt-1 inline-block">{notif.time}</span>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    <div className="pt-2 border-t border-gray-100 text-center">
-                      <button
-                        onClick={() => {
-                          setIsNotifOpen(false);
-                          onTabChange("notifications");
-                        }}
-                        className="text-xs font-semibold text-primary hover:underline"
-                      >
-                        View all notifications →
-                      </button>
-                    </div>
-                  </div>
+              {/* Shopping Cart button on top right -> opens Orders & Delivery Tracking */}
+              <button
+                onClick={() => onTabChange("orders")}
+                id="dashboard-header-cart-btn"
+                aria-label="Shopping Cart and Orders"
+                className={cn(
+                  "relative flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition shadow-2xs active:scale-95 cursor-pointer",
+                  activeTab === "orders"
+                    ? "border-[#E31E24] bg-red-50 text-[#E31E24]"
+                    : "border-[#E5E7EB] bg-white text-[#111111] hover:border-[#E31E24] hover:text-[#E31E24]"
                 )}
-              </div>
+                title="View Orders & Delivery Tracking"
+              >
+                <ShoppingCart className="h-3.5 w-3.5 text-[#E31E24]" />
+                <span className="hidden sm:inline">Cart</span>
+                {(orders.length > 0 || cartCount > 0) && (
+                  <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-[#E31E24] px-1 text-[10px] font-bold text-white leading-none">
+                    {orders.length || cartCount}
+                  </span>
+                )}
+              </button>
 
               {/* Profile Avatar & Account Menu */}
               <div className="relative">
@@ -571,23 +520,32 @@ export function CustomerLayout({
                   aria-label="Account menu"
                 >
                   <span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-white font-bold text-xs shadow-xs">
-                    {userProfile.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .slice(0, 2)}
+                    {userProfile?.name?.trim()
+                      ? userProfile.name
+                          .trim()
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .slice(0, 2)
+                      : "CP"}
                   </span>
                 </button>
 
                 {isProfileOpen && (
                   <div className="absolute right-0 mt-2 w-64 rounded-3xl bg-white border border-gray-200 shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
                     <div className="px-3 py-2.5 border-b border-gray-100">
-                      <p className="text-sm font-bold text-gray-900 truncate">{userProfile.name}</p>
-                      <p className="text-xs text-gray-500 truncate">{userProfile.email}</p>
-                      <div className="mt-2 flex items-center justify-between text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
-                        <span>ProPoints Loyalty</span>
-                        <span className="font-bold">{userProfile.points} pts</span>
-                      </div>
+                      <p className="text-sm font-bold text-gray-900 truncate">
+                        {userProfile?.name?.trim() || "Customer Account"}
+                      </p>
+                      {userProfile?.email?.trim() && (
+                        <p className="text-xs text-gray-500 truncate">{userProfile.email}</p>
+                      )}
+                      {(userProfile?.points || 0) > 0 && (
+                        <div className="mt-2 flex items-center justify-between text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
+                          <span>ProPoints Loyalty</span>
+                          <span className="font-bold">{userProfile.points} pts</span>
+                        </div>
+                      )}
                     </div>
                     <div className="py-1 space-y-0.5">
                       <button
@@ -618,14 +576,17 @@ export function CustomerLayout({
                         className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 rounded-xl transition"
                       >
                         <UserCog className="h-4 w-4 text-gray-400" />
-                        <span>Profile & Settings</span>
+                        <span>Profile & Delivery Addresses</span>
                       </button>
                     </div>
                     <div className="pt-1 border-t border-gray-100">
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           setIsProfileOpen(false);
-                          toast.info("Signed out from customer session");
+                          await endServerSession();
+                          signOut();
+                          toast.info("Signed out successfully");
+                          navigate({ to: "/" });
                         }}
                         className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-xl transition"
                       >
@@ -646,20 +607,20 @@ export function CustomerLayout({
         </div>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer with Apple Glassmorphic Styling */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden bg-black/50 backdrop-blur-xs">
-          <div className="w-72 bg-white h-full flex flex-col p-5 shadow-2xl animate-in slide-in-from-left duration-200">
-            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-              <Logo />
+        <div className="fixed inset-0 z-50 flex md:hidden bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-72 bg-white/85 backdrop-blur-2xl backdrop-saturate-180 h-full flex flex-col p-5 shadow-2xl border-r border-white/60 animate-in slide-in-from-left duration-200">
+            <div className="relative flex items-center justify-center pb-4 border-b border-slate-200/50">
+              <Logo className="justify-center" imgClassName="h-8.5 w-auto" />
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-1 rounded-lg text-gray-400 hover:text-gray-700"
+                className="absolute right-0 top-1/2 -translate-y-1/2 p-1.5 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-white/80 transition"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <nav className="flex-1 overflow-y-auto py-4 space-y-1">
+            <nav className="flex-1 overflow-y-auto py-4 space-y-1.5">
               {navItems.map((item) => {
                 const isActive = activeTab === item.id;
                 return (
@@ -667,21 +628,24 @@ export function CustomerLayout({
                     key={item.id}
                     onClick={() => handleNavClick(item.id)}
                     className={cn(
-                      "flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-medium transition",
+                      "group relative flex w-full items-center justify-between rounded-2xl px-3 py-2.5 text-xs font-medium transition-all duration-200 ease-out",
                       isActive
-                        ? "bg-red-50 text-[#E31E24] font-semibold border-l-3 border-[#E31E24] pl-2.5"
-                        : "text-[#6B7280] hover:bg-gray-50 hover:text-[#111111]"
+                        ? "bg-red-500/10 text-[#E31E24] font-bold border border-red-500/20 shadow-xs"
+                        : "text-slate-600 hover:bg-white/80 hover:text-slate-900 hover:shadow-2xs"
                     )}
                   >
+                    {isActive && (
+                      <span className="absolute left-1.5 top-2 bottom-2 w-1 rounded-full bg-[#E31E24] shadow-[0_0_8px_rgba(227,30,36,0.6)]" />
+                    )}
                     <span className="flex items-center gap-3">
-                      <item.Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-[#E31E24]" : "text-[#6B7280]")} />
-                      <span>{item.label}</span>
+                      <item.Icon className={cn("h-4 w-4 shrink-0 transition", isActive ? "text-[#E31E24]" : "text-slate-500")} />
+                      <span className={cn(isActive && "pl-1.5")}>{item.label}</span>
                     </span>
                     {item.badge && (
                       <span
                         className={cn(
                           "px-2 py-0.5 rounded-full text-[10px] font-bold",
-                          isActive ? "bg-white/20 text-white" : item.badgeColor || "bg-gray-100 text-gray-700"
+                          isActive ? "bg-[#E31E24]/15 text-[#E31E24] border border-[#E31E24]/20" : item.badgeColor || "bg-slate-100 text-slate-700"
                         )}
                       >
                         {item.badge}
@@ -691,10 +655,10 @@ export function CustomerLayout({
                 );
               })}
             </nav>
-            <div className="pt-4 border-t border-gray-100">
+            <div className="pt-4 border-t border-slate-200/50">
               <Link
                 to="/"
-                className="flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-primary transition"
+                className="flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-[#E31E24] transition"
               >
                 <ArrowLeft className="h-4 w-4" /> Back to store
               </Link>

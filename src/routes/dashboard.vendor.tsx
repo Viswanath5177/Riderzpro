@@ -1,12 +1,18 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { AlertTriangle, Boxes, IndianRupee, LayoutGrid, PackageOpen, ShoppingBag, Star, Wallet, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardShell, Panel, Stat, StatusPill } from "@/components/site/DashboardShell";
 import { AreaTrend, Bars, series } from "@/components/site/Charts";
 import { bikes, inr, products } from "@/lib/data";
+import { getCurrentRole } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard/vendor")({
+  beforeLoad: async () => {
+    const role = await getCurrentRole();
+    if (!role) throw redirect({ to: "/login" });
+    throw redirect({ to: role === "admin" ? "/dashboard/admin" : "/dashboard/customer" });
+  },
   head: () => ({ meta: [
     { title: "Vendor dashboard — Riderzpro" },
     { name: "description", content: "Sales, incoming orders, inventory and fitment management for EV parts sellers." },

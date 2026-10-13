@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { CustomerLayout, type CustomerTab } from "@/components/dashboard/CustomerLayout";
 import { OverviewTab } from "@/components/dashboard/OverviewTab";
+import { ShopTab } from "@/components/dashboard/ShopTab";
 import { GarageTab } from "@/components/dashboard/GarageTab";
 import { OrdersTab } from "@/components/dashboard/OrdersTab";
 import { TrackingTab } from "@/components/dashboard/TrackingTab";
@@ -15,8 +16,14 @@ import { SupportTab } from "@/components/dashboard/SupportTab";
 import { AddressesTab } from "@/components/dashboard/AddressesTab";
 import { BookingModal } from "@/components/dashboard/BookingModal";
 import { AddBikeModal } from "@/components/dashboard/AddBikeModal";
+import { getCurrentRole } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard/customer")({
+  beforeLoad: async () => {
+    const role = await getCurrentRole();
+    if (!role) throw redirect({ to: "/login" });
+    if (role !== "customer") throw redirect({ to: "/dashboard/admin" });
+  },
   head: () => ({
     meta: [
       { title: "Customer Dashboard — RiderzPro" },
@@ -36,11 +43,31 @@ function CustomerDashboard() {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isAddBikeOpen, setIsAddBikeOpen] = useState(false);
 
+  useEffect(() => {
+    const handleUrl = () => {
+      if (typeof window !== "undefined") {
+        const p = new URLSearchParams(window.location.search);
+        const t = p.get("tab") as CustomerTab;
+        if (t) setTab(t);
+      }
+    };
+    handleUrl();
+    window.addEventListener("popstate", handleUrl);
+    return () => window.removeEventListener("popstate", handleUrl);
+  }, []);
+
   return (
     <>
       <CustomerLayout
         activeTab={tab}
-        onTabChange={setTab}
+        onTabChange={(newTab) => {
+          setTab(newTab);
+          if (typeof window !== "undefined") {
+            const url = new URL(window.location.href);
+            url.searchParams.set("tab", newTab);
+            window.history.pushState({}, "", url.toString());
+          }
+        }}
         onOpenBookingModal={() => setIsBookingOpen(true)}
       >
         {tab === "overview" && (
@@ -50,6 +77,7 @@ function CustomerDashboard() {
             onOpenAddBikeModal={() => setIsAddBikeOpen(true)}
           />
         )}
+        {tab === "shop" && <ShopTab />}
         {tab === "garage" && (
           <GarageTab
             onOpenAddBikeModal={() => setIsAddBikeOpen(true)}
@@ -62,7 +90,7 @@ function CustomerDashboard() {
         {tab === "service" && (
           <ServiceTab onOpenBookingModal={() => setIsBookingOpen(true)} />
         )}
-        {tab === "addresses" && <AddressesTab />}
+        {tab === "addresses" && <SettingsTab />}
         {tab === "offers" && <OffersTab />}
         {tab === "invoices" && <InvoicesTab />}
         {tab === "notifications" && <NotificationsTab />}

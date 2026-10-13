@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { Bike, IndianRupee, LayoutGrid, MapPin, Navigation, Star, Store, Timer, Wallet } from "lucide-react";
 import { toast } from "sonner";
@@ -6,8 +6,14 @@ import { DashboardShell, Panel, Stat, StatusPill } from "@/components/site/Dashb
 import { Bars, series } from "@/components/site/Charts";
 import { LiveMap } from "@/components/site/LiveMap";
 import { inr } from "@/lib/data";
+import { getCurrentRole } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard/rider")({
+  beforeLoad: async () => {
+    const role = await getCurrentRole();
+    if (!role) throw redirect({ to: "/login" });
+    throw redirect({ to: role === "admin" ? "/dashboard/admin" : "/dashboard/customer" });
+  },
   head: () => ({ meta: [
     { title: "Rider dashboard — Riderzpro" },
     { name: "description", content: "Accept nearby EV parts deliveries, follow multi-pickup routes and track earnings." },

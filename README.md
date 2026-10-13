@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ⚡ Riderzpro — EV Bike Battery & Certified Installation Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -100,3 +101,4 @@ npm run test
 ## 📄 License
 
 MIT © 2026 Riderzpro Technologies
+

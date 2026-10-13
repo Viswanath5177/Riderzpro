@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Bike,
+  Car,
   Check,
   Trash2,
   Plus,
@@ -23,6 +24,7 @@ import scooterImg from "@/assets/scooter.jpg";
 import { useStore } from "@/lib/store";
 import { getBike, bikes, products, inr, type Product, type Category } from "@/lib/data";
 import { VinSearchModal } from "./VinSearchModal";
+import { CarAccessoriesCatalog } from "@/components/site/CarAccessoriesCatalog";
 
 interface GarageTabProps {
   onOpenAddBikeModal: () => void;
@@ -43,6 +45,7 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
   const [selectedBikeId, setSelectedBikeId] = useState<string>(activeBikeId || garage[0]?.bikeId || "ola-s1pro");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [partsSearch, setPartsSearch] = useState<string>("");
+  const [accessoryVehicleType, setAccessoryVehicleType] = useState<"car" | "bike">("car");
   const [isVinModalOpen, setIsVinModalOpen] = useState(false);
 
   const partsSectionRef = useRef<HTMLDivElement>(null);
@@ -170,7 +173,7 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
 
                   {isSelected && (
                     <div className="absolute bottom-3 left-3">
-                      <span className="px-2.5 py-0.5 rounded-md bg-white/95 backdrop-blur-xs text-emerald-800 text-[10px] font-bold shadow-2xs border border-emerald-200 flex items-center gap-1">
+                      <span className="px-2.5 py-0.5 rounded-md bg-white text-emerald-800 text-[10px] font-bold shadow-2xs border border-emerald-300 flex items-center gap-1">
                         <Check className="h-3 w-3 text-primary" /> Currently Viewing Spares
                       </span>
                     </div>
@@ -277,7 +280,7 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
           {/* Add Bike trigger */}
           <div
             onClick={onOpenAddBikeModal}
-            className="rounded-3xl border-2 border-dashed border-gray-300 hover:border-primary bg-white/50 p-8 flex flex-col items-center justify-center text-center cursor-pointer min-h-[360px] hover:bg-emerald-50/20 transition-all"
+            className="rounded-3xl border-2 border-dashed border-[#E5E7EB] hover:border-primary bg-white p-8 flex flex-col items-center justify-center text-center cursor-pointer min-h-[360px] hover:bg-red-50/20 transition-all shadow-2xs"
           >
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50 text-primary mb-3">
               <Plus className="h-6 w-6" />
@@ -412,7 +415,7 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
                       className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                     />
                     <div className="absolute top-3 left-3">
-                      <span className="px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-xs text-gray-800 text-[10px] font-bold shadow-2xs">
+                      <span className="px-2.5 py-1 rounded-full bg-white border border-[#E5E7EB] text-gray-800 text-[10px] font-bold shadow-2xs">
                         {p.category}
                       </span>
                     </div>
@@ -421,7 +424,7 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
                         toggleSaved(p.id);
                         toast.success(saved ? "Removed from saved" : "Saved to wishlist");
                       }}
-                      className="absolute top-3 right-3 p-2 rounded-full bg-white/90 backdrop-blur-xs text-gray-600 hover:text-rose-500 shadow-2xs transition"
+                      className="absolute top-3 right-3 p-2 rounded-full bg-white border border-[#E5E7EB] text-gray-600 hover:text-rose-500 shadow-2xs transition"
                       title={saved ? "Remove from wishlist" : "Save item"}
                     >
                       <Heart className={`h-4 w-4 ${saved ? "fill-rose-500 text-rose-500" : ""}`} />
@@ -492,6 +495,36 @@ export function GarageTab({ onOpenAddBikeModal, onOpenBookingModal }: GarageTabP
             })}
           </div>
         )}
+      </section>
+
+      {/* 509 deduplicated catalogue entries for car, bike, and shared accessories. */}
+      <section className="space-y-4 border-t border-gray-200 pt-8" aria-label="Car and bike accessories">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Customer garage catalogue</p>
+            <h2 className="mt-1 font-display text-2xl font-extrabold text-gray-900">Car &amp; bike accessories</h2>
+            <p className="mt-1 text-sm text-gray-500">Browse all 509 deduplicated products with supplied images, specifications, availability, and pricing. Shared-fitment products appear in both views.</p>
+          </div>
+          <div className="inline-flex rounded-xl border border-gray-200 bg-white p-1 shadow-2xs" role="group" aria-label="Choose accessory vehicle type">
+            <button
+              type="button"
+              aria-pressed={accessoryVehicleType === "car"}
+              onClick={() => setAccessoryVehicleType("car")}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${accessoryVehicleType === "car" ? "bg-primary text-white shadow-2xs" : "text-gray-600 hover:bg-gray-50"}`}
+            >
+              <Car className="h-4 w-4" /> Car accessories
+            </button>
+            <button
+              type="button"
+              aria-pressed={accessoryVehicleType === "bike"}
+              onClick={() => setAccessoryVehicleType("bike")}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${accessoryVehicleType === "bike" ? "bg-primary text-white shadow-2xs" : "text-gray-600 hover:bg-gray-50"}`}
+            >
+              <Bike className="h-4 w-4" /> Bike accessories
+            </button>
+          </div>
+        </div>
+        <CarAccessoriesCatalog key={accessoryVehicleType} vehicleType={accessoryVehicleType} />
       </section>
 
       {/* Global Vin Search Modal triggerable from Garage */}

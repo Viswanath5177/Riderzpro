@@ -6,17 +6,16 @@ import { ROLE_LINKS } from "@/components/site/DashboardShell";
 export const Route = createFileRoute("/dashboards")({
   head: () => ({ meta: [
     { title: "Dashboards — Riderzpro" },
-    { name: "description", content: "Open the customer, workshop, vendor, rider or admin dashboard." },
+    { name: "description", content: "Open the RiderzPro customer or admin dashboard." },
     { property: "og:title", content: "Dashboards — Riderzpro" },
-    { property: "og:description", content: "One platform for every role in EV parts." },
+    { property: "og:description", content: "RiderzPro customer and admin workspaces." },
   ] }),
   component: Dashboards,
 });
 
 const desc: Record<string, string> = {
   Customer: "Garage, live deliveries, orders and technician bookings.",
-  Vendor: "Revenue, incoming orders, inventory and payouts.",
-  Rider: "Nearby jobs, multi-pickup routes and earnings.",
+  Admin: "Manage RiderzPro products, orders, customers and operations.",
 };
 
 export function RolePicker() {
@@ -26,7 +25,7 @@ export function RolePicker() {
         <Link
           key={r.to}
           to={r.to}
-          className="group rounded-3xl border border-border/80 bg-card/85 p-6 shadow-card backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:border-primary/50"
+          className="group rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-[#111111]"
         >
           <span className="grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary shadow-xs transition group-hover:bg-primary group-hover:text-primary-foreground">
             <r.Icon className="h-6 w-6" />
