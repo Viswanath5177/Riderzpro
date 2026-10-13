@@ -18,6 +18,8 @@ from logistics.schemas import (
     RiderLocationHistoryItem
 )
 from logistics.route_planning import haversine_distance
+from logistics.geofence import geofence_service
+from logistics.route_deviation import route_deviation_service
 
 logger = logging.getLogger("riderzpro.location")
 
@@ -241,6 +243,37 @@ class LocationTrackingService:
         }
         self.publish_event("RIDER_LOCATION_UPDATED", event_payload)
 
+        # 10. Evaluate geofence and publish milestone events (RIDER_APPROACHING / RIDER_ARRIVED)
+        if target_delivery:
+            geofence_events = geofence_service.evaluate_geofence(
+                delivery=target_delivery,
+                rider_id=rider.id,
+                lat=lat,
+                lng=lng,
+                timestamp=timestamp
+            )
+            for gf_event in geofence_events:
+                self.publish_event(gf_event["event"], gf_event)
+
+        # 11. Evaluate route deviation and publish RIDER_ROUTE_DEVIATION event
+        if target_delivery:
+            try:
+                deviation_events = route_deviation_service.evaluate_deviation(
+                    delivery_id=target_delivery.id,
+                    rider_id=rider.id,
+                    latitude=lat,
+                    longitude=lng,
+                    order_id=target_delivery.order_id,
+                    timestamp=timestamp,
+                    delivery=target_delivery
+                )
+                for dev_event in deviation_events:
+                    self.publish_event(dev_event["event"], dev_event)
+            except Exception as e:
+                logger.warning(
+                    f"Route deviation evaluation encountered error for delivery '{target_delivery.id}': {e}"
+                )
+
         return RiderLocationUpdateResponse(
             success=True,
             rider_id=rider.id,
@@ -334,7 +367,7 @@ class LocationTrackingService:
 
         # Authorization: Customers can only track their own deliveries
         if actor_role and actor_role.lower() == "customer":
-            if actor_id and actor_id != delivery.customer_id:
+            if actor_id and actor_id != delivery.customer_id and actor_id != getattr(delivery, "customer_phone", None):
                 raise ForbiddenTrackingAccessError("You are not authorized to track this delivery order.")
 
         # Construct Rider Info if assigned
@@ -401,6 +434,21 @@ class LocationTrackingService:
                 except Exception:
                     waypoints = []
 
+        # Populate geofence proximity status for tracking response
+        rider_lat = None
+        rider_lng = None
+        if delivery.assigned_rider and delivery.assigned_rider.last_location_timestamp:
+            rider_lat = delivery.assigned_rider.current_lat
+            rider_lng = delivery.assigned_rider.current_lng
+
+        gf_status = geofence_service.get_geofence_status(delivery, rider_lat, rider_lng)
+        dev_status = route_deviation_service.get_deviation_status(
+            delivery=delivery,
+            lat=rider_lat,
+            lng=rider_lng,
+            waypoints=waypoints
+        )
+
         return DeliveryTrackingResponse(
             delivery_id=delivery.id,
             order_id=delivery.order_id,
@@ -418,7 +466,13 @@ class LocationTrackingService:
             },
             eta_minutes=eta_minutes,
             distance_km=distance_km,
-            route_waypoints=waypoints if waypoints else None
+            route_waypoints=waypoints if waypoints else None,
+            distance_to_dropoff_meters=gf_status["distance_to_dropoff_meters"],
+            is_approaching=gf_status["is_approaching"],
+            is_arrived=gf_status["is_arrived"],
+            distance_from_route_meters=dev_status["distance_from_route_meters"],
+            is_route_deviating=dev_status["is_route_deviating"],
+            route_deviation_threshold_meters=dev_status["route_deviation_threshold_meters"]
         )
 
     def get_location_history(

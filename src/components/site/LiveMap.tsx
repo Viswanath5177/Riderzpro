@@ -1,8 +1,59 @@
 import { useEffect, useState } from "react";
 import { Bike, Home, Store } from "lucide-react";
+import type { DeliveryTrackingData } from "../map/types";
+import { DeliveryMap } from "../map/DeliveryMap";
 
-/** Stylised city map with an animated rider travelling through pickup points to the customer. */
-export function LiveMap({ stops = 2, progress, className = "" }: { stops?: number; progress?: number; className?: string }) {
+interface LiveMapProps {
+  stops?: number;
+  progress?: number;
+  className?: string;
+  deliveryId?: string | null;
+  tracking?: DeliveryTrackingData | null;
+  isApproaching?: boolean;
+  isArrived?: boolean;
+  isDeviating?: boolean;
+  deviationDistance?: number | null;
+  deviationThreshold?: number;
+}
+
+/**
+ * Universal LiveMap component:
+ * - When `tracking` or `deliveryId` is provided, renders the real-time interactive DeliveryMap
+ *   connected to the backend tracking coordinates, polyline routes, rider GPS, and WebSocket events.
+ * - When no live tracking is provided, gracefully falls back to the stylized mock canvas for demo orders.
+ */
+export function LiveMap({
+  stops = 2,
+  progress,
+  className = "",
+  deliveryId,
+  tracking,
+  isApproaching,
+  isArrived,
+  isDeviating,
+  deviationDistance,
+  deviationThreshold,
+}: LiveMapProps) {
+  // If live delivery tracking data is provided, render the interactive DeliveryMap
+  if (tracking || deliveryId) {
+    return (
+      <DeliveryMap
+        tracking={tracking ?? null}
+        isApproaching={isApproaching}
+        isArrived={isArrived}
+        isDeviating={isDeviating}
+        deviationDistance={deviationDistance}
+        deviationThreshold={deviationThreshold}
+        className={className}
+      />
+    );
+  }
+
+  // Fallback demo stylized city map with simulated progression
+  return <StylizedDemoMap stops={stops} progress={progress} className={className} />;
+}
+
+function StylizedDemoMap({ stops = 2, progress, className = "" }: { stops?: number; progress?: number; className?: string }) {
   const [t, setT] = useState(0);
   useEffect(() => {
     if (progress !== undefined) return;

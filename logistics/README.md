@@ -848,3 +848,365 @@ The `LiveMapCanvas` component in `web/js/components/map_view.js` implements faul
 4. **Stale Signal Awareness**: If rider GPS pings exceed the 10-minute staleness threshold, the UI highlights a `(Stale Signal)` warning while preserving the last known coordinates.
 
 
+---
+
+## Phase 4.1 — Delivery Geofencing & Proximity Events
+
+### Overview
+
+Phase 4.1 introduces automatic geofence evaluation into the rider location tracking pipeline. When a rider's GPS coordinate update is processed, the system evaluates the rider's distance from the delivery dropoff and emits proximity milestone events when configurable thresholds are crossed.
+
+```
+POST /api/riders/{rider_id}/location
+         ↓
+validate GPS
+         ↓
+store location record
+         ↓
+update rider latest position
+         ↓
+calculate distance / ETA
+         ↓
+[NEW] evaluate geofence thresholds
+         ↓
+[NEW] generate milestone event if threshold crossed
+         ↓
+publish event via LocationTrackingService.publish_event()
+         ↓
+handle_realtime_event() subscriber in realtime.py
+         ↓
+DeliveryConnectionManager.broadcast_to_delivery()
+         ↓
+WebSocket clients subscribed to /ws/deliveries/{id}/tracking
+```
+
+---
+
+### GeofenceService
+
+**File:** `logistics/geofence.py`
+
+The `GeofenceService` is a small, stateless-evaluator + stateful-deduplicator service responsible for:
+
+1. **Calculating rider distance from destination** using the existing `haversine_distance()` function from `route_planning.py`. No second distance algorithm is introduced.
+2. **Determining whether the rider is approaching** the destination (within the approaching threshold).
+3. **Determining whether the rider has arrived** at the destination (within the arrival threshold).
+4. **Preventing duplicate milestone events** within the current delivery lifecycle via `GeofenceMilestoneState`.
+
+#### Configurable Thresholds
+
+Thresholds are defined as module-level constants in a single location (`logistics/geofence.py`) and must not be hardcoded elsewhere in the application:
+
+| Constant | Value | Meaning |
+|---|---|---|
+| `DEFAULT_APPROACHING_DISTANCE_METERS` | **500.0 m** | Rider is approaching — notify the customer |
+| `DEFAULT_ARRIVAL_DISTANCE_METERS` | **50.0 m** | Rider has arrived at the destination |
+
+Both thresholds are passed to `GeofenceService.__init__()` as constructor parameters with the above defaults, enabling easy override in tests or future configuration.
+
+#### Active Delivery States
+
+Geofence evaluation is only performed for deliveries in an active state:
+
+```
+ACTIVE_GEOFENCE_STATUSES = {"assigned", "picked_up", "in_transit"}
+```
+
+Terminal states (`delivered`, `cancelled`, `failed`) and pre-assignment states (`pending`) never trigger geofence events.
+
+---
+
+### Events
+
+#### RIDER_APPROACHING
+
+Emitted **once** when the rider's distance to the dropoff falls at or below **500 meters**.
+
+```json
+{
+  "event": "RIDER_APPROACHING",
+  "delivery_id": "del_577d5ca2f3cc",
+  "order_id": "ORD-98421",
+  "rider_id": "tech_ramesh",
+  "distance_to_dropoff_meters": 420.5,
+  "threshold_meters": 500.0,
+  "timestamp": "2026-10-12T14:30:00.123456"
+}
+```
+
+#### RIDER_ARRIVED
+
+Emitted **once** when the rider's distance to the dropoff falls at or below **50 meters**.
+
+```json
+{
+  "event": "RIDER_ARRIVED",
+  "delivery_id": "del_577d5ca2f3cc",
+  "order_id": "ORD-98421",
+  "rider_id": "tech_ramesh",
+  "distance_to_dropoff_meters": 28.3,
+  "threshold_meters": 50.0,
+  "timestamp": "2026-10-12T14:35:10.654321"
+}
+```
+
+> [!IMPORTANT]
+> **`RIDER_ARRIVED` does NOT automatically complete the delivery.**
+> Arrival means the rider is physically near the destination. Delivery completion (proof of delivery, status transition to `delivered`, payment release) is a separate business event that must be triggered explicitly by an authorized user. The existing delivery state machine remains completely unchanged by Phase 4.1.
+
+**Direct jump behavior:** If a rider GPS update crosses from outside the 500 m zone to inside the 50 m zone in a single update (e.g. due to a GPS correction or coarse polling interval), **both** `RIDER_APPROACHING` and `RIDER_ARRIVED` are emitted in the same batch.
+
+---
+
+### Event Deduplication
+
+Rider devices may send GPS updates every few seconds. To prevent flooding clients with repeated milestone events:
+
+- `RIDER_APPROACHING` is emitted **at most once** per delivery lifecycle.
+- `RIDER_ARRIVED` is emitted **at most once** per delivery lifecycle.
+
+Deduplication is tracked in-memory via `GeofenceMilestoneState`, which maintains a `Dict[delivery_id, Set[milestone_name]]` registry.
+
+The milestone state can be **safely reset** for a specific delivery via `GeofenceService.reset_delivery(delivery_id)` (e.g. when a delivery is reassigned). A full reset is available via `GeofenceService.reset_all()`.
+
+---
+
+### WebSocket Delivery
+
+Phase 4.1 reuses the existing WebSocket infrastructure (`/ws/deliveries/{delivery_id}/tracking`) without modification. The new events are routed through `handle_realtime_event()` in `realtime.py`:
+
+```python
+elif event_name in ("RIDER_APPROACHING", "RIDER_ARRIVED"):
+    delivery_id = payload.get("delivery_id")
+    if delivery_id:
+        dispatch_coroutine(realtime_manager.broadcast_to_delivery(delivery_id, payload))
+```
+
+The payload from `GeofenceService.evaluate_geofence()` is broadcast as-is. All existing authorization rules are preserved:
+
+- **Customers** receive events only for their own deliveries.
+- **Assigned riders** receive events for their active delivery.
+- **Dispatchers / admins / supervisors** retain full access.
+- **Different deliveries remain isolated** — events from delivery A never reach delivery B subscribers.
+
+---
+
+### Tracking API Extension
+
+`GET /api/deliveries/{delivery_id}/tracking` response now includes three optional geofence proximity fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `distance_to_dropoff_meters` | `float` or `null` | Current rider distance to dropoff in meters. `null` if rider has no reported location. |
+| `is_approaching` | `bool` or `null` | `true` if rider is within 500 m of dropoff. |
+| `is_arrived` | `bool` or `null` | `true` if rider is within 50 m of dropoff. |
+
+These fields are populated by `GeofenceService.get_geofence_status()` and do **not** affect any existing response fields.
+
+---
+
+### Known Limitations
+
+> [!WARNING]
+> **Process-local state**: Both the `DeliveryConnectionManager` (WebSocket connections) and `GeofenceMilestoneState` (milestone deduplication) are held in-memory within the current process. In a multi-worker deployment (e.g. multiple Uvicorn workers or Kubernetes pods), WebSocket clients and milestone flags will not be shared across processes.
+>
+> **Mitigation (future phase)**: Redis Pub/Sub and a distributed milestone store (Redis HASH or database flag) are planned for the production-hardening phase. No code changes are needed here to enable that upgrade — the `GeofenceService` and `GeofenceMilestoneState` interfaces are already designed for a clean swap.
+
+---
+
+### Files Modified / Created (Phase 4.1)
+
+| File | Change |
+|---|---|
+| `logistics/geofence.py` | **New** — `GeofenceService`, `GeofenceMilestoneState`, threshold constants |
+| `logistics/location_service.py` | **Modified** — imports `geofence_service`; calls `evaluate_geofence()` after GPS publish; populates `get_geofence_status()` in tracking response |
+| `logistics/realtime.py` | **Modified** — `handle_realtime_event()` routes `RIDER_APPROACHING` and `RIDER_ARRIVED` to `broadcast_to_delivery()` |
+| `logistics/schemas.py` | **Modified (pre-existing)** — `DeliveryTrackingResponse` already contains `distance_to_dropoff_meters`, `is_approaching`, `is_arrived` optional fields |
+| `tests/test_geofence.py` | **New** — 50 geofence tests covering all 14 scenarios from the spec |
+
+---
+
+### Phase 4.2 Recommendation
+
+The following capabilities are suitable for implementation in Phase 4.2 once Phase 4.1 is verified in staging:
+
+1. **Route deviation detection**: Alert dispatchers when rider GPS diverges significantly from the planned route waypoints.
+2. **Redis-backed geofence state**: Replace `GeofenceMilestoneState` in-memory dict with a Redis HASH for multi-worker correctness.
+3. **Push notification dispatch**: Trigger customer SMS / FCM push when `RIDER_APPROACHING` is emitted.
+4. **React LiveMap integration**: Wire `src/routes/track.$id.tsx` WebSocket client to receive and render `RIDER_APPROACHING` / `RIDER_ARRIVED` events on the map.
+
+---
+
+## Phase 4.2 — Route Deviation Detection
+
+### Overview & Purpose
+
+Phase 4.2 introduces route deviation monitoring to the Riderzpro location tracking pipeline. When a rider reports GPS coordinates during an active delivery task, the system evaluates the rider's physical perpendicular distance to the planned delivery route corridor. If the rider strays beyond a configurable threshold distance from the route, a canonical `RIDER_ROUTE_DEVIATION` event is triggered and broadcast through the existing delivery-scoped WebSocket infrastructure.
+
+> [!IMPORTANT]
+> **Detection-Only Architecture**: This phase does **not** automatically reassign riders, cancel deliveries, modify task statuses, or recalculate routes. Its sole responsibility is accurate detection, in-memory state tracking/deduplication, and real-time event dissemination.
+
+---
+
+### Route Corridor Concept
+
+Rather than calculating a naive distance to the nearest individual waypoint (which produces false positives when a rider travels legitimately between distant waypoints on a straight road), Phase 4.2 implements a **route corridor** model:
+
+```
+Planned Route:   Waypoint A ===============[Corridor]=============== Waypoint B
+                                                  |
+                                                  | orthogonal distance
+                                                  v
+Rider GPS:                                    Rider (P)
+```
+
+1. The route is represented as an ordered sequence of segments $[W_i, W_{i+1}]$.
+2. For each segment, the orthogonal projection parameter $t$ of the rider coordinate onto the segment line is calculated using equirectangular projection adjusted for local latitude shrinkage:
+   $$t = \frac{\vec{AP} \cdot \vec{AB}}{|\vec{AB}|^2}, \quad t_{\text{clamped}} = \max(0.0, \min(1.0, t))$$
+3. Great-circle Haversine distance is calculated between the rider and the closest clamped point on each segment.
+4. The minimum distance across all segments represents the rider's true distance from the planned route corridor.
+
+---
+
+### Configurable Threshold
+
+- **Constant**: `DEFAULT_ROUTE_DEVIATION_DISTANCE_METERS = 250.0`
+- **Environment Override**: `ROUTE_DEVIATION_DISTANCE_METERS` (defaults to `250.0` meters if unset)
+- The threshold is centrally defined in `logistics/route_deviation.py` and passed to `RouteDeviationService.__init__()`.
+
+---
+
+### Active Delivery States
+
+Route deviation is evaluated **only** for deliveries in active fulfillment states:
+
+```python
+ACTIVE_DEVIATION_STATUSES = {"assigned", "picked_up", "in_transit"}
+```
+
+Deliveries in terminal states (`delivered`, `cancelled`, `failed`) or pre-assignment state (`pending`) are ignored and will never emit deviation events.
+
+---
+
+### Canonical Event: `RIDER_ROUTE_DEVIATION`
+
+When a rider exceeds the threshold corridor, the system emits `RIDER_ROUTE_DEVIATION`:
+
+```json
+{
+  "event": "RIDER_ROUTE_DEVIATION",
+  "delivery_id": "del_a1b2c3d4e5f6",
+  "order_id": "ORD-12345",
+  "rider_id": "tech_ramesh",
+  "distance_from_route_meters": 312.5,
+  "threshold_meters": 250.0,
+  "latitude": 12.9754,
+  "longitude": 77.6556,
+  "timestamp": "2026-10-12T16:20:00.000000"
+}
+```
+
+---
+
+### State Deduplication & Recovery Behavior
+
+1. **Deduplication**: Once a delivery enters the deviating state (`is_deviating = True`), subsequent GPS updates that remain beyond the threshold will **not** emit duplicate events. This protects subscribers and networks from event flooding.
+2. **Recovery Reset**: When the rider moves back within the corridor ($\le 250\,\text{m}$), the internal state transitions back to `is_deviating = False`. No recovery events are spammed, but the state cleanly resets so that any subsequent departure from the route corridor will trigger a new deviation event.
+3. **Delivery Isolation**: State is tracked per delivery ID in `RouteDeviationState`. Deviation on Delivery A has zero effect on Delivery B.
+
+---
+
+### Missing & Malformed Route Handling
+
+If a delivery has no associated route, an empty waypoints list, or malformed coordinate data:
+- The system safely skips deviation evaluation without raising exceptions.
+- `POST /api/riders/{rider_id}/location` continues to succeed and records rider coordinates normally.
+
+---
+
+### WebSocket & REST API Integration
+
+1. **WebSocket Broadcast**: Events are routed through `handle_realtime_event()` in `logistics/realtime.py` to `DeliveryConnectionManager.broadcast_to_delivery(delivery_id, payload)`. Only clients subscribed to the specific delivery's tracking stream receive the event.
+2. **Tracking REST API**: `GET /api/deliveries/{delivery_id}/tracking` exposes three optional deviation fields:
+   - `distance_from_route_meters`: Minimum distance to the route corridor in meters (or `null`).
+   - `is_route_deviating`: Boolean flag indicating if rider currently exceeds corridor threshold.
+   - `route_deviation_threshold_meters`: Active corridor threshold in meters (default `250.0`).
+
+---
+
+### Process-Local State & Multi-Worker Limitation
+
+> [!WARNING]
+> **Process-Local State**: `RouteDeviationState` is held in memory within the current Python process. In a multi-worker deployment (e.g. multiple Uvicorn workers), deviation state is not shared across processes.
+>
+> **Future Redis Integration**: A distributed state store (e.g., Redis HASH `riderzpro:deviation:{delivery_id}`) can be introduced in production hardening without modifying the external service interface.
+
+---
+
+### Files Modified / Created (Phase 4.2)
+
+| File | Change |
+|---|---|
+| `logistics/route_deviation.py` | **New** — `RouteDeviationService`, `RouteDeviationState`, corridor geometry, coordinate parsing, threshold constants |
+| `logistics/location_service.py` | **Modified** — imports `route_deviation_service`; evaluates route deviation after GPS update; enriches tracking response with route deviation status |
+| `logistics/realtime.py` | **Modified** — `handle_realtime_event()` broadcasts `RIDER_ROUTE_DEVIATION` to delivery WebSocket clients |
+| `logistics/schemas.py` | **Modified** — `DeliveryTrackingResponse` schema enriches optional `distance_from_route_meters`, `is_route_deviating`, `route_deviation_threshold_meters` |
+| `tests/test_route_deviation.py` | **New** — 37 tests covering unit, geometric projection, thresholds, deduplication, recovery, lifecycle, WebSocket isolation, and API integration |
+| `logistics/README.md` | **Modified** — added Phase 4.2 documentation |
+
+---
+
+## Part 6 — Frontend Map Integration & Live Tracking Visualization
+
+### 1. Architecture Overview
+
+The Map Integration phase connects the React/TanStack frontend (`src/routes/track.$id.tsx` and `src/components/site/LiveMap.tsx`) directly to the backend REST tracking API and WebSocket real-time event pipeline without vendor lock-in.
+
+```
+       track.$id.tsx (Route Page)
+               │
+      useDeliveryTracking (Hook)
+       ├── REST GET /api/deliveries/{id}/tracking (Initial snapshot & fallback)
+       └── WS  /ws/deliveries/{id}/tracking (Real-time telemetry & milestone events)
+               │
+        ┌──────┴─────────────────────────────────┐
+        ▼                                        ▼
+   DeliveryMap (Interactive Canvas/Tiles)    TrackingStatusPanel (Metadata)
+   ├── MapProvider (Agnostic context)        ├── Live/Connecting/Stale Status Pill
+   ├── OpenStreetMap / Carto tiles           ├── ETA & Remaining Distance
+   ├── PickupMarker & DropoffMarker          ├── Geofence Alerts (Approaching/Arrived)
+   │     (500m & 50m geofence rings)         └── Route Deviation Diagnostics
+   ├── RiderMarker (Bearing & Radar Pulse)
+   └── RouteLayer (Backend Waypoints & Deviation vector)
+```
+
+### 2. Map Provider Abstraction
+
+- **Provider Agnostic**: Implemented through pure EPSG:3857 Web Mercator coordinate transformations (`MercatorProjection.ts`) and `MapProvider.tsx`.
+- **Zero API Key Requirement**: Uses standard tile providers (OpenStreetMap / Carto Positron / Voyager) out of the box with customizable `MapProviderConfig`.
+- **Easy Vendor Replacement**: Mapbox, Google Maps, or Leaflet can be swapped in via the `MapProviderConfig` without modifying the core delivery business components.
+
+### 3. REST Initialization & WebSocket Lifecycle
+
+- **Initial Load**: `GET /api/deliveries/{delivery_id}/tracking` fetches the canonical delivery snapshot, including coordinates for pickup, dropoff, current rider location, and pre-calculated `route_waypoints`.
+- **WebSocket Connection**: `/ws/deliveries/{delivery_id}/tracking?user_id=...&user_role=...` streams real-time updates.
+- **Handled Events**:
+  - `INITIAL_TRACKING_SNAPSHOT`: Synchronizes state on initial handshake.
+  - `RIDER_LOCATION_UPDATED`: Moves rider marker smoothly and updates telemetry (speed, bearing, distance, ETA) without reloading the page.
+  - `RIDER_APPROACHING`: Triggers amber approaching banner and highlights the 500m destination proximity zone.
+  - `RIDER_ARRIVED`: Triggers green arrival alert and highlights the 50m destination geofence.
+  - `RIDER_ROUTE_DEVIATION`: Displays high-visibility warning pill and projects the rider's deviation vector to the nearest waypoint corridor.
+  - `DELIVERY_COMPLETED`: Signals delivery completion, gracefully disconnecting the active live tracker.
+- **Connection Management & Reconnection**: Exponential backoff reconnection (1s base up to 15s max with jitter) handles intermittent connectivity. Disconnects cleanly on unmount with no orphaned listeners.
+
+### 4. Markers & Route Visualization
+
+- **Pickup & Dropoff**: Styled markers with distinct emerald and violet branding. Dropoff features concentric SVG circles showing 500m (approaching) and 50m (arrival) geofence thresholds.
+- **Rider Marker**: Displays real-time GPS coordinates, vehicle type indicator, bearing rotation based on `heading_degrees`, and an animated radar ping when transmitting live telemetry.
+- **Route Visualization**: Rendered strictly from the backend's `route_waypoints` polyline. The frontend never recalculates routes or calls external routing APIs.
+- **Viewport Management**: Fits bounds containing pickup, dropoff, and rider on initial snapshot only. User panning and zooming are preserved across subsequent live GPS pings.
+
+### 5. API Configuration
+
+- Frontend API base URLs are centralized in `src/lib/api.ts` through `VITE_API_BASE_URL` (defaulting to window origin or `http://localhost:8000`).
+- WebSocket URLs automatically translate HTTP/HTTPS protocols to WS/WSS schemes and serialize session query parameters.

@@ -163,6 +163,14 @@ def handle_realtime_event(event_name: str, payload: Dict[str, Any]):
         }
         dispatch_coroutine(realtime_manager.broadcast_to_delivery(delivery_id, realtime_payload))
 
+    elif event_name in ("RIDER_APPROACHING", "RIDER_ARRIVED", "RIDER_ROUTE_DEVIATION"):
+        # Geofence milestone and route deviation events — broadcast the payload directly to the delivery's WebSocket clients.
+        # The payload is already fully formed by GeofenceService / RouteDeviationService and requires no
+        # additional transformation here.
+        delivery_id = payload.get("delivery_id")
+        if delivery_id:
+            dispatch_coroutine(realtime_manager.broadcast_to_delivery(delivery_id, payload))
+
     elif event_name == "DELIVERY_STATUS_CHANGED":
         delivery_id = payload.get("delivery_id")
         to_status = payload.get("to_status")
@@ -221,7 +229,10 @@ async def delivery_tracking_websocket(
         role_clean = effective_user_role.lower().strip()
         if role_clean in ("admin", "dispatcher", "supervisor", "system"):
             is_authorized = True
-        elif role_clean == "customer" and effective_user_id == delivery.customer_id:
+        elif role_clean == "customer" and (
+            effective_user_id == delivery.customer_id
+            or (getattr(delivery, "customer_phone", None) and effective_user_id == delivery.customer_phone)
+        ):
             is_authorized = True
         elif role_clean == "rider" and effective_user_id == delivery.assigned_rider_id:
             is_authorized = True

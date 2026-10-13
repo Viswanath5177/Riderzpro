@@ -295,6 +295,12 @@ class DeliveryTrackingResponse(BaseModel):
     eta_minutes: Optional[float] = None
     distance_km: Optional[float] = None
     route_waypoints: Optional[List[Dict[str, Any]]] = None
+    distance_to_dropoff_meters: Optional[float] = None
+    is_approaching: Optional[bool] = None
+    is_arrived: Optional[bool] = None
+    distance_from_route_meters: Optional[float] = None
+    is_route_deviating: Optional[bool] = None
+    route_deviation_threshold_meters: Optional[float] = None
 
 
 class RiderLocationHistoryItem(BaseModel):
