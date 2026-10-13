@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Package, ArrowRight, Check, MapPin, Download, RefreshCw, ShoppingBag, Eye } from "lucide-react";
+import { Package, ArrowRight, Check, MapPin, RefreshCw, ShoppingBag, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useStore, ORDER_STEPS, type Order } from "@/lib/store";
 import { getProduct, getVendor, inr } from "@/lib/data";
+import { InvoiceModal } from "./InvoiceModal";
 
 export function OrdersTab() {
   const { orders, advanceOrder, simulateDemoOrder } = useStore();
@@ -18,83 +19,12 @@ export function OrdersTab() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Invoice modal */}
+      {/* Invoice modal — shared component */}
       {selectedInvoiceOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-white rounded-3xl border border-gray-200 shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div>
-                <p className="text-base font-bold text-gray-900 font-display">Tax Invoice & Receipt</p>
-                <p className="text-xs text-gray-500 font-mono">Invoice #{selectedInvoiceOrder.id}</p>
-              </div>
-              <button
-                onClick={() => setSelectedInvoiceOrder(null)}
-                className="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="text-xs space-y-3">
-              <div className="flex justify-between text-gray-600">
-                <span>Date: {new Date(selectedInvoiceOrder.createdAt).toLocaleDateString("en-IN")}</span>
-                <span>Payment: {selectedInvoiceOrder.payment}</span>
-              </div>
-
-              <div className="border border-gray-100 rounded-2xl p-3 bg-gray-50 divide-y divide-gray-100">
-                {selectedInvoiceOrder.groups.map((g) => {
-                  const v = getVendor(g.vendorId);
-                  return (
-                    <div key={g.vendorId} className="py-2 first:pt-0 last:pb-0">
-                      <p className="font-bold text-gray-800">{v?.name || "Verified EV Vendor"}</p>
-                      {g.items.map((it) => {
-                        const p = getProduct(it.productId);
-                        return (
-                          <div key={it.productId} className="flex justify-between text-gray-600 mt-1">
-                            <span>{it.qty} × {p?.name || "EV Spare"}</span>
-                            <span className="font-semibold text-gray-900">{inr(it.price * it.qty)}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="space-y-1.5 pt-2">
-                <div className="flex justify-between text-gray-500">
-                  <span>Subtotal</span>
-                  <span>{inr(selectedInvoiceOrder.itemsTotal)}</span>
-                </div>
-                <div className="flex justify-between text-gray-500">
-                  <span>Doorstep Delivery (GPS Logged)</span>
-                  <span>{inr(selectedInvoiceOrder.deliveryTotal)}</span>
-                </div>
-                <div className="flex justify-between text-gray-500">
-                  <span>GST (18% Statutory EV Tax)</span>
-                  <span>{inr(selectedInvoiceOrder.tax)}</span>
-                </div>
-                <div className="flex justify-between font-bold text-sm text-gray-900 pt-2 border-t border-gray-100">
-                  <span>Total Amount Paid</span>
-                  <span className="text-primary">{inr(selectedInvoiceOrder.total)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  toast.success(`Invoice ${selectedInvoiceOrder.id}.pdf downloaded`);
-                  setSelectedInvoiceOrder(null);
-                }}
-                className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-emerald-600 transition flex items-center gap-1.5"
-              >
-                <Download className="h-3.5 w-3.5" />
-                <span>Download PDF Receipt</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        <InvoiceModal
+          order={selectedInvoiceOrder}
+          onClose={() => setSelectedInvoiceOrder(null)}
+        />
       )}
 
       {/* Header */}
