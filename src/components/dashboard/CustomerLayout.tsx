@@ -325,15 +325,15 @@ export function CustomerLayout({
             isCollapsed ? "w-20" : "w-64"
           )}
         >
-          {/* Logo & Header */}
-          <div className="relative h-20 flex items-center justify-center px-4 border-b border-black/[0.06]">
+          {/* Logo & Header (Apple Glassmorphic Theme) */}
+          <div className="relative h-20 flex items-center justify-center px-4 border-b border-black/[0.06] bg-white/60 backdrop-blur-xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.85)]">
             {!isCollapsed ? (
               <div className="flex items-center justify-center">
                 <Logo className="justify-center" imgClassName="h-13 sm:h-14 w-auto" />
               </div>
             ) : (
               <div className="flex items-center justify-center">
-                <span className="grid h-10 w-10 place-items-center rounded-2xl bg-primary text-white font-bold text-lg shadow-sm">
+                <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-tr from-[#E31E24] to-rose-500 text-white font-bold text-lg shadow-sm ring-2 ring-white">
                   R
                 </span>
               </div>
@@ -342,11 +342,11 @@ export function CustomerLayout({
               onClick={() => setIsCollapsed(!isCollapsed)}
               aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               className={cn(
-                "hidden lg:grid h-7 w-7 place-items-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-black/[0.05] transition absolute top-1/2 -translate-y-1/2",
-                isCollapsed ? "right-1.5" : "right-3"
+                "hidden lg:grid h-7 w-7 place-items-center rounded-full bg-white/80 hover:bg-white text-gray-400 hover:text-gray-800 border border-black/[0.08] shadow-2xs hover:shadow-xs hover:scale-105 active:scale-95 transition-all absolute top-1/2 -translate-y-1/2",
+                isCollapsed ? "right-2" : "right-3"
               )}
             >
-              {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
             </button>
           </div>
 
@@ -457,25 +457,25 @@ export function CustomerLayout({
         {/* Right Content Area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Top Header (Apple Glassmorphic Theme) */}
-          <header className="sticky top-0 z-20 h-18 bg-white/75 backdrop-blur-xl backdrop-saturate-150 border-b border-black/[0.06] px-4 md:px-8 flex items-center justify-between gap-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] transition-all">
+          <header className="sticky top-0 z-20 h-20 bg-white/65 backdrop-blur-2xl backdrop-saturate-180 border-b border-black/[0.06] px-4 md:px-8 flex items-center justify-between gap-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.85),0_10px_30px_-10px_rgba(0,0,0,0.04)] transition-all duration-200">
             {/* Left: Mobile hamburger & breadcrumbs */}
             <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="md:hidden p-2 rounded-xl text-gray-700 hover:bg-black/[0.05] active:scale-95 transition"
+                className="md:hidden h-10 w-10 grid place-items-center rounded-2xl bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_6px_rgba(0,0,0,0.03)] text-gray-700 hover:text-gray-950 active:scale-95 transition-all duration-200"
                 aria-label="Open navigation menu"
               >
                 <Menu className="h-5 w-5" />
               </button>
 
               <div className="hidden sm:block min-w-0">
-                <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
-                  <span>Customer Portal</span>
-                  <span>/</span>
-                  <span className="text-gray-800 font-semibold truncate">{getBreadcrumbTitle()}</span>
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 tracking-wide">
+                  <span className="px-2 py-0.5 rounded-md bg-black/[0.03] border border-black/[0.04] text-gray-500 font-medium">Customer Portal</span>
+                  <span className="text-gray-300">/</span>
+                  <span className="text-gray-800 font-bold truncate">{getBreadcrumbTitle()}</span>
                 </div>
-                <h1 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">
-                  Welcome back, {userProfile.name.split(" ")[0]}
+                <h1 className="text-base sm:text-lg md:text-xl font-extrabold text-gray-900 tracking-tight font-display mt-0.5">
+                  Welcome back, <span className="text-[#111111]">{userProfile.name.split(" ")[0]}</span>
                 </h1>
               </div>
             </div>
@@ -484,13 +484,13 @@ export function CustomerLayout({
             <div className="flex-1 max-w-md hidden md:block">
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="w-full flex items-center justify-between px-4 py-2 rounded-full bg-black/[0.03] hover:bg-black/[0.06] active:scale-[0.99] text-sm text-gray-700 transition-all duration-200 shadow-2xs group border border-black/[0.06] hover:border-black/[0.12]"
+                className="w-full flex items-center justify-between px-4 py-2.5 rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] hover:border-black/[0.16] shadow-[inset_0_1px_1px_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[inset_0_1px_1px_0_rgba(255,255,255,1),0_4px_16px_rgba(0,0,0,0.06)] active:scale-[0.99] text-sm text-gray-700 transition-all duration-200 group cursor-pointer"
               >
                 <span className="flex items-center gap-2.5">
-                  <Search className="h-4 w-4 text-gray-400 group-hover:text-[#E31E24] transition-colors" />
-                  <span className="text-xs text-gray-500 font-normal">Search EV batteries, chargers, fitments...</span>
+                  <Search className="h-4 w-4 text-gray-400 group-hover:text-[#E31E24] group-hover:scale-110 transition-all duration-200" />
+                  <span className="text-xs text-gray-500 group-hover:text-gray-800 transition-colors font-medium">Search EV batteries, chargers, fitments...</span>
                 </span>
-                <kbd className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono text-gray-500 bg-white/80 border border-black/[0.08] rounded-md shadow-2xs">
+                <kbd className="hidden lg:inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-mono font-semibold text-gray-500 group-hover:text-gray-700 bg-white/80 border border-black/[0.08] rounded-md shadow-2xs backdrop-blur-xs transition-colors">
                   ⌘K
                 </kbd>
               </button>
@@ -501,10 +501,10 @@ export function CustomerLayout({
               {/* Search by VIN Button */}
               <button
                 onClick={() => setIsVinSearchOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/[0.08] hover:bg-emerald-500/[0.16] hover:border-emerald-500/40 text-xs font-semibold text-emerald-800 transition-all duration-200 active:scale-95 shadow-2xs"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-full border border-emerald-500/25 hover:border-emerald-500/40 bg-emerald-500/[0.08] hover:bg-emerald-500/[0.15] active:bg-emerald-500/[0.22] text-xs font-bold text-emerald-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_2px_8px_rgba(16,185,129,0.06)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_4px_14px_rgba(16,185,129,0.12)] backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 group cursor-pointer"
                 title="Search items based on 17-digit VIN number"
               >
-                <ScanLine className="h-3.5 w-3.5 text-emerald-600" />
+                <ScanLine className="h-3.5 w-3.5 text-emerald-600 group-hover:rotate-12 transition-transform duration-200" />
                 <span className="hidden sm:inline">Search by VIN</span>
                 <span className="sm:hidden font-mono text-[11px]">VIN</span>
               </button>
@@ -512,30 +512,30 @@ export function CustomerLayout({
               {/* Mobile Search trigger */}
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="md:hidden p-2 rounded-xl text-gray-700 hover:bg-black/[0.05] transition"
+                className="md:hidden h-10 w-10 grid place-items-center rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] text-gray-700 active:scale-95 transition-all duration-200"
                 aria-label="Search products"
               >
-                <Search className="h-5 w-5" />
+                <Search className="h-4.5 w-4.5" />
               </button>
 
               {/* Notifications Button on Top Right with Badge & Popover */}
               <div className="relative">
                 <button
                   onClick={() => setIsNotifOpen(!isNotifOpen)}
-                  className="relative p-2.5 rounded-full bg-black/[0.03] hover:bg-black/[0.07] text-gray-700 active:scale-90 transition-all duration-200"
+                  className="relative h-10 w-10 grid place-items-center rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] hover:border-black/[0.16] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] hover:scale-105 active:scale-95 transition-all duration-200 text-gray-600 hover:text-gray-950 cursor-pointer group"
                   aria-label="Notifications"
                   title="Notifications"
                 >
-                  <Bell className="h-4.5 w-4.5 text-gray-700" />
+                  <Bell className="h-4.5 w-4.5 text-gray-700 group-hover:rotate-12 transition-transform duration-200" />
                   {unreadNotifsCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 grid h-4.5 min-w-4.5 px-1 place-items-center rounded-full bg-[#E31E24] text-[9.5px] font-bold text-white shadow-xs ring-2 ring-white">
+                    <span className="absolute -top-0.5 -right-0.5 grid h-4.5 min-w-4.5 px-1 place-items-center rounded-full bg-gradient-to-r from-[#E31E24] to-rose-500 text-[9.5px] font-extrabold text-white shadow-[0_2px_6px_rgba(227,30,36,0.4)] ring-2 ring-white">
                       {unreadNotifsCount}
                     </span>
                   )}
                 </button>
 
                 {isNotifOpen && (
-                  <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-3xl bg-white/90 backdrop-blur-2xl border border-black/[0.08] shadow-[0_20px_50px_rgba(0,0,0,0.12)] p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="absolute right-0 mt-2.5 w-80 sm:w-96 rounded-3xl bg-white/94 backdrop-blur-3xl border border-white/80 shadow-[0_24px_60px_-15px_rgba(0,0,0,0.18),inset_0_1px_0_0_rgba(255,255,255,0.95)] p-4 z-50 ring-1 ring-black/[0.06] animate-in fade-in zoom-in-95 duration-150">
                     <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                       <div>
                         <p className="text-sm font-bold text-gray-900">Notifications</p>
@@ -597,13 +597,13 @@ export function CustomerLayout({
               <button
                 type="button"
                 onClick={() => setIsCartOpen(true)}
-                className="relative p-2.5 rounded-full bg-black/[0.03] hover:bg-black/[0.07] text-gray-700 active:scale-90 transition-all duration-200 cursor-pointer"
+                className="relative h-10 w-10 grid place-items-center rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] hover:border-black/[0.16] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] hover:scale-105 active:scale-95 transition-all duration-200 text-gray-600 hover:text-gray-950 cursor-pointer group"
                 aria-label="Shopping Cart"
                 title="Open Shopping Cart"
               >
-                <ShoppingCart className="h-4.5 w-4.5 text-gray-700" />
+                <ShoppingCart className="h-4.5 w-4.5 text-gray-700 group-hover:-translate-y-0.5 transition-transform duration-200" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 grid h-4.5 min-w-4.5 px-1 place-items-center rounded-full bg-[#E31E24] text-[9.5px] font-bold text-white shadow-xs ring-2 ring-white">
+                  <span className="absolute -top-0.5 -right-0.5 grid h-4.5 min-w-4.5 px-1 place-items-center rounded-full bg-gradient-to-r from-[#E31E24] to-rose-500 text-[9.5px] font-extrabold text-white shadow-[0_2px_6px_rgba(227,30,36,0.4)] ring-2 ring-white">
                     {cartCount}
                   </span>
                 )}
@@ -614,14 +614,14 @@ export function CustomerLayout({
                 <button
                   type="button"
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="relative flex items-center gap-2 p-1 pl-1 pr-2 sm:pr-2.5 rounded-full bg-black/[0.03] hover:bg-black/[0.07] border border-black/[0.06] hover:border-black/[0.12] active:scale-95 transition-all duration-200 cursor-pointer shadow-2xs group"
+                  className="relative flex items-center gap-2.5 p-1 pl-1 pr-3 sm:pr-3.5 rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] hover:border-black/[0.16] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,1),0_4px_16px_rgba(0,0,0,0.08)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer group"
                   aria-label="Profile and account menu"
                   title="Profile & Account Menu"
                 >
-                  <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-tr from-[#E31E24] to-rose-500 text-white font-extrabold text-xs shadow-xs ring-1 ring-white">
+                  <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-tr from-[#E31E24] via-rose-500 to-red-600 text-white font-extrabold text-xs shadow-xs ring-2 ring-white">
                     {userInitials}
                   </span>
-                  <span className="hidden sm:inline-block text-xs font-semibold text-gray-800 group-hover:text-gray-950 max-w-[85px] truncate">
+                  <span className="hidden sm:inline-block text-xs font-bold text-gray-800 group-hover:text-gray-950 max-w-[90px] truncate transition-colors">
                     {userProfile.name.split(" ")[0]}
                   </span>
                   <ChevronDown className={cn("h-3.5 w-3.5 text-gray-400 group-hover:text-gray-700 transition-transform duration-200", isProfileOpen && "rotate-180")} />
@@ -633,9 +633,9 @@ export function CustomerLayout({
                       className="fixed inset-0 z-40"
                       onClick={() => setIsProfileOpen(false)}
                     />
-                    <div className="absolute right-0 mt-2 w-72 rounded-3xl bg-white/95 backdrop-blur-2xl border border-black/[0.08] shadow-[0_20px_60px_rgba(0,0,0,0.14)] p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="absolute right-0 mt-2.5 w-76 sm:w-80 rounded-3xl bg-white/94 backdrop-blur-3xl border border-white/80 shadow-[0_24px_60px_-15px_rgba(0,0,0,0.18),inset_0_1px_0_0_rgba(255,255,255,0.95)] p-3.5 z-50 ring-1 ring-black/[0.06] animate-in fade-in zoom-in-95 duration-150">
                       {/* User Header Preview */}
-                      <div className="p-3 rounded-2xl bg-black/[0.02] border border-black/[0.04] mb-2 flex items-center gap-3">
+                      <div className="p-3.5 rounded-2xl bg-gradient-to-b from-white/70 to-black/[0.02] border border-black/[0.05] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)] mb-2 flex items-center gap-3">
                         <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-tr from-[#E31E24] to-rose-500 text-white font-extrabold text-sm shadow-xs ring-2 ring-white shrink-0">
                           {userInitials}
                         </span>

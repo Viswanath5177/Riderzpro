@@ -56,13 +56,13 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
       {/* ─────────────────────────────────────────────────────────────
           COMPACT PROFESSIONAL TWO-ROW HEADER (STATIC)
          ───────────────────────────────────────────────────────────── */}
-      <header className="bg-white border-b border-[#E5E7EB]">
+      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-2xl backdrop-saturate-180 border-b border-black/[0.06] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_10px_30px_-10px_rgba(0,0,0,0.03)] transition-all">
         {/* ROW 1: Logo, Search Bar, Cart, Account */}
         <div className="mx-auto flex h-18 sm:h-20 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
           {/* Mobile menu toggle */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 rounded-lg text-gray-700 hover:bg-[#F7F7F8] active:scale-95 transition lg:hidden"
+            className="p-2 rounded-xl text-gray-700 bg-white/70 hover:bg-white border border-black/[0.06] shadow-2xs active:scale-95 transition lg:hidden"
             aria-label="Toggle menu"
           >
             {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -78,18 +78,18 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
             onSubmit={handleSearchSubmit}
             className="hidden sm:flex flex-1 max-w-xl mx-4 items-center relative"
           >
-            <div className="relative w-full flex items-center rounded-lg border border-[#E5E7EB] bg-white transition-all focus-within:border-[#E31E24] focus-within:ring-1 focus-within:ring-[#E31E24]">
-              <Search className="ml-3.5 h-4 w-4 text-[#6B7280] shrink-0" />
+            <div className="relative w-full flex items-center rounded-full border border-black/[0.08] hover:border-black/[0.15] bg-white/70 hover:bg-white/90 backdrop-blur-md shadow-[inset_0_1px_1px_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] transition-all focus-within:border-[#E31E24] focus-within:ring-2 focus-within:ring-[#E31E24]/20 focus-within:bg-white">
+              <Search className="ml-4 h-4 w-4 text-[#6B7280] shrink-0" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search electric bikes, accessories, batteries, spare parts..."
-                className="w-full bg-transparent py-2 pl-2.5 pr-22 text-xs sm:text-sm text-[#111111] placeholder:text-[#6B7280] focus:outline-none"
+                className="w-full bg-transparent py-2.5 pl-2.5 pr-24 text-xs sm:text-sm text-[#111111] placeholder:text-[#6B7280] focus:outline-none"
               />
               <button
                 type="submit"
-                className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md bg-[#E31E24] px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-red-700 active:scale-95"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full bg-[#E31E24] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-red-700 active:scale-95 shadow-xs cursor-pointer"
               >
                 Search
               </button>
@@ -97,19 +97,19 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
           </form>
 
           {/* Right: Cart & Account Controls */}
-          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Cart Icon with Item Count - Opens Slide-over Cart Drawer */}
             <button
               type="button"
               onClick={() => setIsCartOpen(true)}
               id="navbar-cart-btn"
               aria-label="Shopping Cart"
-              className="relative flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-3.5 py-2 text-xs font-semibold text-[#111111] transition hover:border-[#E31E24] hover:text-[#E31E24] active:scale-95 cursor-pointer"
+              className="relative flex items-center gap-2 rounded-full border border-black/[0.08] hover:border-black/[0.15] bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md px-3.5 py-2 text-xs font-semibold text-[#111111] transition shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:text-[#E31E24] active:scale-95 cursor-pointer"
             >
-              <ShoppingCart className="h-4 w-4" />
+              <ShoppingCart className="h-4 w-4 text-gray-700" />
               <span className="hidden sm:inline">Cart</span>
               {cartCount > 0 && (
-                <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-[#E31E24] px-1 text-[10px] font-bold text-white leading-none">
+                <span className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-[#E31E24] px-1 text-[10px] font-bold text-white leading-none shadow-xs">
                   {cartCount}
                 </span>
               )}
@@ -119,7 +119,7 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
             <Link
               to="/dashboard/customer"
               aria-label="Customer Account"
-              className="flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-3.5 py-2 text-xs font-semibold text-[#111111] transition hover:border-[#E31E24] hover:text-[#E31E24] active:scale-95"
+              className="flex items-center gap-2 rounded-full border border-black/[0.08] hover:border-black/[0.15] bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md px-3.5 py-2 text-xs font-semibold text-[#111111] transition shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:text-[#E31E24] active:scale-95"
             >
               <User className="h-4 w-4 text-[#6B7280]" />
               <span className="hidden sm:inline">{userProfile.name ? userProfile.name.split(" ")[0] : "Account"}</span>
