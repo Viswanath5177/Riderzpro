@@ -177,17 +177,18 @@ export function AiChatbotWidget() {
   return (
     <>
       {/* Floating Action Button in Bottom Right */}
+      {/* Floating Launcher Button (Apple Intelligence Siri Glassmorphic Theme) */}
       <div className="fixed bottom-6 right-6 z-40">
         <button
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            "relative group flex items-center gap-2.5 rounded-full px-4 py-3.5 text-white font-bold text-xs shadow-[0_8px_30px_rgba(227,30,36,0.4)] transition-all duration-300 active:scale-95",
+            "relative group flex items-center gap-2.5 rounded-full px-4.5 py-3.5 text-white font-bold text-xs transition-all duration-300 active:scale-95 cursor-pointer backdrop-blur-xl border border-white/40",
             isOpen
-              ? "bg-[#111111] hover:bg-black"
-              : "bg-gradient-to-tr from-[#E31E24] via-[#ea2f35] to-[#ff4a50] hover:shadow-[0_12px_40px_rgba(227,30,36,0.6)] hover:scale-105"
+              ? "bg-slate-900/90 text-white shadow-lg ring-2 ring-indigo-500/30"
+              : "bg-gradient-to-r from-indigo-600 via-violet-600 to-sky-500 shadow-[0_10px_35px_rgba(99,102,241,0.45)] hover:shadow-[0_14px_45px_rgba(139,92,246,0.65)] hover:scale-105 ring-2 ring-indigo-400/40"
           )}
           aria-label={isOpen ? "Close AI Assistant" : "Open AI Assistant"}
-          title="Open AI Fitment & Support Copilot"
+          title="Open Apple Glassmorphic Copilot"
         >
           {isOpen ? (
             <>
@@ -197,7 +198,7 @@ export function AiChatbotWidget() {
           ) : (
             <>
               <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-80" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-90" />
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-white" />
               </span>
               <Sparkles className="h-4.5 w-4.5 text-white" />
@@ -207,35 +208,35 @@ export function AiChatbotWidget() {
         </button>
       </div>
 
-      {/* Floating Chatbot Window */}
+      {/* Floating Chatbot Window (Apple Intelligence Glassmorphism) */}
       {isOpen && (
-        <div className="fixed bottom-22 right-6 z-50 w-[390px] sm:w-[430px] max-w-[calc(100vw-2rem)] h-[570px] max-h-[82vh] rounded-3xl bg-white/95 backdrop-blur-2xl border border-black/[0.08] shadow-[0_25px_70px_rgba(0,0,0,0.22)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed bottom-22 right-6 z-50 w-[390px] sm:w-[430px] max-w-[calc(100vw-2rem)] h-[570px] max-h-[82vh] rounded-3xl bg-white/90 backdrop-blur-2xl backdrop-saturate-180 border border-indigo-500/25 shadow-[0_25px_70px_rgba(99,102,241,0.22)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
           {/* Header */}
-          <div className="bg-gradient-to-r from-[#111111] via-[#1a1a1a] to-[#242424] text-white p-4 flex items-center justify-between shadow-xs shrink-0">
+          <div className="bg-gradient-to-r from-slate-950 via-indigo-950 to-purple-950 text-white p-4 flex items-center justify-between border-b border-indigo-500/20 shadow-xs shrink-0">
             <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-tr from-[#E31E24] to-[#ff474d] text-white shadow-md">
+              <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 text-white shadow-[0_0_18px_rgba(139,92,246,0.5)]">
                 <Sparkles className="h-5 w-5" />
               </span>
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-bold font-display text-white">RiderzPro AI Copilot</h3>
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="h-2 w-2 rounded-full bg-indigo-400 animate-pulse shadow-[0_0_8px_#818CF8]" />
                 </div>
-                <p className="text-[11px] text-gray-400">EV Fitment & 24/7 Dispatch Assistant</p>
+                <p className="text-[11px] text-indigo-200/80">Apple Glassmorphic Fitment Copilot</p>
               </div>
             </div>
 
             <div className="flex items-center gap-1">
               <button
                 onClick={handleReset}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition"
+                className="p-1.5 rounded-lg text-indigo-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
                 title="Reset conversation"
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition"
+                className="p-1.5 rounded-lg text-indigo-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
                 title="Close"
               >
                 <X className="h-5 w-5" />
@@ -257,7 +258,7 @@ export function AiChatbotWidget() {
                 <div
                   className={cn(
                     "h-7 w-7 rounded-full grid place-items-center text-white shrink-0 mt-0.5 text-[10px] font-bold shadow-2xs",
-                    m.sender === "user" ? "bg-gray-800" : "bg-[#E31E24]"
+                    m.sender === "user" ? "bg-gray-800" : "bg-gradient-to-tr from-indigo-600 via-violet-600 to-pink-500"
                   )}
                 >
                   {m.sender === "user" ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
@@ -269,8 +270,8 @@ export function AiChatbotWidget() {
                     className={cn(
                       "p-3.5 rounded-2xl leading-relaxed whitespace-pre-line shadow-2xs",
                       m.sender === "user"
-                        ? "bg-[#E31E24] text-white rounded-tr-xs"
-                        : "bg-gray-100/90 text-gray-900 border border-gray-200/80 rounded-tl-xs"
+                        ? "bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-700 text-white rounded-tr-xs"
+                        : "bg-indigo-50/70 text-gray-900 border border-indigo-100 rounded-tl-xs"
                     )}
                   >
                     {m.text}
@@ -282,7 +283,7 @@ export function AiChatbotWidget() {
                       {m.recommendations.map((rec) => (
                         <div
                           key={rec.id}
-                          className="p-2.5 rounded-2xl bg-white border border-gray-200 shadow-2xs flex items-center justify-between gap-3"
+                          className="p-2.5 rounded-2xl bg-white border border-indigo-100 shadow-2xs flex items-center justify-between gap-3 hover:border-indigo-300 transition"
                         >
                           <img
                             src={rec.image}
@@ -291,7 +292,7 @@ export function AiChatbotWidget() {
                           />
                           <div className="flex-1 min-w-0">
                             <p className="text-[11px] font-bold text-gray-900 truncate">{rec.name}</p>
-                            <p className="text-[10px] text-gray-500 font-semibold">{inr(rec.price)}</p>
+                            <p className="text-[10px] text-indigo-700 font-semibold">{inr(rec.price)}</p>
                           </div>
                           <button
                             onClick={() => {
@@ -299,7 +300,7 @@ export function AiChatbotWidget() {
                               setIsCartOpen(true);
                               toast.success(`Added ${rec.name} to cart!`);
                             }}
-                            className="px-2.5 py-1.5 rounded-xl bg-[#E31E24] text-white text-[10px] font-bold hover:bg-red-700 transition shrink-0 active:scale-95 shadow-2xs"
+                            className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 via-violet-600 to-sky-600 text-white text-[10px] font-bold hover:opacity-90 transition shrink-0 active:scale-95 shadow-2xs cursor-pointer"
                           >
                             + Add to Cart
                           </button>
@@ -322,7 +323,7 @@ export function AiChatbotWidget() {
                             setIsCartOpen(true);
                           }
                         }}
-                        className="px-3.5 py-1.5 rounded-xl bg-[#111111] hover:bg-black text-white text-[11px] font-bold shadow-2xs transition active:scale-95 flex items-center gap-1.5"
+                        className="px-3.5 py-1.5 rounded-xl bg-indigo-900 hover:bg-indigo-950 text-white text-[11px] font-bold shadow-2xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
                       >
                         <span>{m.action.label}</span>
                       </button>
@@ -337,13 +338,13 @@ export function AiChatbotWidget() {
             {/* Typing indicator */}
             {isTyping && (
               <div className="flex items-center gap-2 text-gray-400 text-xs">
-                <span className="h-6 w-6 rounded-full bg-[#E31E24] grid place-items-center text-white shrink-0">
+                <span className="h-6 w-6 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 grid place-items-center text-white shrink-0">
                   <Bot className="h-3 w-3" />
                 </span>
-                <span className="p-2.5 rounded-2xl bg-gray-100 rounded-tl-xs flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-bounce" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:0.2s]" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:0.4s]" />
+                <span className="p-2.5 rounded-2xl bg-indigo-50/80 rounded-tl-xs flex items-center gap-1 border border-indigo-100">
+                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-bounce" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-bounce [animation-delay:0.2s]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-bounce [animation-delay:0.4s]" />
                 </span>
               </div>
             )}
@@ -351,13 +352,13 @@ export function AiChatbotWidget() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Prompts Bar */}
-          <div className="px-3 py-2 border-t border-gray-100 bg-gray-50/70 overflow-x-auto flex gap-1.5 shrink-0 no-scrollbar">
+          {/* Quick Prompts Bar (Apple Glassmorphic chips) */}
+          <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50/40 overflow-x-auto flex gap-1.5 shrink-0 no-scrollbar">
             {quickPrompts.map((p) => (
               <button
                 key={p}
                 onClick={() => handleSend(p)}
-                className="px-2.5 py-1 rounded-full bg-white hover:bg-[#E31E24] hover:text-white border border-gray-200 text-gray-700 text-[10px] font-medium whitespace-nowrap transition active:scale-95 shadow-2xs"
+                className="px-2.5 py-1 rounded-full bg-white hover:bg-gradient-to-r hover:from-indigo-600 hover:to-violet-600 hover:text-white border border-indigo-200/80 text-indigo-950 text-[10px] font-medium whitespace-nowrap transition active:scale-95 shadow-2xs cursor-pointer"
               >
                 {p}
               </button>
@@ -365,7 +366,7 @@ export function AiChatbotWidget() {
           </div>
 
           {/* Input Footer */}
-          <div className="p-3 bg-white border-t border-gray-200 shrink-0">
+          <div className="p-3 bg-white border-t border-indigo-100 shrink-0">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -379,12 +380,12 @@ export function AiChatbotWidget() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask about fitment, batteries, orders..."
-                  className="w-full h-10 rounded-full border border-gray-200 bg-gray-50 pl-3.5 pr-9 text-xs outline-none focus:border-[#E31E24] focus:bg-white transition"
+                  className="w-full h-10 rounded-full border border-indigo-200/80 bg-indigo-50/30 pl-3.5 pr-9 text-xs outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 focus:bg-white transition"
                 />
                 <button
                   type="button"
                   onClick={() => toast.info("Voice input listening...")}
-                  className="absolute right-2.5 top-2.5 text-gray-400 hover:text-[#E31E24] transition"
+                  className="absolute right-2.5 top-2.5 text-indigo-600 hover:text-indigo-800 transition cursor-pointer"
                   title="Voice input"
                 >
                   <Mic className="h-4 w-4" />
@@ -394,7 +395,7 @@ export function AiChatbotWidget() {
               <button
                 type="submit"
                 disabled={!input.trim()}
-                className="h-10 w-10 rounded-full bg-[#E31E24] text-white grid place-items-center hover:bg-red-700 disabled:opacity-40 transition active:scale-95 shadow-xs shrink-0"
+                className="h-10 w-10 rounded-full bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-700 text-white grid place-items-center hover:opacity-90 disabled:opacity-40 transition active:scale-95 shadow-xs shrink-0 cursor-pointer"
                 aria-label="Send message"
               >
                 <Send className="h-4 w-4" />

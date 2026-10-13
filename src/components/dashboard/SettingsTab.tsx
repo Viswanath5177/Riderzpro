@@ -20,6 +20,7 @@ import {
   FileCheck,
   ChevronRight,
   ExternalLink,
+  Package,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
@@ -80,24 +81,28 @@ export function SettingsTab() {
   return (
     <div className="space-y-6 animate-in fade-in duration-200 max-w-5xl">
       {/* ─────────────────────────────────────────────────────────────
-          1. HERO PROFILE BANNER (EXECUTIVE AUTOMOTIVE GRADE)
+          1. HERO PROFILE BANNER (APPLE GLASSMORPHIC THEME)
          ───────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-3xl border border-gray-200 bg-gradient-to-br from-gray-950 via-gray-900 to-black p-6 sm:p-8 text-white shadow-xl">
-        {/* Subtle decorative glow accents */}
-        <div className="absolute top-0 right-0 h-64 w-64 rounded-full bg-red-600/15 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 h-48 w-48 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden rounded-3xl border border-black/[0.08] bg-white/85 backdrop-blur-2xl backdrop-saturate-180 p-6 sm:p-8 text-gray-950 shadow-[0_20px_50px_rgba(0,0,0,0.06)] transition-all">
+        {/* Apple Specular Top Highlight */}
+        <div className="absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white to-transparent opacity-90 pointer-events-none" />
+
+        {/* Multi-layered Apple ambient illumination glows */}
+        <div className="absolute -top-16 -left-16 h-64 w-64 rounded-full bg-[#E31E24]/[0.06] blur-3xl pointer-events-none" />
+        <div className="absolute -top-16 -right-16 h-64 w-64 rounded-full bg-indigo-500/[0.06] blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 left-1/3 h-64 w-64 rounded-full bg-emerald-500/[0.05] blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           {/* Left: Avatar & Identity Details */}
           <div className="flex items-center gap-5">
             <div className="relative group shrink-0">
-              <div className="grid h-20 w-20 sm:h-24 sm:w-24 place-items-center rounded-3xl bg-gradient-to-tr from-[#E31E24] to-rose-500 text-white font-extrabold text-2xl sm:text-3xl shadow-lg ring-4 ring-white/10">
+              <div className="grid h-20 w-20 sm:h-24 sm:w-24 place-items-center rounded-3xl bg-gradient-to-tr from-[#E31E24] via-rose-500 to-red-500 text-white font-black text-2xl sm:text-3xl shadow-[0_12px_32px_rgba(227,30,36,0.35)] ring-4 ring-white">
                 {initials}
               </div>
               <button
                 type="button"
                 onClick={() => toast.info("Profile photo upload: In demo mode, avatar is generated from initials.")}
-                className="absolute -bottom-1.5 -right-1.5 grid h-7 w-7 place-items-center rounded-full bg-white text-gray-900 shadow-md hover:bg-gray-100 transition cursor-pointer"
+                className="absolute -bottom-1 -right-1 grid h-7.5 w-7.5 place-items-center rounded-full bg-white text-gray-700 shadow-md hover:text-[#E31E24] hover:scale-110 active:scale-95 transition cursor-pointer border border-black/[0.08]"
                 title="Change Avatar"
               >
                 <Camera className="h-3.5 w-3.5" />
@@ -105,30 +110,30 @@ export function SettingsTab() {
             </div>
 
             <div className="space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-white font-display">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h1 className="text-2xl sm:text-3xl font-black text-gray-950 font-display tracking-tight">
                   {name || "Aakash Sharma"}
                 </h1>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-bold text-emerald-400 border border-emerald-500/30">
-                  <ShieldCheck className="h-3 w-3" />
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/12 px-3 py-1 text-xs font-bold text-emerald-800 border border-emerald-500/25 shadow-2xs backdrop-blur-sm">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
                   <span>Verified EV Rider</span>
                 </span>
               </div>
 
-              <p className="text-xs text-gray-400 flex flex-wrap items-center gap-2">
+              <p className="text-xs text-gray-500 font-medium flex flex-wrap items-center gap-2">
                 <span>{email || "aakash.sharma@example.com"}</span>
-                <span className="text-gray-600">·</span>
+                <span className="text-gray-300">·</span>
                 <span>{phone || "+91 98765 43210"}</span>
-                <span className="text-gray-600">·</span>
-                <span>{city || "Bengaluru, Karnataka"}</span>
+                <span className="text-gray-300">·</span>
+                <span>{city || "Bengaluru, KA"}</span>
               </p>
 
-              <div className="pt-1 flex items-center gap-2 text-xs">
-                <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/20 px-2 py-0.5 text-[11px] font-bold text-amber-300 border border-amber-500/30">
-                  <Award className="h-3 w-3" />
+              <div className="pt-1 flex flex-wrap items-center gap-2 text-xs">
+                <span className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500/15 px-3 py-1.5 text-xs font-bold text-amber-900 border border-amber-500/30 shadow-2xs backdrop-blur-sm">
+                  <Award className="h-3.5 w-3.5 text-amber-600" />
                   <span>Gold Tier Member · {userProfile.points || 450} ProPoints</span>
                 </span>
-                <span className="text-[11px] text-gray-400">
+                <span className="text-[11px] text-gray-500 font-medium">
                   (50 pts to Platinum EV Specialist)
                 </span>
               </div>
@@ -136,44 +141,78 @@ export function SettingsTab() {
           </div>
 
           {/* Right: Tier Progress Bar & Action */}
-          <div className="md:w-64 space-y-2 rounded-2xl bg-white/5 p-4 border border-white/10 backdrop-blur-md">
-            <div className="flex justify-between text-xs">
-              <span className="text-gray-400 font-medium">Loyalty Tier Progress</span>
-              <span className="font-bold text-amber-400">90%</span>
+          <div className="md:w-80 space-y-2.5 rounded-2xl bg-white/80 hover:bg-white/95 p-4 border border-black/[0.06] shadow-2xs backdrop-blur-md transition-all duration-200">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-gray-700 font-bold">Loyalty Tier Progress</span>
+              <span className="font-black text-white bg-gradient-to-r from-amber-500 via-orange-500 to-[#E31E24] px-2.5 py-0.5 rounded-md text-[11px] shadow-xs">
+                90%
+              </span>
             </div>
-            <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
-              <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-[#E31E24]" style={{ width: "90%" }} />
+            <div className="h-2.5 w-full rounded-full bg-gray-100 overflow-hidden border border-black/[0.04] p-0.5">
+              <div className="h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-[#E31E24] shadow-xs" style={{ width: "90%" }} />
             </div>
-            <p className="text-[10px] text-gray-400 leading-tight">
+            <p className="text-[11px] text-gray-500 leading-snug font-medium">
               Earn 10 pts per ₹1,000 order to unlock free doorstep technician visits.
             </p>
           </div>
         </div>
 
         {/* 4 Bottom Metric Tiles */}
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 border-t border-white/10">
-          <div className="rounded-2xl bg-white/5 p-3 border border-white/5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Total Orders</p>
-            <p className="text-xl font-extrabold text-white mt-0.5">{orders.length}</p>
-            <span className="text-[10px] text-emerald-400 font-medium">100% On-time</span>
+        <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-3.5 pt-6 border-t border-black/[0.06]">
+          {/* Card 1: Total Orders */}
+          <div className="rounded-2xl bg-white/80 hover:bg-white p-4 border border-black/[0.06] hover:border-black/[0.12] shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 backdrop-blur-md group">
+            <div className="flex items-center justify-between">
+              <p className="text-[10.5px] font-bold uppercase tracking-wider text-gray-400">Total Orders</p>
+              <div className="h-7 w-7 rounded-xl bg-black/[0.03] grid place-items-center text-gray-500 group-hover:text-[#E31E24] transition-colors">
+                <Package className="h-3.5 w-3.5" />
+              </div>
+            </div>
+            <p className="text-2xl font-black text-gray-950 mt-1.5 tracking-tight">{orders.length}</p>
+            <span className="inline-block mt-1.5 text-[10.5px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+              ✓ 100% On-time
+            </span>
           </div>
 
-          <div className="rounded-2xl bg-white/5 p-3 border border-white/5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">EVs in Garage</p>
-            <p className="text-xl font-extrabold text-white mt-0.5">{garage.length}</p>
-            <span className="text-[10px] text-gray-300 font-medium">Telemetry Connected</span>
+          {/* Card 2: EVs in Garage */}
+          <div className="rounded-2xl bg-white/80 hover:bg-white p-4 border border-black/[0.06] hover:border-black/[0.12] shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 backdrop-blur-md group">
+            <div className="flex items-center justify-between">
+              <p className="text-[10.5px] font-bold uppercase tracking-wider text-gray-400">EVs in Garage</p>
+              <div className="h-7 w-7 rounded-xl bg-black/[0.03] grid place-items-center text-gray-500 group-hover:text-blue-600 transition-colors">
+                <Bike className="h-3.5 w-3.5" />
+              </div>
+            </div>
+            <p className="text-2xl font-black text-gray-950 mt-1.5 tracking-tight">{garage.length}</p>
+            <span className="inline-block mt-1.5 text-[10.5px] font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60">
+              ⚡ Telemetry Connected
+            </span>
           </div>
 
-          <div className="rounded-2xl bg-white/5 p-3 border border-white/5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Spare Parts Invested</p>
-            <p className="text-xl font-extrabold text-white mt-0.5">{inr(totalSpent || 24800)}</p>
-            <span className="text-[10px] text-gray-300 font-medium">OEM Verified</span>
+          {/* Card 3: Spare Parts Invested */}
+          <div className="rounded-2xl bg-white/80 hover:bg-white p-4 border border-black/[0.06] hover:border-black/[0.12] shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 backdrop-blur-md group">
+            <div className="flex items-center justify-between">
+              <p className="text-[10.5px] font-bold uppercase tracking-wider text-gray-400">Spare Parts Invested</p>
+              <div className="h-7 w-7 rounded-xl bg-black/[0.03] grid place-items-center text-gray-500 group-hover:text-amber-600 transition-colors">
+                <ShieldCheck className="h-3.5 w-3.5" />
+              </div>
+            </div>
+            <p className="text-2xl font-black text-gray-950 mt-1.5 tracking-tight">{inr(totalSpent || 20109)}</p>
+            <span className="inline-block mt-1.5 text-[10.5px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
+              🛡️ OEM Verified
+            </span>
           </div>
 
-          <div className="rounded-2xl bg-white/5 p-3 border border-white/5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Saved Addresses</p>
-            <p className="text-xl font-extrabold text-white mt-0.5">2</p>
-            <span className="text-[10px] text-emerald-400 font-medium">Doorstep Ready</span>
+          {/* Card 4: Saved Addresses */}
+          <div className="rounded-2xl bg-white/80 hover:bg-white p-4 border border-black/[0.06] hover:border-black/[0.12] shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 backdrop-blur-md group">
+            <div className="flex items-center justify-between">
+              <p className="text-[10.5px] font-bold uppercase tracking-wider text-gray-400">Saved Addresses</p>
+              <div className="h-7 w-7 rounded-xl bg-black/[0.03] grid place-items-center text-gray-500 group-hover:text-emerald-600 transition-colors">
+                <MapPin className="h-3.5 w-3.5" />
+              </div>
+            </div>
+            <p className="text-2xl font-black text-gray-950 mt-1.5 tracking-tight">2</p>
+            <span className="inline-block mt-1.5 text-[10.5px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+              📍 Doorstep Ready
+            </span>
           </div>
         </div>
       </div>

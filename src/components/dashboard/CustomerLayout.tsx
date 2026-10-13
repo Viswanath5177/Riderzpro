@@ -18,6 +18,7 @@ import {
   Mic,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Menu,
   X,
   Search,
@@ -80,6 +81,7 @@ export function CustomerLayout({
     markAllNotificationsRead,
     cart,
     setIsCartOpen,
+    signOut,
   } = useStore();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -88,6 +90,16 @@ export function CustomerLayout({
   const [isVinSearchOpen, setIsVinSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  const userInitials = userProfile.name
+    ? userProfile.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : "AS";
 
   const activeOrdersCount = orders.filter((o) => o.status < 5).length;
   const liveOrder = orders.find((o) => o.status < 5);
@@ -595,6 +607,140 @@ export function CustomerLayout({
                   </span>
                 )}
               </button>
+
+              {/* Profile Button on Right Top (Apple Glassmorphism with My Orders & Sign Out) */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  className="relative flex items-center gap-2 p-1 pl-1 pr-2 sm:pr-2.5 rounded-full bg-black/[0.03] hover:bg-black/[0.07] border border-black/[0.06] hover:border-black/[0.12] active:scale-95 transition-all duration-200 cursor-pointer shadow-2xs group"
+                  aria-label="Profile and account menu"
+                  title="Profile & Account Menu"
+                >
+                  <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-tr from-[#E31E24] to-rose-500 text-white font-extrabold text-xs shadow-xs ring-1 ring-white">
+                    {userInitials}
+                  </span>
+                  <span className="hidden sm:inline-block text-xs font-semibold text-gray-800 group-hover:text-gray-950 max-w-[85px] truncate">
+                    {userProfile.name.split(" ")[0]}
+                  </span>
+                  <ChevronDown className={cn("h-3.5 w-3.5 text-gray-400 group-hover:text-gray-700 transition-transform duration-200", isProfileOpen && "rotate-180")} />
+                </button>
+
+                {isProfileOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setIsProfileOpen(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-72 rounded-3xl bg-white/95 backdrop-blur-2xl border border-black/[0.08] shadow-[0_20px_60px_rgba(0,0,0,0.14)] p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+                      {/* User Header Preview */}
+                      <div className="p-3 rounded-2xl bg-black/[0.02] border border-black/[0.04] mb-2 flex items-center gap-3">
+                        <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-tr from-[#E31E24] to-rose-500 text-white font-extrabold text-sm shadow-xs ring-2 ring-white shrink-0">
+                          {userInitials}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-gray-950 truncate">{userProfile.name}</p>
+                          <p className="text-[11px] text-gray-500 truncate">{userProfile.email}</p>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            <span className="text-[10px] font-semibold text-emerald-700">Gold Tier · {userProfile.points || 450} pts</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        {/* 1. MY ORDERS (Requested) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileOpen(false);
+                            onTabChange("orders");
+                          }}
+                          className={cn(
+                            "flex w-full items-center justify-between p-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer group",
+                            activeTab === "orders"
+                              ? "bg-[#E31E24]/10 text-[#E31E24]"
+                              : "hover:bg-black/[0.04] text-gray-700 hover:text-gray-900"
+                          )}
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <Package className="h-4 w-4 text-[#E31E24] group-hover:scale-110 transition-transform" />
+                            <span>My Orders</span>
+                          </span>
+                          {activeOrdersCount > 0 ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E31E24] text-white shadow-2xs">
+                              {activeOrdersCount} Active
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-gray-400 font-normal">
+                              {orders.length} Total
+                            </span>
+                          )}
+                        </button>
+
+                        {/* 2. Account & Profile Settings */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileOpen(false);
+                            onTabChange("settings");
+                          }}
+                          className={cn(
+                            "flex w-full items-center justify-between p-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer group",
+                            activeTab === "settings"
+                              ? "bg-[#E31E24]/10 text-[#E31E24]"
+                              : "hover:bg-black/[0.04] text-gray-700 hover:text-gray-900"
+                          )}
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <UserCog className="h-4 w-4 text-gray-500 group-hover:text-gray-900 group-hover:scale-110 transition-transform" />
+                            <span>Profile & Settings</span>
+                          </span>
+                          <ChevronRight className="h-3.5 w-3.5 text-gray-400" />
+                        </button>
+
+                        {/* 3. My Garage */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileOpen(false);
+                            onTabChange("garage");
+                          }}
+                          className={cn(
+                            "flex w-full items-center justify-between p-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer group",
+                            activeTab === "garage"
+                              ? "bg-[#E31E24]/10 text-[#E31E24]"
+                              : "hover:bg-black/[0.04] text-gray-700 hover:text-gray-900"
+                          )}
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <Bike className="h-4 w-4 text-gray-500 group-hover:text-gray-900 group-hover:scale-110 transition-transform" />
+                            <span>My Garage</span>
+                          </span>
+                          <span className="text-[10px] text-gray-400 font-medium">{garage.length} EV</span>
+                        </button>
+                      </div>
+
+                      <div className="my-2 border-t border-black/[0.06]" />
+
+                      {/* 4. SIGN OUT (Requested) */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          signOut();
+                          toast.success("Signed out successfully. See you soon!");
+                          navigate({ to: "/" });
+                        }}
+                        className="flex w-full items-center gap-2.5 p-2.5 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer group"
+                      >
+                        <LogOut className="h-4 w-4 text-rose-600 group-hover:-translate-x-0.5 transition-transform" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </header>
 
