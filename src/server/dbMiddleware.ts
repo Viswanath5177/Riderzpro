@@ -245,6 +245,46 @@ export function pgApiMiddleware() {
         }
 
         // ====================================================================
+        // 3.5 PUBLIC SELLERS API: /api/sellers (Returns only approved vendors)
+        // ====================================================================
+        if (cleanUrl === "/api/sellers" && method === "GET") {
+          try {
+            const sellersRes = await query(`
+              SELECT id, email, phone, store_name, owner_name, business_type, business_address, 
+                     city, state, pincode, country, gstin, status, created_at 
+              FROM sellers 
+              WHERE status = 'APPROVED' AND is_active = true
+              ORDER BY created_at DESC
+            `);
+
+            const mapped = sellersRes.rows.map((s: any) => ({
+              id: s.id,
+              name: s.store_name,
+              area: s.city || "Bengaluru",
+              lat: 12.9784,
+              lng: 77.6408,
+              rating: 5.0,
+              reviewCount: 0,
+              prepMins: 15,
+              isVerified: true,
+              verificationBadge: "Verified Marketplace Seller",
+              description: `${s.business_type || "Proprietorship"} — Authorized electric vehicle and spare parts dealer.`,
+              deliveryCoverage: `${s.city || "Bengaluru"} and nearby areas`,
+              businessHours: "Mon - Sat: 9:00 AM - 8:00 PM",
+              phone: s.phone,
+              email: s.email,
+              address: s.business_address || s.city,
+              gstin: s.gstin,
+            }));
+
+            return sendJson(res, 200, { success: true, data: mapped });
+          } catch (error: any) {
+            console.error("[PostgreSQL Public Sellers Error]:", error);
+            return sendJson(res, 500, { success: false, error: error.message });
+          }
+        }
+
+        // ====================================================================
         // 4. ADMIN SELLERS & KYC REVIEW API: /api/admin/sellers
         // ====================================================================
         if (cleanUrl.startsWith("/api/admin/sellers")) {
@@ -292,7 +332,7 @@ export function pgApiMiddleware() {
               const reason = body.reason || "";
               const adminId = body.adminId || "adm_product_01";
 
-              const sRes = await query("SELECT email, owner_name, store_name FROM sellers WHERE id = $1", [sellerId]);
+              const sRes = await query("SELECT email, owner_name, store_name, phone, password_hash FROM sellers WHERE id = $1", [sellerId]);
               const seller = sRes.rows[0];
               if (!seller) {
                 return sendJson(res, 404, { success: false, error: "Seller application not found" });
@@ -305,15 +345,28 @@ export function pgApiMiddleware() {
                 [action, adminId, reason || null, sellerId]
               );
 
+              // When approved, mirror into users table so the vendor can log in via /api/auth/signin
+              if (action === "APPROVED") {
+                await query(
+                  `INSERT INTO users (id, email, phone, password_hash, full_name, role, is_active)
+                   VALUES ($1, $2, $3, $4, $5, 'seller', true)
+                   ON CONFLICT (email) DO UPDATE SET role = 'seller', is_active = true`,
+                  ['usr_' + sellerId.slice(4), seller.email, seller.phone, seller.password_hash, seller.owner_name]
+                ).catch((err) => console.warn("[Seller User Mirror Warning]:", err?.message));
+              }
+
               await query(
                 `INSERT INTO audit_logs (actor_id, actor_role, action, target_type, target_id, details)
                  VALUES ($1, 'admin', $2, 'seller', $3, $4)`,
                 [adminId, `VENDOR_${action}`, sellerId, JSON.stringify({ reason })]
               );
 
-              // Dispatch transactional emails via Gmail SMTP
+              const host = req.headers.host || "localhost:8080";
+              const loginUrl = `http://${host}/login`;
+
+              // Dispatch transactional emails via Resend API
               if (action === "APPROVED") {
-                await sendVendorApprovedEmail(seller.email, seller.owner_name, seller.store_name, "http://localhost:8081/dashboard/vendor").catch(() => {});
+                await sendVendorApprovedEmail(seller.email, seller.owner_name, seller.store_name, loginUrl).catch(() => {});
               } else if (action === "REJECTED") {
                 await sendVendorRejectedEmail(seller.email, seller.owner_name, seller.store_name, reason || "Application does not meet marketplace compliance standards.").catch(() => {});
               } else if (action === "MORE_INFORMATION_REQUIRED") {
@@ -506,6 +559,74 @@ export function pgApiMiddleware() {
             return sendJson(res, 405, { success: false, error: `Method ${method} not allowed` });
           } catch (error: any) {
             console.error("[PostgreSQL Wishlist API Error]:", error);
+            return sendJson(res, 500, { success: false, error: error.message });
+          }
+        }
+
+        // ====================================================================
+        // 8. ORDERS API: /api/orders
+        // ====================================================================
+        if (cleanUrl.startsWith("/api/orders")) {
+          try {
+            // GET /api/orders?customer_id=... or /api/orders?seller_id=...
+            if (method === "GET") {
+              const customerId = queryParams.get("customer_id");
+              const sellerId = queryParams.get("seller_id");
+
+              let sql = `
+                SELECT o.id, o.order_number, o.customer_id, o.seller_id, o.total_amount, 
+                       o.payment_method, o.order_status, o.shipping_address, o.created_at,
+                       s.store_name, c.full_name as customer_name, c.phone as customer_phone
+                FROM orders o
+                LEFT JOIN sellers s ON o.seller_id = s.id
+                LEFT JOIN customers c ON o.customer_id = c.id
+              `;
+              const params: any[] = [];
+              if (customerId) {
+                params.push(customerId);
+                sql += ` WHERE o.customer_id = $${params.length}`;
+              } else if (sellerId) {
+                params.push(sellerId);
+                sql += ` WHERE o.seller_id = $${params.length}`;
+              }
+              sql += " ORDER BY o.created_at DESC";
+
+              const ordersRes = await query(sql, params);
+              return sendJson(res, 200, { success: true, data: ordersRes.rows });
+            }
+
+            // POST /api/orders (Customer checkout)
+            if (method === "POST") {
+              const body = await parseBody(req);
+              const orderNum = `RZ-${Math.floor(100000 + Math.random() * 900000)}`;
+              const orderId = `ord_${(await import("node:crypto")).randomBytes(8).toString("hex")}`;
+              const custId = body.customer_id || "cst_guest";
+              const sellerId = body.seller_id || null;
+              const totalAmount = body.total_amount || body.total || 0;
+              const paymentMethod = body.payment_method || "UPI";
+              const shippingAddress = JSON.stringify(body.shipping_address || {});
+
+              const ins = await query(
+                `INSERT INTO orders (id, order_number, customer_id, seller_id, total_amount, payment_method, order_status, shipping_address)
+                 VALUES ($1, $2, $3, $4, $5, $6, 'CONFIRMED', $7)
+                 RETURNING *`,
+                [orderId, orderNum, custId, sellerId, totalAmount, paymentMethod, shippingAddress]
+              );
+
+              // Clear customer cart after checkout
+              if (custId && custId !== "cst_guest") {
+                const cRow = await query("SELECT id FROM carts WHERE customer_id = $1", [custId]);
+                if (cRow.rows[0]) {
+                  await query("DELETE FROM cart_items WHERE cart_id = $1", [cRow.rows[0].id]);
+                }
+              }
+
+              return sendJson(res, 201, { success: true, data: ins.rows[0], message: "Order placed successfully" });
+            }
+
+            return sendJson(res, 405, { success: false, error: `Method ${method} not allowed` });
+          } catch (error: any) {
+            console.error("[PostgreSQL Orders API Error]:", error);
             return sendJson(res, 500, { success: false, error: error.message });
           }
         }

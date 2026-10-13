@@ -62,7 +62,9 @@ function Shop() {
   const { activeBikeId, setActiveBikeId } = useStore();
 
   // Initialize with canonical seed catalog so user never sees blank page
-  const [dbProducts, setDbProducts] = useState<Product[]>(products);
+  const [dbProducts, setDbProducts] = useState<Product[]>([]);
+  const [activeSellers, setActiveSellers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [q, setQ] = useState(() => {
     if (typeof window !== "undefined") {
       const p = new URLSearchParams(window.location.search);
@@ -93,14 +95,35 @@ function Shop() {
   const [warrantyFilter, setWarrantyFilter] = useState("All");
 
   useEffect(() => {
+    setIsLoading(true);
     fetch("/api/products")
       .then((r) => r.json())
       .then((res) => {
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           setDbProducts(res.data.map((row: any) => mapDbProductToProduct(row)));
+        } else {
+          setDbProducts([]);
         }
       })
-      .catch((err) => console.log("Shop fetch error:", err));
+      .catch((err) => {
+        console.log("Shop fetch error:", err);
+        setDbProducts([]);
+      })
+      .finally(() => setIsLoading(false));
+
+    fetch("/api/sellers")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setActiveSellers(res.data);
+        } else {
+          setActiveSellers([]);
+        }
+      })
+      .catch((err) => {
+        console.log("Shop sellers fetch error:", err);
+        setActiveSellers([]);
+      });
   }, []);
 
   const availableBrands = useMemo(() => {
@@ -313,7 +336,7 @@ function Shop() {
                 className="bg-transparent font-semibold text-[#111111] outline-none cursor-pointer"
               >
                 <option value="All">All Sellers & Shops</option>
-                {vendors.map((v) => (
+                {activeSellers.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.name} ({v.area})
                   </option>
@@ -509,23 +532,33 @@ function Shop() {
         </div>
 
         {/* Product Cards Grid */}
-        {list.length === 0 ? (
+        {isLoading ? (
           <div className="mt-8 rounded-2xl border border-dashed border-[#E5E7EB] bg-white p-12 text-center">
-            <p className="font-display text-xl font-bold text-[#111111]">No matching products found</p>
-            <p className="mt-2 text-sm text-[#6B7280]">
-              Try clearing filters or search query to explore the full inventory.
+            <p className="font-display text-lg font-bold text-[#111111]">Loading catalog from database...</p>
+          </div>
+        ) : list.length === 0 ? (
+          <div className="mt-8 rounded-2xl border border-dashed border-[#E5E7EB] bg-white p-12 text-center">
+            <p className="font-display text-xl font-bold text-[#111111]">
+              {dbProducts.length === 0 ? "No verified products available yet" : "No matching products found"}
             </p>
-            <button
-              onClick={() => {
-                setCat("All");
-                setQ("");
-                setVolt(null);
-                setOnlyFit(false);
-              }}
-              className="mt-4 rounded-lg bg-[#E31E24] px-4 py-2 text-xs font-semibold text-white hover:bg-red-700"
-            >
-              View All Products
-            </button>
+            <p className="mt-2 text-sm text-[#6B7280]">
+              {dbProducts.length === 0
+                ? "Stores and products will appear once authorized vendors register and their products are approved by admin."
+                : "Try clearing filters or search query to explore the full inventory."}
+            </p>
+            {dbProducts.length > 0 && (
+              <button
+                onClick={() => {
+                  setCat("All");
+                  setQ("");
+                  setVolt(null);
+                  setOnlyFit(false);
+                }}
+                className="mt-4 rounded-lg bg-[#E31E24] px-4 py-2 text-xs font-semibold text-white hover:bg-red-700"
+              >
+                View All Products
+              </button>
+            )}
           </div>
         ) : (
           <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">

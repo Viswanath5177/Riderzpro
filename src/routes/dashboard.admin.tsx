@@ -158,8 +158,8 @@ export function AdminDashboard() {
   const [categorySearch, setCategorySearch] = useState("");
 
   // Multi-vendor marketplace management state
-  const [marketplaceVendors, setMarketplaceVendors] = useState<Vendor[]>(vendors);
-  const [vendorApplications, setVendorApplications] = useState<VendorApplication[]>(() => getVendorApplications());
+  const [marketplaceVendors, setMarketplaceVendors] = useState<Vendor[]>([]);
+  const [vendorApplications, setVendorApplications] = useState<VendorApplication[]>([]);
   const [adminSettlements, setAdminSettlements] = useState<VendorSettlement[]>(() => getVendorSettlements());
   const [defaultPlatformCommission, setDefaultPlatformCommission] = useState<number>(10);
   const [adminProductReviews, setAdminProductReviews] = useState<ProductReview[]>(() => getAllProductReviews());

@@ -272,6 +272,21 @@ export function OverviewTab({
           </div>
         </div>
 
+        {garage.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 p-8 text-center space-y-3">
+            <Bike className="h-9 w-9 text-gray-400 mx-auto" />
+            <h3 className="text-sm font-bold text-gray-900">No Vehicle in Your Garage Yet</h3>
+            <p className="text-xs text-gray-500 max-w-md mx-auto">
+              Add your electric scooter, bike, or EV to your garage to receive automated telemetry, customized service schedules, and exact part fitment guarantees.
+            </p>
+            <button
+              onClick={() => onTabChange("garage")}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#E31E24] text-white text-xs font-semibold hover:bg-red-700 transition shadow-2xs cursor-pointer"
+            >
+              + Add Vehicle to Garage
+            </button>
+          </div>
+        ) : (
         <div className="grid gap-4 md:grid-cols-3">
           {/* Item 1: Battery & BMS Health */}
           <div className="p-4 rounded-2xl bg-[#F7F9FB] border border-gray-200/80 space-y-2">
@@ -333,6 +348,7 @@ export function OverviewTab({
             </button>
           </div>
         </div>
+        )}
       </section>
 
 

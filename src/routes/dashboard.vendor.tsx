@@ -114,7 +114,7 @@ export function VendorDashboard() {
   const [tab, setTab] = useState<string>("overview");
 
   // Dynamic Products State from DB / fallback
-  const [allProducts, setAllProducts] = useState<Product[]>(products);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [inventoryViewMode, setInventoryViewMode] = useState<"list" | "form" | "add_offer">("list");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
@@ -594,7 +594,7 @@ export function VendorDashboard() {
           {/* Charts & Incoming Orders */}
           <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
             <Panel title="Weekly Sales Trend (₹)">
-              <AreaTrend data={series([34000, 52000, 48000, 69000, 61000, 84000, 41000])} />
+              <AreaTrend data={series(totalGrossSales > 0 ? [34000, 52000, 48000, 69000, 61000, 84000, 41000] : [0, 0, 0, 0, 0, 0, 0])} />
             </Panel>
 
             <Panel

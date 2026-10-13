@@ -74,7 +74,7 @@ export function SellersScreen() {
     fetch("/api/admin/sellers")
       .then((r) => r.json())
       .then((res) => {
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           const mapped: EnrichedSeller[] = res.data.map((row: any) => ({
             id: row.id,
             businessName: row.store_name,
@@ -106,13 +106,12 @@ export function SellersScreen() {
           }));
           setSellersList(mapped);
         } else {
-          // Fallback to store
-          setSellersList(mockSellers);
+          setSellersList([]);
         }
       })
       .catch((err) => {
         console.warn("[Admin Sellers API Notice]:", err.message);
-        setSellersList(mockSellers);
+        setSellersList([]);
       })
       .finally(() => {
         setIsLoading(false);

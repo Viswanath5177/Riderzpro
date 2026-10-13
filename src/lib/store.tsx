@@ -189,236 +189,43 @@ type Ctx = {
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
-const KEY = "riderzpro-v5";
+const KEY = "riderzpro-v7";
 
 const DEFAULT_PROFILE: UserProfile = {
-  name: "Aakash Sharma",
-  phone: "+91 98765 43210",
-  email: "aakash.sharma@example.com",
+  name: "Rider",
+  phone: "",
+  email: "",
   city: "Bengaluru, KA",
-  address: "Flat 402, Green Glen Layout, Bellandur, Bengaluru, Karnataka 560103",
-  points: 450,
+  address: "",
+  points: 0,
 };
 
 const DEFAULT_ADDRESS: AddressRef = {
-  name: "Aakash Sharma",
-  street: "Flat 402, Green Glen Layout, Bellandur",
+  name: "Rider",
+  street: "",
   city: "Bengaluru",
   state: "Karnataka",
-  pincode: "560103",
-  phone: "+91 98765 43210",
+  pincode: "560001",
+  phone: "",
 };
 
-export const DEFAULT_GARAGE: GarageBike[] = [
-  {
-    bikeId: "ather-450x",
-    year: 2024,
-    vin: "ME4JF48E7P8109283",
-    nickname: "Aakash's 450X Gen 3",
-    regNo: "KA 05 MZ 8912",
-    odoKm: 4820,
-    batteryHealth: 97,
-    nextServiceDays: 24,
-  },
-];
-
-const DEFAULT_BOOKINGS: ServiceBooking[] = [
-  {
-    id: "SRV-2026-901",
-    bikeId: "ather-450x",
-    serviceType: "24-Point Comprehensive Battery & BMS Diagnostic",
-    slot: "Tomorrow, 10:30 AM - 12:00 PM",
-    location: "Doorstep Inspection · Bellandur",
-    status: "Confirmed",
-    technician: "Ramesh Kumar (Certified EV Tech)",
-    cost: 299,
-    createdAt: Date.now() - 2 * 3600 * 1000,
-  },
-];
-
-const DEFAULT_NOTIFICATIONS: CustomerNotification[] = [
-  {
-    id: "notif-1",
-    title: "Order Dispatch Update",
-    message: "Rider assigned for order #RZ-849201. Real-time GPS tracking is now live.",
-    time: "10 mins ago",
-    read: false,
-    type: "order",
-  },
-  {
-    id: "notif-2",
-    title: "Monsoon Health Check Reminder",
-    message: "Free 24-Point Battery & BMS Diagnostic coupon available for your EV.",
-    time: "2 hours ago",
-    read: false,
-    type: "service",
-  },
-];
-
-export const DEFAULT_ORDERS: Order[] = [
-  {
-    id: "RZ-849201",
-    createdAt: Date.now() - 45 * 60 * 1000,
-    groups: [
-      {
-        vendorId: "v1",
-        items: [{ productId: "p7", qty: 1, price: 14500 }],
-        subtotal: 14500,
-        km: 4.2,
-        fee: 90,
-        eta: 25,
-      },
-    ],
-    itemsTotal: 14500,
-    deliveryTotal: 90,
-    tax: 2610,
-    total: 17200,
-    eta: 25,
-    payment: "UPI · Google Pay",
-    paymentStatus: "Paid",
-    status: 3,
-    fulfillmentStatus: "Dispatched",
-    riderId: riders[0]?.id || "r1",
-    customerName: "Aakash Sharma",
-    customerPhone: "+91 98765 43210",
-    shippingAddress: DEFAULT_ADDRESS,
-    shipmentId: "SHP-849201",
-  },
-  {
-    id: "RZ-793420",
-    createdAt: Date.now() - 4 * 24 * 60 * 60 * 1000,
-    groups: [
-      {
-        vendorId: "v3",
-        items: [{ productId: "p12", qty: 1, price: 2400 }],
-        subtotal: 2400,
-        km: 3.1,
-        fee: 77,
-        eta: 0,
-      },
-    ],
-    itemsTotal: 2400,
-    deliveryTotal: 77,
-    tax: 432,
-    total: 2909,
-    eta: 0,
-    payment: "Credit Card (HDFC)",
-    paymentStatus: "Paid",
-    status: 5,
-    fulfillmentStatus: "Delivered",
-    riderId: riders[1]?.id || "r2",
-    customerName: "Aakash Sharma",
-    customerPhone: "+91 98765 43210",
-    shippingAddress: DEFAULT_ADDRESS,
-    shipmentId: "SHP-793420",
-  },
-];
-
-export const DEFAULT_SHIPMENTS: NormalizedShipment[] = [
-  {
-    shipmentId: "SHP-8492-RID",
-    orderId: "RZ-849201",
-    provider: "RiderzPro Fleet",
-    providerReference: "FLEET-FAST-9021",
-    trackingNumber: "RZP849201",
-    trackingUrl: "/track/RZ-849201",
-    pickupAddress: {
-      name: "VoltHub Indiranagar",
-      street: "100 Feet Rd, Indiranagar",
-      city: "Bengaluru",
-      state: "Karnataka",
-      pincode: "560038",
-      phone: "+91 80 4123 4567",
-    },
-    destinationAddress: DEFAULT_ADDRESS,
-    status: "Out for Delivery",
-    locationType: "Live GPS Telemetry",
-    latestLocation: "Indiranagar 100ft Road",
-    lastEventTimestamp: "15 mins ago",
-    estimatedDelivery: "Today within 25 mins",
-    events: [
-      {
-        id: "evt-1",
-        timestamp: "Today, 1:30 PM",
-        status: "Manifested",
-        location: "Indiranagar Hub",
-        description: "Order placed & tax invoice generated",
-      },
-      {
-        id: "evt-2",
-        timestamp: "Today, 1:45 PM",
-        status: "In Transit",
-        location: "VoltHub Indiranagar",
-        description: "Vendor accepted and dispatched parcel",
-      },
-      {
-        id: "evt-3",
-        timestamp: "Today, 1:55 PM",
-        status: "Out for Delivery",
-        location: "Indiranagar 100ft Road",
-        description: "Courier picked up parcel, en-route via live GPS route",
-        isGps: true,
-        coordinates: { lat: 12.9784, lng: 77.6408 },
-      },
-    ],
-    currentGps: { lat: 12.9784, lng: 77.6408, speedKmph: 32, heading: 90 },
-  },
-  {
-    shipmentId: "SHP-7934-DEL",
-    orderId: "RZ-793420",
-    provider: "Delhivery",
-    providerReference: "DEL-8849102",
-    trackingNumber: "DEL99281044",
-    trackingUrl: "/track/RZ-793420",
-    pickupAddress: {
-      name: "EV Spares Jayanagar",
-      street: "4th Block, Jayanagar",
-      city: "Bengaluru",
-      state: "Karnataka",
-      pincode: "560011",
-      phone: "+91 80 2665 4321",
-    },
-    destinationAddress: DEFAULT_ADDRESS,
-    status: "Delivered",
-    locationType: "Facility Checkpoint",
-    latestLocation: "Bellandur, Bengaluru",
-    lastEventTimestamp: "Oct 8, 2:18 PM",
-    estimatedDelivery: "Delivered on Oct 8",
-    actualDeliveryTimestamp: "Oct 8, 2:18 PM",
-    events: [
-      {
-        id: "evt-10",
-        timestamp: "Oct 8, 10:15 AM",
-        status: "Manifested",
-        location: "Jayanagar Sort Hub",
-        description: "Shipment manifested with Delhivery",
-      },
-      {
-        id: "evt-11",
-        timestamp: "Oct 8, 2:18 PM",
-        status: "Delivered",
-        location: "Bellandur, Bengaluru",
-        description: "Handed over to customer with OTP confirmation",
-      },
-    ],
-    proofOfDelivery: {
-      signedBy: "Aakash Sharma",
-      otpVerified: true,
-    },
-  },
-];
+export const DEFAULT_GARAGE: GarageBike[] = [];
+const DEFAULT_BOOKINGS: ServiceBooking[] = [];
+const DEFAULT_NOTIFICATIONS: CustomerNotification[] = [];
+export const DEFAULT_ORDERS: Order[] = [];
+export const DEFAULT_SHIPMENTS: NormalizedShipment[] = [];
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [garage, setGarage] = useState<GarageBike[]>(DEFAULT_GARAGE);
-  const [activeBikeId, setActiveBikeId] = useState<string | null>("ather-450x");
-  const [orders, setOrders] = useState<Order[]>(DEFAULT_ORDERS);
-  const [shipments, setShipments] = useState<NormalizedShipment[]>(DEFAULT_SHIPMENTS);
+  const [garage, setGarage] = useState<GarageBike[]>([]);
+  const [activeBikeId, setActiveBikeId] = useState<string | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [shipments, setShipments] = useState<NormalizedShipment[]>([]);
   const [inventoryStock, setInventoryStock] = useState<Record<string, number>>({});
-  const [savedProductIds, setSavedProductIds] = useState<string[]>(["p7", "p12"]);
-  const [serviceBookings, setServiceBookings] = useState<ServiceBooking[]>(DEFAULT_BOOKINGS);
-  const [notifications, setNotifications] = useState<CustomerNotification[]>(DEFAULT_NOTIFICATIONS);
+  const [savedProductIds, setSavedProductIds] = useState<string[]>([]);
+  const [serviceBookings, setServiceBookings] = useState<ServiceBooking[]>([]);
+  const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [role, setRole] = useState<Role>("customer");
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);

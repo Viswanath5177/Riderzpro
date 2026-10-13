@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { query } from "./db";
-import { sendEmail } from "../lib/email.server";
+import { sendEmail, sendVendorApplicationReceivedEmail } from "../lib/email.server";
 
 // ----------------------------------------------------------------------------
 // Utilities
@@ -735,6 +735,14 @@ export async function handleAuthRoute(
       );
 
       setSessionCookie(res, sessionToken);
+
+      // Dispatch confirmation email to vendor
+      sendVendorApplicationReceivedEmail(
+        seller.email,
+        seller.owner_name,
+        seller.store_name,
+        seller.id
+      ).catch((err) => console.warn("[Vendor Signup Email Notice]:", err?.message));
 
       sendJson(res, 201, {
         success: true,

@@ -55,7 +55,7 @@ export function ProductsScreen() {
     fetch("/api/products?all=true")
       .then((r) => r.json())
       .then((res) => {
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           const mapped: AdminProduct[] = res.data.map((row: any) => {
             let firstImg = "https://images.unsplash.com/photo-1558441719-8b489c652758?w=500&auto=format&fit=crop&q=80";
             if (row.image_url) {
@@ -115,12 +115,12 @@ export function ProductsScreen() {
           });
           setProductsList(mapped);
         } else {
-          setProductsList(mockProducts);
+          setProductsList([]);
         }
       })
       .catch((err) => {
         console.warn("[Admin Products API Notice]:", err.message);
-        setProductsList(mockProducts);
+        setProductsList([]);
       })
       .finally(() => {
         setIsLoading(false);

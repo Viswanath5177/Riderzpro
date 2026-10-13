@@ -35,6 +35,7 @@ import {
   mapDbProductToProduct,
   type Product,
   type Category,
+  type Vendor,
 } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,7 @@ export function ShopTab() {
   } = useStore();
 
   const [dbProducts, setDbProducts] = useState<Product[]>([]);
+  const [dbVendors, setDbVendors] = useState<Vendor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Filters State
@@ -73,25 +75,39 @@ export function ShopTab() {
     fetch("/api/products")
       .then((r) => r.json())
       .then((res) => {
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           const mapped: Product[] = res.data.map((row: any) => mapDbProductToProduct(row));
           setDbProducts(mapped);
         } else {
-          setDbProducts(fallbackProducts);
+          setDbProducts([]);
         }
       })
       .catch((err) => {
-        console.error("ShopTab fetch error, using catalog fallback:", err);
-        setDbProducts(fallbackProducts);
+        console.error("ShopTab fetch error:", err);
+        setDbProducts([]);
       })
       .finally(() => {
         setIsLoading(false);
+      });
+
+    fetch("/api/sellers")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setDbVendors(res.data);
+        } else {
+          setDbVendors([]);
+        }
+      })
+      .catch((err) => {
+        console.error("ShopTab sellers fetch error:", err);
+        setDbVendors([]);
       });
   }, []);
 
   // Compute Nearby Stores with live distance and delivery ETA (Zomato-style)
   const nearbyVendors = useMemo(() => {
-    return vendors
+    return dbVendors
       .map((v) => {
         const dist = userLocation ? Math.round(distanceKm(v, userLocation) * 10) / 10 : 0;
         const eta = etaMinutes(dist, v.prepMins);
@@ -106,7 +122,7 @@ export function ShopTab() {
         };
       })
       .sort((a, b) => a.distanceKm - b.distanceKm);
-  }, [userLocation, dbProducts]);
+  }, [userLocation, dbProducts, dbVendors]);
 
   // Multi-dimensional Filtering
   const filteredProducts = useMemo(() => {
@@ -413,8 +429,17 @@ export function ShopTab() {
         </div>
 
         {/* Store Cards Grid (Zomato-style Nearby Vendors) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-          {nearbyVendors.map((vendor) => {
+        {nearbyVendors.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 p-8 text-center">
+            <Store className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm font-bold text-gray-700">No verified stores registered yet</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Authorized vendors will appear here once their onboarding application is approved by the admin.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {nearbyVendors.map((vendor) => {
             const isSelected = selectedVendorId === vendor.id;
             return (
               <div
@@ -505,6 +530,7 @@ export function ShopTab() {
             );
           })}
         </div>
+        )}
 
         {/* Active Store Filter Notification Bar */}
         {activeSelectedVendor && (
@@ -943,7 +969,7 @@ export function ShopTab() {
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="bg-white border border-[#E5E7EB] shadow-2xs rounded-3xl p-12 text-center space-y-3">
-            <p className="text-base font-bold text-[#111111]">No products found</p>
+            <p className="text-base font-bold text-[#111111]">{dbProducts.length === 0 ? "No verified products available yet" : "No matching products found"}</p>
             <p className="text-xs text-[#6B7280] max-w-md mx-auto">
               No products match your current filters or selected location ({userLocation?.name}). Try expanding the distance radius or clearing filters.
             </p>

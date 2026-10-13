@@ -9,11 +9,12 @@ import { bikes, cars, inr, type Product, type Category } from "@/lib/data";
 
 interface ProductFormPageProps {
   product?: Product | null; // If editing, pass product. If adding, null.
+  sellerId?: string;
   onCancel: () => void;
   onSuccess: (savedProduct: Product) => void;
 }
 
-export function ProductFormPage({ product, onCancel, onSuccess }: ProductFormPageProps) {
+export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: ProductFormPageProps) {
   const isEdit = Boolean(product);
   const primaryFileInputRef = useRef<HTMLInputElement>(null);
   const secondaryFileInputRef = useRef<HTMLInputElement>(null);
@@ -261,7 +262,7 @@ export function ProductFormPage({ product, onCancel, onSuccess }: ProductFormPag
 
     const payload = {
       id: prodId,
-      seller_id: "usr_seller_01",
+      seller_id: sellerId || "usr_seller_01",
       category_id: categoryId,
       name,
       brand,
@@ -320,7 +321,7 @@ export function ProductFormPage({ product, onCancel, onSuccess }: ProductFormPag
         description: fullDescription,
         offers: [
           {
-            vendorId: "v1",
+            vendorId: sellerId || "v1",
             price: numSellingPrice,
             stock: typeof stock === "number" ? stock : 0,
           },
