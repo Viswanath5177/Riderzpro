@@ -1,82 +1,32 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
-import { createServerFn } from "@tanstack/react-start";
-import {
-  getCurrentUserServer,
-  getCurrentRoleServer,
-  requestEmailOtpServer,
-  verifyEmailOtpServer,
-  registerCustomerServer,
-  customerSignInServer,
-  sellerSignInServer,
-  registerVendorServer,
-  adminSignInServer,
-  adminReviewVendorServer,
-  adminReviewProductServer,
-  getAllSellersServer,
-  signOutServer,
-  type VendorRegistrationPayload,
-} from "./auth.server";
 
-// ----------------------------------------------------------------------------
-// TanStack Start Server Functions
-// ----------------------------------------------------------------------------
-
-export const requestEmailOtpFn = createServerFn({ method: "POST" })
-  .validator((data: { email: string; purpose?: "CUSTOMER_SIGNUP" | "VENDOR_SIGNUP" | "RESET_PASSWORD" }) => data)
-  .handler(({ data }) => requestEmailOtpServer(data.email, data.purpose));
-
-export const verifyEmailOtpFn = createServerFn({ method: "POST" })
-  .validator((data: { email: string; code: string; purpose?: "CUSTOMER_SIGNUP" | "VENDOR_SIGNUP" | "RESET_PASSWORD" }) => data)
-  .handler(({ data }) => verifyEmailOtpServer(data.email, data.code, data.purpose));
-
-export const registerCustomerFn = createServerFn({ method: "POST" })
-  .validator((data: { fullName: string; email: string; password: string; phone?: string; otpCode: string }) => data)
-  .handler(({ data }) => registerCustomerServer(data));
-
-export const customerSignInFn = createServerFn({ method: "POST" })
-  .validator((data: { email: string; password: string }) => data)
-  .handler(({ data }) => customerSignInServer(data.email, data.password));
-
-export const sellerSignInFn = createServerFn({ method: "POST" })
-  .validator((data: { email: string; password: string }) => data)
-  .handler(({ data }) => sellerSignInServer(data.email, data.password));
-
-export const registerVendorFn = createServerFn({ method: "POST" })
-  .validator((data: VendorRegistrationPayload) => data)
-  .handler(({ data }) => registerVendorServer(data));
-
-export const getAllSellersFn = createServerFn({ method: "GET" })
-  .handler(() => getAllSellersServer());
-
-export const adminSignInFn = createServerFn({ method: "POST" })
-  .validator((data: { email: string; password: string }) => data)
-  .handler(({ data }) => adminSignInServer(data.email, data.password));
-
-export const adminReviewVendorFn = createServerFn({ method: "POST" })
-  .validator((data: { adminId?: string; sellerId: string; action: "APPROVED" | "REJECTED" | "MORE_INFORMATION_REQUIRED"; reason?: string }) => data)
-  .handler(async ({ data }) => {
-    const admin = await getCurrentUserServer();
-    const adminId = admin?.id || data.adminId || "adm_product_01";
-    return adminReviewVendorServer(adminId, data.sellerId, data.action, data.reason);
-  });
-
-export const adminReviewProductFn = createServerFn({ method: "POST" })
-  .validator((data: { adminId?: string; productId: string; action: "APPROVED" | "REJECTED"; reason?: string }) => data)
-  .handler(async ({ data }) => {
-    const admin = await getCurrentUserServer();
-    const adminId = admin?.id || data.adminId || "adm_product_01";
-    return adminReviewProductServer(adminId, data.productId, data.action, data.reason);
-  });
-
-const readRole = createServerFn({ method: "GET" }).handler(() => getCurrentRoleServer());
-const readCurrentUser = createServerFn({ method: "GET" }).handler(() => getCurrentUserServer());
-const endSession = createServerFn({ method: "POST" }).handler(() => signOutServer());
+export interface VendorRegistrationPayload {
+  fullName: string;
+  email: string;
+  phone: string;
+  password?: string;
+  otpCode: string;
+  storeName: string;
+  businessType?: string;
+  streetAddress: string;
+  city: string;
+  state: string;
+  pincode: string;
+  country?: string;
+  gstin?: string;
+  panNumber: string;
+  panDocUrl: string;
+  aadhaarNumber?: string;
+  aadhaarDocUrl: string;
+  businessDocUrl?: string;
+  accountHolderName: string;
+  bankName: string;
+  accountNumber: string;
+  ifscCode: string;
+}
 
 // Client wrappers using direct PostgreSQL backend API
 export async function sendEmailOtp(email: string, purpose: "CUSTOMER_SIGNUP" | "VENDOR_SIGNUP" | "RESET_PASSWORD" = "CUSTOMER_SIGNUP") {
-  if (typeof window === "undefined") {
-    return requestEmailOtpServer(email, purpose);
-  }
   const res = await fetch("/api/auth/otp/send", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -88,9 +38,6 @@ export async function sendEmailOtp(email: string, purpose: "CUSTOMER_SIGNUP" | "
 }
 
 export async function verifyEmailOtp(email: string, code: string, purpose: "CUSTOMER_SIGNUP" | "VENDOR_SIGNUP" | "RESET_PASSWORD" = "CUSTOMER_SIGNUP") {
-  if (typeof window === "undefined") {
-    return verifyEmailOtpServer(email, code, purpose);
-  }
   const res = await fetch("/api/auth/otp/verify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -102,9 +49,6 @@ export async function verifyEmailOtp(email: string, code: string, purpose: "CUST
 }
 
 export async function registerCustomer(payload: { fullName: string; email: string; password: string; phone?: string; otpCode: string }) {
-  if (typeof window === "undefined") {
-    return registerCustomerServer(payload);
-  }
   const res = await fetch("/api/auth/signup", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -128,9 +72,6 @@ export async function unifiedSignIn(emailOrContact: string, password: string) {
 }
 
 export async function customerSignIn(email: string, password: string) {
-  if (typeof window === "undefined") {
-    return customerSignInServer(email, password);
-  }
   const res = await fetch("/api/auth/signin", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -143,9 +84,6 @@ export async function customerSignIn(email: string, password: string) {
 }
 
 export async function sellerSignIn(email: string, password: string) {
-  if (typeof window === "undefined") {
-    return sellerSignInServer(email, password);
-  }
   const res = await fetch("/api/auth/signin", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -158,16 +96,10 @@ export async function sellerSignIn(email: string, password: string) {
 }
 
 export function getAllSellers() {
-  if (typeof window === "undefined") {
-    return getAllSellersServer();
-  }
   return fetch("/api/admin/sellers").then((r) => r.json()).then((d) => d.data || []);
 }
 
 export async function registerVendor(payload: VendorRegistrationPayload) {
-  if (typeof window === "undefined") {
-    return registerVendorServer(payload);
-  }
   const res = await fetch("/api/auth/vendor-signup", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -180,9 +112,6 @@ export async function registerVendor(payload: VendorRegistrationPayload) {
 }
 
 export async function adminSignIn(email: string, password: string) {
-  if (typeof window === "undefined") {
-    return adminSignInServer(email, password);
-  }
   const res = await fetch("/api/auth/signin", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -195,9 +124,6 @@ export async function adminSignIn(email: string, password: string) {
 }
 
 export async function adminReviewVendor(payload: { sellerId: string; action: "APPROVED" | "REJECTED" | "MORE_INFORMATION_REQUIRED"; reason?: string }) {
-  if (typeof window === "undefined") {
-    return adminReviewVendorServer("adm_product_01", payload.sellerId, payload.action, payload.reason);
-  }
   const res = await fetch(`/api/admin/sellers/${payload.sellerId}/review`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -208,9 +134,6 @@ export async function adminReviewVendor(payload: { sellerId: string; action: "AP
 }
 
 export async function adminReviewProduct(payload: { productId: string; action: "APPROVED" | "REJECTED"; reason?: string }) {
-  if (typeof window === "undefined") {
-    return adminReviewProductServer("adm_product_01", payload.productId, payload.action, payload.reason);
-  }
   const res = await fetch(`/api/admin/products/${payload.productId}/review`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -230,13 +153,6 @@ export function verifySignInCode(identity: string, code: string) {
 }
 
 export async function getCurrentRole(): Promise<string | null> {
-  if (typeof window === "undefined") {
-    try {
-      return await getCurrentRoleServer();
-    } catch {
-      return null;
-    }
-  }
   try {
     const res = await fetch("/api/auth/me", { credentials: "include" });
     if (res.ok) {
@@ -262,13 +178,6 @@ export async function getCurrentRole(): Promise<string | null> {
 }
 
 export async function getCurrentUser(): Promise<any> {
-  if (typeof window === "undefined") {
-    try {
-      return await getCurrentUserServer();
-    } catch {
-      return null;
-    }
-  }
   try {
     const res = await fetch("/api/auth/me", { credentials: "include" });
     if (res.ok) {
@@ -295,9 +204,6 @@ export async function signOut() {
       sessionStorage.removeItem(AUTH_TOKEN_KEY);
       await fetch("/api/auth/signout", { method: "POST", credentials: "include" }).catch(() => {});
     }
-  } catch {}
-  try {
-    await endSession();
   } catch {}
 }
 
@@ -500,7 +406,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sessionStorage.removeItem(AUTH_USER_KEY);
       sessionStorage.removeItem(AUTH_TOKEN_KEY);
       setUser(null);
-      await endSession();
+      await fetch("/api/auth/signout", { method: "POST", credentials: "include" }).catch(() => {});
     } catch (e) {
       console.error("Sign out error:", e);
     }

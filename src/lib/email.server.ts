@@ -1,4 +1,7 @@
-import { getDatabase } from "./db.server";
+import dotenv from "dotenv";
+dotenv.config();
+
+import { query } from "../server/db";
 
 interface EmailOptions {
   to: string;
@@ -11,12 +14,18 @@ function getResendConfig() {
   const apiKey = process.env["RESEND_API_KEY"] || "";
   const rawFrom = process.env["RESEND_FROM"] || "entangle@silicofeller-quantum.com";
   const from = rawFrom.includes("<") ? rawFrom : `RiderzPro Support <${rawFrom}>`;
+
+  if (!apiKey) {
+    console.warn("[Email Service] RESEND_API_KEY is empty! Emails will fail.");
+  }
+
   return { apiKey, from };
 }
 
 export async function sendEmail({ to, subject, html, templateName }: EmailOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const db = getDatabase();
   const { apiKey, from } = getResendConfig();
+
+  console.log(`[Email Service] Attempting to send '${templateName}' to ${to} from ${from} (API key: ${apiKey ? apiKey.slice(0, 8) + '...' : 'MISSING'})`);
 
   try {
     const response = await fetch("https://api.resend.com/emails", {
@@ -40,21 +49,22 @@ export async function sendEmail({ to, subject, html, templateName }: EmailOption
     }
 
     const messageId = data.id || "resend-ok";
-    console.log(`[Email Service - Resend] Delivered '${templateName}' to ${to} (Message ID: ${messageId}) from ${from}`);
+    console.log(`[Email Service - Resend] ✅ Delivered '${templateName}' to ${to} (Message ID: ${messageId}) from ${from}`);
 
-    // Log to PostgreSQL email_delivery_logs
-    await db.query(
+    // Log to PostgreSQL email_delivery_logs (non-blocking)
+    query(
       `INSERT INTO email_delivery_logs (recipient_email, subject, template_name, status)
        VALUES ($1, $2, $3, 'SENT')`,
       [to, subject, templateName]
-    ).catch((err) => console.warn("[Email Service] Failed to write delivery log:", err));
+    ).catch((err: any) => console.warn("[Email Service] Failed to write delivery log:", err?.message));
 
     return { success: true, messageId };
   } catch (error: any) {
     const errorMsg = error?.message || String(error);
-    console.error(`[Email Service - Resend] Failed sending '${templateName}' to ${to}:`, errorMsg);
+    console.error(`[Email Service - Resend] ❌ Failed sending '${templateName}' to ${to}:`, errorMsg);
 
-    await db.query(
+    // Log failure to DB (non-blocking)
+    query(
       `INSERT INTO email_delivery_logs (recipient_email, subject, template_name, status, error_message)
        VALUES ($1, $2, $3, 'FAILED', $4)`,
       [to, subject, templateName, errorMsg]
