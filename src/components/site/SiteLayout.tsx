@@ -58,7 +58,7 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
          ───────────────────────────────────────────────────────────── */}
       <header className="bg-white border-b border-[#E5E7EB]">
         {/* ROW 1: Logo, Search Bar, Cart, Account */}
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
+        <div className="mx-auto flex h-18 sm:h-20 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
           {/* Mobile menu toggle */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -69,8 +69,8 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
           </button>
 
           {/* Official RiderzPro Logo */}
-          <div className="shrink-0">
-            <Logo imgClassName="h-8 md:h-9" />
+          <div className="shrink-0 flex items-center py-1">
+            <Logo imgClassName="h-12 sm:h-13 md:h-14 w-auto" />
           </div>
 
           {/* Product Search Bar */}
@@ -177,7 +177,7 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
           />
           <div className="relative z-10 w-4/5 max-w-xs bg-white p-5 flex flex-col h-full shadow-xl">
             <div className="flex items-center justify-between pb-4 border-b border-[#E5E7EB]">
-              <Logo imgClassName="h-7" />
+              <Logo imgClassName="h-9 sm:h-10 w-auto" />
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="p-1 rounded-md text-gray-500 hover:text-gray-900"
@@ -247,7 +247,7 @@ function Footer() {
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-4">
         {/* Brand & Summary */}
         <div className="md:col-span-1">
-          <Logo imgClassName="h-8" />
+          <Logo imgClassName="h-10 sm:h-11 w-auto" />
           <p className="mt-3 text-xs text-[#6B7280] leading-relaxed">
             RiderzPro is an automotive e-commerce platform offering electric bikes, accessories, batteries, chargers, and verified spare parts.
           </p>

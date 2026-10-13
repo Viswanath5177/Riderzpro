@@ -148,7 +148,7 @@ function CustomerLogin() {
       <div className="flex flex-col justify-between p-6 sm:p-10 md:p-14 lg:p-16 bg-white max-w-xl mx-auto w-full">
         {/* Top Bar */}
         <div className="flex items-center justify-between pb-6">
-          <Logo imgClassName="h-9" />
+          <Logo imgClassName="h-14 sm:h-16 md:h-18 w-auto" />
           <Link
             to="/"
             className="text-xs font-semibold text-[#6B7280] hover:text-[#E31E24] transition"

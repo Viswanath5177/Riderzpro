@@ -483,7 +483,7 @@ export function AdminDashboard() {
       <header className="sticky top-0 z-40 border-b border-[#E5E7EB] bg-white shadow-2xs">
         <div className="flex h-16 items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-4">
-            <Logo imgClassName="h-8.5" />
+            <Logo imgClassName="h-10 sm:h-11 md:h-12 w-auto" />
             <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-gray-200">
               <span className="rounded-md bg-black px-2 py-0.5 text-[11px] font-bold text-white uppercase tracking-wider">
                 Admin Console

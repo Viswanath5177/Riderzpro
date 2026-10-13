@@ -116,8 +116,8 @@ export function Navbar() {
         </button>
 
         {/* RiderzPro Official Logo */}
-        <div className="shrink-0">
-          <Logo imgClassName="h-8 md:h-9" />
+        <div className="shrink-0 flex items-center py-1">
+          <Logo imgClassName="h-10 sm:h-11 md:h-12 w-auto" />
         </div>
 
         {/* Product Search Bar (Desktop / Tablet) */}
@@ -302,7 +302,7 @@ export function Navbar() {
           />
           <div className="relative z-10 w-4/5 max-w-xs bg-white p-5 flex flex-col h-full shadow-xl">
             <div className="flex items-center justify-between pb-4 border-b border-[#E5E7EB]">
-              <Logo imgClassName="h-7" />
+              <Logo imgClassName="h-9 sm:h-10 w-auto" />
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="p-1 rounded-md text-gray-500 hover:text-gray-900"
