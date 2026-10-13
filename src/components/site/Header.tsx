@@ -144,6 +144,14 @@ export function Header() {
             >
               Help
             </Link>
+
+            {/* 6. Sell on RiderzPro */}
+            <Link
+              to="/vendor/auth"
+              className="px-3 py-1.5 text-xs font-bold text-[#E31E24] hover:bg-red-50 rounded-xl transition border border-red-200"
+            >
+              Sell on RiderzPro
+            </Link>
           </nav>
 
           {/* Right: Search, Cart, Sign in */}

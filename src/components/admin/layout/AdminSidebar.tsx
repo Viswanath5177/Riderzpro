@@ -22,9 +22,11 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  CheckCircle2,
 } from "lucide-react";
 import { Logo } from "@/components/site/bits";
 import { useAdminAuth } from "@/lib/adminAuth";
+import { useAdminStore } from "@/mocks/admin/adminStore";
 import { cn } from "@/lib/utils";
 
 export interface NavGroup {
@@ -37,51 +39,6 @@ export interface NavGroup {
   }[];
 }
 
-export const ADMIN_NAV_GROUPS: NavGroup[] = [
-  {
-    title: "Core Operations",
-    items: [
-      { title: "Dashboard", to: "/admin", icon: <LayoutDashboard className="h-4 w-4" /> },
-      { title: "Orders", to: "/admin/orders", icon: <Package className="h-4 w-4" />, badge: "42" },
-      { title: "Riders & Fleet", to: "/admin/riders", icon: <Bike className="h-4 w-4" />, badge: "142" },
-      { title: "Sellers & KYC", to: "/admin/sellers", icon: <Store className="h-4 w-4" />, badge: "2" },
-      { title: "Customers", to: "/admin/customers", icon: <Users className="h-4 w-4" /> },
-    ],
-  },
-  {
-    title: "Catalog & Fitment",
-    items: [
-      { title: "Products & Stock", to: "/admin/products", icon: <Box className="h-4 w-4" /> },
-      { title: "Bikes & Fitment", to: "/admin/fitment", icon: <Wrench className="h-4 w-4" /> },
-    ],
-  },
-  {
-    title: "Finance & Growth",
-    items: [
-      { title: "Payments & Payouts", to: "/admin/payments", icon: <CreditCard className="h-4 w-4" /> },
-      { title: "Offers & Coupons", to: "/admin/offers", icon: <Tag className="h-4 w-4" /> },
-      { title: "Analytics & SLA", to: "/admin/analytics", icon: <BarChart3 className="h-4 w-4" /> },
-    ],
-  },
-  {
-    title: "Customer Quality",
-    items: [
-      { title: "Support Tickets", to: "/admin/support", icon: <Headphones className="h-4 w-4" />, badge: "3" },
-      { title: "Review Moderation", to: "/admin/reviews", icon: <Star className="h-4 w-4" /> },
-      { title: "Warranty & Returns", to: "/admin/warranty", icon: <ShieldCheck className="h-4 w-4" /> },
-    ],
-  },
-  {
-    title: "Platform Administration",
-    items: [
-      { title: "AI Assistant Logs", to: "/admin/ai-assistant", icon: <Bot className="h-4 w-4" /> },
-      { title: "Notifications", to: "/admin/notifications", icon: <Bell className="h-4 w-4" /> },
-      { title: "Team & Roles", to: "/admin/team", icon: <ShieldAlert className="h-4 w-4" /> },
-      { title: "Settings", to: "/admin/settings", icon: <Settings className="h-4 w-4" /> },
-    ],
-  },
-];
-
 export interface AdminSidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
@@ -90,8 +47,70 @@ export interface AdminSidebarProps {
 
 export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: AdminSidebarProps) {
   const { adminUser, logout } = useAdminAuth();
+  const { sellers, products } = useAdminStore();
   const location = useLocation();
   const pathname = location.pathname;
+
+  const pendingSellersCount = sellers.filter((s) => s.kycStatus === "Pending").length;
+  const pendingProductsCount = products.filter(
+    (p) => p.status === "Pending Review" || (p.vendorProductRecord && p.vendorProductRecord.status === "pending_review")
+  ).length;
+
+  const navGroups: NavGroup[] = [
+    {
+      title: "Core Operations",
+      items: [
+        { title: "Dashboard", to: "/admin", icon: <LayoutDashboard className="h-4 w-4" /> },
+        { title: "Orders", to: "/admin/orders", icon: <Package className="h-4 w-4" />, badge: "42" },
+        { title: "Riders & Fleet", to: "/admin/riders", icon: <Bike className="h-4 w-4" />, badge: "142" },
+        {
+          title: "Sellers & KYC",
+          to: "/admin/sellers",
+          icon: <Store className="h-4 w-4" />,
+          badge: pendingSellersCount > 0 ? String(pendingSellersCount) : undefined,
+        },
+        { title: "Customers", to: "/admin/customers", icon: <Users className="h-4 w-4" /> },
+      ],
+    },
+    {
+      title: "Catalog & Fitment",
+      items: [
+        {
+          title: "Product Approvals",
+          to: "/admin/approvals",
+          icon: <CheckCircle2 className="h-4 w-4" />,
+          badge: pendingProductsCount > 0 ? String(pendingProductsCount) : undefined,
+        },
+        { title: "Products & Stock", to: "/admin/products", icon: <Box className="h-4 w-4" /> },
+        { title: "Bikes & Fitment", to: "/admin/fitment", icon: <Wrench className="h-4 w-4" /> },
+      ],
+    },
+    {
+      title: "Finance & Growth",
+      items: [
+        { title: "Payments & Payouts", to: "/admin/payments", icon: <CreditCard className="h-4 w-4" /> },
+        { title: "Offers & Coupons", to: "/admin/offers", icon: <Tag className="h-4 w-4" /> },
+        { title: "Analytics & SLA", to: "/admin/analytics", icon: <BarChart3 className="h-4 w-4" /> },
+      ],
+    },
+    {
+      title: "Customer Quality",
+      items: [
+        { title: "Support Tickets", to: "/admin/support", icon: <Headphones className="h-4 w-4" />, badge: "3" },
+        { title: "Review Moderation", to: "/admin/reviews", icon: <Star className="h-4 w-4" /> },
+        { title: "Warranty & Returns", to: "/admin/warranty", icon: <ShieldCheck className="h-4 w-4" /> },
+      ],
+    },
+    {
+      title: "Platform Administration",
+      items: [
+        { title: "AI Assistant Logs", to: "/admin/ai-assistant", icon: <Bot className="h-4 w-4" /> },
+        { title: "Notifications", to: "/admin/notifications", icon: <Bell className="h-4 w-4" /> },
+        { title: "Team & Roles", to: "/admin/team", icon: <ShieldAlert className="h-4 w-4" /> },
+        { title: "Settings", to: "/admin/settings", icon: <Settings className="h-4 w-4" /> },
+      ],
+    },
+  ];
 
   return (
     <aside
@@ -127,7 +146,7 @@ export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: Adm
 
         {/* Grouped Nav Items with animated pill indicator */}
         <nav className="mt-4 space-y-5 overflow-y-auto max-h-[calc(100vh-250px)] pr-1">
-          {ADMIN_NAV_GROUPS.map((group) => (
+          {navGroups.map((group) => (
             <div key={group.title} className="space-y-1">
               {!isCollapsed && (
                 <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF] dark:text-zinc-500">

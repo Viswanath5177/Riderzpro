@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { Mic, Send, Zap, Square } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { ProductCard } from "@/components/site/bits";
-import { bikes, products, type Product } from "@/lib/data";
+import { bikes, type Product } from "@/lib/data";
+import { getCatalogueProducts } from "@/lib/catalogue";
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/assistant")({
@@ -25,7 +26,8 @@ function answer(q: string, activeBikeId: string | null): Msg {
   const bike = bikes.find((b) => s.includes(b.model.toLowerCase()) || s.includes(b.make.toLowerCase())) ?? bikes.find((b) => b.id === activeBikeId);
   const volt = s.match(/(48|60|72)\s*v/)?.[1];
   const cat = s.includes("charger") ? "Charger" : s.includes("bms") ? "BMS" : s.includes("motor") ? "Motor" : s.includes("controller") ? "Controller" : s.includes("brake") ? "Brakes" : s.includes("batter") ? "Battery" : null;
-  let items = products.filter((p) => (!cat || p.category === cat) && (!volt || p.voltage === +volt) && (!bike || p.fits.includes(bike.id)));
+  const catalogueProducts = getCatalogueProducts();
+  let items = catalogueProducts.filter((p) => (!cat || p.category === cat) && (!volt || p.voltage === +volt) && (!bike || p.fits.includes(bike.id)));
   if (s.includes("cheap") || s.includes("budget")) items = [...items].sort((a, b) => a.offers[0].price - b.offers[0].price);
   items = items.slice(0, 4);
   if (!items.length) return { role: "bot", text: "I couldn't find a matching part. Try mentioning your bike model or voltage, like “60V battery for Ola S1 Pro”." };

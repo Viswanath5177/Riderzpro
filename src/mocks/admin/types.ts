@@ -35,7 +35,7 @@ export interface AdminSeller {
   email: string;
   city: "Bengaluru" | "Hyderabad" | "Chennai" | "Pune" | "Mumbai";
   gstin: string;
-  kycStatus: "Approved" | "Pending" | "Rejected";
+  kycStatus: "Approved" | "Pending" | "Rejected" | "Changes Requested" | "Suspended";
   rejectionReason?: string;
   commissionRate: number; // e.g. 12%
   rating: number;
@@ -43,6 +43,7 @@ export interface AdminSeller {
   activeProductsCount: number;
   bankAccount: string;
   joinedDate: string;
+  vendorRecord?: any;
 }
 
 export interface AdminRider {
@@ -82,6 +83,8 @@ export interface AdminProduct {
   rating: number;
   reviewsCount: number;
   salesCount: number;
+  vendorProductRecord?: any;
+  pendingRevision?: any;
 }
 
 export interface AdminOrderItem {

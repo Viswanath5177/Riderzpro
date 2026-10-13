@@ -4,6 +4,7 @@ import { SlidersHorizontal, Search, Check, X, ChevronLeft, ChevronRight } from "
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { ProductCard } from "@/components/site/bits";
 import { bestOffer, bikes, getBike, products, ALL_PRODUCT_CATEGORIES, type Category } from "@/lib/data";
+import { useCatalogue } from "@/lib/catalogue";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +32,7 @@ const PAGE_SIZE = 40;
 
 function Shop() {
   const { activeBikeId, setActiveBikeId } = useStore();
+  const { products: catalogueProducts } = useCatalogue();
 
   const [q, setQ] = useState(() => {
     if (typeof window !== "undefined") {
@@ -71,13 +73,15 @@ function Shop() {
   }, []);
 
   const list = useMemo(() => {
-    let l = products.filter((p) => {
+    const sourceProducts = catalogueProducts && catalogueProducts.length > 0 ? catalogueProducts : products;
+    let l = sourceProducts.filter((p) => {
       const matchesCat =
         cat === "All" ||
         (cat === "Electric Bikes" && p.category === "Electric Bikes") ||
         (cat === "EV Batteries" && (p.category === "Battery" || (p.category as string) === "EV Batteries")) ||
         (cat === "Car Accessories" && (p.vehicleType === "car" || p.vehicleType === "both" || p.category === "Car Accessories")) ||
-        (cat === "Bike Accessories" && (p.vehicleType === "bike" || p.vehicleType === "both" || p.category === "Bike Accessories"));
+        (cat === "Bike Accessories" && (p.vehicleType === "bike" || p.vehicleType === "both" || p.category === "Bike Accessories")) ||
+        p.category === cat;
 
       const matchesSubcat =
         subcat === "All" ||
@@ -97,7 +101,7 @@ function Shop() {
     if (sort === "low") l = [...l].sort((a, b) => bestOffer(a).price - bestOffer(b).price);
     if (sort === "high") l = [...l].sort((a, b) => bestOffer(b).price - bestOffer(a).price);
     return l;
-  }, [q, cat, subcat, volt, onlyFit, activeBikeId, sort]);
+  }, [catalogueProducts, q, cat, subcat, volt, onlyFit, activeBikeId, sort]);
 
   const bike = activeBikeId ? getBike(activeBikeId) : null;
 

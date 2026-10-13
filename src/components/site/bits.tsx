@@ -193,7 +193,18 @@ export function ProductCard({ p }: { p: Product }) {
               <span className="font-display text-lg font-extrabold text-[#111111]">{inr(offer.price)}</span>
               <span className="text-xs text-gray-400 line-through">{inr(mrp)}</span>
             </div>
-            <p className="text-[10px] text-[#6B7280]">From {vendor.name}</p>
+            <div className="flex items-center gap-1 text-[10px] text-[#6B7280]">
+              <span>Sold by</span>
+              <Link
+                to="/store/$slug"
+                params={{ slug: (getVendor(offer.vendorId) as any).storeSlug || offer.vendorId }}
+                onClick={(e) => e.stopPropagation()}
+                className="font-bold text-gray-800 hover:text-[#E31E24] inline-flex items-center gap-0.5 truncate max-w-[120px]"
+              >
+                {getVendor(offer.vendorId).name}
+                <CheckCircle2 className="h-2.5 w-2.5 text-blue-500 fill-blue-50 shrink-0" />
+              </Link>
+            </div>
           </div>
 
           <button

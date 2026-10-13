@@ -212,6 +212,22 @@ function CustomerLogin() {
             {/* Sheet Handle */}
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4 sm:hidden" />
 
+            {/* Role Switcher: Customer vs Vendor */}
+            <div className="flex p-1 rounded-2xl bg-red-50/60 border border-red-100 mb-4 text-xs font-bold">
+              <button
+                type="button"
+                className="flex-1 py-1.5 rounded-xl bg-white text-[#E31E24] shadow-xs font-black cursor-default"
+              >
+                Customer
+              </button>
+              <Link
+                to="/vendor/auth"
+                className="flex-1 text-center py-1.5 rounded-xl text-gray-600 hover:text-gray-900 transition font-semibold"
+              >
+                Vendor
+              </Link>
+            </div>
+
             {/* Apple-style Segmented Control */}
             <div className="flex p-1 rounded-2xl bg-gray-100 border border-gray-200/70 mb-5 text-sm font-bold">
               <button
@@ -472,8 +488,16 @@ function CustomerLogin() {
             )}
           </div>
 
+          {/* Selling EV parts link */}
+          <div className="py-2 text-center text-xs text-gray-500">
+            Selling EV parts?{" "}
+            <Link to="/vendor/auth" search={{ mode: "signup" }} className="font-bold text-[#E31E24] hover:underline">
+              Become a RiderzPro vendor →
+            </Link>
+          </div>
+
           {/* Bottom Security Footer */}
-          <div className="pt-6 border-t border-gray-100 flex items-center justify-center gap-1.5 text-xs text-gray-400">
+          <div className="pt-4 border-t border-gray-100 flex items-center justify-center gap-1.5 text-xs text-gray-400">
             <ShieldCheck className="h-4 w-4 text-emerald-600" />
             <span>256-Bit SSL Encrypted · RiderzPro Mobility</span>
           </div>
