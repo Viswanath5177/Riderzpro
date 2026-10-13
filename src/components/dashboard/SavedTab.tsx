@@ -56,11 +56,24 @@ export function SavedTab() {
                 className="rounded-3xl border border-gray-200 bg-white overflow-hidden shadow-2xs hover:shadow-md transition flex flex-col justify-between"
               >
                 <div className="relative aspect-[4/3] bg-gray-100">
-                  <img src={p.image} alt={p.name} className="h-full w-full object-cover" />
-                  <div className="absolute top-3 left-3">
+                  <img
+                    src={p.image}
+                    alt={p.name}
+                    loading="lazy"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = "/src/assets/parts.jpg";
+                    }}
+                    className="h-full w-full object-cover"
+                  />
+                  <div className="absolute top-3 left-3 flex flex-col gap-1 items-start">
                     <span className="px-2.5 py-1 rounded-full bg-white border border-[#E5E7EB] text-gray-800 text-[10px] font-bold shadow-2xs">
                       {p.category}
                     </span>
+                    {offer.stock < 5 && (
+                      <span className="px-2 py-0.5 rounded-md bg-amber-600 text-white text-[10px] font-bold shadow-2xs">
+                        Hurry limited Stock
+                      </span>
+                    )}
                   </div>
                   <button
                     onClick={() => {
@@ -97,7 +110,14 @@ export function SavedTab() {
                   <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
                     <div>
                       <p className="text-lg font-extrabold text-gray-900">{inr(offer.price)}</p>
-                      <span className="text-[10px] text-emerald-600 font-semibold">In stock at {offer.stock} units</span>
+                      {offer.stock < 5 ? (
+                        <span className="text-[10px] text-amber-700 font-bold flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                          Hurry limited Stock ({offer.stock} left)
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-emerald-600 font-semibold">In stock at {offer.stock} units</span>
+                      )}
                     </div>
 
                     <button
@@ -112,6 +132,18 @@ export function SavedTab() {
                     </button>
                   </div>
                 </div>
+
+                {offer.stock < 5 && (
+                  <div className="bg-amber-50 border-t border-amber-200/90 px-4 py-1.5 flex items-center justify-between text-[11px] font-bold text-amber-800">
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping shrink-0" />
+                      <span>Hurry limited Stock</span>
+                    </span>
+                    <span className="text-[10px] font-bold text-amber-700 bg-amber-200/70 px-1.5 py-0.5 rounded">
+                      Only {offer.stock} left
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })}

@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Package, ArrowRight, Check, MapPin, Download, RefreshCw, ShoppingBag, Eye } from "lucide-react";
+import { Package, ArrowRight, Check, MapPin, Download, RefreshCw, ShoppingBag, Eye, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore, ORDER_STEPS, type Order } from "@/lib/store";
 import { getProduct, getVendor, inr } from "@/lib/data";
 
 export function OrdersTab() {
-  const { orders, advanceOrder, simulateDemoOrder } = useStore();
+  const { orders, deleteOrder, clearOrders } = useStore();
   const [filter, setFilter] = useState<"all" | "active" | "delivered">("all");
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
 
@@ -107,18 +107,22 @@ export function OrdersTab() {
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <button
-            onClick={() => {
-              simulateDemoOrder();
-              toast.success("Sample order created!");
-            }}
-            className="px-3.5 py-2 rounded-2xl border border-gray-200 bg-white text-gray-700 text-xs font-semibold hover:bg-gray-50 transition"
-          >
-            + Simulate Demo Order
-          </button>
+          {orders.length > 0 && (
+            <button
+              onClick={() => {
+                if (window.confirm("Are you sure you want to clear all orders?")) {
+                  clearOrders();
+                  toast.success("All orders cleared");
+                }
+              }}
+              className="px-3.5 py-2 rounded-2xl border border-red-200 bg-white text-red-600 hover:text-red-700 hover:bg-red-50 text-xs font-semibold transition cursor-pointer"
+            >
+              Clear All Orders
+            </button>
+          )}
           <Link
             to="/shop"
-            className="px-4 py-2 rounded-2xl bg-primary text-white text-xs font-semibold shadow-xs hover:bg-emerald-600 transition"
+            className="px-4 py-2 rounded-2xl bg-[#E31E24] text-white text-xs font-semibold shadow-xs hover:bg-red-700 transition"
           >
             Shop Parts
           </Link>
@@ -137,7 +141,7 @@ export function OrdersTab() {
             onClick={() => setFilter(t.id as any)}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition ${
               filter === t.id
-                ? "bg-primary text-white border-primary"
+                ? "bg-[#111111] text-white border-[#111111]"
                 : "border-gray-200 text-gray-600 hover:bg-gray-50 bg-white"
             }`}
           >
@@ -159,19 +163,10 @@ export function OrdersTab() {
           <div className="mt-5 flex justify-center gap-3">
             <Link
               to="/shop"
-              className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold shadow-xs hover:bg-emerald-600 transition"
+              className="px-4 py-2 rounded-xl bg-[#E31E24] text-white text-xs font-semibold shadow-xs hover:bg-red-700 transition"
             >
               Browse Shop
             </Link>
-            <button
-              onClick={() => {
-                simulateDemoOrder();
-                toast.success("Demo order created!");
-              }}
-              className="px-3.5 py-2 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition"
-            >
-              Simulate Demo Order
-            </button>
           </div>
         </div>
       ) : (
@@ -277,27 +272,32 @@ export function OrdersTab() {
                 {/* Action buttons */}
                 <div className="pt-2 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    {isLive && (
-                      <button
-                        onClick={() => advanceOrder(o.id)}
-                        className="px-3 py-1.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold hover:border-primary hover:text-primary transition"
-                      >
-                        Simulate Next Milestone →
-                      </button>
-                    )}
                     <button
                       onClick={() => setSelectedInvoiceOrder(o)}
-                      className="px-3 py-1.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition flex items-center gap-1.5"
+                      className="px-3 py-1.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition flex items-center gap-1.5 cursor-pointer"
                     >
                       <Eye className="h-3.5 w-3.5" />
                       <span>View Invoice</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Are you sure you want to delete order ${o.id}?`)) {
+                          deleteOrder(o.id);
+                          toast.success(`Order ${o.id} deleted`);
+                        }
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-50 transition flex items-center gap-1 cursor-pointer"
+                      title="Delete order"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>Delete Order</span>
                     </button>
                   </div>
 
                   <Link
                     to="/track/$id"
                     params={{ id: o.id }}
-                    className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold shadow-xs hover:bg-emerald-600 transition flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-xl bg-[#E31E24] text-white text-xs font-semibold shadow-xs hover:bg-red-700 transition flex items-center gap-1.5"
                   >
                     <MapPin className="h-3.5 w-3.5" />
                     <span>Track Live GPS Courier</span>

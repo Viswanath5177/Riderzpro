@@ -1,9 +1,34 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { SlidersHorizontal, Search, Bike, Check, X, ShieldCheck } from "lucide-react";
+import {
+  SlidersHorizontal,
+  Search,
+  Bike,
+  Check,
+  X,
+  ShieldCheck,
+  Tag,
+  Car,
+  RotateCcw,
+  Store,
+  Star,
+  Shield,
+  IndianRupee,
+} from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { ProductCard } from "@/components/site/bits";
-import { bestOffer, bikes, getBike, products, type Category } from "@/lib/data";
+import {
+  bestOffer,
+  bikes,
+  getBike,
+  mapDbProductToProduct,
+  products,
+  vendors,
+  getVendor,
+  getProductReviews,
+  type Product,
+  type Category,
+} from "@/lib/data";
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/shop")({
@@ -36,6 +61,10 @@ const CATS: (Category | "All")[] = [
 function Shop() {
   const { activeBikeId, setActiveBikeId } = useStore();
 
+  // Initialize with canonical seed catalog so user never sees blank page
+  const [dbProducts, setDbProducts] = useState<Product[]>([]);
+  const [activeSellers, setActiveSellers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [q, setQ] = useState(() => {
     if (typeof window !== "undefined") {
       const p = new URLSearchParams(window.location.search);
@@ -56,6 +85,54 @@ function Shop() {
   const [volt, setVolt] = useState<number | null>(null);
   const [onlyFit, setOnlyFit] = useState(false);
   const [sort, setSort] = useState("relevance");
+  const [selectedBrand, setSelectedBrand] = useState("All");
+  const [selectedVehicleType, setSelectedVehicleType] = useState("All");
+  const [selectedStock, setSelectedStock] = useState("all");
+  const [selectedVendorId, setSelectedVendorId] = useState("All");
+  const [minPrice, setMinPrice] = useState<number | "">("");
+  const [maxPrice, setMaxPrice] = useState<number | "">("");
+  const [minRating, setMinRating] = useState<number | "">("");
+  const [warrantyFilter, setWarrantyFilter] = useState("All");
+
+  useEffect(() => {
+    setIsLoading(true);
+    fetch("/api/products")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setDbProducts(res.data.map((row: any) => mapDbProductToProduct(row)));
+        } else {
+          setDbProducts([]);
+        }
+      })
+      .catch((err) => {
+        console.log("Shop fetch error:", err);
+        setDbProducts([]);
+      })
+      .finally(() => setIsLoading(false));
+
+    fetch("/api/sellers")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setActiveSellers(res.data);
+        } else {
+          setActiveSellers([]);
+        }
+      })
+      .catch((err) => {
+        console.log("Shop sellers fetch error:", err);
+        setActiveSellers([]);
+      });
+  }, []);
+
+  const availableBrands = useMemo(() => {
+    const set = new Set<string>();
+    dbProducts.forEach((p) => {
+      if (p.brand && p.brand.trim() && p.brand !== "Riderzpro Certified") set.add(p.brand.trim());
+    });
+    return ["All", "Riderzpro Certified", ...Array.from(set).sort()];
+  }, [dbProducts]);
 
   useEffect(() => {
     const handleUrl = () => {
@@ -73,17 +150,96 @@ function Shop() {
   }, []);
 
   const list = useMemo(() => {
-    let l = products.filter(
-      (p) =>
-        (cat === "All" || p.category === cat) &&
-        (!volt || p.voltage === volt) &&
-        (!onlyFit || !activeBikeId || p.fits.includes(activeBikeId)) &&
-        (q === "" || `${p.name} ${p.brand} ${p.category} ${p.description}`.toLowerCase().includes(q.toLowerCase())),
-    );
+    let l = dbProducts.filter((p) => {
+      const matchesCat =
+        cat === "All" ||
+        p.category.toLowerCase().includes(cat.toLowerCase()) ||
+        cat.toLowerCase().includes(p.category.toLowerCase());
+      const matchesBrand =
+        selectedBrand === "All" ||
+        p.brand?.toLowerCase() === selectedBrand.toLowerCase();
+      const pVType = (p.vehicleType || "").toLowerCase();
+      const matchesVehicleType =
+        selectedVehicleType === "All" ||
+        (selectedVehicleType === "bike" && (pVType === "bike" || pVType === "two-wheeler" || p.category.toLowerCase().includes("bike"))) ||
+        (selectedVehicleType === "car" && (pVType === "car" || pVType === "four-wheeler" || p.category.toLowerCase().includes("car"))) ||
+        (selectedVehicleType === "universal" && (pVType === "universal" || pVType === "both" || !pVType));
+
+      const offer = selectedVendorId !== "All"
+        ? p.offers.find((o) => o.vendorId === selectedVendorId) || bestOffer(p)
+        : bestOffer(p);
+
+      const matchesVendor =
+        selectedVendorId === "All" || p.offers.some((o) => o.vendorId === selectedVendorId);
+
+      const stock = offer.stock ?? p.offers?.[0]?.stock ?? 0;
+      const matchesStock =
+        selectedStock === "all" ||
+        (selectedStock === "in_stock" && stock >= 5) ||
+        (selectedStock === "low_stock" && stock < 5);
+
+      const price = offer.price;
+      const matchesMinPrice = minPrice === "" || price >= Number(minPrice);
+      const matchesMaxPrice = maxPrice === "" || price <= Number(maxPrice);
+
+      const revs = getProductReviews(p.id);
+      const avgRating = revs.length > 0 ? revs.reduce((s, r) => s + r.rating, 0) / revs.length : 4.8;
+      const matchesRating = minRating === "" || avgRating >= Number(minRating);
+
+      const matchesWarranty =
+        warrantyFilter === "All" ||
+        (warrantyFilter === "12" && p.warrantyMonths >= 12) ||
+        (warrantyFilter === "24" && p.warrantyMonths >= 24) ||
+        (warrantyFilter === "36" && p.warrantyMonths >= 36);
+
+      const matchesVolt = !volt || p.voltage === volt;
+      const matchesFit =
+        !onlyFit || !activeBikeId || p.fits.includes("universal") || p.fits.includes(activeBikeId);
+
+      const vendorNames = p.offers.map((o) => getVendor(o.vendorId).name).join(" ");
+      const matchesQuery =
+        q === "" ||
+        `${p.name} ${p.brand} ${p.category} ${p.description} ${p.sku || ""} ${vendorNames}`.toLowerCase().includes(q.toLowerCase());
+
+      return (
+        matchesCat &&
+        matchesBrand &&
+        matchesVehicleType &&
+        matchesVendor &&
+        matchesStock &&
+        matchesMinPrice &&
+        matchesMaxPrice &&
+        matchesRating &&
+        matchesWarranty &&
+        matchesVolt &&
+        matchesFit &&
+        matchesQuery
+      );
+    });
+
     if (sort === "low") l = [...l].sort((a, b) => bestOffer(a).price - bestOffer(b).price);
     if (sort === "high") l = [...l].sort((a, b) => bestOffer(b).price - bestOffer(a).price);
+    if (sort === "rating") {
+      l = [...l].sort((a, b) => {
+        const ra = getProductReviews(a.id);
+        const rb = getProductReviews(b.id);
+        const scoreA = ra.length ? ra.reduce((s, r) => s + r.rating, 0) / ra.length : 4.8;
+        const scoreB = rb.length ? rb.reduce((s, r) => s + r.rating, 0) / rb.length : 4.8;
+        return scoreB - scoreA;
+      });
+    }
+    if (sort === "value") {
+      l = [...l].sort((a, b) => {
+        const offA = bestOffer(a);
+        const offB = bestOffer(b);
+        const savA = (offA.mrp || offA.price * 1.15) - offA.price;
+        const savB = (offB.mrp || offB.price * 1.15) - offB.price;
+        return savB - savA;
+      });
+    }
+
     return l;
-  }, [q, cat, volt, onlyFit, activeBikeId, sort]);
+  }, [dbProducts, q, cat, selectedBrand, selectedVehicleType, selectedVendorId, selectedStock, minPrice, maxPrice, minRating, warrantyFilter, volt, onlyFit, activeBikeId, sort]);
 
   const bike = activeBikeId ? getBike(activeBikeId) : null;
 
@@ -168,33 +324,155 @@ function Shop() {
             </div>
           </div>
 
-          {/* Sub Filters: Voltage, Fitment, Sorting */}
+          {/* Sub Filters: Vendor, Brand, Vehicle Type, Stock, Price Range, Warranty, Rating, Voltage, Fitment, Sorting */}
           <div className="mt-3 flex flex-wrap items-center gap-2 pt-3 border-t border-gray-100 text-xs">
-            <SlidersHorizontal className="h-3.5 w-3.5 text-[#6B7280]" />
-            <span className="text-[#6B7280] font-medium">Voltage:</span>
-            {[48, 60, 72].map((v) => (
-              <button
-                key={v}
-                onClick={() => setVolt(volt === v ? null : v)}
-                className={`rounded-md border px-2.5 py-1 font-semibold leading-none ${
-                  volt === v
-                    ? "border-[#E31E24] bg-red-50 text-[#E31E24]"
-                    : "border-[#E5E7EB] bg-white text-[#6B7280] hover:text-[#111111]"
-                }`}
+            {/* Vendor / Shop Filter */}
+            <div className="flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs">
+              <Store className="h-3.5 w-3.5 text-[#E31E24]" />
+              <span className="text-[#6B7280]">Shop:</span>
+              <select
+                value={selectedVendorId}
+                onChange={(e) => setSelectedVendorId(e.target.value)}
+                className="bg-transparent font-semibold text-[#111111] outline-none cursor-pointer"
               >
-                {v}V
-              </button>
-            ))}
+                <option value="All">All Sellers & Shops</option>
+                {activeSellers.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name} ({v.area})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Brand Filter */}
+            <div className="flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs">
+              <Tag className="h-3.5 w-3.5 text-[#E31E24]" />
+              <span className="text-[#6B7280]">Brand:</span>
+              <select
+                value={selectedBrand}
+                onChange={(e) => setSelectedBrand(e.target.value)}
+                className="bg-transparent font-semibold text-[#111111] outline-none cursor-pointer"
+              >
+                {availableBrands.map((b) => (
+                  <option key={b} value={b}>
+                    {b === "All" ? "All Brands" : b}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Price Range Filter */}
+            <div className="flex items-center gap-1 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs">
+              <IndianRupee className="h-3.5 w-3.5 text-[#E31E24]" />
+              <span className="text-[#6B7280]">Price:</span>
+              <input
+                type="number"
+                placeholder="Min"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value ? Number(e.target.value) : "")}
+                className="w-14 rounded border border-gray-200 px-1 py-0.5 text-center text-xs font-semibold outline-none"
+              />
+              <span className="text-gray-400">-</span>
+              <input
+                type="number"
+                placeholder="Max"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : "")}
+                className="w-16 rounded border border-gray-200 px-1 py-0.5 text-center text-xs font-semibold outline-none"
+              />
+            </div>
+
+            {/* Customer Rating Filter */}
+            <div className="flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs">
+              <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+              <span className="text-[#6B7280]">Rating:</span>
+              <select
+                value={minRating}
+                onChange={(e) => setMinRating(e.target.value ? Number(e.target.value) : "")}
+                className="bg-transparent font-semibold text-[#111111] outline-none cursor-pointer"
+              >
+                <option value="">Any Rating</option>
+                <option value="4.0">4.0★ & above</option>
+                <option value="4.5">4.5★ & above</option>
+                <option value="4.8">4.8★ & above</option>
+              </select>
+            </div>
+
+            {/* Warranty Filter */}
+            <div className="flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs">
+              <Shield className="h-3.5 w-3.5 text-[#E31E24]" />
+              <span className="text-[#6B7280]">Warranty:</span>
+              <select
+                value={warrantyFilter}
+                onChange={(e) => setWarrantyFilter(e.target.value)}
+                className="bg-transparent font-semibold text-[#111111] outline-none cursor-pointer"
+              >
+                <option value="All">Any Warranty</option>
+                <option value="12">1+ Year Warranty</option>
+                <option value="24">2+ Years Warranty</option>
+                <option value="36">3+ Years Warranty</option>
+              </select>
+            </div>
+
+            {/* Vehicle Type Filter */}
+            <div className="flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs">
+              <Car className="h-3.5 w-3.5 text-[#E31E24]" />
+              <span className="text-[#6B7280]">Vehicle:</span>
+              <select
+                value={selectedVehicleType}
+                onChange={(e) => setSelectedVehicleType(e.target.value)}
+                className="bg-transparent font-semibold text-[#111111] outline-none cursor-pointer"
+              >
+                <option value="All">All Types</option>
+                <option value="bike">🛵 2-Wheeler (Bikes/EVs)</option>
+                <option value="car">🚗 4-Wheeler (Cars)</option>
+                <option value="universal">⚡ Universal Fitment</option>
+              </select>
+            </div>
+
+            {/* Stock Availability */}
+            <div className="flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs">
+              <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="text-[#6B7280]">Stock:</span>
+              <select
+                value={selectedStock}
+                onChange={(e) => setSelectedStock(e.target.value)}
+                className="bg-transparent font-semibold text-[#111111] outline-none cursor-pointer"
+              >
+                <option value="all">All Availability</option>
+                <option value="in_stock">In Stock (5+ units)</option>
+                <option value="low_stock">⚠️ Limited Stock (&lt; 5)</option>
+              </select>
+            </div>
+
+            {/* Voltage */}
+            <div className="flex items-center gap-1.5">
+              <SlidersHorizontal className="h-3.5 w-3.5 text-[#6B7280]" />
+              <span className="text-[#6B7280]">Voltage:</span>
+              {[48, 60, 72].map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setVolt(volt === v ? null : v)}
+                  className={`rounded-md border px-2 py-1 font-semibold leading-none cursor-pointer ${
+                    volt === v
+                      ? "border-[#E31E24] bg-red-50 text-[#E31E24]"
+                      : "border-[#E5E7EB] bg-white text-[#6B7280] hover:text-[#111111]"
+                  }`}
+                >
+                  {v}V
+                </button>
+              ))}
+            </div>
 
             {bike && (
-              <label className="ml-3 flex items-center gap-1.5 cursor-pointer font-medium text-[#111111]">
+              <label className="ml-2 flex items-center gap-1.5 cursor-pointer font-medium text-[#111111]">
                 <input
                   type="checkbox"
                   checked={onlyFit}
                   onChange={(e) => setOnlyFit(e.target.checked)}
                   className="rounded border-gray-300 accent-[#E31E24]"
                 />
-                <span>Only compatible with {bike.make} {bike.model}</span>
+                <span>Fit for {bike.make} {bike.model}</span>
               </label>
             )}
 
@@ -203,55 +481,87 @@ function Shop() {
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
-                className="rounded-md border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs font-medium text-[#111111] outline-none"
+                className="rounded-md border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs font-semibold text-[#111111] outline-none cursor-pointer"
               >
                 <option value="relevance">Relevance</option>
                 <option value="low">Price: Low → High</option>
                 <option value="high">Price: High → Low</option>
+                <option value="rating">Highest Rated ★</option>
+                <option value="value">Best Value (Max Savings)</option>
               </select>
             </div>
           </div>
         </div>
 
-        {/* Results Count */}
+        {/* Results Count & Clear Button */}
         <div className="mt-5 flex items-center justify-between text-xs text-[#6B7280]">
           <p>Showing <span className="font-semibold text-[#111111]">{list.length}</span> products</p>
-          {(cat !== "All" || q || volt !== null || onlyFit) && (
+          {(cat !== "All" ||
+            q ||
+            volt !== null ||
+            onlyFit ||
+            selectedBrand !== "All" ||
+            selectedVehicleType !== "All" ||
+            selectedStock !== "all" ||
+            selectedVendorId !== "All" ||
+            minPrice !== "" ||
+            maxPrice !== "" ||
+            minRating !== "" ||
+            warrantyFilter !== "All") && (
             <button
               onClick={() => {
                 setCat("All");
                 setQ("");
                 setVolt(null);
                 setOnlyFit(false);
+                setSelectedBrand("All");
+                setSelectedVehicleType("All");
+                setSelectedStock("all");
+                setSelectedVendorId("All");
+                setMinPrice("");
+                setMaxPrice("");
+                setMinRating("");
+                setWarrantyFilter("All");
               }}
-              className="font-medium text-[#E31E24] hover:underline"
+              className="inline-flex items-center gap-1 font-semibold text-[#E31E24] hover:underline cursor-pointer"
             >
+              <RotateCcw className="h-3 w-3" />
               Reset all filters
             </button>
           )}
         </div>
 
         {/* Product Cards Grid */}
-        {list.length === 0 ? (
+        {isLoading ? (
           <div className="mt-8 rounded-2xl border border-dashed border-[#E5E7EB] bg-white p-12 text-center">
-            <p className="font-display text-xl font-bold text-[#111111]">No matching products found</p>
-            <p className="mt-2 text-sm text-[#6B7280]">
-              Try clearing filters or search query to explore the full inventory.
+            <p className="font-display text-lg font-bold text-[#111111]">Loading catalog from database...</p>
+          </div>
+        ) : list.length === 0 ? (
+          <div className="mt-8 rounded-2xl border border-dashed border-[#E5E7EB] bg-white p-12 text-center">
+            <p className="font-display text-xl font-bold text-[#111111]">
+              {dbProducts.length === 0 ? "No verified products available yet" : "No matching products found"}
             </p>
-            <button
-              onClick={() => {
-                setCat("All");
-                setQ("");
-                setVolt(null);
-                setOnlyFit(false);
-              }}
-              className="mt-4 rounded-lg bg-[#E31E24] px-4 py-2 text-xs font-semibold text-white hover:bg-red-700"
-            >
-              View All Products
-            </button>
+            <p className="mt-2 text-sm text-[#6B7280]">
+              {dbProducts.length === 0
+                ? "Stores and products will appear once authorized vendors register and their products are approved by admin."
+                : "Try clearing filters or search query to explore the full inventory."}
+            </p>
+            {dbProducts.length > 0 && (
+              <button
+                onClick={() => {
+                  setCat("All");
+                  setQ("");
+                  setVolt(null);
+                  setOnlyFit(false);
+                }}
+                className="mt-4 rounded-lg bg-[#E31E24] px-4 py-2 text-xs font-semibold text-white hover:bg-red-700"
+              >
+                View All Products
+              </button>
+            )}
           </div>
         ) : (
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
             {list.map((p) => (
               <ProductCard key={p.id} p={p} />
             ))}

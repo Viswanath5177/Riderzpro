@@ -196,8 +196,8 @@
 .main-viewport {
   flex: 1;
   min-width: 0;
-  padding: 24px 28px 80px 24px;
-  max-width: 1420px;
+  padding: 24px 32px 90px 28px;
+  max-width: 1440px;
   margin: 0;
   width: 100%;
   box-sizing: border-box;
@@ -211,14 +211,6 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 16px;
-  padding-right: 340px; /* Leave clean headroom for Dev Bypass Bar on wide screens */
-}
-
-@media (max-width: 1200px) {
-  .page-header {
-    padding-right: 0;
-    margin-top: 40px; /* Space below mobile dev toolbar */
-  }
 }
 
 .page-title-group {
@@ -790,7 +782,7 @@ input:checked + .slider:before {
 /* Apple Toast Alerts */
 .toast-container {
   position: fixed;
-  top: 54px;
+  top: 24px;
   right: 24px;
   display: flex;
   flex-direction: column;
@@ -833,7 +825,6 @@ input:checked + .slider:before {
   }
   .page-header {
     margin-bottom: 16px;
-    padding-right: 0;
   }
   h1, .text-title-large {
     font-size: 22px;
@@ -841,7 +832,7 @@ input:checked + .slider:before {
   .toast-container {
     left: 14px;
     right: 14px;
-    top: 54px;
+    top: 20px;
   }
   .glass-toast {
     min-width: unset;

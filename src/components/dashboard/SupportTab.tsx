@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { LifeBuoy, Phone, MessageSquare, ChevronDown, Sparkles, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Phone, ChevronDown, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 export function SupportTab() {
@@ -62,25 +61,6 @@ export function SupportTab() {
         </a>
       </div>
 
-      {/* AI Assistant Quick Help */}
-      <div className="p-5 rounded-3xl border border-emerald-200 bg-emerald-50/40 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-primary text-white shrink-0">
-            <Sparkles className="h-5 w-5" />
-          </span>
-          <div>
-            <h3 className="text-sm font-bold text-gray-900 font-display">Volt — AI Parts & Fitment Assistant</h3>
-            <p className="text-xs text-gray-600">Ask questions by voice or text to find exact battery replacements instantly.</p>
-          </div>
-        </div>
-
-        <Link
-          to="/assistant"
-          className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold shadow-xs hover:bg-emerald-600 transition shrink-0"
-        >
-          Talk to Volt
-        </Link>
-      </div>
 
       {/* FAQs Section */}
       <div className="p-6 rounded-3xl border border-gray-200 bg-white shadow-2xs space-y-4">

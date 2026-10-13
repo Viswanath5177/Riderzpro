@@ -1,28 +1,39 @@
-# Riderzpro — EV Batteries & Parts Marketplace
+# ⚡ Riderzpro — EV Batteries & Certified Installation Platform
 
-Riderzpro is an electric two-wheeler battery and spare parts marketplace built with **TanStack Start**, **React 19**, **Tailwind CSS**, and **Capacitor** for Android and iOS.
+Riderzpro is an automotive e-commerce & certified technician marketplace connecting verified EV sellers, customers, and field installation riders with guaranteed vehicle fitment and live tracking.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20React%20%7C%20PostgreSQL-orange.svg)](#)
 
 ---
 
-## 🚀 Quick Start (Web Development)
+## 🚀 Key Features
 
-1. **Install Dependencies:**
-   ```bash
-   npm install --legacy-peer-deps
-   ```
+1. **Guaranteed Fitment Engine**: Strictly matches EV batteries against vehicle brand, model, and year (Ather, Ola, TVS, Revolt, Hero, Chetak).
+2. **Multi-Role Dashboards**:
+   - **Customer**: Product discovery, cart, checkout, live rider tracking.
+   - **Seller (Entrepreneur)**: Inventory management, "+ Add Product" submission, order fulfillment, weekly payouts.
+   - **Rider (Technician)**: Dispatch queue, live GPS location updates, order completion.
+   - **Support Admin**: Verification queue to review and approve/reject seller products and tickets.
+   - **Super Admin**: Platform-wide metrics, governance, and user auditing.
+3. **Database Architecture**: Clean PostgreSQL / SQLite schema unifying users, products, orders, deliveries, and support tickets.
 
+---
 
-2. **Start Local Dev Server:**
-   ```bash
-   npm run dev
-   ```
-   Open [http://localhost:8080](http://localhost:8080) in your browser.
+## 💻 Development & Running Locally
 
-3. **Run Tests & Linting:**
-   ```bash
-   npm test
-   npm run lint
-   ```
+### 1. React / TanStack Web App
+```bash
+npm install --legacy-peer-deps
+npm run dev
+```
+Open [http://localhost:8080](http://localhost:8080) (or port 8081) in your browser.
+
+### 2. Static Web Preview / Dashboards
+```bash
+# Start local HTTP server
+python -m http.server 3000 --directory web
+```
 
 ---
 
@@ -31,7 +42,6 @@ Riderzpro is an electric two-wheeler battery and spare parts marketplace built w
 The mobile version wraps the responsive SPA build inside native Capacitor shells with full offline support, hardware back button navigation, dark status bar, haptics, and custom splash screens.
 
 ### 1. Build and Sync Web Changes to Mobile
-Whenever you make changes to UI screens or code, build the static assets and sync them to native platforms:
 ```bash
 npm run build
 npx cap sync
@@ -41,14 +51,25 @@ npx cap sync
 ```bash
 npx cap open android
 ```
-- Wait for Gradle sync to complete.
-- Select your target device/emulator (or connect a physical Android phone with USB Debugging enabled).
-- Click the green **Run (▶)** button.
 
 ### 3. Open in Xcode (macOS only)
 ```bash
 npx cap open ios
 ```
+
+---
+
+## 🛠️ Built With
+
+- **Frontend**: TanStack Start, React 19, TypeScript, Tailwind CSS, Lucide Icons
+- **Database**: PostgreSQL / SQLite
+- **Mobile**: Capacitor 8 (Status Bar, Splash Screen, Haptics, App)
+
+---
+
+## 📄 License
+
+MIT © 2026 Riderzpro Technologies Pvt Ltd.
 
 ---
 
