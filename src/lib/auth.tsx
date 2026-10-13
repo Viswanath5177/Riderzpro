@@ -262,6 +262,7 @@ type StoredUser = User & {
 
 export type AuthContextType = {
   user: User | null;
+  setUser: (user: User | null) => void;
   isAuthenticated: boolean;
   loading: boolean;
   signIn: (emailOrPhone: string, password: string, remember?: boolean) => Promise<{ success: boolean; error?: string }>;
@@ -455,6 +456,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AuthContextType>(
     () => ({
       user,
+      setUser,
       isAuthenticated: Boolean(user),
       loading,
       signIn,
