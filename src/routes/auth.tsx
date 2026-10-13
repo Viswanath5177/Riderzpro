@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { AuthPage } from "@/components/auth/AuthPage";
 
 export type AuthSearch = {
@@ -14,12 +14,6 @@ export const Route = createFileRoute("/auth")({
       mode: rawMode === "signup" ? "signup" : rawMode === "signin" ? "signin" : undefined,
       redirect: typeof rawRedirect === "string" ? rawRedirect : undefined,
     };
-  },
-  beforeLoad: ({ search }) => {
-    throw redirect({
-      to: "/login",
-      search: search.redirect ? { redirect: search.redirect } : undefined,
-    });
   },
   head: () => ({
     meta: [

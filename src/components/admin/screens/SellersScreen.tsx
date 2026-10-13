@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Store,
   CheckCircle2,
@@ -10,15 +10,17 @@ import {
   Star,
   Edit2,
   AlertCircle,
-  ExternalLink,
-  CreditCard,
-  FileText,
-  HelpCircle,
-  Clock,
+  Eye,
+  ShieldAlert,
   ShieldCheck,
+  Lock,
+  Unlock,
   MapPin,
-  Mail,
-  Phone,
+  Clock,
+  ArrowRight,
+  Ban,
+  Check,
+  HelpCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "../glass/GlassCard";
@@ -31,171 +33,88 @@ import { GlassDrawer } from "../glass/GlassDrawer";
 import { useAdminStore } from "@/mocks/admin/adminStore";
 import { AdminSeller } from "@/mocks/admin/types";
 
-export interface DbSellerDocument {
-  id: string;
-  doc_type: string;
-  doc_number?: string;
-  file_path: string;
-  is_verified?: boolean;
-}
-
-export interface DbSellerBankAccount {
-  account_holder_name: string;
-  bank_name: string;
-  account_number: string;
-  ifsc_code: string;
-}
-
-export interface EnrichedSeller extends AdminSeller {
-  rawStatus?: string;
-  businessAddress?: string;
-  state?: string;
-  pincode?: string;
-  documents?: DbSellerDocument[];
-  bankDetails?: DbSellerBankAccount;
-}
-
 export function SellersScreen() {
-  const { sellers: mockSellers, approveSellerKyc: mockApprove, rejectSellerKyc: mockReject, updateSellerCommission: mockCommission } = useAdminStore();
-  const [sellersList, setSellersList] = useState<EnrichedSeller[]>([]);
-  const [selectedSeller, setSelectedSeller] = useState<EnrichedSeller | null>(null);
+  const {
+    sellers,
+    approveSellerKyc,
+    requestSellerChanges,
+    rejectSellerKyc,
+    suspendSeller,
+    reinstateSeller,
+    updateSellerCommission,
+    approveAllPending,
+  } = useAdminStore();
+
+  const [selectedSeller, setSelectedSeller] = useState<AdminSeller | null>(null);
   const [kycFilter, setKycFilter] = useState("ALL");
-  const [rejectModalSeller, setRejectModalSeller] = useState<EnrichedSeller | null>(null);
+
+  // Approval Modal State
+  const [approveModalSeller, setApproveModalSeller] = useState<AdminSeller | null>(null);
+  const [approveCommission, setApproveCommission] = useState(10);
+  const [approveTier, setApproveTier] = useState<"Standard" | "Gold" | "Platinum">("Standard");
+
+  // Reject Modal State
+  const [rejectModalSeller, setRejectModalSeller] = useState<AdminSeller | null>(null);
   const [rejectReason, setRejectReason] = useState("");
-  const [moreInfoModalSeller, setMoreInfoModalSeller] = useState<EnrichedSeller | null>(null);
-  const [moreInfoReason, setMoreInfoReason] = useState("");
-  const [commissionModalSeller, setCommissionModalSeller] = useState<EnrichedSeller | null>(null);
+  const [selectedRejectTemplate, setSelectedRejectTemplate] = useState("Illegible or incomplete statutory documents");
+
+  // Request Changes Modal State
+  const [changesModalSeller, setChangesModalSeller] = useState<AdminSeller | null>(null);
+  const [selectedSections, setSelectedSections] = useState<string[]>(["tax", "documents"]);
+  const [changesNotes, setChangesNotes] = useState("");
+
+  // Commission Edit Modal State
+  const [commissionModalSeller, setCommissionModalSeller] = useState<AdminSeller | null>(null);
   const [newCommission, setNewCommission] = useState(10);
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch real sellers from PostgreSQL backend
-  const loadSellers = () => {
-    setIsLoading(true);
-    fetch("/api/admin/sellers")
-      .then((r) => r.json())
-      .then((res) => {
-        if (res.success && Array.isArray(res.data)) {
-          const mapped: EnrichedSeller[] = res.data.map((row: any) => ({
-            id: row.id,
-            businessName: row.store_name,
-            ownerName: row.owner_name,
-            phone: row.phone,
-            email: row.email,
-            city: row.city || "Bengaluru",
-            businessAddress: row.business_address,
-            state: row.state,
-            pincode: row.pincode,
-            gstin: row.gstin || "Unregistered",
-            kycStatus: row.status === "APPROVED" ? "Approved" : row.status === "REJECTED" ? "Rejected" : "Pending",
-            rawStatus: row.status,
-            rejectionReason: row.rejection_reason,
-            commissionRate: 10,
-            rating: 4.8,
-            totalSales: 0,
-            activeProductsCount: 0,
-            bankAccount: row.bankAccount
-              ? `${row.bankAccount.bank_name} · ••••${row.bankAccount.account_number.slice(-4)}`
-              : "Pending",
-            bankDetails: row.bankAccount,
-            documents: row.documents || [],
-            joinedDate: new Date(row.created_at).toLocaleDateString("en-IN", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            }),
-          }));
-          setSellersList(mapped);
-        } else {
-          setSellersList([]);
-        }
-      })
-      .catch((err) => {
-        console.warn("[Admin Sellers API Notice]:", err.message);
-        setSellersList([]);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+  // Bank reveal state
+  const [revealedBankId, setRevealedBankId] = useState<string | null>(null);
+
+  // Document inline zoom modal state
+  const [zoomedDocUrl, setZoomedDocUrl] = useState<string | null>(null);
+
+  // Interactive verification checklist state per seller
+  const [checklist, setChecklist] = useState<Record<string, boolean>>({
+    gst_active: true,
+    pan_matches: true,
+    bank_verified: true,
+    docs_legible: true,
+    brand_auth_valid: true,
+    address_serviceable: true,
+  });
+
+  const toggleCheck = (key: string) => {
+    setChecklist((prev) => ({ ...prev, [key]: !prev[key] }));
   };
-
-  useEffect(() => {
-    loadSellers();
-  }, []);
-
-  const handleReviewAction = async (
-    sellerId: string,
-    action: "APPROVED" | "REJECTED" | "MORE_INFORMATION_REQUIRED",
-    reason?: string
-  ) => {
-    const toastId = toast.loading(`Reviewing vendor KYC (${action.toLowerCase()})...`);
-    try {
-      const res = await fetch(`/api/admin/sellers/${sellerId}/review`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, reason }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || "Failed to update review status");
-      }
-
-      toast.success(
-        action === "APPROVED"
-          ? "Vendor KYC Approved! Congratulatory email dispatched via Gmail SMTP."
-          : action === "REJECTED"
-          ? "Application Rejected. Compliance email dispatched to seller."
-          : "Clarification request sent to seller via email.",
-        { id: toastId }
-      );
-
-      // Refresh list & current selected seller
-      loadSellers();
-      if (selectedSeller?.id === sellerId) {
-        setSelectedSeller((prev) =>
-          prev
-            ? {
-                ...prev,
-                kycStatus: action === "APPROVED" ? "Approved" : action === "REJECTED" ? "Rejected" : "Pending",
-                rawStatus: action,
-                rejectionReason: reason,
-              }
-            : null
-        );
-      }
-    } catch (err: any) {
-      toast.error(err.message, { id: toastId });
-    }
-  };
-
-  const currentDisplaySellers = sellersList.length > 0 ? sellersList : mockSellers;
 
   const filterTabs = [
-    { label: "All Sellers", value: "ALL", count: currentDisplaySellers.length },
-    {
-      label: "KYC Approved",
-      value: "Approved",
-      count: currentDisplaySellers.filter((s) => s.kycStatus === "Approved").length,
-    },
-    {
-      label: "KYC Pending",
-      value: "Pending",
-      count: currentDisplaySellers.filter((s) => s.kycStatus === "Pending").length,
-    },
-    {
-      label: "KYC Rejected",
-      value: "Rejected",
-      count: currentDisplaySellers.filter((s) => s.kycStatus === "Rejected").length,
-    },
+    { label: "All Sellers", value: "ALL", count: sellers.length },
+    { label: "KYC Pending", value: "Pending", count: sellers.filter((s) => s.kycStatus === "Pending").length },
+    { label: "Approved", value: "Approved", count: sellers.filter((s) => s.kycStatus === "Approved").length },
+    { label: "Changes Requested", value: "Changes Requested", count: sellers.filter((s) => s.kycStatus === "Changes Requested").length },
+    { label: "Rejected / Suspended", value: "Rejected", count: sellers.filter((s) => s.kycStatus === "Rejected" || s.kycStatus === "Suspended").length },
   ];
 
-  const columns: Column<EnrichedSeller>[] = [
+  const columns: Column<AdminSeller>[] = [
     {
       key: "businessName",
-      header: "Business Name",
+      header: "Business & Store",
       sortable: true,
       render: (s) => (
         <div>
-          <p className="font-bold text-[#111111] text-sm">{s.businessName}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-bold text-[#111111] text-sm">{s.businessName}</p>
+            {s.vendorRecord?.onboarding?.shipping?.sellsLiIon && (
+              <span className="rounded bg-amber-100 text-amber-800 text-[9px] font-bold px-1.5 py-0.5">
+                Li-ion
+              </span>
+            )}
+            {s.vendorRecord?.onboarding?.tax?.gstExempt && (
+              <span className="rounded bg-gray-100 text-gray-700 text-[9px] font-bold px-1.5 py-0.5">
+                Exempt
+              </span>
+            )}
+          </div>
           <p className="text-xs text-[#4B5563] font-medium mt-0.5">
             Owner: {s.ownerName} · {s.city}
           </p>
@@ -206,9 +125,7 @@ export function SellersScreen() {
       key: "gstin",
       header: "GSTIN Tax ID",
       render: (s) => (
-        <span className="font-mono text-[#111111] font-bold text-xs">
-          {s.gstin || "Unregistered"}
-        </span>
+        <span className="font-mono text-[#111111] font-bold text-xs">{s.gstin}</span>
       ),
     },
     {
@@ -255,124 +172,253 @@ export function SellersScreen() {
           {s.kycStatus === "Pending" && (
             <>
               <button
-                onClick={() => handleReviewAction(s.id, "APPROVED")}
-                className="rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-200 p-1.5 transition cursor-pointer"
-                title="Approve KYC & Notify Vendor"
+                type="button"
+                onClick={() => {
+                  setApproveModalSeller(s);
+                  setApproveCommission(s.commissionRate || 10);
+                }}
+                className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 text-xs transition shadow-2xs"
               >
-                <CheckCircle2 className="h-4 w-4" />
+                Approve
               </button>
               <button
-                onClick={() => setRejectModalSeller(s)}
-                className="rounded-lg bg-red-100 text-red-700 hover:bg-red-200 p-1.5 transition cursor-pointer"
-                title="Reject Application"
+                type="button"
+                onClick={() => {
+                  setChangesModalSeller(s);
+                  setChangesNotes("");
+                }}
+                className="rounded-lg border border-orange-300 bg-orange-50 hover:bg-orange-100 text-orange-800 font-bold px-2 py-1 text-xs transition"
               >
-                <XCircle className="h-4 w-4" />
+                Changes
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRejectModalSeller(s);
+                  setRejectReason("");
+                }}
+                className="rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 font-bold px-2 py-1 text-xs transition"
+              >
+                Reject
               </button>
             </>
           )}
-          <button
-            onClick={() => {
-              setCommissionModalSeller(s);
-              setNewCommission(s.commissionRate);
-            }}
-            className="rounded-lg bg-gray-100 text-[#374151] hover:bg-gray-200 p-1.5 transition cursor-pointer"
-            title="Edit Commission Rate"
-          >
-            <Percent className="h-3.5 w-3.5" />
-          </button>
+
+          {s.kycStatus === "Approved" && (
+            <button
+              type="button"
+              onClick={() => {
+                setCommissionModalSeller(s);
+                setNewCommission(s.commissionRate);
+              }}
+              className="text-[#6B7280] hover:text-[#E31E24] p-1.5 transition"
+              title="Edit commission rate"
+            >
+              <Percent className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       ),
     },
   ];
 
+  const vr = selectedSeller?.vendorRecord;
+  const ob = vr?.onboarding;
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[#111111] tracking-tight">
-          Seller Directory & KYC Approval Queue
-        </h1>
-        <p className="text-sm text-[#4B5563] font-medium mt-1">
-          Review vendor business credentials, PAN, Aadhaar front photo with address, GSTIN and bank settlement payout accounts.
-        </p>
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-black text-[#111111]">
+            Sellers & Vendor KYC Queue
+          </h1>
+          <p className="text-xs text-[#4B5563] font-medium mt-0.5">
+            Audit seller registrations, verify GSTIN certificates and manage platform commission tiers.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Dev Mode Helper */}
+          <button
+            type="button"
+            onClick={approveAllPending}
+            className="flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 transition shadow-2xs"
+          >
+            <span>⚡ Demo: Approve All Pending</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Table */}
       <DataTable
-        data={currentDisplaySellers}
+        data={sellers}
         columns={columns}
-        searchPlaceholder="Search vendor business, owner name or GSTIN..."
-        searchKey={(s) => `${s.businessName} ${s.ownerName} ${s.gstin} ${s.city}`}
+        searchPlaceholder="Search by business name, owner, city, or GSTIN..."
         filterTabs={filterTabs}
         currentFilter={kycFilter}
         onFilterChange={setKycFilter}
-        filterPredicate={(s, filter) => s.kycStatus === filter}
+        filterPredicate={(s, filter) => {
+          if (filter === "Rejected") return s.kycStatus === "Rejected" || s.kycStatus === "Suspended";
+          return s.kycStatus === filter;
+        }}
         onRowClick={(seller) => setSelectedSeller(seller)}
         keyExtractor={(s) => s.id}
         exportFileName="riderzpro_sellers"
       />
 
-      {/* Seller Profile & Document Review Drawer */}
+      {/* Full Seller Profile Drawer */}
       <GlassDrawer
         isOpen={Boolean(selectedSeller)}
         onClose={() => setSelectedSeller(null)}
         width="lg"
         title={selectedSeller?.businessName}
-        description={
-          selectedSeller
-            ? `Application Submitted: ${selectedSeller.joinedDate} · ${selectedSeller.city}`
-            : undefined
-        }
+        description={selectedSeller ? `Joined ${selectedSeller.joinedDate} · ${selectedSeller.city}` : undefined}
       >
         {selectedSeller && (
           <div className="space-y-6 text-xs text-[#111111]">
-            {/* Seller Header */}
+            {/* Header info card */}
             <div className="rounded-2xl bg-gray-50 p-4 border border-[#E5E7EB] flex items-center justify-between">
               <div>
                 <p className="font-bold text-base text-[#111111]">{selectedSeller.businessName}</p>
-                <p className="text-[#4B5563] font-medium mt-0.5">
-                  Managing Owner: {selectedSeller.ownerName}
-                </p>
-                <p className="text-[#6B7280] font-mono mt-0.5">
-                  {selectedSeller.phone} · {selectedSeller.email}
-                </p>
+                <p className="text-[#4B5563] font-medium mt-0.5">Managing Owner: {selectedSeller.ownerName}</p>
+                <p className="text-[#6B7280] font-mono mt-0.5">{selectedSeller.phone} · {selectedSeller.email}</p>
               </div>
-              <StatusBadge status={selectedSeller.kycStatus} size="md" />
+              <div className="flex flex-col items-end gap-1">
+                <StatusBadge status={selectedSeller.kycStatus} size="md" />
+                {vr?.tier && (
+                  <span className="rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5">
+                    {vr.tier} Tier
+                  </span>
+                )}
+              </div>
             </div>
 
-            {/* Rejection / Compliance Feedback Banner */}
-            {selectedSeller.rejectionReason && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 p-3.5 text-red-800">
-                <p className="font-bold flex items-center gap-1.5 mb-1 text-red-900">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>Compliance Review Note:</span>
-                </p>
-                <p className="text-xs leading-relaxed">{selectedSeller.rejectionReason}</p>
-              </div>
-            )}
+            {/* Badges strip: Li-ion / GST Exempt */}
+            <div className="flex flex-wrap gap-2">
+              {ob?.shipping?.sellsLiIon && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900 font-bold flex items-center gap-1.5">
+                  <ShieldAlert className="h-4 w-4 text-amber-600" />
+                  <span>Li-ion Packaging Compliant (UN38.3 Declared)</span>
+                </div>
+              )}
+              {ob?.tax?.gstExempt && (
+                <div className="rounded-xl border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs text-gray-800 font-bold flex items-center gap-1.5">
+                  <span>Exempt Seller (Non-GST)</span>
+                </div>
+              )}
+            </div>
 
-            {/* Business Address & Credentials */}
-            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 space-y-2.5 shadow-xs">
+            {/* Verification Checklist */}
+            <div className="rounded-2xl border border-border bg-white p-4 space-y-2.5 shadow-2xs">
+              <h4 className="font-bold text-foreground flex items-center gap-1.5 text-xs">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                <span>KYC Verification Checklist</span>
+              </h4>
+              <div className="grid grid-cols-2 gap-2 pt-1 text-[11px]">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={checklist.gst_active}
+                    onChange={() => toggleCheck("gst_active")}
+                    className="h-3.5 w-3.5 accent-primary"
+                  />
+                  <span>GSTIN Status Active</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={checklist.pan_matches}
+                    onChange={() => toggleCheck("pan_matches")}
+                    className="h-3.5 w-3.5 accent-primary"
+                  />
+                  <span>PAN matches signatory</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={checklist.bank_verified}
+                    onChange={() => toggleCheck("bank_verified")}
+                    className="h-3.5 w-3.5 accent-primary"
+                  />
+                  <span>Bank penny drop matches</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={checklist.docs_legible}
+                    onChange={() => toggleCheck("docs_legible")}
+                    className="h-3.5 w-3.5 accent-primary"
+                  />
+                  <span>Uploaded docs legible</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={checklist.brand_auth_valid}
+                    onChange={() => toggleCheck("brand_auth_valid")}
+                    className="h-3.5 w-3.5 accent-primary"
+                  />
+                  <span>Brand authorization valid</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={checklist.address_serviceable}
+                    onChange={() => toggleCheck("address_serviceable")}
+                    className="h-3.5 w-3.5 accent-primary"
+                  />
+                  <span>Hub address serviceable</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Tax & Banking Credentials */}
+            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 space-y-2.5 shadow-2xs">
               <h4 className="font-bold text-[#111111] mb-2 flex items-center gap-1.5 text-sm">
                 <Building className="h-4 w-4 text-[#E31E24]" />
-                <span>Business & Operational Address</span>
+                <span>GSTIN & Banking Credentials</span>
               </h4>
               <div className="flex justify-between py-1.5 border-b border-[#F3F4F6]">
-                <span className="text-[#4B5563] font-medium">Street Address:</span>
-                <span className="font-semibold text-right max-w-xs text-[#111111]">
-                  {selectedSeller.businessAddress || "100 Feet Rd, Indiranagar"}
-                </span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-[#F3F4F6]">
-                <span className="text-[#4B5563] font-medium">City / State:</span>
-                <span className="font-semibold text-[#111111]">
-                  {selectedSeller.city}, {selectedSeller.state || "Karnataka"} - {selectedSeller.pincode || "560038"}
-                </span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-[#F3F4F6]">
                 <span className="text-[#4B5563] font-medium">Registered GSTIN:</span>
+                <span className="font-mono font-bold text-[#111111]">{selectedSeller.gstin}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-[#F3F4F6]">
+                <span className="text-[#4B5563] font-medium">Derived PAN:</span>
                 <span className="font-mono font-bold text-[#111111]">
-                  {selectedSeller.gstin || "Not provided / Unregistered"}
+                  {ob?.tax?.pan || selectedSeller.gstin?.slice(2, 12)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-1.5 border-b border-[#F3F4F6]">
+                <span className="text-[#4B5563] font-medium">Settlement Account:</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[#111111] font-semibold">
+                    {revealedBankId === selectedSeller.id
+                      ? ob?.bank?.accountNumber || selectedSeller.bankAccount
+                      : selectedSeller.bankAccount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (revealedBankId === selectedSeller.id) {
+                        setRevealedBankId(null);
+                      } else {
+                        if (window.confirm("Confirm admin security credential reveal?")) {
+                          setRevealedBankId(selectedSeller.id);
+                        }
+                      }
+                    }}
+                    className="text-xs text-primary font-bold hover:underline flex items-center gap-1"
+                  >
+                    {revealedBankId === selectedSeller.id ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                    <span>{revealedBankId === selectedSeller.id ? "Mask" : "Reveal"}</span>
+                  </button>
+                </div>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-[#F3F4F6]">
+                <span className="text-[#4B5563] font-medium">IFSC Code & Bank:</span>
+                <span className="font-mono font-bold text-[#111111]">
+                  {ob?.bank?.ifsc || "HDFC0000038"} ({ob?.bank?.bankName || "Bank"})
                 </span>
               </div>
               <div className="flex justify-between py-1.5">
@@ -381,283 +427,433 @@ export function SellersScreen() {
               </div>
             </div>
 
-            {/* Bank Payout Account Details */}
-            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 space-y-2.5 shadow-xs">
-              <h4 className="font-bold text-[#111111] mb-2 flex items-center gap-1.5 text-sm">
-                <CreditCard className="h-4 w-4 text-[#E31E24]" />
-                <span>Bank Payout & Settlement Details</span>
+            {/* Pickup Hub Details */}
+            {ob?.shipping?.pickupAddress && (
+              <div className="rounded-2xl border border-border bg-white p-4 space-y-2 shadow-2xs">
+                <h4 className="font-bold text-foreground flex items-center gap-1.5 text-xs">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  <span>Pickup Dispatch Hub & Logistics</span>
+                </h4>
+                <div className="text-xs text-muted-foreground space-y-1 pt-1">
+                  <p>
+                    <span className="font-semibold text-foreground">Address:</span>{" "}
+                    {ob.shipping.pickupAddress.line1}, {ob.shipping.pickupAddress.city} - {ob.shipping.pickupAddress.pincode}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-foreground">Coordinates:</span>{" "}
+                    {ob.shipping.pickupAddress.lat}, {ob.shipping.pickupAddress.lng}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-foreground">Prep / Handling Time:</span>{" "}
+                    {ob.shipping.handlingTimeMins || 15} mins
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Document Inline Zoom Previews */}
+            <div className="rounded-2xl border border-border bg-white p-4 space-y-3 shadow-2xs">
+              <h4 className="font-bold text-foreground flex items-center gap-1.5 text-xs">
+                <FileCheck className="h-4 w-4 text-primary" />
+                <span>Uploaded KYC Certificates (Click to Zoom)</span>
               </h4>
-              <div className="flex justify-between py-1.5 border-b border-[#F3F4F6]">
-                <span className="text-[#4B5563] font-medium">Account Holder:</span>
-                <span className="font-semibold text-[#111111]">
-                  {selectedSeller.bankDetails?.account_holder_name || selectedSeller.ownerName}
-                </span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-[#F3F4F6]">
-                <span className="text-[#4B5563] font-medium">Bank Name:</span>
-                <span className="font-semibold text-[#111111]">
-                  {selectedSeller.bankDetails?.bank_name || "HDFC Bank"}
-                </span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-[#F3F4F6]">
-                <span className="text-[#4B5563] font-medium">Account Number:</span>
-                <span className="font-mono font-semibold text-[#111111]">
-                  {selectedSeller.bankDetails?.account_number || "•••• •••• 9821"}
-                </span>
-              </div>
-              <div className="flex justify-between py-1.5">
-                <span className="text-[#4B5563] font-medium">IFSC Code:</span>
-                <span className="font-mono font-bold text-emerald-800">
-                  {selectedSeller.bankDetails?.ifsc_code || "HDFC0001234"}
-                </span>
+              <div className="grid grid-cols-3 gap-2">
+                {ob?.documents?.panDocUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setZoomedDocUrl(ob.documents.panDocUrl!)}
+                    className="p-2 rounded-xl border border-border bg-muted/20 text-center hover:border-primary transition group"
+                  >
+                    <img
+                      src={ob.documents.panDocUrl}
+                      alt="PAN Doc"
+                      className="h-16 w-full object-cover rounded-lg mb-1"
+                    />
+                    <span className="text-[10px] font-bold group-hover:text-primary">PAN Card</span>
+                  </button>
+                )}
+                {ob?.documents?.gstDocUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setZoomedDocUrl(ob.documents.gstDocUrl!)}
+                    className="p-2 rounded-xl border border-border bg-muted/20 text-center hover:border-primary transition group"
+                  >
+                    <img
+                      src={ob.documents.gstDocUrl}
+                      alt="GST Doc"
+                      className="h-16 w-full object-cover rounded-lg mb-1"
+                    />
+                    <span className="text-[10px] font-bold group-hover:text-primary">GST Cert</span>
+                  </button>
+                )}
+                {ob?.documents?.chequeDocUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setZoomedDocUrl(ob.documents.chequeDocUrl!)}
+                    className="p-2 rounded-xl border border-border bg-muted/20 text-center hover:border-primary transition group"
+                  >
+                    <img
+                      src={ob.documents.chequeDocUrl}
+                      alt="Cheque Doc"
+                      className="h-16 w-full object-cover rounded-lg mb-1"
+                    />
+                    <span className="text-[10px] font-bold group-hover:text-primary">Cheque</span>
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Uploaded KYC Documents */}
-            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 space-y-3 shadow-xs">
-              <h4 className="font-bold text-[#111111] flex items-center gap-1.5 text-sm">
-                <FileCheck className="h-4 w-4 text-[#E31E24]" />
-                <span>Submitted KYC Documentation</span>
-              </h4>
-
-              {selectedSeller.documents && selectedSeller.documents.length > 0 ? (
-                <div className="space-y-2.5">
-                  {selectedSeller.documents.map((doc, idx) => (
-                    <div
-                      key={doc.id || idx}
-                      className="rounded-xl border border-gray-200 bg-gray-50/70 p-3 flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <FileText className="h-5 w-5 text-[#E31E24]" />
-                        <div>
-                          <p className="font-bold text-xs text-[#111111]">
-                            {doc.doc_type === "PAN"
-                              ? "PAN Card Document"
-                              : doc.doc_type === "AADHAAR_FRONT"
-                              ? "Aadhaar Front Photo with Address"
-                              : "Business Trade License / Reg"}
-                          </p>
-                          {doc.doc_number && (
-                            <p className="text-[11px] font-mono text-gray-500">
-                              Doc No: {doc.doc_number}
-                            </p>
-                          )}
-                        </div>
+            {/* Audit History Timeline */}
+            {vr?.auditTimeline && (
+              <div className="rounded-2xl border border-border bg-gray-50/60 p-4 space-y-3">
+                <h4 className="font-bold text-foreground text-xs">Audit History Timeline</h4>
+                <div className="space-y-2 text-xs">
+                  {vr.auditTimeline.map((evt: any, i: number) => (
+                    <div key={evt.id || i} className="border-l-2 border-primary pl-3 py-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-foreground">{evt.action}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">
+                          {new Date(evt.timestamp).toLocaleDateString()}
+                        </span>
                       </div>
-
-                      <a
-                        href={doc.file_path}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="rounded-lg bg-white border border-gray-300 px-2.5 py-1 text-[11px] font-bold text-[#111111] hover:bg-gray-100 flex items-center gap-1 shadow-xs"
-                      >
-                        <span>View Document</span>
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
+                      <p className="text-muted-foreground text-[11px]">By {evt.actor}</p>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4 text-center text-gray-500">
-                  <p className="text-xs">Standard PAN and Aadhaar documents on file from verified vendor registration.</p>
-                </div>
-              )}
-            </div>
-
-            {/* KYC Review Action Buttons */}
-            {selectedSeller.kycStatus === "Pending" && (
-              <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
-                <GlassButton
-                  variant="primary"
-                  size="md"
-                  className="flex-1"
-                  onClick={() => handleReviewAction(selectedSeller.id, "APPROVED")}
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span>Approve KYC & Notify</span>
-                </GlassButton>
-                <GlassButton
-                  variant="secondary"
-                  size="md"
-                  className="flex-1"
-                  onClick={() => setMoreInfoModalSeller(selectedSeller)}
-                >
-                  <HelpCircle className="h-4 w-4" />
-                  <span>Request Info</span>
-                </GlassButton>
-                <GlassButton
-                  variant="destructive"
-                  size="md"
-                  className="flex-1"
-                  onClick={() => setRejectModalSeller(selectedSeller)}
-                >
-                  <XCircle className="h-4 w-4" />
-                  <span>Reject</span>
-                </GlassButton>
               </div>
             )}
+
+            {/* Actions Toolbar */}
+            <div className="pt-2 flex flex-wrap gap-2">
+              {selectedSeller.kycStatus === "Pending" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setApproveModalSeller(selectedSeller);
+                      setApproveCommission(selectedSeller.commissionRate || 10);
+                    }}
+                    className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 text-xs shadow-xs transition"
+                  >
+                    Approve KYC
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChangesModalSeller(selectedSeller);
+                      setChangesNotes("");
+                    }}
+                    className="flex-1 rounded-xl bg-orange-100 hover:bg-orange-200 text-orange-900 font-bold py-2.5 text-xs transition"
+                  >
+                    Request Changes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRejectModalSeller(selectedSeller);
+                      setRejectReason("");
+                    }}
+                    className="flex-1 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-900 font-bold py-2.5 text-xs transition"
+                  >
+                    Reject
+                  </button>
+                </>
+              ) : selectedSeller.kycStatus === "Suspended" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    reinstateSeller(selectedSeller.id);
+                    setSelectedSeller({ ...selectedSeller, kycStatus: "Approved" });
+                  }}
+                  className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 text-xs transition"
+                >
+                  Reinstate Vendor to Active
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    suspendSeller(selectedSeller.id);
+                    setSelectedSeller({ ...selectedSeller, kycStatus: "Suspended" });
+                  }}
+                  className="w-full rounded-xl border border-destructive text-destructive hover:bg-destructive/10 font-bold py-2.5 text-xs transition"
+                >
+                  Suspend Vendor Account
+                </button>
+              )}
+            </div>
           </div>
         )}
       </GlassDrawer>
 
-      {/* Reject KYC Modal with Reason Input */}
-      <GlassModal
-        isOpen={Boolean(rejectModalSeller)}
-        onClose={() => {
-          setRejectModalSeller(null);
-          setRejectReason("");
-        }}
-        title="Reject Seller KYC Application"
-        description="Provide a compliance rejection reason to dispatch via email to the seller."
-      >
-        <div className="space-y-4 text-xs">
-          <div>
-            <label className="block text-[#374151] font-bold mb-1.5 uppercase text-[10px]">
-              Compliance Rejection Reason
-            </label>
-            <textarea
-              rows={3}
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="e.g. Document image illegible or Aadhaar address does not match provided business operating location."
-              className="w-full rounded-2xl border border-[#E5E7EB] bg-white p-3 text-[#111111] placeholder:text-[#9CA3AF] outline-none focus:border-[#E31E24] focus:ring-2 focus:ring-red-500/20"
-            />
-          </div>
+      {/* Approve Modal */}
+      {approveModalSeller && (
+        <GlassModal
+          isOpen={Boolean(approveModalSeller)}
+          onClose={() => setApproveModalSeller(null)}
+          title="Approve Seller KYC Application"
+          description={`Grant marketplace access to ${approveModalSeller.businessName}`}
+        >
+          <div className="space-y-4 text-xs pt-2">
+            <div>
+              <label className="block font-bold text-foreground mb-1">
+                Platform Commission Rate (%)
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={50}
+                value={approveCommission}
+                onChange={(e) => setApproveCommission(Number(e.target.value))}
+                className="w-full rounded-xl border border-border bg-background p-2.5 text-sm font-bold outline-none"
+              />
+            </div>
 
-          <div className="flex justify-end gap-2.5 pt-2">
-            <GlassButton
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                setRejectModalSeller(null);
-                setRejectReason("");
-              }}
-            >
-              Cancel
-            </GlassButton>
-            <GlassButton
-              variant="destructive"
-              size="sm"
-              disabled={!rejectReason.trim()}
-              onClick={() => {
-                if (rejectModalSeller) {
-                  handleReviewAction(rejectModalSeller.id, "REJECTED", rejectReason.trim());
+            <div>
+              <label className="block font-bold text-foreground mb-1">
+                Merchant Tier Assignment
+              </label>
+              <select
+                value={approveTier}
+                onChange={(e) => setApproveTier(e.target.value as any)}
+                className="w-full rounded-xl border border-border bg-background p-2.5 text-xs font-semibold outline-none"
+              >
+                <option value="Standard">Standard Tier (Standard SLAs)</option>
+                <option value="Gold">Gold Tier (Featured Store)</option>
+                <option value="Platinum">Platinum Tier (Priority Fulfillment)</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3">
+              <GlassButton variant="outline" size="sm" onClick={() => setApproveModalSeller(null)}>
+                Cancel
+              </GlassButton>
+              <GlassButton
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  approveSellerKyc(approveModalSeller.id, approveCommission, approveTier);
+                  if (selectedSeller?.id === approveModalSeller.id) {
+                    setSelectedSeller({
+                      ...selectedSeller,
+                      kycStatus: "Approved",
+                      commissionRate: approveCommission,
+                    });
+                  }
+                  setApproveModalSeller(null);
+                }}
+              >
+                Confirm Approval
+              </GlassButton>
+            </div>
+          </div>
+        </GlassModal>
+      )}
+
+      {/* Request Changes Modal */}
+      {changesModalSeller && (
+        <GlassModal
+          isOpen={Boolean(changesModalSeller)}
+          onClose={() => setChangesModalSeller(null)}
+          title="Request Modifications from Seller"
+          description={`Flag specific onboarding sections for ${changesModalSeller.businessName}`}
+        >
+          <div className="space-y-4 text-xs pt-2">
+            <div>
+              <label className="block font-bold text-foreground mb-1.5">
+                Flagged Sections (Reopened on Vendor's End)
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {["tax", "store", "shipping", "bank", "documents"].map((sec) => (
+                  <label key={sec} className="flex items-center gap-2 cursor-pointer font-medium">
+                    <input
+                      type="checkbox"
+                      checked={selectedSections.includes(sec)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedSections([...selectedSections, sec]);
+                        } else {
+                          setSelectedSections(selectedSections.filter((s) => s !== sec));
+                        }
+                      }}
+                      className="accent-primary"
+                    />
+                    <span className="capitalize">{sec} Details</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-bold text-foreground mb-1">
+                Reviewer Instructions & Notes
+              </label>
+              <textarea
+                rows={3}
+                value={changesNotes}
+                onChange={(e) => setChangesNotes(e.target.value)}
+                placeholder="Specify exactly what needs to be re-uploaded or corrected..."
+                className="w-full rounded-xl border border-border bg-background p-2.5 text-xs outline-none"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3">
+              <GlassButton variant="outline" size="sm" onClick={() => setChangesModalSeller(null)}>
+                Cancel
+              </GlassButton>
+              <GlassButton
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  if (!changesNotes.trim()) {
+                    toast.error("Please add instructions for the vendor");
+                    return;
+                  }
+                  requestSellerChanges(changesModalSeller.id, selectedSections, changesNotes);
+                  if (selectedSeller?.id === changesModalSeller.id) {
+                    setSelectedSeller({ ...selectedSeller, kycStatus: "Changes Requested" });
+                  }
+                  setChangesModalSeller(null);
+                }}
+              >
+                Send Request
+              </GlassButton>
+            </div>
+          </div>
+        </GlassModal>
+      )}
+
+      {/* Reject Modal */}
+      {rejectModalSeller && (
+        <GlassModal
+          isOpen={Boolean(rejectModalSeller)}
+          onClose={() => setRejectModalSeller(null)}
+          title="Reject Seller KYC"
+          description={`Provide rejection grounds for ${rejectModalSeller.businessName}`}
+        >
+          <div className="space-y-4 text-xs pt-2">
+            <div>
+              <label className="block font-bold text-foreground mb-1">
+                Standard Reason Template
+              </label>
+              <select
+                value={selectedRejectTemplate}
+                onChange={(e) => {
+                  setSelectedRejectTemplate(e.target.value);
+                  setRejectReason(e.target.value);
+                }}
+                className="w-full rounded-xl border border-border bg-background p-2.5 text-xs outline-none cursor-pointer"
+              >
+                <option value="Illegible or incomplete statutory documents">Illegible or incomplete statutory documents</option>
+                <option value="GSTIN status is cancelled or inactive">GSTIN status is cancelled or inactive</option>
+                <option value="Entity name mismatch with PAN card">Entity name mismatch with PAN card</option>
+                <option value="Prohibited non-homologated goods reported">Prohibited non-homologated goods reported</option>
+                <option value="Custom">Custom grounds...</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-bold text-foreground mb-1">
+                Detailed Rejection Note
+              </label>
+              <textarea
+                rows={3}
+                value={rejectReason || selectedRejectTemplate}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Explain why the seller KYC cannot be approved..."
+                className="w-full rounded-xl border border-border bg-background p-2.5 text-xs outline-none"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3">
+              <GlassButton variant="outline" size="sm" onClick={() => setRejectModalSeller(null)}>
+                Cancel
+              </GlassButton>
+              <GlassButton
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  rejectSellerKyc(rejectModalSeller.id, rejectReason || selectedRejectTemplate);
+                  if (selectedSeller?.id === rejectModalSeller.id) {
+                    setSelectedSeller({ ...selectedSeller, kycStatus: "Rejected" });
+                  }
                   setRejectModalSeller(null);
-                  setRejectReason("");
-                }
-              }}
-            >
-              Confirm Rejection & Send Email
-            </GlassButton>
+                }}
+              >
+                Confirm Rejection
+              </GlassButton>
+            </div>
           </div>
-        </div>
-      </GlassModal>
+        </GlassModal>
+      )}
 
-      {/* Request More Information Modal */}
-      <GlassModal
-        isOpen={Boolean(moreInfoModalSeller)}
-        onClose={() => {
-          setMoreInfoModalSeller(null);
-          setMoreInfoReason("");
-        }}
-        title="Request Additional KYC Information"
-        description="Specify which documents or details require updating."
-      >
-        <div className="space-y-4 text-xs">
-          <div>
-            <label className="block text-[#374151] font-bold mb-1.5 uppercase text-[10px]">
-              Clarification / Missing Documentation Required
-            </label>
-            <textarea
-              rows={3}
-              value={moreInfoReason}
-              onChange={(e) => setMoreInfoReason(e.target.value)}
-              placeholder="e.g. Please re-upload a clearer front photo of Aadhaar card showing full address line."
-              className="w-full rounded-2xl border border-[#E5E7EB] bg-white p-3 text-[#111111] placeholder:text-[#9CA3AF] outline-none focus:border-[#E31E24] focus:ring-2 focus:ring-red-500/20"
-            />
-          </div>
+      {/* Commission Edit Modal */}
+      {commissionModalSeller && (
+        <GlassModal
+          isOpen={Boolean(commissionModalSeller)}
+          onClose={() => setCommissionModalSeller(null)}
+          title="Update Platform Commission"
+          description={`Adjust commission for ${commissionModalSeller.businessName}`}
+        >
+          <div className="space-y-4 text-xs pt-2">
+            <div>
+              <label className="block font-bold text-foreground mb-1">
+                Commission Percentage (%)
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={50}
+                value={newCommission}
+                onChange={(e) => setNewCommission(Number(e.target.value))}
+                className="w-full rounded-xl border border-border bg-background p-2.5 text-sm font-bold outline-none"
+              />
+            </div>
 
-          <div className="flex justify-end gap-2.5 pt-2">
-            <GlassButton
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                setMoreInfoModalSeller(null);
-                setMoreInfoReason("");
-              }}
-            >
-              Cancel
-            </GlassButton>
-            <GlassButton
-              variant="primary"
-              size="sm"
-              disabled={!moreInfoReason.trim()}
-              onClick={() => {
-                if (moreInfoModalSeller) {
-                  handleReviewAction(
-                    moreInfoModalSeller.id,
-                    "MORE_INFORMATION_REQUIRED",
-                    moreInfoReason.trim()
-                  );
-                  setMoreInfoModalSeller(null);
-                  setMoreInfoReason("");
-                }
-              }}
-            >
-              Send Request Email
-            </GlassButton>
-          </div>
-        </div>
-      </GlassModal>
-
-      {/* Commission Rate Editor Modal */}
-      <GlassModal
-        isOpen={Boolean(commissionModalSeller)}
-        onClose={() => setCommissionModalSeller(null)}
-        title="Update Marketplace Commission Rate"
-        description={`Set custom platform fee % for ${commissionModalSeller?.businessName}`}
-      >
-        <div className="space-y-4 text-xs">
-          <div>
-            <label className="block text-[#374151] font-bold mb-1.5 uppercase text-[10px]">
-              Commission Rate (%)
-            </label>
-            <GlassInput
-              type="number"
-              min={2}
-              max={35}
-              step={0.5}
-              value={newCommission}
-              onChange={(e) => setNewCommission(parseFloat(e.target.value) || 0)}
-              rightElement={<span className="text-[#4B5563] font-bold">%</span>}
-            />
-            <p className="mt-1.5 text-[#6B7280] text-[11px] font-medium">
-              Standard marketplace benchmark for EV batteries and parts is 8% to 12%.
-            </p>
-          </div>
-
-          <div className="flex justify-end gap-2.5 pt-2">
-            <GlassButton variant="secondary" size="sm" onClick={() => setCommissionModalSeller(null)}>
-              Cancel
-            </GlassButton>
-            <GlassButton
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                if (commissionModalSeller) {
-                  mockCommission(commissionModalSeller.id, newCommission);
+            <div className="flex justify-end gap-2 pt-3">
+              <GlassButton variant="outline" size="sm" onClick={() => setCommissionModalSeller(null)}>
+                Cancel
+              </GlassButton>
+              <GlassButton
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  updateSellerCommission(commissionModalSeller.id, newCommission);
                   if (selectedSeller?.id === commissionModalSeller.id) {
                     setSelectedSeller({ ...selectedSeller, commissionRate: newCommission });
                   }
                   setCommissionModalSeller(null);
-                }
-              }}
-            >
-              Save Commission
-            </GlassButton>
+                }}
+              >
+                Save Rate
+              </GlassButton>
+            </div>
+          </div>
+        </GlassModal>
+      )}
+
+      {/* Zoomed Document Modal */}
+      {zoomedDocUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="relative max-w-2xl w-full bg-white rounded-2xl p-4 overflow-hidden">
+            <div className="flex justify-between items-center pb-2 border-b border-border mb-3">
+              <span className="text-xs font-bold">Document Zoom Inspector</span>
+              <button
+                type="button"
+                onClick={() => setZoomedDocUrl(null)}
+                className="text-xs font-bold text-primary hover:underline"
+              >
+                Close ✕
+              </button>
+            </div>
+            <img
+              src={zoomedDocUrl}
+              alt="KYC Zoom"
+              className="w-full max-h-[70vh] object-contain rounded-xl bg-gray-100"
+            />
           </div>
         </div>
-      </GlassModal>
+      )}
     </div>
   );
 }

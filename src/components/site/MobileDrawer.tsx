@@ -165,6 +165,14 @@ export function MobileDrawer({
             <HelpCircle className="h-4 w-4 text-[#6b7280]" />
             <span>Help & Support</span>
           </Link>
+          {/* Sell on RiderzPro */}
+          <Link
+            to="/vendor/auth"
+            onClick={onClose}
+            className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-bold text-[#E31E24] bg-red-50/70 hover:bg-red-100/70 transition mt-2 border border-red-200/60"
+          >
+            <span>Sell on RiderzPro →</span>
+          </Link>
         </div>
 
         {/* Bottom CTA / User Profile */}
@@ -201,7 +209,7 @@ export function MobileDrawer({
             </div>
           ) : (
             <Link
-              to="/login"
+              to="/auth"
               onClick={onClose}
               className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#e11d2a] text-xs font-semibold text-white transition hover:bg-[#c91823]"
             >

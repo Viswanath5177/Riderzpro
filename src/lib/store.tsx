@@ -282,6 +282,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (s.role) setRole(s.role);
         if (s.userLocation && s.userLocation.name) setUserLocation(s.userLocation);
       }
+      // Also restore customer session if available
+      const authRaw = localStorage.getItem("riderzpro_auth_user");
+      if (authRaw) {
+        try {
+          const authUser = JSON.parse(authRaw);
+          if (authUser?.name) {
+            setUserProfile((prev) => ({
+              ...prev,
+              name: authUser.name,
+              email: authUser.email || prev.email,
+              phone: authUser.phone || prev.phone,
+            }));
+            setIsLoggedIn(true);
+          }
+        } catch {}
+      }
       const t = localStorage.getItem("riderzpro-theme");
       if (t === "light" || t === "dark") setTheme(t);
       else setTheme("light");
@@ -691,7 +707,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(() => setIsLoggedIn(true), []);
-  const signOut = useCallback(() => setIsLoggedIn(false), []);
+  const signOut = useCallback(() => {
+    setIsLoggedIn(false);
+    localStorage.removeItem("riderzpro_auth_user");
+    localStorage.removeItem("riderzpro_auth_token");
+  }, []);
   const deleteOrder = useCallback((id: string) => setOrders((os) => os.filter((o) => o.id !== id)), []);
   const clearOrders = useCallback(() => setOrders([]), []);
 

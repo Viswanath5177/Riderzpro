@@ -144,6 +144,13 @@ export function Header() {
             >
               Help
             </Link>
+            {/* 6. Sell on RiderzPro */}
+            <Link
+              to="/vendor/auth"
+              className="px-3 py-1.5 text-xs font-bold text-[#E31E24] hover:bg-red-50 rounded-xl transition border border-red-200"
+            >
+              Sell on RiderzPro
+            </Link>
           </nav>
 
           {/* Right: Search, Cart, Sign in */}
@@ -262,7 +269,7 @@ export function Header() {
               </DropdownMenu>
             ) : (
               <Link
-                to="/login"
+                to="/auth"
                 className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#e11d2a] hover:bg-[#c91823] px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-xs transition active:scale-95"
               >
                 <User className="h-3.5 w-3.5" />
