@@ -39,21 +39,21 @@ export function WhyRiderzpro() {
         </div>
 
         {/* 4 Benefit Cards in a row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {benefits.map((b) => {
             const Icon = b.icon;
             return (
               <div
                 key={b.title}
-                className="rounded-2xl border border-[#ececec] bg-white p-6 transition hover:shadow-xs"
+                className="rounded-2xl border border-[#ececec] bg-white p-5 sm:p-6 transition hover:shadow-xs"
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-[#e11d2a] mb-5">
+                <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-red-50 text-[#e11d2a] mb-4 sm:mb-5">
                   <Icon className="h-5 w-5" />
                 </div>
                 <h3 className="text-base font-bold text-[#111111]">
                   {b.title}
                 </h3>
-                <p className="text-sm text-[#6b7280] mt-2 leading-relaxed">
+                <p className="text-xs sm:text-sm text-[#6b7280] mt-1.5 sm:mt-2 leading-relaxed">
                   {b.description}
                 </p>
               </div>
@@ -62,7 +62,7 @@ export function WhyRiderzpro() {
         </div>
 
         {/* Single Slim Stats Strip Below */}
-        <div className="mt-12 mx-auto max-w-3xl rounded-xl border border-[#ececec] bg-[#f7f7f8] py-3.5 px-6 text-center text-xs sm:text-sm font-semibold text-[#4b5563]">
+        <div className="mt-8 sm:mt-12 mx-auto max-w-3xl rounded-xl border border-[#ececec] bg-[#f7f7f8] py-3 px-4 sm:py-3.5 sm:px-6 text-center text-xs sm:text-sm font-semibold text-[#4b5563]">
           6+ verified sellers · 1.2k parts · 4.8★ rating · 38 min avg delivery
         </div>
       </div>

@@ -4,7 +4,6 @@ import { Bike, Check, ScanLine, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import scooterImg from "@/assets/scooter.jpg";
 import { SiteLayout } from "@/components/site/SiteLayout";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { bikes, decodeVin, getBike } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
@@ -21,11 +20,7 @@ export const Route = createFileRoute("/garage")({
 });
 
 function GarageRoute() {
-  return (
-    <ProtectedRoute>
-      <Garage />
-    </ProtectedRoute>
-  );
+  return <Garage />;
 }
 
 function Garage() {

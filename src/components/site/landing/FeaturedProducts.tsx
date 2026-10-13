@@ -85,8 +85,8 @@ export function FeaturedProducts() {
           </div>
         </div>
 
-        {/* 4 Cards per row, horizontal scroll on mobile, max 8 products */}
-        <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-5 overflow-x-auto pb-4 sm:pb-0 snap-x">
+        {/* Products Grid: 2 columns on mobile, 4 columns on desktop */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5">
           {currentProducts.map((p) => {
             const offer = bestOffer(p);
             const isInCart = cart.some((c) => c.productId === p.id);
@@ -94,11 +94,11 @@ export function FeaturedProducts() {
             return (
               <div
                 key={p.id}
-                className="group flex flex-col justify-between rounded-2xl border border-[#ececec] bg-white p-4 transition-all duration-200 hover:border-gray-300 hover:shadow-md min-w-[260px] sm:min-w-0 snap-start shrink-0 sm:shrink"
+                className="group flex flex-col justify-between rounded-2xl border border-[#ececec] bg-white p-3 sm:p-4 transition-all duration-200 hover:border-gray-300 hover:shadow-md"
               >
                 <div>
                   {/* Product Image */}
-                  <div className="relative aspect-square overflow-hidden rounded-xl bg-[#f7f7f8] mb-3.5">
+                  <div className="relative aspect-square overflow-hidden rounded-xl bg-[#f7f7f8] mb-2.5 sm:mb-3.5">
                     <Link to="/product/$id" params={{ id: p.id }}>
                       <img
                         src={p.image}
@@ -112,33 +112,33 @@ export function FeaturedProducts() {
                   </div>
 
                   {/* Compatible-with chip */}
-                  <div className="mb-2">
-                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
-                      <ShieldCheck className="h-3 w-3 text-emerald-600" />
-                      <span>Fits {p.fits.length ? `${p.fits.length} EV Models` : "Universal"}</span>
+                  <div className="mb-1.5 sm:mb-2">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200/80 px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-semibold text-emerald-800 truncate max-w-full">
+                      <ShieldCheck className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-emerald-600 shrink-0" />
+                      <span className="truncate">Fits {p.fits.length ? `${p.fits.length} EVs` : "Universal"}</span>
                     </span>
                   </div>
 
                   {/* Product Name */}
                   <Link to="/product/$id" params={{ id: p.id }}>
-                    <h3 className="text-sm font-bold text-[#111111] line-clamp-2 hover:text-[#e11d2a] transition">
+                    <h3 className="text-xs sm:text-sm font-bold text-[#111111] line-clamp-2 hover:text-[#e11d2a] transition leading-snug">
                       {p.name}
                     </h3>
                   </Link>
                 </div>
 
                 {/* Price & Add to Cart */}
-                <div className="mt-4 pt-3 border-t border-[#ececec] flex items-center justify-between">
-                  <div>
-                    <span className="text-xs text-[#6b7280]">From</span>
-                    <p className="text-base font-extrabold text-[#111111] tabular-nums">
+                <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-[#ececec] flex items-center justify-between gap-1.5">
+                  <div className="min-w-0">
+                    <span className="text-[10px] sm:text-xs text-[#6b7280] block">From</span>
+                    <p className="text-xs sm:text-base font-extrabold text-[#111111] tabular-nums truncate">
                       {inr(offer.price)}
                     </p>
                   </div>
 
                   <button
                     onClick={() => handleAddToCart(p)}
-                    className={`flex h-9 items-center justify-center gap-1.5 rounded-xl px-3.5 text-xs font-semibold transition active:scale-95 cursor-pointer ${
+                    className={`flex h-8 sm:h-9 items-center justify-center gap-1 sm:gap-1.5 rounded-xl px-2.5 sm:px-3.5 text-[11px] sm:text-xs font-semibold transition active:scale-95 cursor-pointer shrink-0 ${
                       isInCart
                         ? "bg-emerald-600 text-white"
                         : "bg-[#e11d2a] hover:bg-[#c91823] text-white shadow-xs"
@@ -146,12 +146,12 @@ export function FeaturedProducts() {
                   >
                     {isInCart ? (
                       <>
-                        <Check className="h-3.5 w-3.5" />
-                        <span>Added</span>
+                        <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                        <span className="hidden xs:inline">Added</span>
                       </>
                     ) : (
                       <>
-                        <ShoppingCart className="h-3.5 w-3.5" />
+                        <ShoppingCart className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                         <span>Add</span>
                       </>
                     )}
