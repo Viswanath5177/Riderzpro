@@ -210,8 +210,44 @@ const DEFAULT_ADDRESS: AddressRef = {
 };
 
 export const DEFAULT_GARAGE: GarageBike[] = [];
-const DEFAULT_BOOKINGS: ServiceBooking[] = [];
-const DEFAULT_NOTIFICATIONS: CustomerNotification[] = [];
+export const DEFAULT_NOTIFICATIONS: CustomerNotification[] = [
+  {
+    id: "notif_offer_01",
+    title: "🎉 Admin Special: Flat ₹500 OFF with Code VOLT500",
+    message: "Valid on all 48V, 60V and 72V lithium battery packs above ₹10,000. Verified marketplace promotion.",
+    time: "Today",
+    read: false,
+    type: "offer",
+    actionUrl: "/offers",
+  },
+  {
+    id: "notif_offer_02",
+    title: "⚡ Flash Discount: 10% OFF on Helmets & Protective Gear",
+    message: "Apply code GEAR10 at checkout to claim 10% instant discount on certified ISI and ECE 22.06 gear.",
+    time: "Yesterday",
+    read: false,
+    type: "offer",
+    actionUrl: "/offers",
+  },
+  {
+    id: "notif_offer_03",
+    title: "🚚 Zero Delivery Fee: Rapid Doorstep Delivery with FREESHIP",
+    message: "Free 3-hour doorstep delivery on all orders above ₹999 across all verified pin codes.",
+    time: "2 days ago",
+    read: false,
+    type: "offer",
+    actionUrl: "/offers",
+  },
+  {
+    id: "notif_offer_04",
+    title: "🔧 Spare Parts Bonanza: Flat ₹200 OFF with SPARE200",
+    message: "Save ₹200 on ceramic disc brake pads, wave rotors and Kevlar drive belts.",
+    time: "3 days ago",
+    read: true,
+    type: "offer",
+    actionUrl: "/offers",
+  },
+];
 export const DEFAULT_ORDERS: Order[] = [];
 export const DEFAULT_SHIPMENTS: NormalizedShipment[] = [];
 
@@ -225,7 +261,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [inventoryStock, setInventoryStock] = useState<Record<string, number>>({});
   const [savedProductIds, setSavedProductIds] = useState<string[]>([]);
   const [serviceBookings, setServiceBookings] = useState<ServiceBooking[]>([]);
-  const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
+  const [notifications, setNotifications] = useState<CustomerNotification[]>(DEFAULT_NOTIFICATIONS);
   const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [role, setRole] = useState<Role>("customer");
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
@@ -255,10 +291,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (s.inventoryStock) setInventoryStock(s.inventoryStock);
         if (s.savedProductIds && s.savedProductIds.length > 0) setSavedProductIds(s.savedProductIds);
         if (s.serviceBookings && s.serviceBookings.length > 0) setServiceBookings(s.serviceBookings);
-        if (s.notifications && s.notifications.length > 0) setNotifications(s.notifications);
+        if (s.notifications && s.notifications.length > 0) {
+          // Merge to ensure admin offers are always accessible
+          const existingIds = new Set(s.notifications.map((n: any) => n.id));
+          const missingOffers = DEFAULT_NOTIFICATIONS.filter((n) => !existingIds.has(n.id));
+          setNotifications([...s.notifications, ...missingOffers]);
+        } else {
+          setNotifications(DEFAULT_NOTIFICATIONS);
+        }
         if (s.userProfile && s.userProfile.name && s.userProfile.name !== "Guest Rider") setUserProfile(s.userProfile);
         if (s.role) setRole(s.role);
         if (s.userLocation && s.userLocation.name) setUserLocation(s.userLocation);
+      } else {
+        setNotifications(DEFAULT_NOTIFICATIONS);
       }
       setTheme("light");
     } catch {}

@@ -229,14 +229,18 @@ export function VendorSignupFlow() {
       return;
     }
 
-    const previewUrl = URL.createObjectURL(file);
-    setPanDoc({
-      file,
-      previewUrl,
-      name: file.name,
-      size: `${(file.size / 1024).toFixed(1)} KB`,
-    });
-    toast.success(`PAN card front uploaded: ${file.name}`);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setPanDoc({
+        file,
+        previewUrl: dataUrl,
+        name: file.name,
+        size: `${(file.size / 1024).toFixed(1)} KB`,
+      });
+      toast.success(`PAN card front uploaded: ${file.name}`);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSetSamplePan = () => {
@@ -259,14 +263,18 @@ export function VendorSignupFlow() {
       return;
     }
 
-    const previewUrl = URL.createObjectURL(file);
-    setAadhaarDoc({
-      file,
-      previewUrl,
-      name: file.name,
-      size: `${(file.size / 1024).toFixed(1)} KB`,
-    });
-    toast.success(`Aadhaar photo uploaded: ${file.name}`);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setAadhaarDoc({
+        file,
+        previewUrl: dataUrl,
+        name: file.name,
+        size: `${(file.size / 1024).toFixed(1)} KB`,
+      });
+      toast.success(`Aadhaar photo uploaded: ${file.name}`);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSetSampleAadhaar = () => {

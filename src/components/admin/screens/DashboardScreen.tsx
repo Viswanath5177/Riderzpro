@@ -120,14 +120,6 @@ export function DashboardScreen() {
           {/* Left Column: Headline and Diagnostic Search */}
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3.5 py-1 text-xs font-semibold text-[#111111]">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E31E24]" />
-                  <span className="relative h-2 w-2 rounded-full bg-[#E31E24]" />
-                </span>
-                128 riders delivering in Bengaluru now
-              </span>
-
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
                 <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
                 100% Fitment Guaranteed

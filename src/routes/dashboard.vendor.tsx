@@ -104,6 +104,7 @@ export function VendorDashboard() {
     ownerName: string;
     email: string;
     phone: string;
+    businessType?: string;
     city: string;
     state?: string;
     pincode?: string;
@@ -111,6 +112,14 @@ export function VendorDashboard() {
     gstin?: string;
     status: string;
     created_at?: string;
+    bankAccount?: {
+      accountHolderName: string;
+      bankName: string;
+      accountNumber: string;
+      ifscCode: string;
+      isVerified?: boolean;
+    } | null;
+    documents?: any[];
   }
 
   interface DbVendorMetrics {
@@ -137,6 +146,23 @@ export function VendorDashboard() {
     rating: 0,
     reviewCount: 0,
   });
+
+  // Profile update form state
+  const [profileForm, setProfileForm] = useState({
+    storeName: "",
+    ownerName: "",
+    phone: "",
+    address: "",
+    city: "",
+    state: "",
+    pincode: "",
+    gstin: "",
+    accountHolderName: "",
+    bankName: "",
+    accountNumber: "",
+    ifscCode: "",
+  });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   useEffect(() => {
     getCurrentUser().then((u) => {
@@ -178,6 +204,20 @@ export function VendorDashboard() {
         if (res.success && res.data) {
           if (res.data.vendor) {
             setDbVendor(res.data.vendor);
+            setProfileForm({
+              storeName: res.data.vendor.storeName || "",
+              ownerName: res.data.vendor.ownerName || "",
+              phone: res.data.vendor.phone || "",
+              address: res.data.vendor.address || "",
+              city: res.data.vendor.city || "",
+              state: res.data.vendor.state || "",
+              pincode: res.data.vendor.pincode || "",
+              gstin: res.data.vendor.gstin || "",
+              accountHolderName: res.data.vendor.bankAccount?.accountHolderName || res.data.vendor.ownerName || "",
+              bankName: res.data.vendor.bankAccount?.bankName || "",
+              accountNumber: res.data.vendor.bankAccount?.accountNumber || "",
+              ifscCode: res.data.vendor.bankAccount?.ifscCode || "",
+            });
           }
           if (res.data.metrics) {
             setDbMetrics(res.data.metrics);
@@ -217,6 +257,36 @@ export function VendorDashboard() {
     fetchVendorDashboard();
   }, []);
 
+  // Save profile updates to database
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingProfile(true);
+    try {
+      const res = await fetch("/api/vendor/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sellerId: dbVendor?.id || currentUser?.id,
+          ...profileForm,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.vendor) {
+        setDbVendor((prev) => ({
+          ...(prev || {}),
+          ...data.vendor,
+        }));
+        toast.success("Store details and settlement accounts updated successfully in database!");
+      } else {
+        toast.error(data.error || "Failed to update store details");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update profile");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
   // Fetch updated catalog from DB
   const fetchProductsFromDb = () => {
     fetch("/api/products?all=true")
@@ -240,13 +310,16 @@ export function VendorDashboard() {
     return {
       id: dbVendor?.id || currentUser?.id || "seller_01",
       name: dbVendor?.storeName || currentUser?.storeName || currentUser?.fullName || "My Store",
-      area: dbVendor?.city || currentUser?.city || "Bengaluru",
-      city: dbVendor?.city || currentUser?.city || "Bengaluru",
-      state: dbVendor?.state || currentUser?.state || "Karnataka",
-      address: dbVendor?.address || (dbVendor?.city ? `${dbVendor.city}, ${dbVendor.state || ""}` : "Not provided"),
-      phone: dbVendor?.phone || currentUser?.phone || "Not provided",
-      email: dbVendor?.email || currentUser?.email || "Not provided",
-      gstin: dbVendor?.gstin || currentUser?.gstin || "Not Registered",
+      ownerName: dbVendor?.ownerName || currentUser?.fullName || "Store Owner",
+      area: dbVendor?.city || currentUser?.city || "",
+      city: dbVendor?.city || currentUser?.city || "",
+      state: dbVendor?.state || currentUser?.state || "",
+      address: dbVendor?.address || (dbVendor?.city ? `${dbVendor.city}, ${dbVendor.state || ""}` : ""),
+      phone: dbVendor?.phone || currentUser?.phone || "",
+      email: dbVendor?.email || currentUser?.email || "",
+      gstin: dbVendor?.gstin || currentUser?.gstin || "Unregistered",
+      businessType: dbVendor?.businessType || "Proprietorship",
+      bankAccount: dbVendor?.bankAccount || null,
       description: "Authorized automotive and spare parts supplier with verified OEM parts and rapid dispatch.",
       businessHours: "Mon - Sat: 9:00 AM - 8:30 PM",
       shippingPolicy: "Dispatch within 24-48 hours.",
@@ -255,7 +328,7 @@ export function VendorDashboard() {
       rating: dbMetrics.rating,
       reviewCount: dbMetrics.reviewCount,
       commissionRate: 0.1,
-      deliveryCoverage: dbVendor?.city ? `${dbVendor.city} and nearby zones` : "All regions",
+      deliveryCoverage: dbVendor?.city ? `${dbVendor.city} and nearby operational zones` : "Operational zones",
     };
   }, [dbVendor, currentUser, dbMetrics]);
 
@@ -503,14 +576,68 @@ export function VendorDashboard() {
   return (
     <DashboardShell
       title={currentVendor.name}
-      subtitle={`Authorized Seller Portal · ${currentVendor.city}, ${currentVendor.state}`}
+      subtitle={`Authorized Seller Portal · ${currentVendor.city || "Operational Hub"}${currentVendor.state ? `, ${currentVendor.state}` : ""}`}
       sections={vendorSections}
       active={tab}
       onSelect={(id) => {
         setTab(id);
         setInventoryViewMode("list");
       }}
+      userProfile={{
+        name: currentVendor.ownerName || currentVendor.name,
+        email: currentVendor.email,
+      }}
     >
+      {/* Mandatory Store Location & Profile Verification Alert Banner */}
+      <div className="rounded-2xl border-2 border-amber-500/40 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-4 sm:p-5 shadow-xs mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-500 text-white font-bold shadow-xs">
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+          <div>
+            <h4 className="text-sm font-extrabold text-foreground flex items-center gap-2">
+              Action Required: Verify & Update Store Location & Details
+              <span className="rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-200 px-2 py-0.5 text-[10px] font-bold uppercase">Mandatory</span>
+            </h4>
+            <p className="text-xs text-muted-foreground mt-1 max-w-2xl leading-relaxed">
+              Your registered store location is currently set to <strong className="text-foreground">{currentVendor.city || "Not Provided"} ({currentVendor.state || "Not Provided"})</strong>. Please verify your exact store address, city, contact phone, and payout bank account. Keeping this updated ensures proper rider dispatch and timely weekly payouts.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => setTab("settings")}
+          className="shrink-0 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-amber-600 transition flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+        >
+          <Settings className="h-4 w-4" />
+          <span>Update Store Details</span>
+        </button>
+      </div>
+
+      {/* Incoming Orders Notification for Seller */}
+      {vendorOrders.length > 0 && (
+        <div className="rounded-2xl border-2 border-primary/40 bg-primary/5 p-4 shadow-xs mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground font-bold shadow-xs">
+              <ShoppingBag className="h-4.5 w-4.5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-foreground">
+                🔔 You have {vendorOrders.length} incoming order(s) received!
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Latest: #{vendorOrders[0].orderId} for {inr(vendorOrders[0].price)} from {vendorOrders[0].customerName} ({vendorOrders[0].address})
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setTab("orders")}
+            className="rounded-xl bg-primary px-3.5 py-1.5 text-xs font-bold text-primary-foreground hover:opacity-90 transition cursor-pointer self-start sm:self-auto shrink-0"
+          >
+            Review Orders →
+          </button>
+        </div>
+      )}
+
       {/* ─────────────────────────────────────────────────────────────
           1. OVERVIEW TAB
          ───────────────────────────────────────────────────────────── */}
@@ -667,52 +794,86 @@ export function VendorDashboard() {
       {tab === "shop" && (
         <div className="space-y-6">
           <Panel
-            title="Public Shop Information"
+            title="Marketplace Public Store Profile"
             action={
-              <Link
-                to="/vendor/$id"
-                params={{ id: currentVendor.id }}
-                target="_blank"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:opacity-90"
-              >
-                <span>View Live Shopfront</span>
-                <ExternalLink className="h-3.5 w-3.5" />
-              </Link>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setTab("settings")}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 px-3.5 py-2 text-xs font-bold hover:bg-amber-500/20 transition cursor-pointer"
+                >
+                  <Edit3 className="h-3.5 w-3.5" />
+                  <span>Edit Store Details</span>
+                </button>
+                <Link
+                  to="/vendor/$id"
+                  params={{ id: currentVendor.id }}
+                  target="_blank"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground hover:opacity-90"
+                >
+                  <span>View Live Shopfront</span>
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </Link>
+              </div>
             }
           >
             <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-4">
                 <div>
                   <label className="text-xs font-bold text-muted-foreground uppercase">Shop Trading Name</label>
-                  <p className="mt-1 text-base font-bold">{currentVendor.name}</p>
+                  <p className="mt-1 text-base font-bold text-foreground">{currentVendor.name}</p>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase">Description & Specialization</label>
-                  <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-                    {currentVendor.description || "Authorized automotive supplier with verified OEM parts and rapid dispatch."}
-                  </p>
+                  <label className="text-xs font-bold text-muted-foreground uppercase">Registered Store Owner</label>
+                  <p className="mt-1 text-sm font-semibold text-foreground">{currentVendor.ownerName || "Not provided"}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-bold text-muted-foreground uppercase">GSTIN Registration</label>
-                    <p className="mt-1 font-mono text-xs font-bold">{currentVendor.gstin || "29AABCV1234F1Z5"}</p>
+                    <p className="mt-1 font-mono text-xs font-bold">{currentVendor.gstin || "Unregistered"}</p>
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-muted-foreground uppercase">Platform Verification</label>
-                    <p className="mt-1 flex items-center gap-1 text-xs font-bold text-emerald-600">
-                      <ShieldCheck className="h-4 w-4" /> Official Partner
-                    </p>
+                    <label className="text-xs font-bold text-muted-foreground uppercase">Business Entity Type</label>
+                    <p className="mt-1 text-xs font-bold text-foreground">{currentVendor.businessType || "Proprietorship"}</p>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-muted-foreground uppercase">Store Address</label>
-                  <p className="mt-1 text-sm text-foreground flex items-center gap-1.5">
-                    <MapPin className="h-4 w-4 text-primary shrink-0" />
-                    {currentVendor.address || "100ft Road, Indiranagar, Bengaluru 560038"}
+                  <label className="text-xs font-bold text-muted-foreground uppercase">Store Address & Operational Location</label>
+                  <p className="mt-1 text-sm text-foreground flex items-start gap-1.5">
+                    <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    <span>
+                      {currentVendor.address ? `${currentVendor.address}, ` : ""}{currentVendor.city || "City pending"}{currentVendor.state ? `, ${currentVendor.state}` : ""} {dbVendor?.pincode ? `- ${dbVendor.pincode}` : ""}
+                    </span>
                   </p>
+                </div>
+
+                {/* Bank Payout & Settlement Box */}
+                <div className="rounded-2xl border border-border bg-muted/20 p-4 space-y-2">
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1.5">
+                    <Wallet className="h-3.5 w-3.5 text-primary" /> Bank Settlement Account (Direct NEFT/RTGS)
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-muted-foreground block text-[11px]">Account Holder:</span>
+                      <strong className="text-foreground">{currentVendor.bankAccount?.accountHolderName || currentVendor.ownerName || "Not configured"}</strong>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[11px]">Bank Name:</span>
+                      <strong className="text-foreground">{currentVendor.bankAccount?.bankName || "Not configured"}</strong>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[11px]">Account Number:</span>
+                      <strong className="font-mono text-foreground">
+                        {currentVendor.bankAccount?.accountNumber ? `•••• ${currentVendor.bankAccount.accountNumber.slice(-4)}` : "Not configured"}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[11px]">IFSC Code:</span>
+                      <strong className="font-mono text-emerald-600">{currentVendor.bankAccount?.ifscCode || "Not configured"}</strong>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -721,14 +882,14 @@ export function VendorDashboard() {
 
                 <div>
                   <label className="text-xs font-bold text-muted-foreground uppercase">Delivery Coverage Area</label>
-                  <p className="mt-1 text-xs font-semibold text-foreground">{currentVendor.deliveryCoverage || "Indiranagar, Koramangala, CBD (15km radius)"}</p>
+                  <p className="mt-1 text-xs font-semibold text-foreground">{currentVendor.deliveryCoverage}</p>
                 </div>
 
                 <div>
                   <label className="text-xs font-bold text-muted-foreground uppercase">Business Operating Hours</label>
                   <p className="mt-1 text-xs text-foreground flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    {currentVendor.businessHours || "Mon - Sat: 9:00 AM - 8:30 PM"}
+                    {currentVendor.businessHours}
                   </p>
                 </div>
 
@@ -737,14 +898,14 @@ export function VendorDashboard() {
                     <label className="text-xs font-bold text-muted-foreground uppercase">Official Phone</label>
                     <p className="mt-1 text-xs text-foreground flex items-center gap-1.5">
                       <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                      {currentVendor.phone || "+91 80 4122 8900"}
+                      {currentVendor.phone || "Not configured"}
                     </p>
                   </div>
                   <div>
                     <label className="text-xs font-bold text-muted-foreground uppercase">Official Email</label>
                     <p className="mt-1 text-xs text-foreground flex items-center gap-1.5">
                       <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                      {currentVendor.email || "orders@volthub.in"}
+                      {currentVendor.email || "Not configured"}
                     </p>
                   </div>
                 </div>
@@ -752,7 +913,7 @@ export function VendorDashboard() {
                 <div className="pt-2 border-t border-border">
                   <label className="text-xs font-bold text-muted-foreground uppercase">Shipping & Return Guarantee</label>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {currentVendor.shippingPolicy || "Dispatch within 1-2 hours."} · {currentVendor.returnPolicy || "7-day replacement warranty for manufacturing defects."}
+                    {currentVendor.shippingPolicy} · {currentVendor.returnPolicy}
                   </p>
                 </div>
               </div>
@@ -1450,38 +1611,207 @@ export function VendorDashboard() {
          ───────────────────────────────────────────────────────────── */}
       {tab === "settings" && (
         <div className="space-y-6">
-          <Panel title="Marketplace Store Configuration">
-            <div className="space-y-4 max-w-2xl">
-              <div className="flex items-center justify-between p-4 rounded-2xl border border-border">
-                <div>
-                  <h4 className="font-bold text-sm">Automated Order Confirmation</h4>
-                  <p className="text-xs text-muted-foreground">Automatically acknowledge orders for high-stock items</p>
-                </div>
-                <input type="checkbox" defaultChecked className="h-5 w-5 accent-primary cursor-pointer" />
+          <Panel title="Marketplace Store Configuration & Profile">
+            <form onSubmit={handleSaveProfile} className="space-y-6 max-w-3xl">
+              {/* Mandatory Store Location & Address Update Note */}
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs">
+                <p className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                  Mandatory Store Details & Location Setup
+                </p>
+                <p className="text-amber-800/90 dark:text-amber-300 mt-1 leading-relaxed">
+                  Please review and confirm your operational store location ({profileForm.city || "Pending"}), street address, and bank payout details below. All saved updates persist directly to the PostgreSQL database.
+                </p>
               </div>
 
-              <div className="flex items-center justify-between p-4 rounded-2xl border border-border">
-                <div>
-                  <h4 className="font-bold text-sm">Store Vacation Mode</h4>
-                  <p className="text-xs text-muted-foreground">Temporarily pause all product offers during inventory stock-take</p>
+              {/* 1. Store & Owner Identity */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-bold text-foreground pb-2 border-b border-border">
+                  1. Business Identity & Contact Details
+                </h4>
+                <div className="grid gap-4 sm:grid-cols-2 text-xs">
+                  <div>
+                    <label className="text-muted-foreground block mb-1 font-semibold">Store / Trading Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={profileForm.storeName}
+                      onChange={(e) => setProfileForm({ ...profileForm, storeName: e.target.value })}
+                      placeholder="e.g. Vamsi Auto Spares"
+                      className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-muted-foreground block mb-1 font-semibold">Owner / Authorized Person Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={profileForm.ownerName}
+                      onChange={(e) => setProfileForm({ ...profileForm, ownerName: e.target.value })}
+                      placeholder="e.g. G Naga Vamsi"
+                      className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-muted-foreground block mb-1 font-semibold">Contact Phone Number *</label>
+                    <input
+                      type="text"
+                      required
+                      value={profileForm.phone}
+                      onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                      placeholder="e.g. 9876543210"
+                      className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-muted-foreground block mb-1 font-semibold">GSTIN Tax ID</label>
+                    <input
+                      type="text"
+                      value={profileForm.gstin}
+                      onChange={(e) => setProfileForm({ ...profileForm, gstin: e.target.value })}
+                      placeholder="e.g. 37AAAAA0000A1Z5 or Unregistered"
+                      className="w-full h-9 rounded-xl border border-border px-3 font-mono font-semibold bg-background"
+                    />
+                  </div>
                 </div>
-                <input type="checkbox" className="h-5 w-5 accent-primary cursor-pointer" />
               </div>
 
-              <div className="p-4 rounded-2xl border border-border space-y-3">
-                <h4 className="font-bold text-sm">Bank Account for NEFT/RTGS Settlements</h4>
-                <div className="grid gap-3 sm:grid-cols-2 text-xs">
+              {/* 2. Store Location & Address */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-bold text-foreground pb-2 border-b border-border">
+                  2. Operational Location & Street Address
+                </h4>
+                <div className="space-y-4 text-xs">
                   <div>
-                    <label className="text-muted-foreground block mb-1">Account Holder Name</label>
-                    <input type="text" defaultValue={currentVendor.name} placeholder="Account Holder Name" className="w-full h-9 rounded-lg border border-border px-3 font-semibold" />
+                    <label className="text-muted-foreground block mb-1 font-semibold">Store Street Address *</label>
+                    <input
+                      type="text"
+                      required
+                      value={profileForm.address}
+                      onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
+                      placeholder="e.g. 3-24/2, Near Vinayaka Temple, Garagaparru"
+                      className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                    />
                   </div>
-                  <div>
-                    <label className="text-muted-foreground block mb-1">IFSC Code</label>
-                    <input type="text" placeholder="IFSC Code (e.g. HDFC0001234)" className="w-full h-9 rounded-lg border border-border px-3 font-mono font-bold" />
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div>
+                      <label className="text-muted-foreground block mb-1 font-semibold">City / Town *</label>
+                      <input
+                        type="text"
+                        required
+                        value={profileForm.city}
+                        onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
+                        placeholder="e.g. Bhimavaram"
+                        className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-muted-foreground block mb-1 font-semibold">State *</label>
+                      <input
+                        type="text"
+                        required
+                        value={profileForm.state}
+                        onChange={(e) => setProfileForm({ ...profileForm, state: e.target.value })}
+                        placeholder="e.g. Andhra Pradesh"
+                        className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-muted-foreground block mb-1 font-semibold">Pincode *</label>
+                      <input
+                        type="text"
+                        required
+                        value={profileForm.pincode}
+                        onChange={(e) => setProfileForm({ ...profileForm, pincode: e.target.value })}
+                        placeholder="e.g. 534201"
+                        className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+
+              {/* 3. Bank Account & Settlement Payouts */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-bold text-foreground pb-2 border-b border-border">
+                  3. Bank Account for NEFT/RTGS Order Payouts
+                </h4>
+                <div className="grid gap-4 sm:grid-cols-2 text-xs">
+                  <div>
+                    <label className="text-muted-foreground block mb-1 font-semibold">Account Holder Name *</label>
+                    <input
+                      type="text"
+                      value={profileForm.accountHolderName}
+                      onChange={(e) => setProfileForm({ ...profileForm, accountHolderName: e.target.value })}
+                      placeholder="Name as printed on bank passbook"
+                      className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-muted-foreground block mb-1 font-semibold">Bank Name *</label>
+                    <input
+                      type="text"
+                      value={profileForm.bankName}
+                      onChange={(e) => setProfileForm({ ...profileForm, bankName: e.target.value })}
+                      placeholder="e.g. Indian Bank / State Bank of India / HDFC"
+                      className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-muted-foreground block mb-1 font-semibold">Bank Account Number *</label>
+                    <input
+                      type="text"
+                      value={profileForm.accountNumber}
+                      onChange={(e) => setProfileForm({ ...profileForm, accountNumber: e.target.value })}
+                      placeholder="e.g. 7738293690"
+                      className="w-full h-9 rounded-xl border border-border px-3 font-mono font-semibold bg-background"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-muted-foreground block mb-1 font-semibold">IFSC Code *</label>
+                    <input
+                      type="text"
+                      value={profileForm.ifscCode}
+                      onChange={(e) => setProfileForm({ ...profileForm, ifscCode: e.target.value.toUpperCase() })}
+                      placeholder="e.g. IDIB000V144"
+                      className="w-full h-9 rounded-xl border border-border px-3 font-mono font-bold bg-background"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Operating Preferences */}
+              <div className="space-y-3 pt-2">
+                <h4 className="text-sm font-bold text-foreground pb-2 border-b border-border">
+                  4. Operational Preferences
+                </h4>
+                <div className="flex items-center justify-between p-3.5 rounded-2xl border border-border bg-muted/20">
+                  <div>
+                    <h5 className="font-bold text-xs">Automated Order Confirmation</h5>
+                    <p className="text-[11px] text-muted-foreground">Automatically acknowledge orders for high-stock items</p>
+                  </div>
+                  <input type="checkbox" defaultChecked className="h-4 w-4 accent-primary cursor-pointer" />
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-4 border-t border-border flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setTab("shop")}
+                  className="rounded-xl border border-border px-4 py-2 text-xs font-semibold hover:bg-muted transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingProfile}
+                  className="rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-2xs hover:opacity-95 transition disabled:opacity-50 cursor-pointer"
+                >
+                  {isSavingProfile ? "Saving to Database..." : "Save Store Details to Database"}
+                </button>
+              </div>
+            </form>
           </Panel>
         </div>
       )}

@@ -69,6 +69,13 @@ export function SellersScreen() {
   const [commissionModalSeller, setCommissionModalSeller] = useState<EnrichedSeller | null>(null);
   const [newCommission, setNewCommission] = useState(10);
   const [isLoading, setIsLoading] = useState(false);
+  const [viewingDoc, setViewingDoc] = useState<{
+    type: string;
+    number?: string;
+    title: string;
+    filePath?: string;
+    sellerName: string;
+  } | null>(null);
 
   // Fetch real sellers from PostgreSQL backend
   const loadSellers = () => {
@@ -447,15 +454,27 @@ export function SellersScreen() {
                         </div>
                       </div>
 
-                      <a
-                        href={doc.file_path}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="rounded-lg bg-white border border-gray-300 px-2.5 py-1 text-[11px] font-bold text-[#111111] hover:bg-gray-100 flex items-center gap-1 shadow-xs"
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setViewingDoc({
+                            type: doc.doc_type,
+                            number: doc.doc_number,
+                            title:
+                              doc.doc_type === "PAN"
+                                ? "PAN Card Document"
+                                : doc.doc_type === "AADHAAR_FRONT"
+                                ? "Aadhaar Front Photo with Address"
+                                : "Business Trade License / Reg",
+                            filePath: doc.file_path,
+                            sellerName: selectedSeller.ownerName || selectedSeller.businessName,
+                          })
+                        }
+                        className="rounded-lg bg-white border border-gray-300 px-2.5 py-1 text-[11px] font-bold text-[#111111] hover:bg-gray-100 flex items-center gap-1 shadow-xs cursor-pointer"
                       >
                         <span>View Document</span>
                         <ExternalLink className="h-3 w-3" />
-                      </a>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -656,6 +675,76 @@ export function SellersScreen() {
               }}
             >
               Save Commission
+            </GlassButton>
+          </div>
+        </div>
+      </GlassModal>
+
+      {/* KYC Document Viewer Modal */}
+      <GlassModal
+        isOpen={!!viewingDoc}
+        onClose={() => setViewingDoc(null)}
+        title={viewingDoc?.title || "KYC Verification Document"}
+        description={`Applicant: ${viewingDoc?.sellerName || "Seller"} · Document No: ${viewingDoc?.number || "On file"}`}
+      >
+        <div className="space-y-4 text-xs">
+          {viewingDoc?.filePath &&
+          (viewingDoc.filePath.startsWith("data:image/") ||
+            viewingDoc.filePath.startsWith("http://") ||
+            viewingDoc.filePath.startsWith("https://")) ? (
+            <div className="rounded-2xl border border-gray-200 bg-gray-50/50 p-2 overflow-hidden flex justify-center">
+              <img
+                src={viewingDoc.filePath}
+                alt={viewingDoc.title}
+                className="max-h-[360px] w-auto object-contain rounded-xl shadow-xs"
+              />
+            </div>
+          ) : (
+            /* Official Document Certificate Preview Card */
+            <div className="rounded-2xl border-2 border-dashed border-gray-300 bg-gradient-to-br from-gray-50 to-red-50/30 p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-[#E31E24]/10 text-[#E31E24] grid place-items-center font-bold">
+                    <FileCheck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-[#111111]">{viewingDoc?.title}</h4>
+                    <p className="text-[11px] text-gray-500">Government of India · Verified Verification Record</p>
+                  </div>
+                </div>
+                <span className="rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 text-[10px] font-extrabold uppercase">
+                  Verified In Database
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs bg-white rounded-xl p-3.5 border border-gray-200">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-gray-400 block">Document Holder</span>
+                  <p className="font-bold text-[#111111] mt-0.5">{viewingDoc?.sellerName}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-gray-400 block">Identifier / Number</span>
+                  <p className="font-mono font-extrabold text-[#E31E24] mt-0.5">{viewingDoc?.number || "Provided"}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-gray-400 block">Associated Business</span>
+                  <p className="font-medium text-gray-700 mt-0.5">{selectedSeller?.businessName}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-gray-400 block">Registered Location</span>
+                  <p className="font-medium text-gray-700 mt-0.5">{selectedSeller?.city}, {selectedSeller?.state}</p>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-gray-500 italic text-center">
+                KYC records and verification hashes are authenticated via Riderzpro compliance pipeline.
+              </p>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2.5 pt-2 border-t border-gray-100">
+            <GlassButton variant="secondary" size="sm" onClick={() => setViewingDoc(null)}>
+              Close Document
             </GlassButton>
           </div>
         </div>

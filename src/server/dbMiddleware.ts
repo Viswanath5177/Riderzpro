@@ -294,7 +294,7 @@ export function pgApiMiddleware() {
             let sellerEmail: string | null = null;
 
             const cookieHeader = req.headers.cookie || "";
-            const tokenMatch = cookieHeader.match(/riderzpro_session=([^;]+)/);
+            const tokenMatch = cookieHeader.match(/(?:auth_session|riderzpro_session)=([^;]+)/);
             if (tokenMatch) {
               const token = tokenMatch[1].trim();
               const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
@@ -354,6 +354,26 @@ export function pgApiMiddleware() {
               });
             }
 
+            // Bank details & KYC documents for this seller
+            const bankRes = await query(
+              "SELECT account_holder_name, bank_name, account_number, ifsc_code, is_verified FROM seller_bank_accounts WHERE seller_id = $1 LIMIT 1",
+              [sellerId]
+            );
+            const bankAccount = bankRes.rows[0]
+              ? {
+                  accountHolderName: bankRes.rows[0].account_holder_name,
+                  bankName: bankRes.rows[0].bank_name,
+                  accountNumber: bankRes.rows[0].account_number,
+                  ifscCode: bankRes.rows[0].ifsc_code,
+                  isVerified: bankRes.rows[0].is_verified,
+                }
+              : null;
+
+            const docsRes = await query(
+              "SELECT doc_type, doc_number, file_path, is_verified FROM seller_documents WHERE seller_id = $1",
+              [sellerId]
+            );
+
             // Real products from DB for this vendor
             const prodRes = await query(
               `SELECT p.id, p.name, p.sku, p.price, p.mrp, p.stock, c.name AS category_name, p.verification_status, p.created_at 
@@ -395,6 +415,7 @@ export function pgApiMiddleware() {
                   ownerName: sellerRow.owner_name,
                   email: sellerRow.email,
                   phone: sellerRow.phone,
+                  businessType: sellerRow.business_type,
                   city: sellerRow.city,
                   state: sellerRow.state,
                   pincode: sellerRow.pincode,
@@ -402,6 +423,8 @@ export function pgApiMiddleware() {
                   gstin: sellerRow.gstin,
                   status: sellerRow.status,
                   created_at: sellerRow.created_at,
+                  bankAccount,
+                  documents: docsRes.rows,
                 },
                 metrics: {
                   totalGrossSales,
@@ -422,6 +445,181 @@ export function pgApiMiddleware() {
             });
           } catch (err: any) {
             console.error("[Vendor Dashboard API Error]:", err);
+            return sendJson(res, 500, { success: false, error: err.message });
+          }
+        }
+
+        // ====================================================================
+        // 3.9 VENDOR PROFILE UPDATE API: /api/vendor/profile
+        // ====================================================================
+        if (cleanUrl === "/api/vendor/profile" && (method === "PUT" || method === "POST")) {
+          try {
+            const body = await parseBody(req);
+            let sellerId = body.sellerId || body.id;
+
+            // If sellerId not supplied, deduce from session
+            if (!sellerId) {
+              const cookieHeader = req.headers.cookie || "";
+              const tokenMatch = cookieHeader.match(/(?:auth_session|riderzpro_session)=([^;]+)/);
+              if (tokenMatch) {
+                const token = tokenMatch[1].trim();
+                const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+                const sessRes = await query(
+                  "SELECT user_id FROM auth_sessions WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now() LIMIT 1",
+                  [tokenHash]
+                );
+                if (sessRes.rows[0]) {
+                  const uid = sessRes.rows[0].user_id;
+                  const sCheck = await query(
+                    "SELECT id FROM sellers WHERE id = $1 OR email = (SELECT email FROM users WHERE id = $1 LIMIT 1) LIMIT 1",
+                    [uid]
+                  );
+                  if (sCheck.rows[0]) sellerId = sCheck.rows[0].id;
+                }
+              }
+            }
+
+            // Fallback to latest seller if still not found
+            if (!sellerId) {
+              const sFallback = await query("SELECT id FROM sellers ORDER BY created_at DESC LIMIT 1");
+              if (sFallback.rows[0]) sellerId = sFallback.rows[0].id;
+            }
+
+            if (!sellerId) {
+              return sendJson(res, 404, { success: false, error: "Seller profile not found in database" });
+            }
+
+            // Update sellers table
+            await query(
+              `UPDATE sellers
+               SET store_name = COALESCE($1, store_name),
+                   owner_name = COALESCE($2, owner_name),
+                   phone = COALESCE($3, phone),
+                   business_address = COALESCE($4, business_address),
+                   city = COALESCE($5, city),
+                   state = COALESCE($6, state),
+                   pincode = COALESCE($7, pincode),
+                   gstin = COALESCE($8, gstin),
+                   updated_at = now()
+               WHERE id = $9`,
+              [
+                body.storeName || null,
+                body.ownerName || null,
+                body.phone || null,
+                body.address || body.streetAddress || null,
+                body.city || null,
+                body.state || null,
+                body.pincode || null,
+                body.gstin || null,
+                sellerId,
+              ]
+            );
+
+            // Update or insert bank details
+            if (body.accountNumber || body.bankName || body.accountHolderName || body.ifscCode) {
+              const bCheck = await query("SELECT id FROM seller_bank_accounts WHERE seller_id = $1 LIMIT 1", [sellerId]);
+              if (bCheck.rows[0]) {
+                await query(
+                  `UPDATE seller_bank_accounts
+                   SET account_holder_name = COALESCE($1, account_holder_name),
+                       bank_name = COALESCE($2, bank_name),
+                       account_number = COALESCE($3, account_number),
+                       ifsc_code = COALESCE($4, ifsc_code)
+                   WHERE seller_id = $5`,
+                  [
+                    body.accountHolderName || null,
+                    body.bankName || null,
+                    body.accountNumber || null,
+                    body.ifscCode ? body.ifscCode.toUpperCase() : null,
+                    sellerId,
+                  ]
+                );
+              } else {
+                await query(
+                  `INSERT INTO seller_bank_accounts (seller_id, account_holder_name, bank_name, account_number, ifsc_code)
+                   VALUES ($1, $2, $3, $4, $5)`,
+                  [
+                    sellerId,
+                    body.accountHolderName || body.ownerName || "Seller",
+                    body.bankName || "Bank",
+                    body.accountNumber || "0000000000",
+                    (body.ifscCode || "BANK0001234").toUpperCase(),
+                  ]
+                );
+              }
+            }
+
+            const updatedSellerRes = await query("SELECT * FROM sellers WHERE id = $1", [sellerId]);
+            const updatedBankRes = await query("SELECT * FROM seller_bank_accounts WHERE seller_id = $1", [sellerId]);
+            const sRow = updatedSellerRes.rows[0];
+            const bRow = updatedBankRes.rows[0] || null;
+
+            return sendJson(res, 200, {
+              success: true,
+              message: "Store profile and bank settlement details updated successfully in PostgreSQL",
+              vendor: {
+                id: sRow.id,
+                storeName: sRow.store_name,
+                ownerName: sRow.owner_name,
+                email: sRow.email,
+                phone: sRow.phone,
+                city: sRow.city,
+                state: sRow.state,
+                pincode: sRow.pincode,
+                address: sRow.business_address,
+                gstin: sRow.gstin,
+                status: sRow.status,
+                bankAccount: bRow
+                  ? {
+                      accountHolderName: bRow.account_holder_name,
+                      bankName: bRow.bank_name,
+                      accountNumber: bRow.account_number,
+                      ifscCode: bRow.ifsc_code,
+                    }
+                  : null,
+              },
+            });
+          } catch (err: any) {
+            console.error("[Vendor Profile Update Error]:", err);
+            return sendJson(res, 500, { success: false, error: err.message });
+          }
+        }
+
+        // ====================================================================
+        // 3.10 ADMIN NOTIFICATIONS API: /api/admin/notifications
+        // ====================================================================
+        if (cleanUrl === "/api/admin/notifications" && method === "GET") {
+          try {
+            const sellersRes = await query(`
+              SELECT id, store_name, owner_name, city, state, status, created_at
+              FROM sellers
+              ORDER BY created_at DESC
+              LIMIT 15
+            `);
+
+            const notifications = sellersRes.rows.map((s: any) => ({
+              id: `notif_seller_${s.id}`,
+              title: `New Seller Registration: ${s.store_name}`,
+              body: `${s.owner_name} registered store from ${s.city || "Unspecified"}, ${s.state || ""}. Status: ${s.status === "PENDING_REVIEW" ? "Awaiting KYC Approval" : s.status}.`,
+              channel: "Seller Queue",
+              targetAudience: "Admin Reviewers",
+              sentAt: s.created_at,
+              reachCount: 1,
+              openRate: "100%",
+              type: "seller_registration",
+              sellerId: s.id,
+              isPending: s.status === "PENDING_REVIEW",
+            }));
+
+            const pendingCount = notifications.filter((n: any) => n.isPending).length;
+
+            return sendJson(res, 200, {
+              success: true,
+              data: notifications,
+              unreadCount: pendingCount,
+            });
+          } catch (err: any) {
+            console.error("[Admin Notifications Error]:", err);
             return sendJson(res, 500, { success: false, error: err.message });
           }
         }

@@ -1,6 +1,20 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
-import { Bike, Shield, ArrowLeft, LogOut, Sparkles, Menu, X, MoreHorizontal, type LucideIcon } from "lucide-react";
+import {
+  Bike,
+  Shield,
+  ArrowLeft,
+  LogOut,
+  Sparkles,
+  Menu,
+  X,
+  MoreHorizontal,
+  Store,
+  MessageSquare,
+  Settings,
+  ChevronUp,
+  type LucideIcon,
+} from "lucide-react";
 import { Logo } from "./bits";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/lib/auth";
@@ -12,12 +26,27 @@ export const ROLE_LINKS = [
 export type Section = { id: string; label: string; Icon: LucideIcon };
 
 export function DashboardShell({
-  title, subtitle, sections, active, onSelect, children, actions,
+  title,
+  subtitle,
+  sections,
+  active,
+  onSelect,
+  children,
+  actions,
+  userProfile,
 }: {
-  title: string; subtitle: string; sections: Section[]; active: string; onSelect: (id: string) => void; children: ReactNode; actions?: ReactNode;
+  title: string;
+  subtitle: string;
+  sections: Section[];
+  active: string;
+  onSelect: (id: string) => void;
+  children: ReactNode;
+  actions?: ReactNode;
+  userProfile?: { name?: string; email?: string; role?: string; avatar?: string };
 }) {
   const navigate = useNavigate();
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   async function handleSignOut() {
     await signOut();
@@ -47,10 +76,63 @@ export function DashboardShell({
             </button>
           ))}
         </nav>
-        <div className="mt-auto pt-4 border-t border-sidebar-border/60">
+        <div className="mt-auto pt-3 border-t border-sidebar-border/60 space-y-2">
           <Link to="/" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-primary transition">
             <ArrowLeft className="h-3.5 w-3.5" />Back to store
           </Link>
+
+          {/* User Profile Footer Widget */}
+          <div className="relative pt-2 border-t border-sidebar-border/40">
+            <button
+              type="button"
+              onClick={() => setShowProfileMenu(!showProfileMenu)}
+              className="flex w-full items-center gap-2.5 rounded-xl p-2 text-left hover:bg-muted/80 transition cursor-pointer"
+            >
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground font-bold text-xs shadow-xs">
+                {(userProfile?.name || title || "S").charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-foreground truncate">{userProfile?.name || title}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{userProfile?.email || "Authorized Seller"}</p>
+              </div>
+              <ChevronUp className={cn("h-4 w-4 text-muted-foreground transition-transform shrink-0", showProfileMenu ? "rotate-180" : "")} />
+            </button>
+
+            {showProfileMenu && (
+              <div className="absolute bottom-full left-0 right-0 mb-2 rounded-2xl border border-border bg-card p-1.5 shadow-xl animate-in fade-in slide-in-from-bottom-2 z-50">
+                <button
+                  onClick={() => {
+                    onSelect("shop");
+                    setShowProfileMenu(false);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+                >
+                  <Store className="h-4 w-4 text-primary" />
+                  <span>My Shop</span>
+                </button>
+                <button
+                  onClick={() => {
+                    onSelect("reviews");
+                    setShowProfileMenu(false);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+                >
+                  <MessageSquare className="h-4 w-4 text-amber-500" />
+                  <span>Customer reviews</span>
+                </button>
+                <button
+                  onClick={() => {
+                    onSelect("settings");
+                    setShowProfileMenu(false);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+                >
+                  <Settings className="h-4 w-4 text-primary" />
+                  <span>Shop settings</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </aside>
 
@@ -95,7 +177,7 @@ export function DashboardShell({
                 </button>
               ))}
             </nav>
-            <div className="mt-auto pt-3 border-t border-sidebar-border/60">
+            <div className="mt-auto pt-3 border-t border-sidebar-border/60 space-y-2">
               <Link
                 to="/"
                 onClick={() => setIsMobileDrawerOpen(false)}
@@ -104,6 +186,62 @@ export function DashboardShell({
                 <ArrowLeft className="h-3.5 w-3.5" />
                 <span>Back to store</span>
               </Link>
+
+              {/* Mobile Profile Footer */}
+              <div className="relative pt-2 border-t border-sidebar-border/40">
+                <button
+                  type="button"
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className="flex w-full items-center gap-2.5 rounded-xl p-2 text-left hover:bg-muted/80 transition cursor-pointer"
+                >
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground font-bold text-xs shadow-xs">
+                    {(userProfile?.name || title || "S").charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-foreground truncate">{userProfile?.name || title}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{userProfile?.email || "Authorized Seller"}</p>
+                  </div>
+                  <ChevronUp className={cn("h-4 w-4 text-muted-foreground transition-transform shrink-0", showProfileMenu ? "rotate-180" : "")} />
+                </button>
+
+                {showProfileMenu && (
+                  <div className="mt-1 rounded-2xl border border-border bg-card p-1.5 shadow-xl">
+                    <button
+                      onClick={() => {
+                        onSelect("shop");
+                        setShowProfileMenu(false);
+                        setIsMobileDrawerOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+                    >
+                      <Store className="h-4 w-4 text-primary" />
+                      <span>My Shop</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        onSelect("reviews");
+                        setShowProfileMenu(false);
+                        setIsMobileDrawerOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+                    >
+                      <MessageSquare className="h-4 w-4 text-amber-500" />
+                      <span>Customer reviews</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        onSelect("settings");
+                        setShowProfileMenu(false);
+                        setIsMobileDrawerOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+                    >
+                      <Settings className="h-4 w-4 text-primary" />
+                      <span>Shop settings</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
