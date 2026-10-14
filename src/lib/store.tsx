@@ -33,6 +33,7 @@ import {
   processCourierWebhookEvent,
   type WebhookResult,
 } from "./logistics/adapters";
+import { getOrderStatusMetadata } from "./orderStatus";
 import {
   fetchDeliveries,
   createDelivery as apiCreateDelivery,
@@ -100,16 +101,16 @@ export function backendDeliveryToOrder(del: BackendDelivery): Order {
     status: numStatus,
     fulfillmentStatus,
     riderId: del.assigned_rider_id || del.assigned_rider?.id || riders[0]?.id,
-    customerName: del.customer_name || "Aakash Sharma",
-    customerPhone: del.customer_phone || "+91 98765 43210",
+    customerName: del.customer_name || "Customer",
+    customerPhone: del.customer_phone || "+91 98111 22334",
     shipmentId: del.id,
     shippingAddress: {
-      name: del.customer_name || "Aakash Sharma",
-      phone: del.customer_phone || "+91 98765 43210",
-      street: del.dropoff_address || "Amaravati Capital Complex",
-      city: "Amaravati",
-      state: "Andhra Pradesh",
-      pincode: "522237",
+      name: del.customer_name || "Customer",
+      phone: del.customer_phone || "+91 98111 22334",
+      street: del.dropoff_address || "Connaught Place",
+      city: "Delhi",
+      state: "Delhi",
+      pincode: "110001",
     },
   };
 }
@@ -153,7 +154,7 @@ export function backendDeliveryToShipment(del: BackendDelivery): NormalizedShipm
       timestamp: "Just now",
       status: shipStatus,
       location: del.pickup_address,
-      description: `Delivery assigned to ${del.assigned_rider?.name || "Sathesh Ittraju"}`,
+      description: `Delivery assigned to ${del.assigned_rider?.name || "Ravi Kumar"}`,
       isGps: true,
     });
   }
@@ -166,20 +167,20 @@ export function backendDeliveryToShipment(del: BackendDelivery): NormalizedShipm
     trackingNumber: del.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 14),
     trackingUrl: `/track/${del.id}`,
     pickupAddress: {
-      name: del.vendor_name || "Vijayawada Central Hub",
+      name: del.vendor_name || "Delhi Central Hub",
       street: del.pickup_address,
-      city: "Vijayawada",
-      state: "Andhra Pradesh",
-      pincode: "520001",
-      phone: "+91 866 245 1100",
+      city: "Delhi",
+      state: "Delhi",
+      pincode: "110001",
+      phone: "+91 11 4123 9901",
     },
     destinationAddress: {
-      name: del.customer_name || "Aakash Sharma",
+      name: del.customer_name || "Customer",
       street: del.dropoff_address,
-      city: "Amaravati",
-      state: "Andhra Pradesh",
-      pincode: "522237",
-      phone: del.customer_phone || "+91 98765 43210",
+      city: "Delhi",
+      state: "Delhi",
+      pincode: "110001",
+      phone: del.customer_phone || "+91 98111 22334",
     },
     status: shipStatus,
     locationType: "Live GPS Telemetry",
@@ -193,7 +194,7 @@ export function backendDeliveryToShipment(del: BackendDelivery): NormalizedShipm
     currentGps: del.assigned_rider?.current_lat
       ? {
           lat: del.assigned_rider.current_lat,
-          lng: del.assigned_rider.current_lng || 80.6480,
+          lng: del.assigned_rider.current_lng || 77.2205,
           speedKmph: 32,
           heading: 285,
         }
@@ -290,7 +291,8 @@ export type Order = {
   payment: string;
   paymentStatus?: "Paid" | "Pending" | "Refunded";
   status: number;
-  fulfillmentStatus?: "Awaiting Fulfillment" | "Preparing" | "Packed" | "Dispatched" | "Delivered" | "Cancelled";
+  fulfillmentStatus?:
+    "Awaiting Fulfillment" | "Preparing" | "Packed" | "Dispatched" | "Delivered" | "Cancelled";
   riderId?: string;
   shippingAddress?: AddressRef;
   customerName?: string;
@@ -298,9 +300,15 @@ export type Order = {
   shipmentId?: string;
   cancelReason?: string;
   refundReason?: string;
+  source?: "api" | "legacy";
+  apiOrderId?: string;
 };
 
-export function quoteCart(cart: CartItem[], discount = 0, loc: { lat: number; lng: number } = CUSTOMER_LOCATION) {
+export function quoteCart(
+  cart: CartItem[],
+  discount = 0,
+  loc: { lat: number; lng: number } = CUSTOMER_LOCATION,
+) {
   const map = new Map<string, VendorGroup>();
   for (const c of cart) {
     const p = getProduct(c.productId);
@@ -365,6 +373,7 @@ type Ctx = {
   activeBikeId: string | null;
   setActiveBikeId: (id: string | null) => void;
   orders: Order[];
+  syncApiOrders: (apiOrders: any[]) => void;
   placeOrder: (payment: string) => Order;
   placeOrderWithOptions: (options: {
     payment: string;
@@ -382,7 +391,11 @@ type Ctx = {
   // Logistics & Shipments
   shipments: NormalizedShipment[];
   createShipment: (params: CreateShipmentParams) => NormalizedShipment;
-  updateShipmentStatus: (shipmentId: string, status: ShipmentStatus, newEvent?: ShipmentEvent) => void;
+  updateShipmentStatus: (
+    shipmentId: string,
+    status: ShipmentStatus,
+    newEvent?: ShipmentEvent,
+  ) => void;
   processWebhook: (payload: any) => WebhookResult;
   // Inventory
   inventoryStock: Record<string, number>;
@@ -428,9 +441,9 @@ const DEFAULT_PROFILE: UserProfile = {
 const DEFAULT_ADDRESS: AddressRef = {
   name: "Rider",
   street: "",
-  city: "Bengaluru",
-  state: "Karnataka",
-  pincode: "560001",
+  city: "Delhi",
+  state: "Delhi",
+  pincode: "110001",
   phone: "",
 };
 
@@ -492,13 +505,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           if (Array.isArray(s.serviceBookings)) setServiceBookings(s.serviceBookings);
           if (Array.isArray(s.notifications)) setNotifications(s.notifications);
           if (s.userProfile) {
-            const isMock = s.userProfile.email === "aakash.sharma@example.com";
+            const isMock = s.userProfile.email === "aakash.sharma@example.com" || s.userProfile.name === "Aakash Sharma";
             if (!isMock) {
               setUserProfile({
                 ...DEFAULT_PROFILE,
                 ...s.userProfile,
-                addresses: Array.isArray(s.userProfile.addresses) ? s.userProfile.addresses : [],
-                selectedAddressId: s.userProfile.selectedAddressId || "",
+                addresses: Array.isArray((s.userProfile as any).addresses) ? (s.userProfile as any).addresses : [],
+                selectedAddressId: (s.userProfile as any).selectedAddressId || "",
               });
             } else {
               setUserProfile(DEFAULT_PROFILE);
@@ -549,7 +562,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     async function syncBackendDeliveries() {
       try {
         const rawAuth = typeof window !== "undefined" ? localStorage.getItem("riderzpro_auth_user") : null;
-        let customerIdentifier = "9876543210";
+        let customerIdentifier = "9811122334";
         if (rawAuth) {
           try {
             const parsed = JSON.parse(rawAuth);
@@ -598,7 +611,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         cart,
         garage,
         activeBikeId,
-        orders,
+        orders: orders.filter((o) => o.source !== "api"),
         shipments,
         inventoryStock,
         savedProductIds,
@@ -619,7 +632,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ items: cart }),
       }).catch(() => {});
     } catch {}
-  }, [cart, garage, activeBikeId, orders, shipments, inventoryStock, savedProductIds, serviceBookings, notifications, userProfile, role, userLocation, loaded]);
+  }, [
+    cart,
+    garage,
+    activeBikeId,
+    orders,
+    shipments,
+    inventoryStock,
+    savedProductIds,
+    serviceBookings,
+    notifications,
+    userProfile,
+    role,
+    userLocation,
+    loaded,
+  ]);
 
   useEffect(() => {
     document.documentElement.classList.remove("dark");
@@ -677,8 +704,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               status: Math.max(o.status, 2),
               fulfillmentStatus: "Dispatched",
             }
-          : o
-      )
+          : o,
+      ),
     );
 
     return newShipment;
@@ -697,10 +724,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             events: updatedEvents,
             latestLocation: newEvent?.location || s.latestLocation,
             lastEventTimestamp: newEvent?.timestamp || "Just now",
-            actualDeliveryTimestamp: isDelivered ? new Date().toLocaleTimeString("en-IN") : s.actualDeliveryTimestamp,
+            actualDeliveryTimestamp: isDelivered
+              ? new Date().toLocaleTimeString("en-IN")
+              : s.actualDeliveryTimestamp,
             isDelayed: status === "Delayed",
           };
-        })
+        }),
       );
 
       // Synchronize back to order status
@@ -730,12 +759,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                   status: orderNumericStatus,
                   fulfillmentStatus,
                 }
-              : o
-          )
+              : o,
+          ),
         );
       }
     },
-    [shipments]
+    [shipments],
   );
 
   const processWebhook = useCallback(
@@ -750,9 +779,91 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       return res;
     },
-    [shipments, updateShipmentStatus]
+    [shipments, updateShipmentStatus],
   );
 
+  const syncApiOrders = useCallback((apiOrders: any[]) => {
+    setOrders((prev) => {
+      const legacyOrders = prev.filter((o) => o.source !== "api");
+      const mappedApiOrders: Order[] = (apiOrders || []).map((ao) => {
+        const meta = getOrderStatusMetadata(ao.status);
+        const stepsIndex = meta.orderStepsIndex;
+        const totalRupees = Math.round(ao.totalPaise / 100);
+        const itemsTotalRupees = Math.round(ao.subtotalPaise / 100);
+        const deliveryTotalRupees = Math.round(ao.deliveryPaise / 100);
+        const discountRupees = Math.round((ao.discountPaise || 0) / 100);
+        const taxRupees = Math.round(ao.taxPaise / 100);
+
+        // Group items into VendorGroup[]
+        const vendorMap = new Map<string, VendorGroup>();
+        (ao.items || []).forEach((it: any) => {
+          const vId = it.sellerId || "v1";
+          let g = vendorMap.get(vId);
+          if (!g) {
+            g = {
+              vendorId: vId,
+              items: [],
+              subtotal: 0,
+              km: 5,
+              fee: 49,
+              eta: 35,
+            };
+            vendorMap.set(vId, g);
+          }
+          const priceRupees = Math.round(it.unitPricePaise / 100);
+          g.items.push({
+            productId: it.productId,
+            qty: it.qty,
+            price: priceRupees,
+          });
+          g.subtotal += priceRupees * it.qty;
+        });
+
+        const groups = Array.from(vendorMap.values());
+
+        const paymentMethodStr = ao.payment?.method || "UPI";
+        const paymentStatusStr =
+          ao.payment?.status === "PAID"
+            ? "Paid"
+            : ao.payment?.status === "COD_DUE"
+            ? "Pending"
+            : "Pending";
+
+        return {
+          id: ao.orderNumber || ao.id,
+          createdAt: ao.createdAt,
+          groups,
+          itemsTotal: itemsTotalRupees,
+          deliveryTotal: deliveryTotalRupees,
+          discountTotal: discountRupees,
+          couponCode: ao.couponCode,
+          tax: taxRupees,
+          total: totalRupees,
+          eta: 35,
+          payment: paymentMethodStr,
+          paymentStatus: paymentStatusStr,
+          status: stepsIndex,
+          fulfillmentStatus: meta.label as any,
+          shippingAddress: {
+            name: ao.contact?.name || "Customer",
+            street: ao.shippingAddress?.street || "",
+            city: ao.shippingAddress?.city || "Delhi",
+            state: ao.shippingAddress?.state || "Delhi",
+            pincode: ao.shippingAddress?.pincode || "110001",
+            phone: ao.contact?.phone || "",
+          },
+          customerName: ao.contact?.name,
+          customerPhone: ao.contact?.phone,
+          source: "api" as const,
+          apiOrderId: ao.id,
+        };
+      });
+
+      return [...mappedApiOrders, ...legacyOrders];
+    });
+  }, []);
+
+  /** @deprecated Use createOrder from src/lib/api/orders instead. Kept for legacy mode only. */
   const placeOrderWithOptions = useCallback(
     (options: {
       payment: string;
@@ -762,6 +873,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       gstin?: string;
       businessName?: string;
     }) => {
+      const mode = (import.meta as any).env?.VITE_ORDERS_API;
+      if (mode !== "legacy") {
+        if (import.meta.env.DEV) {
+          console.error(
+            "[Riderzpro store] placeOrderWithOptions is deprecated. Use createOrder from src/lib/api/orders.",
+          );
+        }
+        return {} as Order;
+      }
+
       const discount = options.discount || 0;
       const q = quoteCart(cart, discount);
       const newOrderId = `RZ-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -780,6 +901,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         customerName: options.shippingAddress.name,
         customerPhone: options.shippingAddress.phone,
         couponCode: options.couponCode,
+        source: "legacy",
         gstin: options.gstin,
         businessName: options.businessName,
         ...q,
@@ -824,7 +946,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         order_id: newOrderId,
         customer_id: userProfile?.phone || "cust_demo",
         customer_name: options.shippingAddress.name || userProfile?.name || "Customer",
-        customer_phone: options.shippingAddress.phone || userProfile?.phone || "+91 98765 43210",
+        customer_phone: options.shippingAddress.phone || userProfile?.phone || "+91 98111 22334",
         vendor_id: "vnd_nexgen_ev",
         vendor_name: "NexGen EV Logistics",
         pickup_address: "Vijayawada Central Hub (16.5062, 80.6480)",
@@ -857,14 +979,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [cart, updateInventoryStock, userProfile]
   );
 
+  /** @deprecated Use createOrder from src/lib/api/orders instead. Kept for legacy mode only. */
   const placeOrder = useCallback(
     (payment: string) => {
+      const mode = (import.meta as any).env?.VITE_ORDERS_API;
+      if (mode !== "legacy") {
+        if (import.meta.env.DEV) {
+          console.error(
+            "[Riderzpro store] placeOrder is deprecated. Use createOrder from src/lib/api/orders.",
+          );
+        }
+        return {} as Order;
+      }
       return placeOrderWithOptions({
         payment,
         shippingAddress: DEFAULT_ADDRESS,
       });
     },
-    [placeOrderWithOptions]
+    [placeOrderWithOptions],
   );
 
   const updateOrderStatus = useCallback((id: string, status: number) => {
@@ -888,7 +1020,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           fulfillmentStatus,
           riderId: status >= 2 ? o.riderId || riders[0].id : undefined,
         };
-      })
+      }),
     );
 
     if (status === 5) {
@@ -900,24 +1032,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const cancelOrder = useCallback((id: string, reason: string) => {
-    setOrders((os) =>
-      os.map((o) => {
-        if (o.id !== id) return o;
-        // Restock inventory
-        o.groups.forEach((g) => {
-          g.items.forEach((it) => {
-            updateInventoryStock(it.productId, it.qty);
+  const cancelOrder = useCallback(
+    (id: string, reason: string) => {
+      setOrders((os) =>
+        os.map((o) => {
+          if (o.id !== id) return o;
+          // Restock inventory
+          o.groups.forEach((g) => {
+            g.items.forEach((it) => {
+              updateInventoryStock(it.productId, it.qty);
+            });
           });
-        });
-        return {
-          ...o,
-          fulfillmentStatus: "Cancelled",
-          cancelReason: reason,
-        };
-      })
-    );
-  }, [updateInventoryStock]);
+          return {
+            ...o,
+            fulfillmentStatus: "Cancelled",
+            cancelReason: reason,
+          };
+        }),
+      );
+    },
+    [updateInventoryStock],
+  );
 
   const refundOrder = useCallback((id: string, reason: string) => {
     setOrders((os) =>
@@ -928,14 +1063,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               paymentStatus: "Refunded",
               refundReason: reason,
             }
-          : o
-      )
+          : o,
+      ),
     );
   }, []);
 
   const toggleSaved = useCallback((id: string) => {
     setSavedProductIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }, []);
 
@@ -953,14 +1088,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const cancelServiceBooking = useCallback((id: string) => {
     setServiceBookings((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, status: "Cancelled" as const } : b))
+      prev.map((b) => (b.id === id ? { ...b, status: "Cancelled" as const } : b)),
     );
   }, []);
 
   const markNotificationRead = useCallback((id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   }, []);
 
   const markAllNotificationsRead = useCallback(() => {
@@ -994,18 +1127,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       paymentStatus: "Paid",
       status: 4,
       fulfillmentStatus: "Dispatched",
-      riderId: riders[0]?.id || "r1",
-      customerName: userProfile?.name?.trim() || "Aakash Sharma",
-      customerPhone: userProfile?.phone?.trim() || "+91 98765 43210",
-      shippingAddress: {
-        name: "Aakash Sharma",
-        phone: "+91 98765 43210",
-        street: "Amaravati Secretariat / City Center",
-        city: "Amaravati",
-        state: "Andhra Pradesh",
-        pincode: "522237",
-      },
-      shipmentId: "delivery_vijayawada_amaravati_live",
+      riderId: riders[0].id,
+      customerName: "Delhi Rider",
+      customerPhone: "+91 91234 56789",
+      shippingAddress: DEFAULT_ADDRESS,
+      shipmentId: "SHP-DEMO-FLEET",
     };
 
     const demoShipment: NormalizedShipment = {
@@ -1016,43 +1142,43 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       trackingNumber: "RZPVJA849201",
       trackingUrl: `/track/delivery_vijayawada_amaravati_live`,
       pickupAddress: {
-        name: "Vijayawada Central Hub",
-        street: "MG Road, Vijayawada Central Hub",
-        city: "Vijayawada",
-        pincode: "520001",
-        phone: "+91 866 245 1100",
+        name: "VoltHub Central",
+        street: "Connaught Place",
+        city: "Delhi",
+        pincode: "110001",
+        phone: "+91 11 4123 9901",
       },
       destinationAddress: {
-        name: "Aakash Sharma",
-        street: "Amaravati Secretariat / City Center",
-        city: "Amaravati",
-        pincode: "522237",
-        phone: "+91 98765 43210",
+        name: "Delhi Rider",
+        street: "Connaught Place",
+        city: "Delhi",
+        pincode: "110001",
+        phone: "+91 91234 56789",
       },
       status: "In Transit",
       locationType: "Live GPS Telemetry",
-      latestLocation: "Sathesh Ittraju en route (Seed Access Road)",
-      lastEventTimestamp: "Live GPS Active",
-      estimatedDelivery: "Arriving in 24 mins",
-      currentGps: { lat: 16.5182, lng: 80.6050, speedKmph: 32.5, heading: 285 },
+      latestLocation: "Connaught Place -> Ring Road",
+      lastEventTimestamp: "2m ago",
+      estimatedDelivery: "Arriving in 18 mins",
+      currentGps: { lat: 28.6304, lng: 77.2177, speedKmph: 32, heading: 140 },
       events: [
         {
           id: "evt-vja-1",
           timestamp: "20m ago",
           status: "Manifested",
-          location: "Vijayawada Central Hub",
-          description: "Rider Sathesh Ittraju accepted order and collected package",
+          location: "VoltHub Central",
+          description: "Rider Ravi Kumar accepted order and collected package",
           isGps: true,
-          coordinates: { lat: 16.5062, lng: 80.6480 },
+          coordinates: { lat: 28.6304, lng: 77.2177 },
         },
         {
           id: "evt-vja-2",
           timestamp: "Live",
           status: "In Transit",
-          location: "Krishna River Crossing / Prakasam Barrage",
-          description: "Live GPS broadcast: En route to Amaravati Secretariat",
+          location: "Intermediate Ring Road",
+          description: "Live GPS broadcast: En route to Delhi doorstep",
           isGps: true,
-          coordinates: { lat: 16.5182, lng: 80.6050 },
+          coordinates: { lat: 28.6304, lng: 77.2177 },
         },
       ],
     };
@@ -1061,7 +1187,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setShipments((prev) => [demoShipment, ...prev.filter((s) => s.shipmentId !== demoShipment.shipmentId)]);
 
     // Trigger async fetch from backend to refresh live data
-    fetchDeliveries({ customer_id: "9876543210" })
+    fetchDeliveries({ customer_id: "9811122334" })
       .then((res) => {
         if (res && res.items && res.items.length > 0) {
           const liveDel = res.items.find((d) => d.id === "delivery_vijayawada_amaravati_live") || res.items[0];
@@ -1081,8 +1207,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setIsLoggedIn(false);
     localStorage.removeItem("riderzpro_auth_user");
     localStorage.removeItem("riderzpro_auth_token");
+    setOrders((prev) => prev.filter((o) => o.source !== "api"));
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.removeItem("riderzpro_orders_session");
+        // Clear all user-specific mock order keys
+        for (let i = sessionStorage.length - 1; i >= 0; i--) {
+          const key = sessionStorage.key(i);
+          if (key && key.startsWith("riderzpro_mock_orders_")) {
+            sessionStorage.removeItem(key);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
   }, []);
-  const deleteOrder = useCallback((id: string) => setOrders((os) => os.filter((o) => o.id !== id)), []);
+  const deleteOrder = useCallback(
+    (id: string) => setOrders((os) => os.filter((o) => o.id !== id)),
+    [],
+  );
   const clearOrders = useCallback(() => setOrders([]), []);
 
   const value = useMemo<Ctx>(
@@ -1102,6 +1246,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       activeBikeId,
       setActiveBikeId,
       orders,
+      syncApiOrders,
       placeOrder,
       placeOrderWithOptions,
       advanceOrder: (id) =>

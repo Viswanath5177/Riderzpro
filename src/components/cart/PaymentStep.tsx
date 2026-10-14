@@ -60,8 +60,8 @@ export function PaymentStep({
   quote,
   shippingAddress,
   customerName,
-  customerPhone = "+91 98765 43210",
-  customerEmail = "aakash.sharma@riderzpro.com",
+  customerPhone = "+91 98111 22334",
+  customerEmail = "rider@riderzpro.com",
   gstin,
   businessName,
   onPaymentSuccess,
@@ -73,7 +73,7 @@ export function PaymentStep({
   const [cardNumber, setCardNumber] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCvv, setCardCvv] = useState("");
-  const [cardHolder, setCardHolder] = useState(customerName || "Aakash Sharma");
+  const [cardHolder, setCardHolder] = useState(customerName || "Cardholder");
   const [saveCard, setSaveCard] = useState(true);
   const [selectedBank, setSelectedBank] = useState("HDFC Bank");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -451,7 +451,7 @@ export function PaymentStep({
                 {cardNumber || "•••• •••• •••• 4242"}
               </div>
               <div className="mt-2 flex justify-between text-[10px] text-gray-300">
-                <span>{cardHolder || "Aakash Sharma"}</span>
+                <span>{cardHolder || "Cardholder"}</span>
                 <span>{cardExpiry || "12/28"}</span>
               </div>
             </div>
@@ -550,7 +550,7 @@ export function PaymentStep({
               <span>Doorstep Collection on Delivery</span>
             </div>
             <p className="text-[11px] leading-relaxed text-amber-700">
-              Pay securely via UPI QR or Cash to the delivery rider when your parcel arrives in Bellandur.
+              Pay securely via UPI QR or Cash to the delivery rider when your parcel arrives at your delivery address.
             </p>
             <p className="font-semibold text-[11px] text-gray-700">
               Total Payable at Doorstep: <strong className="text-[#111111]">{inr(quote.total)}</strong>

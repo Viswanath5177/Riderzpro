@@ -31,9 +31,11 @@ import { useMap, MapProvider } from "./MapProvider";
 import { PickupMarker, DropoffMarker, RiderMarker } from "./MapMarker";
 import { RouteLayer } from "./RouteLayer";
 import { latLngToUnitPoint, screenToLatLng, TILE_SIZE } from "./MercatorProjection";
+import { useDeliveryTracking } from "./useDeliveryTracking";
 
 export interface DeliveryMapProps {
-  tracking: DeliveryTrackingData | null;
+  orderId?: string;
+  tracking?: DeliveryTrackingData | null;
   connectionState?: ConnectionState;
   isApproaching?: boolean;
   isArrived?: boolean;
@@ -44,9 +46,78 @@ export interface DeliveryMapProps {
 }
 
 export function DeliveryMap(props: DeliveryMapProps) {
+  if (props.orderId && !props.tracking) {
+    return <DeliveryMapWithOrderId {...props} orderId={props.orderId} />;
+  }
   return (
     <MapProvider>
-      <DeliveryMapInner {...props} />
+      <DeliveryMapInner {...props} tracking={props.tracking ?? null} />
+    </MapProvider>
+  );
+}
+
+function DeliveryMapWithOrderId({ orderId, ...rest }: DeliveryMapProps & { orderId: string }) {
+  const {
+    data: tracking,
+    connectionState,
+    isApproaching,
+    isArrived,
+    isDeviating,
+    deviationDistance,
+  } = useDeliveryTracking({ deliveryId: orderId });
+
+  const effectiveTracking = useMemo<DeliveryTrackingData>(() => {
+    if (tracking) return tracking;
+    return {
+      delivery_id: `DEL-${orderId}`,
+      order_id: orderId,
+      status: "IN_TRANSIT",
+      rider: {
+        id: "r1",
+        name: "Ravi Kumar",
+        phone: "+91 98111 22334",
+        vehicle_type: "Ather 450X EV",
+        rating: 4.9,
+        latitude: 28.636,
+        longitude: 77.2205,
+        heading_degrees: 52,
+        speed_kmh: 32,
+      },
+      pickup: {
+        address: "RiderzPro Central Hub, Connaught Place, New Delhi",
+        latitude: 28.6315,
+        longitude: 77.2167,
+      },
+      dropoff: {
+        address: "Customer Delivery Address, Delhi",
+        latitude: 28.6505,
+        longitude: 77.2303,
+      },
+      eta_minutes: 14,
+      distance_km: 2.8,
+      route_geometry: [
+        { lat: 28.6315, lng: 77.2167 },
+        { lat: 28.634, lng: 77.2185 },
+        { lat: 28.636, lng: 77.2205 },
+        { lat: 28.642, lng: 77.225 },
+        { lat: 28.6505, lng: 77.2303 },
+      ],
+      is_approaching: false,
+      is_arrived: false,
+    };
+  }, [tracking, orderId]);
+
+  return (
+    <MapProvider>
+      <DeliveryMapInner
+        {...rest}
+        tracking={effectiveTracking}
+        connectionState={rest.connectionState ?? connectionState}
+        isApproaching={rest.isApproaching ?? isApproaching}
+        isArrived={rest.isArrived ?? isArrived}
+        isDeviating={rest.isDeviating ?? isDeviating}
+        deviationDistance={rest.deviationDistance ?? deviationDistance}
+      />
     </MapProvider>
   );
 }
@@ -607,7 +678,10 @@ function DeliveryMapInner({
         {isDeviating && (
           <div className="flex items-center gap-1.5 rounded-full bg-amber-500 text-white px-3 py-1.5 text-xs font-bold shadow-lg animate-pulse">
             <AlertTriangle className="h-3.5 w-3.5" />
-            <span>⚠️ Off planned route ({deviationDistance ? `${Math.round(deviationDistance)}m` : "deviating"})</span>
+            <span>
+              ⚠️ Off planned route (
+              {deviationDistance ? `${Math.round(deviationDistance)}m` : "deviating"})
+            </span>
           </div>
         )}
       </div>
