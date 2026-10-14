@@ -36,7 +36,7 @@ import { DELIVERY_BASE, DELIVERY_PER_KM, getProduct, getVendor, inr, products } 
 import { quoteCart, useStore, type Order } from "@/lib/store";
 import type { AddressRef } from "@/lib/logistics/types";
 import { useAuth } from "@/lib/auth";
-import { PaymentStep } from "@/components/cart/PaymentStep";
+import { PaymentStep } from "@/components/checkout/PaymentStep";
 import { DownloadInvoiceButton } from "@/components/common/DownloadInvoiceButton";
 
 export const Route = createFileRoute("/cart")({
@@ -156,6 +156,7 @@ function CartPage() {
 
   const handlePaymentSuccess = (details: {
     method: string;
+    payment_status?: "PAID" | "COD_PENDING";
     paymentId?: string;
     orderId?: string;
     signature?: string;
@@ -163,6 +164,7 @@ function CartPage() {
     try {
       const order = placeOrderWithOptions({
         payment: details.paymentId ? `Razorpay (${details.paymentId})` : details.method,
+        paymentStatus: details.payment_status || (details.method.includes("COD") || details.method.includes("Cash on Delivery") ? "COD_PENDING" : "PAID"),
         shippingAddress: address,
         couponCode: appliedCoupon?.code,
         discount: appliedCoupon?.discount,

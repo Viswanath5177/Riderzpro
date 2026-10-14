@@ -282,12 +282,13 @@ function Assistant() {
 
       let res: Response | null = null;
       try {
-        res = await fetch("/api/v1/chat", {
+        res = await fetch("/api/assistant", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             query: trimmed,
             vehicle_model: vehicleModel,
+            order_id: liveOrder?.id || "",
             history: historyPayload,
           }),
         });

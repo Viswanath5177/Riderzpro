@@ -65,7 +65,7 @@ export function DownloadInvoiceButton({
 
   const handleDirectDownload = () => {
     // Open the backend invoice endpoint in new window
-    window.open(`/api/invoices/${effectiveId}?format=html`, "_blank");
+    window.open(`/api/orders/${effectiveId}/invoice?format=html`, "_blank");
     toast.success(`Tax Invoice INV-${effectiveId} ready for print/download`);
   };
 

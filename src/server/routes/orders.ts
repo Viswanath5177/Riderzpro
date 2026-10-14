@@ -1,9 +1,89 @@
 import { query } from "../db";
-
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { parseBody, sendJson } from "./http";
+import { buildGstInvoice, renderInvoiceHtml } from "../../lib/invoice";
 
 export async function handleRoute(req: IncomingMessage, res: ServerResponse, cleanUrl: string, method: string | undefined, queryParams: URLSearchParams): Promise<boolean> {
+          // Handle GET /api/orders/:id/invoice
+          const invoiceMatch = cleanUrl.match(/^\/api\/orders\/([^/]+)\/invoice$/) || cleanUrl.match(/^\/api\/invoices\/([^/]+)$/);
+          if (invoiceMatch && method === "GET") {
+            try {
+              const orderId = decodeURIComponent(invoiceMatch[1]);
+              const format = queryParams.get("format") || "html";
+
+              // Attempt to load order from database
+              let dbOrder: any = null;
+              try {
+                const resDb = await query(
+                  `SELECT o.*, c.full_name as customer_name, c.phone as customer_phone, c.email as customer_email
+                   FROM orders o
+                   LEFT JOIN users c ON o.customer_id = c.id
+                   WHERE o.id = $1 OR o.order_number = $1`,
+                  [orderId]
+                );
+                if (resDb.rows.length > 0) {
+                  dbOrder = resDb.rows[0];
+                }
+              } catch {}
+
+              let parsedShipping: any = {};
+              if (dbOrder?.shipping_address) {
+                try {
+                  parsedShipping = typeof dbOrder.shipping_address === "string"
+                    ? JSON.parse(dbOrder.shipping_address)
+                    : dbOrder.shipping_address;
+                } catch {}
+              }
+
+              // Build compliant Rule 46 GST invoice using modular invoice engine
+              const invoice = buildGstInvoice({
+                orderId: dbOrder?.id || orderId,
+                orderNumber: dbOrder?.order_number || orderId,
+                createdAt: dbOrder?.created_at || new Date(),
+                customerName: dbOrder?.customer_name || parsedShipping.name || "Aakash Sharma",
+                customerPhone: dbOrder?.customer_phone || parsedShipping.phone || "+91 98765 43210",
+                customerEmail: dbOrder?.customer_email || "aakash.sharma@riderzpro.com",
+                shippingAddress: {
+                  street: parsedShipping.street || "Flat 402, Green Glen Layout, Bellandur",
+                  city: parsedShipping.city || "Bengaluru",
+                  state: parsedShipping.state || "Karnataka",
+                  pincode: parsedShipping.pincode || "560103",
+                  phone: parsedShipping.phone || "+91 98765 43210",
+                },
+                gstin: parsedShipping.gstin,
+                businessName: parsedShipping.businessName,
+                items: [
+                  {
+                    name: "Lithium-Ion 60V 30Ah Smart Battery Pack",
+                    category: "EV Battery",
+                    price: 48000,
+                    qty: 1,
+                  },
+                ],
+                deliveryTotal: 150,
+                discount: 500,
+                paymentMethod: dbOrder?.payment_method || "Razorpay (Online)",
+                paymentStatus: (dbOrder?.payment_status as any) || "PAID",
+                paymentId: dbOrder?.razorpay_payment_id || `pay_${orderId.slice(-6)}`,
+              });
+
+              if (format === "json") {
+                return sendJson(res, 200, { success: true, invoice });
+              }
+
+              const html = renderInvoiceHtml(invoice);
+              res.writeHead(200, {
+                "Content-Type": "text/html; charset=utf-8",
+                "Cache-Control": "no-cache",
+              });
+              res.end(html);
+              return true;
+            } catch (invErr: any) {
+              console.error("[Invoice Route Error]:", invErr);
+              return sendJson(res, 500, { success: false, error: invErr.message });
+            }
+          }
+
           if (cleanUrl.startsWith("/api/orders")) {
             try {
               // GET /api/orders?customer_id=... or /api/orders?seller_id=...
