@@ -104,6 +104,86 @@ export function pgApiMiddleware() {
         }
 
         // ====================================================================
+        // 0.1 REVERSE GEOCODING API: /api/location/reverse-geocode
+        // ====================================================================
+        if (cleanUrl === "/api/location/reverse-geocode" && method === "GET") {
+          const lat = parseFloat(queryParams.get("lat") || "");
+          const lng = parseFloat(queryParams.get("lng") || "");
+          if (isNaN(lat) || isNaN(lng)) {
+            return sendJson(res, 400, { success: false, error: "Invalid coordinates" });
+          }
+
+          // 1. Try OpenStreetMap Nominatim with proper User-Agent
+          try {
+            const nomRes = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
+              {
+                headers: { "User-Agent": "RiderzPro/1.0 (contact@riderzpro.com)" },
+                signal: AbortSignal.timeout(4000),
+              }
+            );
+            if (nomRes.ok) {
+              const d: any = await nomRes.json();
+              const addr = d.address || {};
+              const locality =
+                addr.suburb ||
+                addr.neighbourhood ||
+                addr.residential ||
+                addr.road ||
+                addr.subdistrict ||
+                d.name ||
+                "";
+              const city =
+                addr.city ||
+                addr.town ||
+                addr.village ||
+                addr.city_district ||
+                addr.county ||
+                addr.state_district ||
+                "";
+              const state = addr.state || "";
+              const pincode = addr.postcode || "";
+
+              if (locality || city) {
+                return sendJson(res, 200, {
+                  success: true,
+                  name: locality || city,
+                  city: city || locality || state || "India",
+                  state,
+                  pincode,
+                });
+              }
+            }
+          } catch {}
+
+          // 2. Fallback to BigDataCloud
+          try {
+            const bdcRes = await fetch(
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`,
+              { signal: AbortSignal.timeout(4000) }
+            );
+            if (bdcRes.ok) {
+              const d: any = await bdcRes.json();
+              const locality = d.locality || d.city;
+              const city = d.city || d.principalSubdivision || "India";
+              return sendJson(res, 200, {
+                success: true,
+                name: locality || city,
+                city,
+                state: d.principalSubdivision || "",
+                pincode: d.postcode || "",
+              });
+            }
+          } catch {}
+
+          return sendJson(res, 200, {
+            success: false,
+            error: "Could not reverse geocode coordinates",
+          });
+        }
+
+
+        // ====================================================================
         // 1. PRODUCTS API: /api/products
         // ====================================================================
         if (cleanUrl.startsWith("/api/products")) {

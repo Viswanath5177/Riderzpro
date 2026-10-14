@@ -60,11 +60,6 @@ export function WhyRiderzpro() {
             );
           })}
         </div>
-
-        {/* Single Slim Stats Strip Below */}
-        <div className="mt-8 sm:mt-12 mx-auto max-w-3xl rounded-xl border border-[#ececec] bg-[#f7f7f8] py-3 px-4 sm:py-3.5 sm:px-6 text-center text-xs sm:text-sm font-semibold text-[#4b5563]">
-          6+ verified sellers · 1.2k parts · 4.8★ rating · 38 min avg delivery
-        </div>
       </div>
     </section>
   );

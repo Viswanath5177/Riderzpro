@@ -24,6 +24,7 @@ import {
   distanceKm,
   type LocationArea,
 } from "@/lib/data";
+import { reverseGeocodeCoords } from "@/lib/location";
 import { cn } from "@/lib/utils";
 
 interface LocationPickerModalProps {
@@ -166,8 +167,7 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
     setIsDetectingGps(true);
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setIsDetectingGps(false);
+        async (position) => {
           const { latitude, longitude } = position.coords;
           let closest = POPULAR_LOCATIONS[0];
           let minDistance = Infinity;
@@ -179,19 +179,35 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
             }
           });
 
+          let geocoded;
+          try {
+            geocoded = await reverseGeocodeCoords(latitude, longitude);
+          } catch {
+            geocoded = { name: closest.name, city: closest.city, pincode: closest.pincode };
+          }
+          setIsDetectingGps(false);
+
+          const isNearbyHub = minDistance <= 30;
           const detectedLoc: LocationArea = {
-            id: closest.id,
-            name: closest.name,
-            city: closest.city,
+            id: `gps-${Date.now()}`,
+            name: isNearbyHub ? (geocoded.name || closest.name) : (geocoded.name || geocoded.city || "Current Location"),
+            city: isNearbyHub ? closest.city : (geocoded.city || "India"),
             lat: latitude,
             lng: longitude,
-            pincode: closest.pincode,
-            tag: "GPS Device Location",
+            pincode: geocoded.pincode || (isNearbyHub ? closest.pincode : ""),
+            tag: isNearbyHub ? "GPS Device Location" : `GPS: ${geocoded.city || "Current Location"}`,
           };
+
           setUserLocation(detectedLoc);
-          toast.success(`GPS detected: ${detectedLoc.name}`, {
-            description: `Found nearby auto stores within ${Math.round(minDistance * 10) / 10} km.`,
-          });
+          if (isNearbyHub) {
+            toast.success(`GPS detected: ${detectedLoc.name}`, {
+              description: `Found nearby auto stores within ${Math.round(minDistance * 10) / 10} km.`,
+            });
+          } else {
+            toast.success(`GPS detected: ${detectedLoc.name}, ${detectedLoc.city}`, {
+              description: `Doorstep courier shipping and verified auto parts available to ${detectedLoc.city}.`,
+            });
+          }
           onClose();
         },
         () => {
@@ -203,7 +219,7 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
           });
           onClose();
         },
-        { timeout: 7000 }
+        { enableHighAccuracy: true, timeout: 8000 }
       );
     } else {
       setIsDetectingGps(false);
@@ -213,10 +229,12 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
 
   const handleCustomLocation = () => {
     if (!searchQuery.trim()) return;
+    const trimmed = searchQuery.trim();
+    const parts = trimmed.split(",").map((p) => p.trim());
     const customLoc: LocationArea = {
       id: `custom-${Date.now()}`,
-      name: searchQuery.trim(),
-      city: "Bengaluru",
+      name: parts[0] || trimmed,
+      city: parts[1] || (trimmed.toLowerCase().includes("bengaluru") || trimmed.toLowerCase().includes("bangalore") ? "Bengaluru" : "India"),
       lat: 12.9716,
       lng: 77.5946,
       pincode: "",

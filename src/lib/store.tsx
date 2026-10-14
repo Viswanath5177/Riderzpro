@@ -12,6 +12,7 @@ import {
   products,
   riders,
 } from "./data";
+import { reverseGeocodeCoords } from "./location";
 import type {
   AddressRef,
   CreateShipmentParams,
@@ -377,17 +378,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             });
           } else if (typeof window !== "undefined" && "geolocation" in navigator) {
             navigator.geolocation.getCurrentPosition(
-              (pos) => {
+              async (pos) => {
                 const { latitude, longitude } = pos.coords;
-                setUserLocation((prev) => ({
-                  ...prev,
+                let geocoded;
+                try {
+                  geocoded = await reverseGeocodeCoords(latitude, longitude);
+                } catch {
+                  geocoded = { name: "Current Location", city: "India" };
+                }
+                setUserLocation({
+                  id: `gps-auto`,
+                  name: geocoded.name || geocoded.city || "Current Location",
+                  city: geocoded.city || "India",
+                  pincode: geocoded.pincode || "",
                   lat: latitude,
                   lng: longitude,
                   tag: "Device GPS",
-                }));
+                });
               },
               () => {},
-              { timeout: 6000 }
+              { enableHighAccuracy: true, timeout: 8000 }
             );
           }
         })

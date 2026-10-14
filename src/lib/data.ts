@@ -7,7 +7,7 @@ import parts from "@/assets/parts.jpg";
 import heroBike from "@/assets/hero-bike.jpg";
 import scooterImg from "@/assets/scooter.jpg";
 
-export type Bike = { id: string; make: string; model: string; years: number[]; voltage: number; wmi: string };
+export type Bike = { id: string; make: string; model: string; years: number[]; voltage: number; wmi: string; batteryKwh?: number };
 export type Car = { id: string; make: string; model: string; years: number[]; batteryKWh?: number };
 
 export type VendorOffer = {
@@ -204,6 +204,11 @@ export const POPULAR_LOCATIONS: LocationArea[] = [
   { id: "banashankari", name: "Banashankari", city: "Bengaluru", lat: 12.9150, lng: 77.5736, pincode: "560070", tag: "South Corridor", isPopular: false },
   { id: "marathahalli", name: "Marathahalli", city: "Bengaluru", lat: 12.9591, lng: 77.6974, pincode: "560037", tag: "East Junction", isPopular: false },
   { id: "yelahanka", name: "Yelahanka", city: "Bengaluru", lat: 13.1007, lng: 77.5963, pincode: "560064", tag: "North Suburbs", isPopular: false },
+  { id: "hyderabad-hitec", name: "HITEC City / Madhapur", city: "Hyderabad", lat: 17.4474, lng: 78.3762, pincode: "500081", tag: "Cyberabad Hub", isPopular: true },
+  { id: "chennai-omr", name: "OMR / Adyar", city: "Chennai", lat: 13.0012, lng: 80.2565, pincode: "600020", tag: "South Metro", isPopular: true },
+  { id: "mumbai-bkc", name: "BKC / Bandra", city: "Mumbai", lat: 19.0657, lng: 72.8687, pincode: "400051", tag: "Financial Hub", isPopular: true },
+  { id: "delhi-ncr", name: "Connaught Place / Gurgaon", city: "Delhi NCR", lat: 28.6315, lng: 77.2167, pincode: "110001", tag: "Capital Region", isPopular: true },
+  { id: "pune-hinjewadi", name: "Hinjewadi / Kothrud", city: "Pune", lat: 18.5913, lng: 73.7389, pincode: "411057", tag: "Auto Corridor", isPopular: true },
 ];
 
 export const bikes: Bike[] = [

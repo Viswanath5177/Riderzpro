@@ -153,13 +153,6 @@ export function HeroScrubPanel({ children }: HeroScrubPanelProps) {
             controlsList="nodownload nofullscreen noremoteplayback"
             className="absolute inset-0 w-full h-full object-cover object-[center_80%] rounded-b-[24px] sm:rounded-b-3xl md:rounded-b-[32px]"
           />
-
-          {/* Interaction hint chip */}
-          {!hasInteracted && (
-            <div className="hidden md:flex absolute bottom-4 left-1/2 -translate-x-1/2 z-20 items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-[12px] font-medium text-white/70 backdrop-blur-md transition-opacity duration-500 pointer-events-none">
-              <span>Drag to tilt · Electric Scooter Animation</span>
-            </div>
-          )}
         </div>
       </div>
     </div>
