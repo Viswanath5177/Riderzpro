@@ -102,6 +102,7 @@ export interface VendorOnboarding {
     yearsInBusiness: number;
     website?: string;
     instagram?: string;
+    holidayMode?: boolean;
   };
 
   // Step 4: Shipping & Pickup
@@ -120,6 +121,9 @@ export interface VendorOnboarding {
     contactPhone: string;
     workingHours: Record<string, VendorWorkingDay>;
     handlingTimeMins: number; // prepMins
+    prepMins?: number;
+    lat?: number;
+    lng?: number;
     fulfillmentMode: "hyperlocal" | "courier";
     serviceableRadiusKm: number;
     acceptsCod: boolean;
@@ -142,6 +146,7 @@ export interface VendorOnboarding {
     accountNumber: string;
     maskedAccountNumber: string;
     ifsc: string;
+    ifscCode?: string;
     bankName: string;
     branchName: string;
     accountType: "Current" | "Savings";
@@ -173,6 +178,8 @@ export interface Vendor {
   storeName: string;
   slug: string;
   status: VendorStatus;
+  isSuspended?: boolean;
+  storeSlug?: string;
   commissionRate: number; // percentage e.g. 10
   rating: number;
   totalSales: number;
@@ -278,10 +285,15 @@ export interface Settlement {
   id: string;
   vendorId: string;
   period: string; // e.g., "1 Oct - 7 Oct 2026"
+  periodStart?: string;
+  periodEnd?: string;
   grossAmount: number;
+  grossSales?: number;
   commissionAmount: number;
+  commission?: number;
   gstOnCommission: number;
   tcsTdsAmount: number;
+  tcsTdsDeduction?: number;
   deliveryFeeDeduction: number;
   netPayout: number;
   status: "pending" | "processing" | "paid";
@@ -304,6 +316,7 @@ export interface VendorNotification {
   title: string;
   message: string;
   time: string;
+  createdAt?: number;
   read: boolean;
   type: "approval" | "order" | "stock" | "payout" | "policy";
   link?: string;

@@ -376,7 +376,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } catch {}
 
-        // Pre-seed default customer if no users list exists yet
+        // 2. Pre-seed default customer if no users list exists yet
         const existingUsers = localStorage.getItem(USERS_STORE_KEY);
         if (!existingUsers) {
           const defaultHash = await hashPassword("Password123");
@@ -436,7 +436,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             sessionStorage.setItem(AUTH_TOKEN_KEY, token);
           }
           setUser(sessionUser);
-          return { success: true };
+          return { success: true, redirectUrl: data.redirectUrl, role: data.role, user: dbUser };
         }
       } catch {}
 
@@ -502,9 +502,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(sessionUser);
       return { success: true };
-    } catch (e) {
+    } catch (e: any) {
       console.error("Sign in error:", e);
-      return { success: false, error: "An unexpected error occurred during sign in" };
+      return { success: false, error: e?.message || "An unexpected error occurred during sign in" };
     }
   }, []);
 
@@ -620,7 +620,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sessionStorage.removeItem(AUTH_USER_KEY);
       sessionStorage.removeItem(AUTH_TOKEN_KEY);
       setUser(null);
-      await fetch("/api/auth/signout", { method: "POST", credentials: "include" }).catch(() => {});
+      await signOut();
     } catch (e) {
       console.error("Sign out error:", e);
     }

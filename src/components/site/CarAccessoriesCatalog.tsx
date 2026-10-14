@@ -494,7 +494,7 @@ function AccessoryFullScreenView({
                   <div key={variant.id} className="rounded-xl border border-border bg-card p-3 text-xs">
                     <div className="flex items-center justify-between font-semibold text-foreground">
                       <span>{variant.name}</span>
-                      {variant.price && <span>₹{variant.price.toLocaleString("en-IN")}</span>}
+                      {Boolean(variant.price) && <span>₹{Number(variant.price).toLocaleString("en-IN")}</span>}
                     </div>
                     {variant.fits && <p className="text-muted-foreground mt-1">Fitment: {variant.fits}</p>}
                   </div>
