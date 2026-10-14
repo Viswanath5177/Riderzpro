@@ -171,4 +171,9 @@ export const storageAdapter = {
       reader.readAsDataURL(file);
     });
   },
+
+  async uploadImage(file: File): Promise<{ id: string; url: string }> {
+    const res = await this.compressAndStore(file);
+    return { id: res.id, url: res.dataUrl };
+  },
 };

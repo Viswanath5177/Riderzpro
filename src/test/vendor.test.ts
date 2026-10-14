@@ -59,7 +59,7 @@ describe("Vendor Tax & Banking Validators", () => {
 });
 
 describe("Vendor Lifecycle and Product Visibility Gate (Prompt 7b)", () => {
-  const mockVendorApproved: Vendor = {
+  const mockVendorApproved = {
     id: "v_test_01",
     email: "test@vendor.com",
     phone: "9876543210",
@@ -77,9 +77,9 @@ describe("Vendor Lifecycle and Product Visibility Gate (Prompt 7b)", () => {
     area: "Indiranagar",
     tier: "Standard",
     createdAt: Date.now(),
-  };
+  } as unknown as Vendor;
 
-  const mockProductLive: VendorProduct = {
+  const mockProductLive = {
     id: "vp_test_01",
     vendorId: "v_test_01",
     vendorName: "Volt Velocity Parts",
@@ -98,7 +98,7 @@ describe("Vendor Lifecycle and Product Visibility Gate (Prompt 7b)", () => {
     status: "live",
     createdAt: Date.now(),
     updatedAt: Date.now(),
-  };
+  } as unknown as VendorProduct;
 
   it("allows visibility ONLY when product is 'live' and vendor is 'approved'", () => {
     const vendorsMap = new Map<string, Vendor>([["v_test_01", mockVendorApproved]]);

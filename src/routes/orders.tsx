@@ -55,7 +55,7 @@ function Orders() {
               <Link
                 key={o.id}
                 to="/track/$id"
-                params={{ id: o.id }}
+                params={{ id: o.shipmentId || o.id }}
                 className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-card transition hover:border-primary"
               >
                 <span className="grid h-12 w-12 place-items-center rounded-xl bg-accent text-accent-foreground">

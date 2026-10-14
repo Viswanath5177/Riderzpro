@@ -15,22 +15,11 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
 
   return (
     <div className="min-h-screen bg-white text-[#111111] pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-0 font-sans selection:bg-red-500 selection:text-white flex flex-col">
-      {/* 1. Header */}
       <Header />
-
-      {/* 2. Main Content View */}
       <main className="flex-1 min-h-[calc(100vh-72px)]">{children}</main>
-
-      {/* 3. Footer */}
       <Footer />
-
-      {/* 4. Floating AI Chat Button */}
       <AIChatButton />
-
-      {/* 5. Mobile Tab Bar */}
       <MobileBottomBar count={cartCount} isAuthenticated={isAuthenticated} />
-
-      {/* 6. Slide-over Cart Drawer */}
       <CartDrawer />
     </div>
   );

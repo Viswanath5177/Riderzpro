@@ -32,6 +32,174 @@ import {
   processCourierWebhookEvent,
   type WebhookResult,
 } from "./logistics/adapters";
+import {
+  fetchDeliveries,
+  createDelivery as apiCreateDelivery,
+  updateDeliveryStatus as apiUpdateDeliveryStatus,
+  type BackendDelivery,
+} from "./api";
+
+export function backendDeliveryToOrder(del: BackendDelivery): Order {
+  let numStatus = 0;
+  let fulfillmentStatus: Order["fulfillmentStatus"] = "Awaiting Fulfillment";
+  switch (del.status) {
+    case "pending":
+      numStatus = 0;
+      fulfillmentStatus = "Awaiting Fulfillment";
+      break;
+    case "assigned":
+      numStatus = 2;
+      fulfillmentStatus = "Packed";
+      break;
+    case "picked_up":
+      numStatus = 3;
+      fulfillmentStatus = "Dispatched";
+      break;
+    case "in_transit":
+      numStatus = 4;
+      fulfillmentStatus = "Dispatched";
+      break;
+    case "delivered":
+      numStatus = 5;
+      fulfillmentStatus = "Delivered";
+      break;
+    case "cancelled":
+      numStatus = 0;
+      fulfillmentStatus = "Cancelled";
+      break;
+    default:
+      numStatus = 1;
+      fulfillmentStatus = "Preparing";
+  }
+
+  const createdAt = del.created_at ? new Date(del.created_at).getTime() : Date.now();
+  const km = del.latest_route?.distance_km || 18.4;
+  const eta = Math.round(del.latest_route?.duration_minutes || 25);
+
+  return {
+    id: del.order_id || del.id,
+    createdAt,
+    groups: [
+      {
+        vendorId: del.vendor_id || "v1",
+        items: [{ productId: "p7", qty: 1, price: 14500 }],
+        subtotal: 14500,
+        km,
+        fee: 86,
+        eta,
+      },
+    ],
+    itemsTotal: 14500,
+    deliveryTotal: 86,
+    tax: 2610,
+    total: 17196,
+    eta,
+    payment: "UPI · Paid Online",
+    paymentStatus: del.status === "cancelled" ? "Refunded" : "Paid",
+    status: numStatus,
+    fulfillmentStatus,
+    riderId: del.assigned_rider_id || del.assigned_rider?.id || riders[0]?.id,
+    customerName: del.customer_name || "Aakash Sharma",
+    customerPhone: del.customer_phone || "+91 98765 43210",
+    shipmentId: del.id,
+    shippingAddress: {
+      name: del.customer_name || "Aakash Sharma",
+      phone: del.customer_phone || "+91 98765 43210",
+      street: del.dropoff_address || "Amaravati Capital Complex",
+      city: "Amaravati",
+      state: "Andhra Pradesh",
+      pincode: "522237",
+    },
+  };
+}
+
+export function backendDeliveryToShipment(del: BackendDelivery): NormalizedShipment {
+  let shipStatus: ShipmentStatus = "Manifested";
+  switch (del.status) {
+    case "pending":
+    case "assigned":
+      shipStatus = "Manifested";
+      break;
+    case "picked_up":
+    case "in_transit":
+      shipStatus = "In Transit";
+      break;
+    case "delivered":
+      shipStatus = "Delivered";
+      break;
+    case "cancelled":
+      shipStatus = "Cancelled";
+      break;
+    case "failed":
+      shipStatus = "Delayed";
+      break;
+    default:
+      shipStatus = "In Transit";
+  }
+
+  const events: ShipmentEvent[] = (del.status_history || []).map((sh, idx) => ({
+    id: sh.id || `evt-${idx}`,
+    timestamp: sh.created_at ? new Date(sh.created_at).toLocaleTimeString("en-IN") : "Recent",
+    status: (sh.to_status === "delivered" ? "Delivered" : sh.to_status === "in_transit" ? "In Transit" : "Manifested") as ShipmentStatus,
+    location: del.pickup_address,
+    description: sh.reason || `Status updated to ${sh.to_status}`,
+    isGps: true,
+  }));
+
+  if (events.length === 0) {
+    events.push({
+      id: "evt-initial",
+      timestamp: "Just now",
+      status: shipStatus,
+      location: del.pickup_address,
+      description: `Delivery assigned to ${del.assigned_rider?.name || "Sathesh Ittraju"}`,
+      isGps: true,
+    });
+  }
+
+  return {
+    shipmentId: del.id,
+    orderId: del.order_id || del.id,
+    provider: "RiderzPro Fleet",
+    providerReference: del.id.toUpperCase(),
+    trackingNumber: del.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 14),
+    trackingUrl: `/track/${del.id}`,
+    pickupAddress: {
+      name: del.vendor_name || "Vijayawada Central Hub",
+      street: del.pickup_address,
+      city: "Vijayawada",
+      state: "Andhra Pradesh",
+      pincode: "520001",
+      phone: "+91 866 245 1100",
+    },
+    destinationAddress: {
+      name: del.customer_name || "Aakash Sharma",
+      street: del.dropoff_address,
+      city: "Amaravati",
+      state: "Andhra Pradesh",
+      pincode: "522237",
+      phone: del.customer_phone || "+91 98765 43210",
+    },
+    status: shipStatus,
+    locationType: "Live GPS Telemetry",
+    latestLocation: del.assigned_rider
+      ? `${del.assigned_rider.name} en route (${del.dropoff_address})`
+      : del.pickup_address,
+    lastEventTimestamp: "Live GPS Active",
+    estimatedDelivery: del.latest_route
+      ? `Arriving in ~${Math.round(del.latest_route.duration_minutes)} mins`
+      : "In Transit",
+    currentGps: del.assigned_rider?.current_lat
+      ? {
+          lat: del.assigned_rider.current_lat,
+          lng: del.assigned_rider.current_lng || 80.6480,
+          speedKmph: 32,
+          heading: 285,
+        }
+      : undefined,
+    events,
+  };
+}
 
 export type CartItem = { productId: string; vendorId: string; qty: number };
 export type GarageBike = {
@@ -250,7 +418,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [role, setRole] = useState<Role>("customer");
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  // Hydrates auth state and purges legacy mock user profiles
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const auth = localStorage.getItem("riderzpro_auth");
+      const user = localStorage.getItem(KEY);
+      if (user && (user.includes("RZ-849201") || user.includes("P6R1S1PR2PN000001"))) {
+        localStorage.removeItem(KEY);
+      }
+      return auth === "true";
+    }
+    return false;
+  });
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [userLocation, setUserLocation] = useState<LocationArea>(DEFAULT_LOCATION);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -261,28 +440,52 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const raw = localStorage.getItem(KEY);
       if (raw) {
         const s = JSON.parse(raw);
-        if (s.cart) setCart(s.cart);
-        if (s.garage && s.garage.length > 0) setGarage(s.garage);
-        if ("activeBikeId" in s && s.activeBikeId) setActiveBikeId(s.activeBikeId);
-        if (s.shipments && s.shipments.length > 0) {
-          const sanitized = s.shipments.map((sh: any) => ({
-            ...DEFAULT_SHIPMENTS[0],
-            ...sh,
-            pickupAddress: sh.pickupAddress?.name ? sh.pickupAddress : DEFAULT_SHIPMENTS[0].pickupAddress,
-            destinationAddress: sh.destinationAddress?.name ? sh.destinationAddress : DEFAULT_SHIPMENTS[0].destinationAddress,
-            events: Array.isArray(sh.events) ? sh.events : DEFAULT_SHIPMENTS[0].events,
-          }));
-          setShipments(sanitized);
+        // Clean out any legacy mock data if present
+        const hasLegacyMock =
+          (s.orders && s.orders.some((o: Order) => o.id === "RZ-849201" || o.id === "RZ-793420")) ||
+          (s.garage && s.garage.some((g: GarageBike) => g.vin === "P6R1S1PR2PN000001" || g.bikeId === "ola-s1pro")) ||
+          (s.serviceBookings && s.serviceBookings.some((b: ServiceBooking) => b.id === "SB-1042"));
+
+        if (!hasLegacyMock) {
+          if (Array.isArray(s.cart)) setCart(s.cart);
+          if (Array.isArray(s.garage)) setGarage(s.garage);
+          if ("activeBikeId" in s) setActiveBikeId(s.activeBikeId);
+          if (Array.isArray(s.orders)) setOrders(s.orders);
+          if (Array.isArray(s.shipments)) setShipments(s.shipments);
+          if (s.inventoryStock) setInventoryStock(s.inventoryStock);
+          if (Array.isArray(s.savedProductIds)) setSavedProductIds(s.savedProductIds);
+          if (Array.isArray(s.serviceBookings)) setServiceBookings(s.serviceBookings);
+          if (Array.isArray(s.notifications)) setNotifications(s.notifications);
+          if (s.userProfile) {
+            const isMock = s.userProfile.email === "aakash.sharma@example.com";
+            if (!isMock) {
+              setUserProfile({
+                ...DEFAULT_PROFILE,
+                ...s.userProfile,
+                addresses: Array.isArray(s.userProfile.addresses) ? s.userProfile.addresses : [],
+                selectedAddressId: s.userProfile.selectedAddressId || "",
+              });
+            } else {
+              setUserProfile(DEFAULT_PROFILE);
+            }
+          }
+          if (s.role) setRole(s.role);
+          if (s.userLocation && s.userLocation.name) setUserLocation(s.userLocation);
+        } else {
+          // Reset legacy mock state
+          localStorage.removeItem(KEY);
+          setUserProfile(DEFAULT_PROFILE);
+          setOrders([]);
+          setShipments([]);
+          setGarage([]);
+          setActiveBikeId(null);
+          setServiceBookings([]);
+          setNotifications([]);
+          setSavedProductIds([]);
         }
-        if (s.inventoryStock) setInventoryStock(s.inventoryStock);
-        if (s.savedProductIds && s.savedProductIds.length > 0) setSavedProductIds(s.savedProductIds);
-        if (s.serviceBookings && s.serviceBookings.length > 0) setServiceBookings(s.serviceBookings);
-        if (s.notifications && s.notifications.length > 0) setNotifications(s.notifications);
-        if (s.userProfile && s.userProfile.name && s.userProfile.name !== "Guest Rider") setUserProfile(s.userProfile);
-        if (s.role) setRole(s.role);
-        if (s.userLocation && s.userLocation.name) setUserLocation(s.userLocation);
       }
-      // Also restore customer session if available
+
+      // Hydrate user profile from active auth session
       const authRaw = localStorage.getItem("riderzpro_auth_user");
       if (authRaw) {
         try {
@@ -298,14 +501,59 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }
         } catch {}
       }
+
       const t = localStorage.getItem("riderzpro-theme");
       if (t === "light" || t === "dark") setTheme(t);
       else setTheme("light");
-    } catch (_err) {
-      // Ignore initial localStorage parse error
-    }
+    } catch (_err) {}
     setLoaded(true);
   }, []);
+
+  // Sync deliveries from real backend
+  useEffect(() => {
+    async function syncBackendDeliveries() {
+      try {
+        const rawAuth = typeof window !== "undefined" ? localStorage.getItem("riderzpro_auth_user") : null;
+        let customerIdentifier = "9876543210";
+        if (rawAuth) {
+          try {
+            const parsed = JSON.parse(rawAuth);
+            if (parsed.phone) customerIdentifier = parsed.phone;
+            else if (parsed.id) customerIdentifier = parsed.id;
+          } catch {}
+        } else if (userProfile?.phone) {
+          customerIdentifier = userProfile.phone;
+        }
+
+        const res = await fetchDeliveries({ customer_id: customerIdentifier });
+        if (res && Array.isArray(res.items) && res.items.length > 0) {
+          const backendOrders = res.items.map(backendDeliveryToOrder);
+          const backendShipments = res.items.map(backendDeliveryToShipment);
+
+          setOrders((prev) => {
+            const backendOrderIds = new Set(backendOrders.map((o) => o.id));
+            const backendShipmentIds = new Set(backendOrders.map((o) => o.shipmentId).filter(Boolean));
+            const remainingLocal = prev.filter(
+              (o) => !backendOrderIds.has(o.id) && !backendShipmentIds.has(o.shipmentId || "")
+            );
+            return [...backendOrders, ...remainingLocal];
+          });
+
+          setShipments((prev) => {
+            const backendShipIds = new Set(backendShipments.map((s) => s.shipmentId));
+            const remainingLocal = prev.filter((s) => !backendShipIds.has(s.shipmentId));
+            return [...backendShipments, ...remainingLocal];
+          });
+        }
+      } catch (err) {
+        console.warn("Could not sync deliveries from backend:", err);
+      }
+    }
+
+    if (loaded) {
+      syncBackendDeliveries();
+    }
+  }, [loaded, userProfile?.phone, isLoggedIn]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -522,9 +770,43 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setOrders((prev) => [order, ...prev]);
       setShipments((prev) => [autoShipment, ...prev]);
       setCart([]);
+
+      // Asynchronously persist delivery task in real logistics backend
+      const backendPayload = {
+        order_id: newOrderId,
+        customer_id: userProfile?.phone || "cust_demo",
+        customer_name: options.shippingAddress.name || userProfile?.name || "Customer",
+        customer_phone: options.shippingAddress.phone || userProfile?.phone || "+91 98765 43210",
+        vendor_id: "vnd_nexgen_ev",
+        vendor_name: "NexGen EV Logistics",
+        pickup_address: "Vijayawada Central Hub (16.5062, 80.6480)",
+        pickup_lat: 16.5062,
+        pickup_lng: 80.6480,
+        dropoff_address: `${options.shippingAddress.street || "Amaravati"}, ${options.shippingAddress.city || "Amaravati"}`,
+        dropoff_lat: 16.5740,
+        dropoff_lng: 80.3575,
+        package_weight_kg: 4.5,
+        priority: "normal",
+      };
+
+      apiCreateDelivery(backendPayload)
+        .then((createdDelivery) => {
+          if (createdDelivery?.id) {
+            setOrders((prev) =>
+              prev.map((o) => (o.id === newOrderId ? { ...o, shipmentId: createdDelivery.id } : o))
+            );
+            setShipments((prev) =>
+              prev.map((s) => (s.orderId === newOrderId ? { ...s, shipmentId: createdDelivery.id } : s))
+            );
+          }
+        })
+        .catch((err) => {
+          console.warn("Async backend delivery creation failed:", err);
+        });
+
       return order;
     },
-    [cart, updateInventoryStock]
+    [cart, updateInventoryStock, userProfile]
   );
 
   const placeOrder = useCallback(
@@ -540,12 +822,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const updateOrderStatus = useCallback((id: string, status: number) => {
     setOrders((os) =>
       os.map((o) => {
-        if (o.id !== id) return o;
+        if (o.id !== id && o.shipmentId !== id) return o;
         let fulfillmentStatus = o.fulfillmentStatus;
         if (status === 1) fulfillmentStatus = "Preparing";
         else if (status === 2) fulfillmentStatus = "Packed";
         else if (status >= 3 && status < 5) fulfillmentStatus = "Dispatched";
         else if (status === 5) fulfillmentStatus = "Delivered";
+
+        const targetDeliveryId = o.shipmentId || o.id;
+        if (status === 5 && targetDeliveryId) {
+          apiUpdateDeliveryStatus(targetDeliveryId, "delivered").catch(() => {});
+        }
 
         return {
           ...o,
@@ -555,6 +842,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         };
       })
     );
+
+    if (status === 5) {
+      setShipments((prev) =>
+        prev.map((s) =>
+          s.shipmentId === id || s.orderId === id ? { ...s, status: "Delivered" as ShipmentStatus } : s
+        )
+      );
+    }
   }, []);
 
   const cancelOrder = useCallback((id: string, reason: string) => {
@@ -630,14 +925,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const simulateDemoOrder = useCallback(() => {
     const demoOrder: Order = {
-      id: `RZ-${Math.floor(100000 + Math.random() * 900000)}`,
-      createdAt: Date.now() - 15 * 60 * 1000,
+      id: "delivery_vijayawada_amaravati_live",
+      createdAt: Date.now() - 25 * 60 * 1000,
       groups: [
         {
           vendorId: "v1",
           items: [{ productId: "p7", qty: 1, price: 14500 }],
           subtotal: 14500,
-          km: 3.8,
+          km: 18.4,
           fee: 86,
           eta: 25,
         },
@@ -649,62 +944,89 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       eta: 25,
       payment: "UPI · Google Pay",
       paymentStatus: "Paid",
-      status: 3,
+      status: 4,
       fulfillmentStatus: "Dispatched",
-      riderId: riders[0].id,
-      customerName: "Aakash Sharma",
-      customerPhone: "+91 98765 43210",
-      shippingAddress: DEFAULT_ADDRESS,
-      shipmentId: "SHP-DEMO-FLEET",
+      riderId: riders[0]?.id || "r1",
+      customerName: userProfile?.name?.trim() || "Aakash Sharma",
+      customerPhone: userProfile?.phone?.trim() || "+91 98765 43210",
+      shippingAddress: {
+        name: "Aakash Sharma",
+        phone: "+91 98765 43210",
+        street: "Amaravati Secretariat / City Center",
+        city: "Amaravati",
+        state: "Andhra Pradesh",
+        pincode: "522237",
+      },
+      shipmentId: "delivery_vijayawada_amaravati_live",
     };
 
     const demoShipment: NormalizedShipment = {
-      shipmentId: "SHP-DEMO-FLEET",
-      orderId: demoOrder.id,
+      shipmentId: "delivery_vijayawada_amaravati_live",
+      orderId: "delivery_vijayawada_amaravati_live",
       provider: "RiderzPro Fleet",
-      providerReference: "FLEET-FAST-9021",
-      trackingNumber: "RZP9021334",
-      trackingUrl: `/track/${demoOrder.id}`,
+      providerReference: "VIJ-AMA-LIVE",
+      trackingNumber: "RZPVJA849201",
+      trackingUrl: `/track/delivery_vijayawada_amaravati_live`,
       pickupAddress: {
-        name: "VoltHub Indiranagar",
-        street: "100ft Road",
-        city: "Bengaluru",
-        pincode: "560038",
-        phone: "+91 80 4123 9901",
+        name: "Vijayawada Central Hub",
+        street: "MG Road, Vijayawada Central Hub",
+        city: "Vijayawada",
+        pincode: "520001",
+        phone: "+91 866 245 1100",
       },
-      destinationAddress: DEFAULT_ADDRESS,
+      destinationAddress: {
+        name: "Aakash Sharma",
+        street: "Amaravati Secretariat / City Center",
+        city: "Amaravati",
+        pincode: "522237",
+        phone: "+91 98765 43210",
+      },
       status: "In Transit",
       locationType: "Live GPS Telemetry",
-      latestLocation: "Indiranagar 100ft Rd -> Koramangala Ring Rd",
-      lastEventTimestamp: "2m ago",
-      estimatedDelivery: "Arriving in 18 mins",
-      currentGps: { lat: 12.9554, lng: 77.625, speedKmph: 32, heading: 140 },
+      latestLocation: "Sathesh Ittraju en route (Seed Access Road)",
+      lastEventTimestamp: "Live GPS Active",
+      estimatedDelivery: "Arriving in 24 mins",
+      currentGps: { lat: 16.5182, lng: 80.6050, speedKmph: 32.5, heading: 285 },
       events: [
         {
-          id: "evt-fl-1",
-          timestamp: "12m ago",
+          id: "evt-vja-1",
+          timestamp: "20m ago",
           status: "Manifested",
-          location: "VoltHub Indiranagar",
-          description: "Rider Ravi Kumar accepted order and collected package",
+          location: "Vijayawada Central Hub",
+          description: "Rider Sathesh Ittraju accepted order and collected package",
           isGps: true,
-          coordinates: { lat: 12.9784, lng: 77.6408 },
+          coordinates: { lat: 16.5062, lng: 80.6480 },
         },
         {
-          id: "evt-fl-2",
-          timestamp: "2m ago",
+          id: "evt-vja-2",
+          timestamp: "Live",
           status: "In Transit",
-          location: "Intermediate Ring Road",
-          description: "Live GPS broadcast: En route to Bellandur doorstep",
+          location: "Krishna River Crossing / Prakasam Barrage",
+          description: "Live GPS broadcast: En route to Amaravati Secretariat",
           isGps: true,
-          coordinates: { lat: 12.9554, lng: 77.625 },
+          coordinates: { lat: 16.5182, lng: 80.6050 },
         },
       ],
     };
 
-    setOrders((prev) => [demoOrder, ...prev]);
-    setShipments((prev) => [demoShipment, ...prev]);
+    setOrders((prev) => [demoOrder, ...prev.filter((o) => o.id !== demoOrder.id && o.shipmentId !== demoOrder.shipmentId)]);
+    setShipments((prev) => [demoShipment, ...prev.filter((s) => s.shipmentId !== demoShipment.shipmentId)]);
+
+    // Trigger async fetch from backend to refresh live data
+    fetchDeliveries({ customer_id: "9876543210" })
+      .then((res) => {
+        if (res && res.items && res.items.length > 0) {
+          const liveDel = res.items.find((d) => d.id === "delivery_vijayawada_amaravati_live") || res.items[0];
+          const ord = backendDeliveryToOrder(liveDel);
+          const shp = backendDeliveryToShipment(liveDel);
+          setOrders((p) => [ord, ...p.filter((o) => o.id !== ord.id && o.shipmentId !== ord.shipmentId)]);
+          setShipments((p) => [shp, ...p.filter((s) => s.shipmentId !== shp.shipmentId)]);
+        }
+      })
+      .catch(() => {});
+
     return demoOrder;
-  }, []);
+  }, [userProfile]);
 
   const signIn = useCallback(() => setIsLoggedIn(true), []);
   const signOut = useCallback(() => {
@@ -735,17 +1057,51 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       placeOrder,
       placeOrderWithOptions,
       advanceOrder: (id) =>
-        setOrders((os) =>
-          os.map((o) =>
-            o.id === id && o.status < ORDER_STEPS.length - 1
+        setOrders((os) => {
+          const target = os.find((o) => o.id === id);
+          if (!target || target.status >= ORDER_STEPS.length - 1) return os;
+          const nextStatusNum = target.status + 1;
+          const statusMap = ["pending", "assigned", "assigned", "picked_up", "in_transit", "delivered"];
+          const backendStatus = statusMap[nextStatusNum] || "in_transit";
+          const deliveryId = target.shipmentId || target.id;
+
+          apiUpdateDeliveryStatus(deliveryId, backendStatus).catch((err) =>
+            console.warn("Could not sync advanceOrder to backend:", err)
+          );
+
+          setShipments((prev) =>
+            prev.map((s) =>
+              s.shipmentId === deliveryId || s.orderId === target.id
+                ? {
+                    ...s,
+                    status: (nextStatusNum === 5
+                      ? "Delivered"
+                      : nextStatusNum >= 3
+                      ? "In Transit"
+                      : "Manifested") as ShipmentStatus,
+                  }
+                : s
+            )
+          );
+
+          return os.map((o) =>
+            o.id === id
               ? {
                   ...o,
-                  status: o.status + 1,
-                  riderId: o.status + 1 >= 2 ? riders[0].id : undefined,
+                  status: nextStatusNum,
+                  fulfillmentStatus:
+                    nextStatusNum === 5
+                      ? "Delivered"
+                      : nextStatusNum >= 3
+                      ? "Dispatched"
+                      : nextStatusNum === 2
+                      ? "Packed"
+                      : "Preparing",
+                  riderId: nextStatusNum >= 2 ? o.riderId || riders[0].id : undefined,
                 }
-              : o,
-          ),
-        ),
+              : o
+          );
+        }),
       updateOrderStatus,
       cancelOrder,
       refundOrder,

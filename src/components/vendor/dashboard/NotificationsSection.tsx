@@ -49,7 +49,7 @@ export function NotificationsSection({ vendor }: NotificationsSectionProps) {
 
         <button
           onClick={() => {
-            markAllNotificationsRead();
+            markAllNotificationsRead?.();
             toast.success("Marked all notifications as read");
           }}
           className="text-xs font-bold text-[#E31E24] hover:underline cursor-pointer"
@@ -79,7 +79,7 @@ export function NotificationsSection({ vendor }: NotificationsSectionProps) {
                 <div className="flex items-center justify-between gap-2">
                   <h4 className="font-bold text-xs text-gray-900">{n.title}</h4>
                   <span className="text-[10px] text-gray-400 shrink-0">
-                    {new Date(n.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    {n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : n.time}
                   </span>
                 </div>
                 <p className="text-xs text-gray-600 mt-0.5">{n.message}</p>

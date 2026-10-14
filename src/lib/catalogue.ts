@@ -188,12 +188,14 @@ export function getCatalogueProducts(options?: {
     }
 
     // Otherwise, this is a new standalone vendor product
-    const parsedVoltage = vp.specs?.voltage
-      ? parseInt(String(vp.specs.voltage).replace(/\D/g, ""), 10)
+    const parsedVoltage = vp.specs?.["voltage"]
+      ? parseInt(String(vp.specs["voltage"]).replace(/\D/g, ""), 10)
       : undefined;
-    const parsedCapacity = vp.specs?.capacityAh
-      ? parseFloat(String(vp.specs.capacityAh))
+    const parsedCapacity = vp.specs?.["capacityAh"]
+      ? parseFloat(String(vp.specs["capacityAh"]))
       : undefined;
+    const rawChemistry = vp.specs?.["chemistry"];
+    const chemistryStr = typeof rawChemistry === "string" ? rawChemistry : undefined;
 
     const catalogProd: CatalogueProduct = {
       id: vp.id,
@@ -205,7 +207,7 @@ export function getCatalogueProducts(options?: {
         "https://images.unsplash.com/photo-1558441719-8b489c652758?w=500&auto=format&fit=crop&q=80",
       voltage: parsedVoltage,
       capacityAh: parsedCapacity,
-      chemistry: vp.specs?.chemistry || undefined,
+      chemistry: chemistryStr,
       warrantyMonths: vp.warrantyMonths || 12,
       weightKg: vp.weightKg || 1,
       fits: vp.fits || [],

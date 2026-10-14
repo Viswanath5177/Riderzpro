@@ -21,8 +21,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  LogOut,
   CheckCircle2,
+  LogOut,
 } from "lucide-react";
 import { Logo } from "@/components/site/bits";
 import { useAdminAuth } from "@/lib/adminAuth";
@@ -112,6 +112,7 @@ export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: Adm
       ],
     },
   ];
+
   return (
     <aside
       className={cn(
