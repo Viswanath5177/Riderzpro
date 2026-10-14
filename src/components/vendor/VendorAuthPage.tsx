@@ -38,8 +38,12 @@ export function VendorAuthPage({ initialMode = "signin", redirectPath }: VendorA
     setMode(initialMode);
   }, [initialMode]);
 
-  // If already authenticated, route by vendor state
+  // If already authenticated, route by vendor state (only if user hasn't explicitly signed out)
   useEffect(() => {
+    const isExplicitlySignedOut =
+      typeof window !== "undefined" && localStorage.getItem("vendor_signed_out") === "true";
+    if (isExplicitlySignedOut) return;
+
     if (!loading && isAuthenticated && vendor) {
       if (vendor.status === "approved") {
         navigate({ to: redirectPath || "/vendor/dashboard" });
