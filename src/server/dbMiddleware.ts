@@ -6,6 +6,7 @@ import { handleRoute as sellerRoute } from "./routes/seller";
 import { handleRoute as adminRoute } from "./routes/admin";
 import { handleRoute as cartRoute } from "./routes/cart";
 import { handleRoute as ordersRoute } from "./routes/orders";
+import { handleRoute as riderRoute } from "./routes/rider";
 
 let isDbInitialized = false;
 
@@ -36,6 +37,7 @@ export function pgApiMiddleware() {
         if (await adminRoute(req, res, cleanUrl, method, queryParams)) return;
         if (await cartRoute(req, res, cleanUrl, method, queryParams)) return;
         if (await ordersRoute(req, res, cleanUrl, method, queryParams)) return;
+        if (await riderRoute(req, res, cleanUrl, method)) return;
         next();
       });
     },
