@@ -630,12 +630,13 @@ export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; ln
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
-export const DELIVERY_BASE = 40;
-export const DELIVERY_PER_KM = 12;
+export const DELIVERY_FLAT_FEE = 150;
+export const DELIVERY_BASE = 150;
+export const DELIVERY_PER_KM = 0;
 export const GST_RATE = 0.18;
 
-export function deliveryFee(km: number) {
-  return Math.round(DELIVERY_BASE + km * DELIVERY_PER_KM);
+export function deliveryFee(km: number = 0) {
+  return DELIVERY_FLAT_FEE;
 }
 export function etaMinutes(km: number, prepMins: number) {
   return Math.round(prepMins + (km / 22) * 60 + 5);

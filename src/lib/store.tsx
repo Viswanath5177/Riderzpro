@@ -12,6 +12,7 @@ import {
   DEFAULT_LOCATION,
   type LocationArea,
   GST_RATE,
+  DELIVERY_FLAT_FEE,
   deliveryFee,
   distanceKm,
   etaMinutes,
@@ -263,6 +264,15 @@ export type VendorGroup = {
   eta: number;
 };
 
+export type TaxBreakdown = {
+  rate: number;
+  taxableAmount: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  isInterstate: boolean;
+};
+
 export type Order = {
   id: string;
   createdAt: number;
@@ -272,6 +282,9 @@ export type Order = {
   discountTotal?: number;
   couponCode?: string;
   tax: number;
+  taxBreakdown?: TaxBreakdown;
+  gstin?: string;
+  businessName?: string;
   total: number;
   eta: number;
   payment: string;
@@ -312,11 +325,31 @@ export function quoteCart(cart: CartItem[], discount = 0, loc: { lat: number; ln
   }
   const groups = [...map.values()];
   const itemsTotal = groups.reduce((s, g) => s + g.subtotal, 0);
-  const deliveryTotal = groups.reduce((s, g) => s + g.fee, 0);
+  const deliveryTotal = cart.length > 0 ? DELIVERY_FLAT_FEE : 0;
   const discountedSubtotal = Math.max(0, itemsTotal - discount);
-  const tax = Math.round(discountedSubtotal * GST_RATE);
+  const taxableBase = discountedSubtotal + deliveryTotal;
+  const tax = Math.round(taxableBase * GST_RATE);
+  const cgst = Math.round(tax / 2);
+  const sgst = tax - cgst;
+  const taxBreakdown: TaxBreakdown = {
+    rate: GST_RATE,
+    taxableAmount: taxableBase,
+    cgst,
+    sgst,
+    igst: tax,
+    isInterstate: false,
+  };
   const eta = groups.reduce((m, g) => Math.max(m, g.eta), 0) + Math.max(0, groups.length - 1) * 8;
-  return { groups, itemsTotal, deliveryTotal, tax, discountTotal: discount, total: discountedSubtotal + deliveryTotal + tax, eta };
+  return {
+    groups,
+    itemsTotal,
+    deliveryTotal,
+    tax,
+    taxBreakdown,
+    discountTotal: discount,
+    total: taxableBase + tax,
+    eta,
+  };
 }
 
 type Ctx = {
@@ -338,6 +371,8 @@ type Ctx = {
     shippingAddress: AddressRef;
     couponCode?: string;
     discount?: number;
+    gstin?: string;
+    businessName?: string;
   }) => Order;
   advanceOrder: (id: string) => void;
   updateOrderStatus: (id: string, status: number) => void;
@@ -724,10 +759,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       shippingAddress: AddressRef;
       couponCode?: string;
       discount?: number;
+      gstin?: string;
+      businessName?: string;
     }) => {
       const discount = options.discount || 0;
       const q = quoteCart(cart, discount);
       const newOrderId = `RZ-${Math.floor(100000 + Math.random() * 900000)}`;
+      const isInterstate = options.shippingAddress?.state
+        ? !options.shippingAddress.state.toLowerCase().includes("karnataka")
+        : false;
 
       const order: Order = {
         id: newOrderId,
@@ -740,7 +780,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         customerName: options.shippingAddress.name,
         customerPhone: options.shippingAddress.phone,
         couponCode: options.couponCode,
+        gstin: options.gstin,
+        businessName: options.businessName,
         ...q,
+        taxBreakdown: q.taxBreakdown
+          ? {
+              ...q.taxBreakdown,
+              isInterstate,
+            }
+          : undefined,
       };
 
       // Decrement inventory transactional check
