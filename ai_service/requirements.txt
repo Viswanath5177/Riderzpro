@@ -1,0 +1,19 @@
+# Riderzpro AI Service Dependencies
+# Core FastAPI Service
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+httpx>=0.25.0
+
+# Free Live Web Search
+duckduckgo-search>=6.2.0
+
+# Optional / Local CPU Inference (install as needed)
+# llama-cpp-python>=0.2.80  # Install with: pip install llama-cpp-python
+# For Hugging Face training scripts (optional, for training phase only):
+# transformers>=4.44.0
+# peft>=0.12.0
+# trl>=0.9.6
+# datasets>=2.20.0
+# bitsandbytes>=0.43.0

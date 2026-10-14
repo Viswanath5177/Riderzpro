@@ -15,7 +15,9 @@
     "test:watch": "vitest",
     "legacy:dev": "vite web --port 3000",
     "web:dev": "vite web --port 3000",
-    "web:serve": "python -m http.server 3000 --directory web"
+    "web:serve": "python -m http.server 3000 --directory web",
+    "build:mobile": "vite build && node scripts/build-mobile-assets.mjs",
+    "cap:sync": "node scripts/build-mobile-assets.mjs && npx cap sync"
   },
   "overrides": {
     "rolldown": "1.2.1"

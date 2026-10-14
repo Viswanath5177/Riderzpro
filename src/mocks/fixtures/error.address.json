@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ADDRESS_NOT_SERVICEABLE",
+    "message": "Currently not available to this address. We deliver only within Delhi (pincodes 110001–110099). Please enter a Delhi address.",
+    "requestId": "req_addr_not_serv_9918"
+  }
+}

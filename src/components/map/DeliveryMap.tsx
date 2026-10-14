@@ -147,7 +147,6 @@ function ConnectedDeliveryMap({
         deviationDistance={deviationDistance}
         deviationThreshold={deviationThreshold}
         className={className}
-        {...rest}
       />
     </MapProvider>
   );
@@ -710,7 +709,10 @@ function DeliveryMapInner({
         {isDeviating && (
           <div className="flex items-center gap-1.5 rounded-full bg-amber-500 text-white px-3 py-1.5 text-xs font-bold shadow-lg animate-pulse">
             <AlertTriangle className="h-3.5 w-3.5" />
-            <span>⚠️ Off planned route ({deviationDistance ? `${Math.round(deviationDistance)}m` : "deviating"})</span>
+            <span>
+              ⚠️ Off planned route (
+              {deviationDistance ? `${Math.round(deviationDistance)}m` : "deviating"})
+            </span>
           </div>
         )}
       </div>

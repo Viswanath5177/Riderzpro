@@ -50,6 +50,8 @@ import { Route as DashboardCustomerRouteImport } from './routes/dashboard.custom
 import { Route as DashboardRiderRouteImport } from './routes/dashboard.rider'
 import { Route as DashboardVendorRouteImport } from './routes/dashboard.vendor'
 import { Route as DashboardWorkshopRouteImport } from './routes/dashboard.workshop'
+import { Route as OrderConfirmationIdRouteImport } from './routes/order-confirmation.$id'
+import { Route as OrderIdRouteImport } from './routes/order.$id'
 import { Route as ProductIdRouteImport } from './routes/product.$id'
 import { Route as RiderIndexRouteImport } from './routes/rider.index'
 import { Route as RiderDashboardRouteImport } from './routes/rider.dashboard'
@@ -267,6 +269,16 @@ const DashboardWorkshopRoute = DashboardWorkshopRouteImport.update({
   path: '/dashboard/workshop',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrderConfirmationIdRoute = OrderConfirmationIdRouteImport.update({
+  id: '/order-confirmation/$id',
+  path: '/order-confirmation/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrderIdRoute = OrderIdRouteImport.update({
+  id: '/order/$id',
+  path: '/order/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductIdRoute = ProductIdRouteImport.update({
   id: '/product/$id',
   path: '/product/$id',
@@ -364,6 +376,8 @@ export interface FileRoutesByFullPath {
   '/dashboard/rider': typeof DashboardRiderRoute
   '/dashboard/vendor': typeof DashboardVendorRoute
   '/dashboard/workshop': typeof DashboardWorkshopRoute
+  '/order-confirmation/$id': typeof OrderConfirmationIdRoute
+  '/order/$id': typeof OrderIdRoute
   '/product/$id': typeof ProductIdRoute
   '/rider/dashboard': typeof RiderDashboardRoute
   '/store/$slug': typeof StoreSlugRoute
@@ -416,6 +430,8 @@ export interface FileRoutesByTo {
   '/dashboard/rider': typeof DashboardRiderRoute
   '/dashboard/vendor': typeof DashboardVendorRoute
   '/dashboard/workshop': typeof DashboardWorkshopRoute
+  '/order-confirmation/$id': typeof OrderConfirmationIdRoute
+  '/order/$id': typeof OrderIdRoute
   '/product/$id': typeof ProductIdRoute
   '/rider/dashboard': typeof RiderDashboardRoute
   '/store/$slug': typeof StoreSlugRoute
@@ -471,6 +487,8 @@ export interface FileRoutesById {
   '/dashboard/rider': typeof DashboardRiderRoute
   '/dashboard/vendor': typeof DashboardVendorRoute
   '/dashboard/workshop': typeof DashboardWorkshopRoute
+  '/order-confirmation/$id': typeof OrderConfirmationIdRoute
+  '/order/$id': typeof OrderIdRoute
   '/product/$id': typeof ProductIdRoute
   '/rider/dashboard': typeof RiderDashboardRoute
   '/store/$slug': typeof StoreSlugRoute
@@ -527,6 +545,8 @@ export interface FileRouteTypes {
     | '/dashboard/rider'
     | '/dashboard/vendor'
     | '/dashboard/workshop'
+    | '/order-confirmation/$id'
+    | '/order/$id'
     | '/product/$id'
     | '/rider/dashboard'
     | '/store/$slug'
@@ -579,6 +599,8 @@ export interface FileRouteTypes {
     | '/dashboard/rider'
     | '/dashboard/vendor'
     | '/dashboard/workshop'
+    | '/order-confirmation/$id'
+    | '/order/$id'
     | '/product/$id'
     | '/rider/dashboard'
     | '/store/$slug'
@@ -633,6 +655,8 @@ export interface FileRouteTypes {
     | '/dashboard/rider'
     | '/dashboard/vendor'
     | '/dashboard/workshop'
+    | '/order-confirmation/$id'
+    | '/order/$id'
     | '/product/$id'
     | '/rider/dashboard'
     | '/store/$slug'
@@ -670,6 +694,8 @@ export interface RootRouteChildren {
   DashboardRiderRoute: typeof DashboardRiderRoute
   DashboardVendorRoute: typeof DashboardVendorRoute
   DashboardWorkshopRoute: typeof DashboardWorkshopRoute
+  OrderConfirmationIdRoute: typeof OrderConfirmationIdRoute
+  OrderIdRoute: typeof OrderIdRoute
   ProductIdRoute: typeof ProductIdRoute
   StoreSlugRoute: typeof StoreSlugRoute
   TrackIdRoute: typeof TrackIdRoute
@@ -970,6 +996,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardWorkshopRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/order-confirmation/$id': {
+      id: '/order-confirmation/$id'
+      path: '/order-confirmation/$id'
+      fullPath: '/order-confirmation/$id'
+      preLoaderRoute: typeof OrderConfirmationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/order/$id': {
+      id: '/order/$id'
+      path: '/order/$id'
+      fullPath: '/order/$id'
+      preLoaderRoute: typeof OrderIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/product/$id': {
       id: '/product/$id'
       path: '/product/$id'
@@ -1131,6 +1171,8 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRiderRoute: DashboardRiderRoute,
   DashboardVendorRoute: DashboardVendorRoute,
   DashboardWorkshopRoute: DashboardWorkshopRoute,
+  OrderConfirmationIdRoute: OrderConfirmationIdRoute,
+  OrderIdRoute: OrderIdRoute,
   ProductIdRoute: ProductIdRoute,
   StoreSlugRoute: StoreSlugRoute,
   TrackIdRoute: TrackIdRoute,

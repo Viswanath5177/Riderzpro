@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "STOCK_CONFLICT",
+    "message": "One or more items in your cart are no longer available in the requested quantity",
+    "requestId": "req_stk_409_8291"
+  }
+}

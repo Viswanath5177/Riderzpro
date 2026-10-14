@@ -101,6 +101,12 @@
   --text-primary: #111111;
   --text-secondary: #6B7280;
   --brand-orange: #E9A04B;
+
+  /* Mobile Safe Area Insets (Capacitor / Mobile Notches) */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
 }
 
 @layer base {
@@ -349,6 +355,32 @@
 
 @utility animate-mic-pulse {
   animation: vision-mic-pulse 2.2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+/* Mobile Safe Area & Notch Utilities */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pl-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+.pr-safe {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+.top-safe {
+  top: env(safe-area-inset-top, 0px);
+}
+.bottom-safe {
+  bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile Keyboard Viewport Adaptation */
+body.keyboard-open {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
 }
 
 @keyframes dash {

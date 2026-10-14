@@ -10,6 +10,7 @@ import type { DeliveryTrackingData } from "@/components/map/types";
 import { getProduct, getVendor, inr, riders } from "@/lib/data";
 import { ORDER_STEPS, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { DownloadInvoiceButton } from "@/components/common/DownloadInvoiceButton";
 
 export const Route = createFileRoute("/track/$id")({
   head: ({ params }) => ({
@@ -91,6 +92,7 @@ function Track() {
             </div>
 
             <div className="flex items-center gap-2">
+              <DownloadInvoiceButton order={targetOrder} orderId={id} variant="dark" size="sm" />
               <button
                 type="button"
                 onClick={refresh}

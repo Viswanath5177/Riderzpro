@@ -34,6 +34,18 @@ export default defineConfig({
         external: ["cloudflare:workers"],
       },
     },
+    server: {
+      proxy: {
+        "/api/v1/chat": {
+          target: "http://127.0.0.1:8000",
+          changeOrigin: true,
+        },
+        "/api/query": {
+          target: "http://127.0.0.1:8000",
+          changeOrigin: true,
+        },
+      },
+    },
   },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
