@@ -82,7 +82,7 @@ export function Header() {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <Logo className="flex items-center" imgClassName="h-11 sm:h-12 md:h-13.5 w-auto" />
+            <Logo className="flex items-center" imgClassName="h-13 sm:h-14 md:h-16 w-auto" />
           </div>
 
           {/* Center: 5 Nav Links Only (Desktop) */}

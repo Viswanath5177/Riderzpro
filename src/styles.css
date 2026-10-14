@@ -107,6 +107,8 @@
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
+  --header-h: calc(56px + env(safe-area-inset-top, 0px));
+  --nav-h: calc(56px + env(safe-area-inset-bottom, 0px));
 }
 
 @layer base {

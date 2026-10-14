@@ -14,7 +14,10 @@ export function Logo({ className, imgClassName }: { className?: string; imgClass
       <img
         src={logoImg}
         alt="RiderzPro - Car & Bike Accessories"
-        className={cn("h-8 md:h-9.5 w-auto object-contain transition-transform group-hover:scale-[1.02]", imgClassName)}
+        className={cn(
+          "h-11 sm:h-13 md:h-15 lg:h-16 w-auto object-contain transition-all duration-200 group-hover:scale-[1.02] filter contrast-[1.35] brightness-[0.82] saturate-[1.1] drop-shadow-[0_1px_2px_rgba(0,0,0,0.15)]",
+          imgClassName
+        )}
       />
     </Link>
   );

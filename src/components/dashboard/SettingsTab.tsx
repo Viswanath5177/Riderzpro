@@ -21,14 +21,23 @@ import {
   ChevronRight,
   ExternalLink,
   Package,
+  LogOut,
 } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
+import { useAuth, signOut as endServerSession } from "@/lib/auth";
 import { inr, getBike } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
-export function SettingsTab() {
+interface SettingsTabProps {
+  onTabChange?: (tab: any) => void;
+}
+
+export function SettingsTab({ onTabChange }: SettingsTabProps = {}) {
   const { userProfile, updateUserProfile, garage, orders } = useStore();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
 
   const [activeSubTab, setActiveSubTab] = useState<"personal" | "addresses" | "garage" | "notifications" | "security">("personal");
 
@@ -80,144 +89,148 @@ export function SettingsTab() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 max-w-5xl">
-      {/* ─────────────────────────────────────────────────────────────
-          1. HERO PROFILE BANNER (APPLE GLASSMORPHIC THEME)
-         ───────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-3xl border border-black/[0.08] bg-white/85 backdrop-blur-2xl backdrop-saturate-180 p-6 sm:p-8 text-gray-950 shadow-[0_20px_50px_rgba(0,0,0,0.06)] transition-all">
-        {/* Apple Specular Top Highlight */}
-        <div className="absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white to-transparent opacity-90 pointer-events-none" />
-
-        {/* Multi-layered Apple ambient illumination glows */}
-        <div className="absolute -top-16 -left-16 h-64 w-64 rounded-full bg-[#E31E24]/[0.08] blur-3xl pointer-events-none" />
-        <div className="absolute -top-16 -right-16 h-64 w-64 rounded-full bg-[#E31E24]/[0.05] blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 left-1/3 h-64 w-64 rounded-full bg-rose-500/[0.06] blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          {/* Left: Avatar & Identity Details */}
-          <div className="flex items-center gap-5">
-            <div className="relative group shrink-0">
-              <div className="grid h-20 w-20 sm:h-24 sm:w-24 place-items-center rounded-3xl bg-[#E31E24] text-white font-black text-2xl sm:text-3xl shadow-[0_12px_32px_rgba(227,30,36,0.4)] ring-4 ring-white">
-                {initials}
-              </div>
-              <button
-                type="button"
-                onClick={() => toast.info("Profile photo upload: In demo mode, avatar is generated from initials.")}
-                className="absolute -bottom-1 -right-1 grid h-7.5 w-7.5 place-items-center rounded-full bg-white text-[#E31E24] shadow-md hover:bg-red-50 hover:scale-110 active:scale-95 transition cursor-pointer border border-black/[0.08]"
-                title="Change Avatar"
-              >
-                <Camera className="h-3.5 w-3.5" />
-              </button>
+      {/* FIX 7: Clean Profile Header */}
+      <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-2xs space-y-4">
+        <div className="flex items-center gap-4">
+          {/* Avatar: 72px, 1px border, no red glow, 28px camera button at bottom-right edge */}
+          <div className="relative shrink-0">
+            <div className="h-[72px] w-[72px] min-w-[72px] min-h-[72px] rounded-full bg-[#111111] text-white font-bold text-xl flex items-center justify-center border border-gray-200">
+              {initials}
             </div>
-
-            <div className="space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h1 className="text-2xl sm:text-3xl font-black text-gray-950 font-display tracking-tight">
-                  {name || "Aakash Sharma"}
-                </h1>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-[#E31E24] border border-red-200 shadow-2xs backdrop-blur-sm">
-                  <ShieldCheck className="h-3.5 w-3.5 text-[#E31E24]" />
-                  <span>Verified EV Rider</span>
-                </span>
-              </div>
-
-              <p className="text-xs text-gray-500 font-medium flex flex-wrap items-center gap-2">
-                <span>{email || "aakash.sharma@example.com"}</span>
-                <span className="text-gray-300">·</span>
-                <span>{phone || "+91 98765 43210"}</span>
-                <span className="text-gray-300">·</span>
-                <span>{city || "Bengaluru, KA"}</span>
-              </p>
-
-              <div className="pt-1 flex flex-wrap items-center gap-2 text-xs">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-[#E31E24] border border-red-200 shadow-2xs backdrop-blur-sm">
-                  <Award className="h-3.5 w-3.5 text-[#E31E24]" />
-                  <span>Gold Tier Member · {userProfile.points || 450} ProPoints</span>
-                </span>
-                <span className="text-[11px] text-gray-500 font-medium">
-                  (50 pts to Platinum EV Specialist)
-                </span>
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => toast.info("Profile photo upload: Generated from initials.")}
+              className="absolute -bottom-1 -right-1 h-7 w-7 min-w-7 min-h-7 rounded-full bg-white text-gray-700 border border-gray-300 shadow-xs grid place-items-center hover:bg-gray-50 active:scale-95 transition cursor-pointer"
+              title="Change photo"
+              aria-label="Change photo"
+            >
+              <Camera className="h-3.5 w-3.5" />
+            </button>
           </div>
 
-          {/* Right: Tier Progress Bar & Action (Red Theme) */}
-          <div className="md:w-80 space-y-2.5 rounded-2xl bg-white/90 hover:bg-white p-4 border border-red-100 shadow-2xs backdrop-blur-md transition-all duration-200">
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-gray-900 font-bold flex items-center gap-1.5">
-                <Award className="h-3.5 w-3.5 text-[#E31E24]" />
-                Loyalty Tier Progress
-              </span>
-              <span className="font-black text-white bg-[#E31E24] px-2.5 py-0.5 rounded-md text-[11px] shadow-xs">
-                90%
-              </span>
-            </div>
-            <div className="h-2.5 w-full rounded-full bg-red-50 overflow-hidden border border-red-200/60 p-0.5">
-              <div className="h-full rounded-full bg-[#E31E24] shadow-[0_0_10px_rgba(227,30,36,0.4)]" style={{ width: "90%" }} />
-            </div>
-            <p className="text-[11px] text-gray-500 leading-snug font-medium">
-              Earn 10 pts per ₹1,000 order to unlock free doorstep technician visits.
+          {/* Details: Name 22/700, Phone on one line, Email if real, One chip: "Verified" */}
+          <div className="min-w-0 flex-1 space-y-1">
+            <h1 className="text-[22px] font-bold text-gray-900 tracking-tight font-display truncate leading-tight">
+              {name || "Rahul Sharma"}
+            </h1>
+            <p className="text-xs text-gray-600 truncate leading-none">
+              {phone || "+91 98765 43210"}
             </p>
+            {email && !email.endsWith("@riderzpro.in") && !email.includes("example.com") && (
+              <p className="text-xs text-gray-500 truncate leading-none">
+                {email}
+              </p>
+            )}
+            <div className="pt-0.5">
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
+                <ShieldCheck className="h-3 w-3" />
+                <span>Verified</span>
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* 4 Bottom Metric Tiles */}
-        <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-3.5 pt-6 border-t border-black/[0.06]">
-          {/* Card 1: Total Orders */}
-          <div className="rounded-2xl bg-white/80 hover:bg-white p-4 border border-black/[0.06] hover:border-black/[0.12] shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 backdrop-blur-md group">
-            <div className="flex items-center justify-between">
-              <p className="text-[10.5px] font-bold uppercase tracking-wider text-gray-400">Total Orders</p>
-              <div className="h-7 w-7 rounded-xl bg-black/[0.03] grid place-items-center text-gray-500 group-hover:text-[#E31E24] transition-colors">
-                <Package className="h-3.5 w-3.5" />
-              </div>
+        {/* Optional Loyalty Block behind VITE_SHOW_LOYALTY (default false) */}
+        {import.meta.env.VITE_SHOW_LOYALTY === "true" && (
+          <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-semibold text-gray-800">Loyalty Tier Progress</span>
+              <span className="font-bold text-[#E31E24]">90%</span>
             </div>
-            <p className="text-2xl font-black text-gray-950 mt-1.5 tracking-tight">{orders.length}</p>
-            <span className="inline-block mt-1.5 text-[10.5px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
-              ✓ 100% On-time
-            </span>
+            <div className="h-2 w-full rounded-full bg-gray-200 overflow-hidden">
+              <div className="h-full bg-[#E31E24] rounded-full" style={{ width: "90%" }} />
+            </div>
           </div>
+        )}
+      </div>
 
-          {/* Card 2: EVs in Garage */}
-          <div className="rounded-2xl bg-white/80 hover:bg-white p-4 border border-black/[0.06] hover:border-black/[0.12] shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 backdrop-blur-md group">
-            <div className="flex items-center justify-between">
-              <p className="text-[10.5px] font-bold uppercase tracking-wider text-gray-400">EVs in Garage</p>
-              <div className="h-7 w-7 rounded-xl bg-black/[0.03] grid place-items-center text-gray-500 group-hover:text-blue-600 transition-colors">
-                <Bike className="h-3.5 w-3.5" />
-              </div>
-            </div>
-            <p className="text-2xl font-black text-gray-950 mt-1.5 tracking-tight">{garage.length}</p>
-            <span className="inline-block mt-1.5 text-[10.5px] font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60">
-              ⚡ Telemetry Connected
-            </span>
-          </div>
-
-          {/* Card 3: Spare Parts Invested */}
-          <div className="rounded-2xl bg-white/80 hover:bg-white p-4 border border-black/[0.06] hover:border-black/[0.12] shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 backdrop-blur-md group">
-            <div className="flex items-center justify-between">
-              <p className="text-[10.5px] font-bold uppercase tracking-wider text-gray-400">Spare Parts Invested</p>
-              <div className="h-7 w-7 rounded-xl bg-black/[0.03] grid place-items-center text-gray-500 group-hover:text-amber-600 transition-colors">
-                <ShieldCheck className="h-3.5 w-3.5" />
-              </div>
-            </div>
-            <p className="text-2xl font-black text-gray-950 mt-1.5 tracking-tight">{inr(totalSpent || 20109)}</p>
-            <span className="inline-block mt-1.5 text-[10.5px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
-              🛡️ OEM Verified
-            </span>
-          </div>
-
-          {/* Card 4: Saved Addresses */}
-          <div className="rounded-2xl bg-white/80 hover:bg-white p-4 border border-black/[0.06] hover:border-black/[0.12] shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 backdrop-blur-md group">
-            <div className="flex items-center justify-between">
-              <p className="text-[10.5px] font-bold uppercase tracking-wider text-gray-400">Saved Addresses</p>
-              <div className="h-7 w-7 rounded-xl bg-black/[0.03] grid place-items-center text-gray-500 group-hover:text-emerald-600 transition-colors">
-                <MapPin className="h-3.5 w-3.5" />
-              </div>
-            </div>
-            <p className="text-2xl font-black text-gray-950 mt-1.5 tracking-tight">2</p>
-            <span className="inline-block mt-1.5 text-[10.5px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
-              📍 Doorstep Ready
-            </span>
-          </div>
+      {/* Stats: Two equal-height cards (Orders and Bikes) with real counts and NO extra chips */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-2xl bg-white p-4 border border-[#E5E7EB] shadow-2xs flex flex-col justify-between h-22">
+          <p className="text-xs font-semibold text-gray-500">Orders</p>
+          <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
         </div>
+
+        <div className="rounded-2xl bg-white p-4 border border-[#E5E7EB] shadow-2xs flex flex-col justify-between h-22">
+          <p className="text-xs font-semibold text-gray-500">Bikes</p>
+          <p className="text-2xl font-bold text-gray-900">{garage.length}</p>
+        </div>
+      </div>
+
+      {/* List Rows below Stats: Garage, Orders, Addresses, Sign out (56px each) */}
+      <div className="rounded-2xl bg-white border border-[#E5E7EB] shadow-2xs divide-y divide-[#E5E7EB] overflow-hidden">
+        {/* Row 1: Garage */}
+        <button
+          type="button"
+          onClick={() => {
+            if (onTabChange) onTabChange("garage");
+            else window.location.href = "/dashboard/customer?tab=garage";
+          }}
+          className="w-full h-14 px-4 flex items-center justify-between text-xs font-semibold text-gray-900 hover:bg-gray-50 transition cursor-pointer"
+        >
+          <span className="flex items-center gap-3">
+            <Bike className="h-5 w-5 text-gray-500" />
+            <span>Garage</span>
+          </span>
+          <div className="flex items-center gap-2 text-gray-400">
+            <span className="text-xs text-gray-500">{garage.length}</span>
+            <ChevronRight className="h-4 w-4" />
+          </div>
+        </button>
+
+        {/* Row 2: Orders */}
+        <button
+          type="button"
+          onClick={() => {
+            if (onTabChange) onTabChange("orders");
+            else window.location.href = "/dashboard/customer?tab=orders";
+          }}
+          className="w-full h-14 px-4 flex items-center justify-between text-xs font-semibold text-gray-900 hover:bg-gray-50 transition cursor-pointer"
+        >
+          <span className="flex items-center gap-3">
+            <Package className="h-5 w-5 text-gray-500" />
+            <span>Orders</span>
+          </span>
+          <div className="flex items-center gap-2 text-gray-400">
+            <span className="text-xs text-gray-500">{orders.length}</span>
+            <ChevronRight className="h-4 w-4" />
+          </div>
+        </button>
+
+        {/* Row 3: Addresses */}
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("addresses")}
+          className="w-full h-14 px-4 flex items-center justify-between text-xs font-semibold text-gray-900 hover:bg-gray-50 transition cursor-pointer"
+        >
+          <span className="flex items-center gap-3">
+            <MapPin className="h-5 w-5 text-gray-500" />
+            <span>Addresses</span>
+          </span>
+          <ChevronRight className="h-4 w-4 text-gray-400" />
+        </button>
+
+        {/* Row 4: Sign out */}
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              await endServerSession();
+            } catch {
+              // ignore
+            }
+            signOut();
+            toast.success("Signed out successfully");
+            navigate({ to: "/" });
+          }}
+          className="w-full h-14 px-4 flex items-center justify-between text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+        >
+          <span className="flex items-center gap-3">
+            <LogOut className="h-5 w-5 text-rose-600" />
+            <span>Sign out</span>
+          </span>
+          <ChevronRight className="h-4 w-4 text-rose-400" />
+        </button>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
