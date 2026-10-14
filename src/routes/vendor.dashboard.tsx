@@ -6,6 +6,7 @@ import { useStore } from "@/lib/store";
 import { VendorDashboardShell } from "@/components/vendor/dashboard/VendorDashboardShell";
 import { OverviewSection } from "@/components/vendor/dashboard/OverviewSection";
 import { OrdersSection } from "@/components/vendor/dashboard/OrdersSection";
+import { useSellerOrders } from "@/components/vendor/sellerOrdersApi";
 import { ProductsSection } from "@/components/vendor/dashboard/ProductsSection";
 import { InventorySection } from "@/components/vendor/dashboard/InventorySection";
 import { PricingSection } from "@/components/vendor/dashboard/PricingSection";
@@ -43,7 +44,10 @@ function VendorDashboardContent() {
   const activeVendor = vendor || currentVendor;
   const { products } = useVendorStore();
   const { orders } = useStore();
+  const { orders: sellerOrders } = useSellerOrders();
   const navigate = useNavigate();
+
+  const placedCount = sellerOrders.filter((o) => o.status === "PLACED").length;
 
   // Active section tab from URL or local state
   const [activeTab, setActiveTab] = useState<string>(() => {
@@ -97,6 +101,7 @@ function VendorDashboardContent() {
       vendor={activeVendor}
       activeSection={activeTab}
       onSelectSection={handleSelectTab}
+      ordersBadge={placedCount}
     >
       {activeTab === "overview" && (
         <OverviewSection

@@ -39,6 +39,7 @@ interface VendorDashboardShellProps {
   vendor: Vendor;
   activeSection: string;
   onSelectSection: (id: string) => void;
+  ordersBadge?: number;
   children: React.ReactNode;
 }
 
@@ -46,6 +47,7 @@ export function VendorDashboardShell({
   vendor,
   activeSection,
   onSelectSection,
+  ordersBadge,
   children,
 }: VendorDashboardShellProps) {
   const { logout } = useVendorAuth();
@@ -69,7 +71,12 @@ export function VendorDashboardShell({
 
   const SECTIONS: NavSection[] = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
-    { id: "orders", label: "Orders", icon: Package, badge: 2 },
+    {
+      id: "orders",
+      label: "Orders",
+      icon: Package,
+      badge: ordersBadge !== undefined ? (ordersBadge > 0 ? ordersBadge : undefined) : undefined,
+    },
     { id: "products", label: "Products", icon: Layers },
     {
       id: "inventory",

@@ -209,7 +209,7 @@ export function MobileDrawer({
             </div>
           ) : (
             <Link
-              to="/auth"
+              to="/login"
               onClick={onClose}
               className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#e11d2a] text-xs font-semibold text-white transition hover:bg-[#c91823]"
             >
