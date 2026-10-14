@@ -23,7 +23,7 @@ interface PaymentsSectionProps {
 }
 
 export function PaymentsSection({ vendor }: PaymentsSectionProps) {
-  const { settlements, requestBankUpdate } = useVendorStore();
+  const { settlements = [], requestBankUpdate } = useVendorStore();
 
   // Bank Account Change Request Modal
   const [isBankModalOpen, setIsBankModalOpen] = useState(false);
@@ -33,27 +33,27 @@ export function PaymentsSection({ vendor }: PaymentsSectionProps) {
   const [newAccNumber, setNewAccNumber] = useState("");
   const [newIfsc, setNewIfsc] = useState("");
 
-  const vendorSettlements = settlements.filter((s) => s.vendorId === vendor.id);
+  const vendorSettlements = (settlements || []).filter((s: Settlement) => s.vendorId === vendor.id);
 
   // Compute Balances
   const pendingBalance = vendorSettlements
-    .filter((s) => s.status === "pending")
-    .reduce((sum, s) => sum + s.netPayout, 38400);
+    .filter((s: Settlement) => s.status === "pending")
+    .reduce((sum: number, s: Settlement) => sum + s.netPayout, 38400);
 
   const processingBalance = vendorSettlements
-    .filter((s) => s.status === "processing")
-    .reduce((sum, s) => sum + s.netPayout, 18500);
+    .filter((s: Settlement) => s.status === "processing")
+    .reduce((sum: number, s: Settlement) => sum + s.netPayout, 18500);
 
   const totalPaidOut = vendorSettlements
-    .filter((s) => s.status === "paid")
-    .reduce((sum, s) => sum + s.netPayout, 245000);
+    .filter((s: Settlement) => s.status === "paid")
+    .reduce((sum: number, s: Settlement) => sum + s.netPayout, 245000);
 
   // Download CSV statement
   const handleDownloadStatement = () => {
     let csv =
       "SettlementID,PeriodStart,PeriodEnd,OrderIDs,GrossSales,CommissionDeduction,GstOnCommission,TcsDeduction,NetPayout,Status\n";
-    vendorSettlements.forEach((s) => {
-      csv += `"${s.id}","${s.periodStart}","${s.periodEnd}","${s.orderIds.join(";")} ",${s.grossSales},${s.commissionAmount},${s.gstOnCommission},${s.tcsTdsDeduction},${s.netPayout},"${s.status}"\n`;
+    vendorSettlements.forEach((s: any) => {
+      csv += `"${s.id}","${s.periodStart || s.period}","${s.periodEnd || s.period}","${(s.orderIds || []).join(";")} ",${s.grossSales || s.grossAmount},${s.commissionAmount},${s.gstOnCommission},${s.tcsTdsDeduction || s.tcsTdsAmount},${s.netPayout},"${s.status}"\n`;
     });
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -72,7 +72,7 @@ export function PaymentsSection({ vendor }: PaymentsSectionProps) {
       toast.error("Please fill all bank details");
       return;
     }
-    requestBankUpdate(vendor.id, {
+    requestBankUpdate?.(vendor.id, {
       accountHolderName: newAccHolder,
       accountNumber: newAccNumber,
       ifscCode: newIfsc.toUpperCase(),
@@ -203,14 +203,14 @@ export function PaymentsSection({ vendor }: PaymentsSectionProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {vendorSettlements.map((s) => (
+            {vendorSettlements.map((s: Settlement) => (
               <tr key={s.id} className="hover:bg-gray-50/70 transition">
                 <td className="py-3.5 px-4 font-mono font-bold text-gray-900">{s.id}</td>
                 <td className="py-3.5 px-4 text-gray-600">
-                  {s.periodStart} to {s.periodEnd}
+                  {s.periodStart || s.period} {s.periodEnd ? `to ${s.periodEnd}` : ""}
                 </td>
                 <td className="py-3.5 px-4 font-mono font-bold text-gray-900">
-                  {inr(s.grossSales)}
+                  {inr(s.grossSales ?? s.grossAmount)}
                 </td>
                 <td className="py-3.5 px-4 font-mono text-gray-500">
                   -{inr(s.commissionAmount)}
@@ -219,7 +219,7 @@ export function PaymentsSection({ vendor }: PaymentsSectionProps) {
                   </span>
                 </td>
                 <td className="py-3.5 px-4 font-mono text-gray-500">
-                  -{inr(s.tcsTdsDeduction)}
+                  -{inr(s.tcsTdsDeduction ?? s.tcsTdsAmount)}
                 </td>
                 <td className="py-3.5 px-4 font-mono font-black text-emerald-800 text-sm">
                   {inr(s.netPayout)}

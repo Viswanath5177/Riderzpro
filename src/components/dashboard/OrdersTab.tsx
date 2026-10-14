@@ -4,12 +4,11 @@ import { Package, ArrowRight, Check, MapPin, Download, RefreshCw, ShoppingBag, E
 import { toast } from "sonner";
 import { useStore, ORDER_STEPS, type Order } from "@/lib/store";
 import { getProduct, getVendor, inr } from "@/lib/data";
-import { InvoiceModal } from "./InvoiceModal";
+import { DownloadInvoiceButton } from "@/components/common/DownloadInvoiceButton";
 
 export function OrdersTab() {
   const { orders, deleteOrder, clearOrders } = useStore();
   const [filter, setFilter] = useState<"all" | "active" | "delivered">("all");
-  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
 
   const filteredOrders = orders.filter((o) => {
     if (filter === "active") return o.status < 5;
@@ -19,14 +18,6 @@ export function OrdersTab() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Invoice modal — shared component */}
-      {selectedInvoiceOrder && (
-        <InvoiceModal
-          order={selectedInvoiceOrder}
-          onClose={() => setSelectedInvoiceOrder(null)}
-        />
-      )}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-200">
         <div>
@@ -202,13 +193,12 @@ export function OrdersTab() {
                 {/* Action buttons */}
                 <div className="pt-2 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setSelectedInvoiceOrder(o)}
-                      className="px-3 py-1.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      <span>View Invoice</span>
-                    </button>
+                    <DownloadInvoiceButton
+                      order={o}
+                      variant="outline"
+                      size="sm"
+                      label="Download Tax Invoice"
+                    />
                     <button
                       onClick={() => {
                         if (window.confirm(`Are you sure you want to delete order ${o.id}?`)) {
@@ -226,7 +216,7 @@ export function OrdersTab() {
 
                   <Link
                     to="/track/$id"
-                    params={{ id: o.id }}
+                    params={{ id: o.shipmentId || o.id }}
                     className="px-4 py-2 rounded-xl bg-[#E31E24] text-white text-xs font-semibold shadow-xs hover:bg-red-700 transition flex items-center gap-1.5"
                   >
                     <MapPin className="h-3.5 w-3.5" />

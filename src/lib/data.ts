@@ -134,7 +134,6 @@ export type Product = {
   isAccessoryProduct?: boolean;
   subcategory?: string;
   subcategories?: string[];
-  vehicleType?: "car" | "bike" | "both";
   image: string;
   imageFallback?: string;
   voltage?: number;
@@ -547,7 +546,6 @@ export const getVendor = (id: string): Vendor => {
       address: "MG Road, Bengaluru 560001",
       gstin: "29AABCR0000Z1Z0",
       shippingPolicy: "Express delivery across city.",
-      returnPolicy: "7-day replacement warranty.",
       commissionRate: 0.1,
     }
   );
@@ -612,6 +610,7 @@ export function mapDbProductToProduct(row: any): Product {
   };
 }
 
+
 export const getBike = (id: string) => bikes.find((b) => b.id === id);
 export const bestOffer = (p: Product) => {
   if (!p || !p.offers || p.offers.length === 0) return { vendorId: "v1", price: 999, stock: 5 };
@@ -631,12 +630,13 @@ export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; ln
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
-export const DELIVERY_BASE = 40;
-export const DELIVERY_PER_KM = 12;
+export const DELIVERY_FLAT_FEE = 150;
+export const DELIVERY_BASE = 150;
+export const DELIVERY_PER_KM = 0;
 export const GST_RATE = 0.18;
 
-export function deliveryFee(km: number) {
-  return Math.round(DELIVERY_BASE + km * DELIVERY_PER_KM);
+export function deliveryFee(km: number = 0) {
+  return DELIVERY_FLAT_FEE;
 }
 export function etaMinutes(km: number, prepMins: number) {
   return Math.round(prepMins + (km / 22) * 60 + 5);

@@ -207,8 +207,15 @@ function DeliveryMapInner({
     height: 480,
   });
 
-  const { viewport, setViewport, zoomIn, zoomOut, fitPoints, config, setIsUserInteracting } =
-    useMap();
+  const {
+    viewport,
+    setViewport,
+    zoomIn,
+    zoomOut,
+    fitPoints,
+    config,
+    setIsUserInteracting,
+  } = useMap();
 
   const [hasInitialFitted, setHasInitialFitted] = useState(false);
   const [isFollowingRider, setIsFollowingRider] = useState(true);

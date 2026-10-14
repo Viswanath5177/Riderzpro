@@ -197,7 +197,7 @@ export function DashboardShell({
         <main className="p-3 sm:p-4 md:p-8 min-w-0">{children}</main>
       </div>
       {/* Mobile Bottom Dock Navigation */}
-      <nav className="fixed inset-x-2.5 bottom-2.5 z-40 flex justify-around rounded-2xl border border-border px-1 py-1.5 shadow-card bg-white/95 backdrop-blur-md md:hidden">
+      <nav className="fixed inset-x-2.5 bottom-[calc(0.625rem+env(safe-area-inset-bottom,0px))] z-40 flex justify-around rounded-2xl border border-border px-1 py-1.5 shadow-card bg-white/95 backdrop-blur-md md:hidden">
         {bottomBarSections.map((s) => (
           <button
             key={s.id}

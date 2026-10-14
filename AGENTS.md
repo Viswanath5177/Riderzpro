@@ -16,4 +16,3 @@
 - Product Visibility Gate: Products are shown to customers ONLY if `status === "live"` AND the vendor is `approved` and NOT `suspended` or on `holidayMode`. Products in draft, pending review, changes requested, or rejected state are excluded from shop, search, compare, AI assistant, and direct URLs (`/product/$id`).
 - Customer pages wrap content in `SiteLayout`; role dashboards use `DashboardShell` (customer and vendor dashboards use white sidebar with signature red active state; admin console uses dark glass styling) — keeps web nav and phone tab bar consistent per surface.
 - tsconfig strict index/optional flags are relaxed — mock-data heavy UI code was fighting them with no safety gain.
-

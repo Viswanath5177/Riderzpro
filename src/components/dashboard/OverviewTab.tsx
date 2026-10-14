@@ -3,9 +3,6 @@ import { Link } from "@tanstack/react-router";
 import {
   Bike,
   Package,
-  Wallet,
-  CalendarCheck,
-  MapPin,
   ArrowRight,
   ShieldCheck,
   Zap,
@@ -13,21 +10,22 @@ import {
   Wrench,
   Clock,
   Sparkles,
-  MessageSquare,
+  Phone,
   Copy,
   Check,
-  ExternalLink,
+  Star,
   ChevronRight,
-  AlertCircle,
   Truck,
-  Heart,
-  CheckCircle2,
-  Tag,
+  Plus,
+  ScanLine,
+  MapPin,
+  Flame,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useStore, type Order } from "@/lib/store";
-import { getBike, getVendor, inr, products } from "@/lib/data";
+import { useStore, ORDER_STEPS } from "@/lib/store";
+import { getBike, getProduct, inr, products, riders } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { LiveMap } from "@/components/site/LiveMap";
 import type { CustomerTab } from "./CustomerLayout";
 
 interface OverviewTabProps {
@@ -39,7 +37,7 @@ interface OverviewTabProps {
 export function OverviewTab({
   onTabChange,
   onOpenBookingModal,
-  onOpenAddBikeModal: _onOpenAddBikeModal,
+  onOpenAddBikeModal,
 }: OverviewTabProps) {
   const {
     userProfile,
@@ -48,10 +46,8 @@ export function OverviewTab({
     orders,
     shipments,
     addToCart,
-    toggleSaved,
-    isSaved,
-    serviceBookings,
-    savedProductIds,
+    advanceOrder,
+    simulateDemoOrder,
   } = useStore();
 
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -59,444 +55,427 @@ export function OverviewTab({
   const activeBike = garage.find((b) => b.bikeId === activeBikeId) || garage[0];
   const activeBikeMeta = activeBike ? getBike(activeBike.bikeId) : null;
 
-  // Real calculations
-  const totalSpent = orders.reduce((s, o) => s + o.total, 0);
-  const processingOrdersCount = orders.filter((o) => o.status === 0 || o.status === 1).length;
-  const inTransitCount = shipments.filter((s) => s.status === "In Transit" || s.status === "Out for Delivery").length;
-  const deliveredCount = orders.filter((o) => o.status === 5).length;
+  const liveOrder = orders.find((o) => o.status < 5);
+  const activeShipment = shipments.find((s) => s.status !== "Delivered" && s.status !== "Cancelled") || shipments[0];
+  const activeRider = liveOrder?.riderId ? riders.find((r) => r.id === liveOrder.riderId) : null;
 
-  // Saved products items
-  const savedItemsList = products.filter((p) => savedProductIds.includes(p.id)).slice(0, 3);
+  // Filter recommended parts for user's bike, or default popular spares
+  const recommendedParts = products
+    .filter((p) => (activeBike ? p.fits.includes(activeBike.bikeId) : true))
+    .slice(0, 4);
 
   const copyCoupon = (code: string) => {
     navigator.clipboard?.writeText(code);
     setCopiedCode(code);
-    toast.success(`Coupon code "${code}" copied to clipboard!`);
+    toast.success(`Coupon "${code}" copied!`);
     setTimeout(() => setCopiedCode(null), 2500);
   };
 
+  const handleAddBikeClick = () => {
+    if (onOpenAddBikeModal) {
+      onOpenAddBikeModal();
+    } else {
+      onTabChange("garage");
+    }
+  };
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
-      {/* ─────────────────────────────────────────────────────────────
-          SECTION A: WELCOME SECTION & CONTEXTUAL PROMO BANNER
-         ───────────────────────────────────────────────────────────── */}
-      <section className="space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 font-display">
-              Welcome back, {userProfile.name.split(" ")[0]} 👋
-            </h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Your electric vehicle command center. Track live orders, check telemetry, and book verified service.
-            </p>
+    <div className="space-y-5 sm:space-y-6 animate-in fade-in duration-200">
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          1. WELCOME & USER GREETING (Compact Mobile Header)
+         â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight font-display truncate">
+            Hi, {userProfile?.name?.trim() ? userProfile.name.trim().split(" ")[0] : "Rider"} ðŸ‘‹
+          </h1>
+          <p className="text-xs sm:text-sm text-gray-500 flex items-center gap-1.5 mt-0.5 truncate">
+            <MapPin className="h-3.5 w-3.5 text-[#E31E24] shrink-0" />
+            <span className="truncate">{userProfile?.city?.trim() || "Bengaluru, KA"}</span>
+            <span className="text-gray-300">Â·</span>
+            <span className="text-emerald-600 font-bold shrink-0">EV Connected</span>
+          </p>
+        </div>
+
+        <button
+          onClick={handleAddBikeClick}
+          className="shrink-0 flex items-center gap-1 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full bg-red-50 hover:bg-red-100 text-xs sm:text-sm font-bold text-[#E31E24] border border-red-200/80 transition active:scale-95 cursor-pointer shadow-2xs"
+        >
+          <Plus className="h-4 w-4" />
+          <span>{garage.length > 0 ? "My Garage" : "Add Bike"}</span>
+        </button>
+      </div>
+
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          2. VEHICLE HERO CARD (Matching Brand Red & Warm Colors)
+         â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {garage.length > 0 && activeBike ? (
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#E31E24] via-[#DC2626] to-[#B91C1C] p-4.5 sm:p-6 text-white shadow-md">
+          {/* Subtle ambient light glow */}
+          <div className="absolute -right-8 -top-8 h-44 w-44 rounded-full bg-white/10 blur-xl pointer-events-none" />
+
+          <div className="relative z-10 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider border border-white/20">
+                <Bike className="h-3.5 w-3.5 shrink-0" />
+                <span>Connected Vehicle</span>
+              </span>
+              <h2 className="text-xl sm:text-2xl font-black text-white mt-1.5 tracking-tight font-display truncate">
+                {activeBike.nickname || `${activeBikeMeta?.make} ${activeBikeMeta?.model}`}
+              </h2>
+              <p className="text-xs sm:text-sm text-red-100 mt-0.5 font-medium truncate">
+                {activeBikeMeta?.voltage}V Architecture Â· {activeBike.odoKm ? `${activeBike.odoKm} km` : "Ready to ride"}
+              </p>
+            </div>
+
+            <div className="text-right shrink-0">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs sm:text-sm font-bold border border-white/25">
+                <Zap className="h-3.5 w-3.5 fill-white" />
+                <span>{activeBike.batteryHealth || 98}% Health</span>
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-2.5 shrink-0">
-            <Link
-              to="/shop"
-              className="inline-flex items-center justify-center gap-2 px-4.5 py-2.5 rounded-lg bg-[#E31E24] text-white text-xs font-semibold shadow-2xs hover:bg-red-700 active:scale-95 transition"
-            >
-              <ShoppingBag className="h-4 w-4" />
-              <span>Shop Products</span>
-            </Link>
+
+          <div className="relative z-10 mt-4 sm:mt-5 pt-3 border-t border-white/20 grid grid-cols-3 gap-2 sm:gap-2.5">
             <button
-              onClick={() => onTabChange("orders")}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111111] text-xs font-semibold hover:bg-gray-50 hover:border-gray-300 active:scale-95 transition shadow-2xs"
+              onClick={onOpenBookingModal}
+              className="py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl bg-white text-[#E31E24] hover:bg-red-50 text-xs sm:text-sm font-bold text-center transition active:scale-95 flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
             >
-              <Truck className="h-4 w-4 text-[#E31E24]" />
-              <span>Track Order</span>
+              <Wrench className="h-3.5 w-3.5 shrink-0" />
+              <span>Service</span>
+            </button>
+            <button
+              onClick={() => onTabChange("shop")}
+              className="py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs sm:text-sm font-bold text-center transition active:scale-95 flex items-center justify-center gap-1.5 border border-white/25 cursor-pointer"
+            >
+              <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
+              <span>Parts</span>
+            </button>
+            <button
+              onClick={() => onTabChange("garage")}
+              className="py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm font-bold text-center transition active:scale-95 cursor-pointer"
+            >
+              Garage
             </button>
           </div>
         </div>
+      ) : (
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-50 via-white to-red-50/40 p-4.5 sm:p-6 border border-red-200/90 shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+            <div className="space-y-1">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-100 text-[#E31E24] text-xs font-bold uppercase tracking-wider">
+                <Bike className="h-3.5 w-3.5 shrink-0" />
+                <span>My EV Garage</span>
+              </span>
+              <h3 className="text-base sm:text-lg font-black text-gray-900 tracking-tight">
+                Add your electric scooter or bike
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-600 max-w-sm leading-relaxed">
+                Select your vehicle to get 100% verified fitment spares, battery diagnostics, and doorstep care.
+              </p>
+            </div>
+            <button
+              onClick={handleAddBikeClick}
+              className="self-start sm:self-auto shrink-0 px-4 py-2 sm:py-2.5 rounded-xl bg-[#E31E24] hover:bg-red-700 text-white text-xs sm:text-sm font-bold transition active:scale-95 shadow-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add Vehicle</span>
+            </button>
+          </div>
+        </div>
+      )}
 
-        {/* Monsoon EV Care Campaign Banner */}
-        <div className="relative overflow-hidden rounded-xl border border-[#E5E7EB] bg-white p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
-          <div className="flex items-start sm:items-center gap-3.5">
-            <span className="grid h-10 w-10 place-items-center rounded-lg bg-[#E31E24] text-white shadow-2xs shrink-0">
-              <Zap className="h-5 w-5" />
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          3. QUICK ACTIONS GRID (Touch-Friendly Native App Tiles)
+         â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <div>
+        <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-gray-500 mb-2.5">
+          Quick Actions
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+          {/* Action 1: Shop Spares */}
+          <button
+            onClick={() => onTabChange("shop")}
+            className="p-3.5 sm:p-4 rounded-2xl bg-white border border-gray-200/90 hover:border-gray-300 text-left transition active:scale-98 shadow-2xs flex flex-col justify-between h-28 sm:h-32 cursor-pointer group"
+          >
+            <span className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-red-50 text-[#E31E24] grid place-items-center mb-1.5 group-hover:scale-105 transition shrink-0">
+              <ShoppingBag className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             </span>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md bg-red-50 text-[#E31E24] text-[10px] font-bold uppercase tracking-wider">
-                  Monsoon Special
+              <p className="text-xs sm:text-sm font-bold text-gray-900 leading-tight">Shop Spares</p>
+              <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5 truncate">Batteries & chargers</p>
+            </div>
+          </button>
+
+          {/* Action 2: Book Service */}
+          <button
+            onClick={onOpenBookingModal}
+            className="p-3.5 sm:p-4 rounded-2xl bg-white border border-gray-200/90 hover:border-gray-300 text-left transition active:scale-98 shadow-2xs flex flex-col justify-between h-28 sm:h-32 cursor-pointer group"
+          >
+            <span className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-blue-50 text-blue-600 grid place-items-center mb-1.5 group-hover:scale-105 transition shrink-0">
+              <Wrench className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+            </span>
+            <div>
+              <p className="text-xs sm:text-sm font-bold text-gray-900 leading-tight">Doorstep Service</p>
+              <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5 truncate">Certified visit â‚¹299</p>
+            </div>
+          </button>
+
+          {/* Action 3: Track Orders */}
+          <button
+            onClick={() => onTabChange("orders")}
+            className="p-3.5 sm:p-4 rounded-2xl bg-white border border-gray-200/90 hover:border-gray-300 text-left transition active:scale-98 shadow-2xs flex flex-col justify-between h-28 sm:h-32 cursor-pointer group"
+          >
+            <span className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-emerald-50 text-emerald-600 grid place-items-center mb-1.5 group-hover:scale-105 transition shrink-0">
+              <Truck className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+            </span>
+            <div>
+              <p className="text-xs sm:text-sm font-bold text-gray-900 leading-tight">My Orders</p>
+              <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5 truncate">
+                {liveOrder ? "1 active dispatch" : `${orders.length} past orders`}
+              </p>
+            </div>
+          </button>
+
+          {/* Action 4: Search by VIN */}
+          <button
+            onClick={() => onTabChange("garage")}
+            className="p-3.5 sm:p-4 rounded-2xl bg-white border border-gray-200/90 hover:border-gray-300 text-left transition active:scale-98 shadow-2xs flex flex-col justify-between h-28 sm:h-32 cursor-pointer group"
+          >
+            <span className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-purple-50 text-purple-600 grid place-items-center mb-1.5 group-hover:scale-105 transition shrink-0">
+              <ScanLine className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+            </span>
+            <div>
+              <p className="text-xs sm:text-sm font-bold text-gray-900 leading-tight">VIN Fitment</p>
+              <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5 truncate">17-digit decoder</p>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          4. ACTIVE ORDER / DELIVERY STATUS (If order in progress)
+         â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {liveOrder ? (
+        <div className="rounded-2xl border border-red-200/80 bg-red-50/40 p-4 sm:p-4.5 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="relative flex h-2.5 w-2.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#E31E24] opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#E31E24]" />
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-gray-900 truncate">
+                Delivery in Progress Â· ETA ~{Math.max(5, liveOrder.eta)} mins
+              </span>
+            </div>
+            <span className="text-xs font-mono font-bold text-gray-700 shrink-0">
+              {liveOrder.id}
+            </span>
+          </div>
+
+          {/* Live Road Route Tracking Map */}
+          <div className="overflow-hidden rounded-xl border border-gray-200">
+            <LiveMap deliveryId={liveOrder.shipmentId || liveOrder.id || "delivery_vijayawada_amaravati_live"} className="aspect-video w-full" />
+          </div>
+
+          <div className="flex items-center justify-between text-xs sm:text-sm text-gray-600 bg-white p-3 rounded-xl border border-gray-200/70">
+            <div className="flex items-center gap-2 min-w-0">
+              <Truck className="h-4 w-4 text-[#E31E24] shrink-0" />
+              <span className="truncate">Status: <strong className="text-gray-900">{ORDER_STEPS[liveOrder.status]}</strong></span>
+            </div>
+            <button
+              onClick={() => onTabChange("orders")}
+              className="text-xs sm:text-sm font-bold text-[#E31E24] hover:underline flex items-center gap-0.5 shrink-0"
+            >
+              <span>Track Live</span>
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Welcome Promo Banner */
+        <div className="rounded-2xl border border-gray-200 bg-white p-3.5 sm:p-4 shadow-2xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-red-50 text-[#E31E24] shrink-0">
+              <Zap className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="px-1.5 py-0.5 rounded bg-red-100 text-[#E31E24] text-[10px] font-bold shrink-0">
+                  SPECIAL
                 </span>
-                <span className="text-xs font-bold text-[#111111]">Free 24-Point Battery & BMS Diagnostic</span>
+                <span className="text-xs sm:text-sm font-bold text-gray-900 truncate">â‚¹200 Off First Visit</span>
               </div>
-              <p className="text-xs text-[#6B7280] mt-0.5">
-                Protect your EV against monsoon humidity and thermal imbalance. Free with any parts order above ₹5,000.
+              <p className="text-xs text-gray-500 mt-0.5 truncate">
+                Valid on all doorstep service bookings.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-            <div className="flex items-center border border-dashed border-red-300 bg-red-50/50 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-[#E31E24]">
-              EVSAFE
-            </div>
-            <button
-              onClick={() => copyCoupon("EVSAFE")}
-              className="p-1.5 rounded-lg bg-white border border-[#E5E7EB] text-gray-600 hover:text-[#E31E24] transition"
-              title="Copy promo code"
-            >
-              {copiedCode === "EVSAFE" ? <Check className="h-4 w-4 text-[#E31E24]" /> : <Copy className="h-4 w-4" />}
-            </button>
-          </div>
-        </div>
-      </section>
 
-      {/* ─────────────────────────────────────────────────────────────
-          SECTION B: SUMMARY METRIC CARDS (4 RESPONSIVE SOLID WHITE CARDS)
-         ───────────────────────────────────────────────────────────── */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Total Orders */}
-        <div
-          onClick={() => onTabChange("orders")}
-          className="group rounded-2xl bg-white border border-[#E5E7EB] shadow-2xs hover:shadow-md hover:border-gray-300 p-5 cursor-pointer transition-all flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Total Orders</span>
-            <span className="grid h-8 w-8 place-items-center rounded-xl bg-gray-100 text-[#111111] group-hover:bg-red-50 group-hover:text-[#E31E24] transition shadow-2xs">
-              <Package className="h-4 w-4" />
-            </span>
-          </div>
-          <div className="mt-3">
-            <p className="text-3xl font-extrabold text-[#111111] font-display leading-none">{orders.length}</p>
-            <p className="text-xs text-[#6B7280] mt-1">
-              All placed & recorded orders
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
-            <span>View all orders</span>
-            <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
-          </div>
+          <button
+            onClick={() => copyCoupon("RIDERZ200")}
+            className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl border border-dashed border-[#E31E24] bg-red-50/50 text-[#E31E24] text-xs font-mono font-bold hover:bg-red-50 transition cursor-pointer"
+          >
+            {copiedCode === "RIDERZ200" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+            <span>RIDERZ200</span>
+          </button>
         </div>
+      )}
 
-        {/* Card 2: Orders Being Processed */}
-        <div
-          onClick={() => onTabChange("orders")}
-          className="group rounded-2xl bg-white border border-[#E5E7EB] shadow-2xs hover:shadow-md hover:border-gray-300 p-5 cursor-pointer transition-all flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Being Processed</span>
-            <span className="grid h-8 w-8 place-items-center rounded-xl bg-amber-50 text-amber-700 group-hover:scale-105 transition shadow-2xs">
-              <Clock className="h-4 w-4" />
-            </span>
-          </div>
-          <div className="mt-3">
-            <p className="text-3xl font-extrabold text-amber-700 font-display leading-none">{processingOrdersCount}</p>
-            <p className="text-xs text-[#6B7280] mt-1">
-              {processingOrdersCount > 0 ? "Supplier packing & verification" : "Zero orders awaiting processing"}
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
-            <span>Fulfillment queue</span>
-            <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
-          </div>
-        </div>
-
-        {/* Card 3: Shipments in Transit */}
-        <div
-          onClick={() => onTabChange("tracking")}
-          className="group rounded-2xl bg-white border border-[#E5E7EB] shadow-2xs hover:shadow-md hover:border-gray-300 p-5 cursor-pointer transition-all flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Shipments in Transit</span>
-            <span className="grid h-8 w-8 place-items-center rounded-xl bg-red-50 text-[#E31E24] group-hover:scale-105 transition shadow-2xs">
-              <Truck className="h-4 w-4" />
-            </span>
-          </div>
-          <div className="mt-3">
-            <p className="text-3xl font-extrabold text-[#E31E24] font-display leading-none">{inTransitCount}</p>
-            <p className="text-xs text-[#6B7280] mt-1">
-              {inTransitCount > 0 ? `${inTransitCount} active courier dispatches` : "No consignments in transit"}
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
-            <span>Track live delivery</span>
-            <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
-          </div>
-        </div>
-
-        {/* Card 4: Delivered Orders */}
-        <div
-          onClick={() => onTabChange("orders")}
-          className="group rounded-2xl bg-white border border-[#E5E7EB] shadow-2xs hover:shadow-md hover:border-gray-300 p-5 cursor-pointer transition-all flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Delivered Orders</span>
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 text-emerald-700 group-hover:scale-105 transition">
-              <CheckCircle2 className="h-4 w-4" />
-            </span>
-          </div>
-          <div className="mt-3">
-            <p className="text-3xl font-extrabold text-emerald-700 font-display leading-none">
-              {deliveredCount}
-            </p>
-            <p className="text-xs text-[#6B7280] mt-1">
-              Verified successful handovers
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-[#E5E7EB] flex items-center justify-between text-[11px] font-semibold text-[#E31E24]">
-            <span>Delivered history</span>
-            <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition" />
-          </div>
-        </div>
-      </section>
-
-      {/* ─────────────────────────────────────────────────────────────
-          SECTION F: SERVICE AND MAINTENANCE REMINDERS
-         ───────────────────────────────────────────────────────────── */}
-      <section className="rounded-3xl border border-[#E5E7EB] bg-white p-5 sm:p-6 shadow-2xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-gray-100">
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          5. DOORSTEP SERVICE PACKAGES (Horizontal Mobile List / 3-Col Desktop)
+         â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <div>
+        <div className="flex items-center justify-between mb-2.5 sm:mb-3">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="grid h-7 w-7 place-items-center rounded-xl bg-purple-50 text-purple-600">
-                <Wrench className="h-4 w-4" />
-              </span>
-              <h2 className="text-base font-bold text-gray-900 font-display">Service & Preventive Maintenance</h2>
-            </div>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Automated service intervals based on odometer wear for {activeBikeMeta ? `${activeBikeMeta.make} ${activeBikeMeta.model}` : "your bike"}.
-            </p>
+            <h3 className="text-sm sm:text-base font-black text-gray-900">Doorstep Technician Care</h3>
+            <p className="text-xs text-gray-500">Certified technicians at your location</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onOpenBookingModal}
-              className="px-3.5 py-2 rounded-xl bg-primary text-white text-xs font-semibold shadow-xs hover:bg-emerald-600 transition"
-            >
-              + Book Technician (₹299)
-            </button>
-            <button
-              onClick={() => onTabChange("service")}
-              className="px-3 py-2 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition"
-            >
-              Service History
-            </button>
-          </div>
+          <button
+            onClick={onOpenBookingModal}
+            className="text-xs sm:text-sm font-bold text-[#E31E24] hover:underline flex items-center gap-0.5"
+          >
+            <span>Book Visit</span>
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
 
-        {garage.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 p-8 text-center space-y-3">
-            <Bike className="h-9 w-9 text-gray-400 mx-auto" />
-            <h3 className="text-sm font-bold text-gray-900">No Vehicle in Your Garage Yet</h3>
-            <p className="text-xs text-gray-500 max-w-md mx-auto">
-              Add your electric scooter, bike, or EV to your garage to receive automated telemetry, customized service schedules, and exact part fitment guarantees.
-            </p>
-            <button
-              onClick={() => onTabChange("garage")}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#E31E24] text-white text-xs font-semibold hover:bg-red-700 transition shadow-2xs cursor-pointer"
-            >
-              + Add Vehicle to Garage
-            </button>
-          </div>
-        ) : (
-        <div className="grid gap-4 md:grid-cols-3">
-          {/* Item 1: Battery & BMS Health */}
-          <div className="p-4 rounded-2xl bg-[#F7F9FB] border border-gray-200/80 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                Due in 42 Days
+        <div className="space-y-2 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-3">
+          <div className="p-3 sm:p-4 rounded-2xl bg-white border border-gray-200/90 shadow-2xs flex items-center sm:flex-col justify-between sm:justify-between gap-3">
+            <div className="flex items-center sm:block gap-3 min-w-0">
+              <span className="h-9 w-9 rounded-xl bg-red-50 text-[#E31E24] grid place-items-center shrink-0">
+                <Wrench className="h-4.5 w-4.5" />
               </span>
-              <span className="text-[11px] font-mono font-medium text-gray-400">Interval: 6 mo</span>
-            </div>
-            <p className="text-sm font-bold text-gray-900">BMS Calibration & Cell Health Audit</p>
-            <p className="text-xs text-gray-600 leading-relaxed">
-              Detect voltage drift, thermal balance across cell strings, and check IP67 seal integrity.
-            </p>
-            <button
-              onClick={onOpenBookingModal}
-              className="text-xs font-semibold text-primary hover:underline pt-1 block"
-            >
-              Schedule checkup →
-            </button>
-          </div>
-
-          {/* Item 2: Regenerative Braking & Rotors */}
-          <div className="p-4 rounded-2xl bg-[#F7F9FB] border border-gray-200/80 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                Inspect at 15,000 km
-              </span>
-              <span className="text-[11px] font-mono font-medium text-gray-400">2,550 km left</span>
-            </div>
-            <p className="text-sm font-bold text-gray-900">Brake Fluid & Pad Wear Inspection</p>
-            <p className="text-xs text-gray-600 leading-relaxed">
-              Check front/rear rotor thickness, bleed air from hydraulic lines, and calibrate regen cutoff switch.
-            </p>
-            <button
-              onClick={onOpenBookingModal}
-              className="text-xs font-semibold text-primary hover:underline pt-1 block"
-            >
-              Book brake overhaul →
-            </button>
-          </div>
-
-          {/* Item 3: Belt & Hub Motor Bearings */}
-          <div className="p-4 rounded-2xl bg-[#F7F9FB] border border-gray-200/80 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
-                Standard Care
-              </span>
-              <span className="text-[11px] font-mono font-medium text-gray-400">On-site</span>
-            </div>
-            <p className="text-sm font-bold text-gray-900">Drive Belt Tension & Axle Inspection</p>
-            <p className="text-xs text-gray-600 leading-relaxed">
-              Ensure vibration dampeners, motor mount torques, and tire pressure are optimized for maximum range.
-            </p>
-            <button
-              onClick={onOpenBookingModal}
-              className="text-xs font-semibold text-primary hover:underline pt-1 block"
-            >
-              Book technician visit →
-            </button>
-          </div>
-        </div>
-        )}
-      </section>
-
-
-
-      {/* ─────────────────────────────────────────────────────────────
-          SECTION H: SAVED ITEMS & EXCLUSIVE OFFERS
-         ───────────────────────────────────────────────────────────── */}
-      <section className="grid gap-6 lg:grid-cols-2">
-        {/* Saved Items Quick Panel */}
-        <div className="rounded-3xl border border-[#E5E7EB] bg-white p-5 sm:p-6 shadow-2xs space-y-4 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div className="flex items-center gap-2">
-                <span className="grid h-7 w-7 place-items-center rounded-xl bg-rose-50 text-rose-600">
-                  <Heart className="h-4 w-4" />
-                </span>
-                <h2 className="text-base font-bold text-gray-900 font-display">Saved Parts & Wishlist</h2>
-              </div>
-              <button
-                onClick={() => onTabChange("saved")}
-                className="text-xs font-semibold text-primary hover:underline"
-              >
-                View all ({savedProductIds.length})
-              </button>
-            </div>
-
-            <div className="mt-3 divide-y divide-gray-100">
-              {savedItemsList.length === 0 ? (
-                <p className="py-8 text-center text-xs text-gray-400">
-                  You haven&rsquo;t saved any items yet. Tap the heart icon on any product to save.
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs sm:text-sm font-bold text-gray-900 truncate">24-Point General Care</h4>
+                  <span className="sm:hidden text-xs font-black text-[#E31E24] font-mono shrink-0">â‚¹299</span>
+                </div>
+                <p className="text-[11px] sm:text-xs text-gray-500 truncate sm:line-clamp-2 mt-0.5">
+                  Brakes, tire wear, electrical harnesses & torque check.
                 </p>
-              ) : (
-                savedItemsList.map((item) => (
-                  <div key={item.id} className="py-3 flex items-center justify-between gap-3">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="h-12 w-12 rounded-xl object-cover bg-gray-100 border border-gray-200"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-gray-900 truncate">{item.name}</p>
-                      <p className="text-[11px] text-gray-500">
-                        {item.category} · {inr(item.offers[0].price)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          addToCart(item.id, item.offers[0].vendorId);
-                          toast.success(`${item.name} added to cart`);
-                        }}
-                        className="px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary hover:text-white transition"
-                      >
-                        Add to Cart
-                      </button>
-                      <button
-                        onClick={() => toggleSaved(item.id)}
-                        className="p-1 rounded-md text-gray-400 hover:text-rose-500 transition"
-                        title="Remove"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
+                <span className="hidden sm:block text-sm font-black text-[#E31E24] font-mono mt-1.5">â‚¹299</span>
+              </div>
             </div>
-          </div>
-
-          <div className="pt-3 border-t border-gray-100 text-center">
             <button
-              onClick={() => onTabChange("saved")}
-              className="text-xs font-semibold text-gray-600 hover:text-primary transition"
+              onClick={onOpenBookingModal}
+              className="shrink-0 sm:w-full py-1.5 sm:py-2 px-3 rounded-xl bg-red-50 hover:bg-[#E31E24] hover:text-white text-[#E31E24] text-xs font-bold transition text-center cursor-pointer active:scale-95"
             >
-              Manage saved wishlist items →
+              Book
             </button>
           </div>
-        </div>
 
-        {/* Exclusive Coupons & ProPoints Balance */}
-        <div className="rounded-3xl border border-[#E5E7EB] bg-white p-5 sm:p-6 shadow-2xs space-y-4 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div className="flex items-center gap-2">
-                <span className="grid h-7 w-7 place-items-center rounded-xl bg-amber-50 text-amber-600">
-                  <Tag className="h-4 w-4" />
-                </span>
-                <h2 className="text-base font-bold text-gray-900 font-display">Active Offers & Rewards</h2>
-              </div>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                {userProfile.points} ProPoints Active
+          <div className="p-3 sm:p-4 rounded-2xl bg-white border border-gray-200/90 shadow-2xs flex items-center sm:flex-col justify-between sm:justify-between gap-3">
+            <div className="flex items-center sm:block gap-3 min-w-0">
+              <span className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 grid place-items-center shrink-0">
+                <Zap className="h-4.5 w-4.5" />
               </span>
-            </div>
-
-            <div className="mt-3 space-y-2.5">
-              {/* Coupon 1 */}
-              <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200/80 flex items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-gray-900 bg-white px-2 py-0.5 rounded-md border border-gray-200">
-                      RIDERZ10
-                    </span>
-                    <span className="text-[11px] font-bold text-emerald-700">10% OFF Batteries</span>
-                  </div>
-                  <p className="text-[11px] text-gray-500 mt-0.5">Valid on all NMC & LiFePO4 packs above ₹30,000.</p>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs sm:text-sm font-bold text-gray-900 truncate">Battery & BMS Check</h4>
+                  <span className="sm:hidden text-xs font-black text-[#E31E24] font-mono shrink-0">â‚¹399</span>
                 </div>
-                <button
-                  onClick={() => copyCoupon("RIDERZ10")}
-                  className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition"
-                >
-                  {copiedCode === "RIDERZ10" ? "Copied" : "Copy"}
-                </button>
-              </div>
-
-              {/* Coupon 2 */}
-              <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200/80 flex items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-gray-900 bg-white px-2 py-0.5 rounded-md border border-gray-200">
-                      FREEDEL
-                    </span>
-                    <span className="text-[11px] font-bold text-emerald-700">Free Express Delivery</span>
-                  </div>
-                  <p className="text-[11px] text-gray-500 mt-0.5">Zero delivery fee on all spare parts and chargers.</p>
-                </div>
-                <button
-                  onClick={() => copyCoupon("FREEDEL")}
-                  className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition"
-                >
-                  {copiedCode === "FREEDEL" ? "Copied" : "Copy"}
-                </button>
+                <p className="text-[11px] sm:text-xs text-gray-500 truncate sm:line-clamp-2 mt-0.5">
+                  Cell balance test, voltage audit & thermal seal check.
+                </p>
+                <span className="hidden sm:block text-sm font-black text-[#E31E24] font-mono mt-1.5">â‚¹399</span>
               </div>
             </div>
+            <button
+              onClick={onOpenBookingModal}
+              className="shrink-0 sm:w-full py-1.5 sm:py-2 px-3 rounded-xl bg-red-50 hover:bg-[#E31E24] hover:text-white text-[#E31E24] text-xs font-bold transition text-center cursor-pointer active:scale-95"
+            >
+              Book
+            </button>
           </div>
 
-          <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
-            <span className="text-gray-500">
-              Loyalty Points Value: <b className="text-gray-900">{inr(userProfile.points)}</b> discount
-            </span>
+          <div className="p-3 sm:p-4 rounded-2xl bg-white border border-gray-200/90 shadow-2xs flex items-center sm:flex-col justify-between sm:justify-between gap-3">
+            <div className="flex items-center sm:block gap-3 min-w-0">
+              <span className="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-600 grid place-items-center shrink-0">
+                <ShieldCheck className="h-4.5 w-4.5" />
+              </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs sm:text-sm font-bold text-gray-900 truncate">Brake Overhaul</h4>
+                  <span className="sm:hidden text-xs font-black text-[#E31E24] font-mono shrink-0">â‚¹249</span>
+                </div>
+                <p className="text-[11px] sm:text-xs text-gray-500 truncate sm:line-clamp-2 mt-0.5">
+                  Pad replacement, fluid flush & regen calibration.
+                </p>
+                <span className="hidden sm:block text-sm font-black text-[#E31E24] font-mono mt-1.5">â‚¹249</span>
+              </div>
+            </div>
             <button
-              onClick={() => onTabChange("offers")}
-              className="font-semibold text-primary hover:underline"
+              onClick={onOpenBookingModal}
+              className="shrink-0 sm:w-full py-1.5 sm:py-2 px-3 rounded-xl bg-red-50 hover:bg-[#E31E24] hover:text-white text-[#E31E24] text-xs font-bold transition text-center cursor-pointer active:scale-95"
             >
-              View Rewards Tier →
+              Book
             </button>
           </div>
         </div>
-      </section>
+      </div>
+
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          6. RECOMMENDED COMPATIBLE SPARES
+         â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <div>
+        <div className="flex items-center justify-between mb-2.5 sm:mb-3">
+          <div>
+            <h3 className="text-sm sm:text-base font-black text-gray-900">
+              {activeBikeMeta ? `Verified Parts for ${activeBikeMeta.model}` : "Recommended EV Spares"}
+            </h3>
+            <p className="text-xs text-gray-500">100% Guaranteed OEM fitment</p>
+          </div>
+          <button
+            onClick={() => onTabChange("shop")}
+            className="text-xs sm:text-sm font-bold text-[#E31E24] hover:underline flex items-center gap-0.5"
+          >
+            <span>View All</span>
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+          {recommendedParts.map((p) => (
+            <div
+              key={p.id}
+              className="p-3 rounded-2xl bg-white border border-gray-200/90 shadow-2xs flex flex-col justify-between group"
+            >
+              <div>
+                <div className="aspect-square rounded-xl overflow-hidden bg-gray-50/80 mb-2 flex items-center justify-center p-2">
+                  <img
+                    src={p.image}
+                    alt={p.name}
+                    className="h-full w-full object-contain group-hover:scale-105 transition"
+                  />
+                </div>
+                <span className="text-[11px] font-bold text-[#E31E24] uppercase tracking-wider block truncate">
+                  {p.brand}
+                </span>
+                <h4 className="text-xs font-bold text-gray-900 line-clamp-2 mt-0.5 leading-snug min-h-[32px]">
+                  {p.name}
+                </h4>
+              </div>
+
+              <div className="mt-2.5 pt-2 border-t border-gray-100 flex items-center justify-between gap-1">
+                <span className="text-xs sm:text-sm font-black text-gray-900 font-mono truncate">
+                  {inr(p.offers[0]?.price || 999)}
+                </span>
+                <button
+                  onClick={() => {
+                    const vendorId = p.offers[0]?.vendorId || "v1";
+                    addToCart(p.id, vendorId);
+                    toast.success(`Added to cart!`);
+                  }}
+                  className="shrink-0 px-2.5 py-1 rounded-lg bg-[#E31E24] hover:bg-red-700 text-white text-xs font-bold transition active:scale-95 cursor-pointer shadow-2xs"
+                >
+                  + Add
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

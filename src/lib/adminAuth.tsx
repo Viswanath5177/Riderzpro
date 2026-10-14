@@ -79,6 +79,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(
     async (email: string, pass: string): Promise<{ success: boolean; error?: string; requireOtp?: boolean }> => {
       const trimmedEmail = email.trim().toLowerCase();
+
       try {
         const backendRes = await adminSignIn(trimmedEmail, pass);
         if (backendRes) {

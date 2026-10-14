@@ -29,6 +29,9 @@ import { Logo } from "@/components/site/bits";
 import { Vendor } from "@/lib/vendor/types";
 import { useVendorAuth } from "@/lib/vendorAuth";
 import { useVendorStore } from "@/lib/vendor/vendorStore";
+import { useStore } from "@/lib/store";
+import { signOut as endServerSession } from "@/lib/auth";
+import { toast } from "sonner";
 
 export interface NavSection {
   id: string;
@@ -50,9 +53,52 @@ export function VendorDashboardShell({
   onSelectSection,
   children,
 }: VendorDashboardShellProps) {
+  const navigate = useNavigate();
   const { logout } = useVendorAuth();
+  const { signOut: storeSignOut } = useStore();
   const { notifications, products } = useVendorStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleSignOut = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    try {
+      await endServerSession();
+    } catch {
+      // server session end fallback
+    }
+    try {
+      storeSignOut();
+    } catch {}
+    try {
+      await logout();
+    } catch (err) {
+      console.warn("Vendor logout error:", err);
+    }
+
+    try {
+      localStorage.setItem("vendor_signed_out", "true");
+      localStorage.removeItem("riderzpro_vendor_session");
+      sessionStorage.removeItem("riderzpro_vendor_session");
+      localStorage.removeItem("riderzpro_auth_user");
+      localStorage.removeItem("riderzpro_auth_token");
+      localStorage.removeItem("riderzpro_admin_session");
+      sessionStorage.removeItem("riderzpro_auth_user");
+      sessionStorage.removeItem("riderzpro_auth_token");
+    } catch {}
+
+    toast.info("Signed out of Vendor Portal");
+
+    try {
+      await navigate({ to: "/vendor/auth", search: { mode: "signin" }, replace: true });
+    } catch {
+      window.location.replace("/vendor/auth");
+    }
+  };
+
+  if (!vendor) return null;
 
   const unreadNotificationsCount = notifications.filter(
     (n) => n.vendorId === vendor.id && !n.read
@@ -94,13 +140,8 @@ export function VendorDashboardShell({
       {/* DESKTOP SIDEBAR: Clean White with Red Active State */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-[#E5E7EB] bg-white p-4.5 md:flex shadow-xs">
         {/* Brand Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <Logo imgClassName="h-8" />
-            <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[9px] font-black uppercase text-[#E31E24] border border-red-200">
-              VENDOR
-            </span>
-          </div>
+        <div className="flex items-center justify-center pb-3 border-b border-gray-100">
+          <Logo className="justify-center" imgClassName="h-8 md:h-9 w-auto" />
         </div>
 
         {/* Store Micro-profile */}
@@ -186,7 +227,8 @@ export function VendorDashboardShell({
           </Link>
 
           <button
-            onClick={logout}
+            type="button"
+            onClick={handleSignOut}
             className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer text-left"
           >
             <LogOut className="h-3.5 w-3.5 text-rose-500" />
@@ -249,7 +291,8 @@ export function VendorDashboardShell({
 
             {/* Logout button */}
             <button
-              onClick={logout}
+              type="button"
+              onClick={handleSignOut}
               title="Sign out from vendor dashboard"
               className="p-2 rounded-xl text-gray-400 hover:bg-red-50 hover:text-[#E31E24] transition cursor-pointer"
             >
@@ -264,16 +307,11 @@ export function VendorDashboardShell({
             <div className="w-80 max-w-[85vw] bg-white h-full p-4 overflow-y-auto flex flex-col justify-between shadow-2xl animate-in slide-in-from-left duration-200">
               <div className="space-y-4">
                 {/* Brand & Close */}
-                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <Logo imgClassName="h-7" />
-                    <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[9px] font-black uppercase text-[#E31E24] border border-red-200">
-                      VENDOR
-                    </span>
-                  </div>
+                <div className="relative flex items-center justify-center pb-3 border-b border-gray-100">
+                  <Logo className="justify-center" imgClassName="h-7.5 w-auto" />
                   <button
                     onClick={() => setMobileMenuOpen(false)}
-                    className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition"
+                    className="absolute right-0 p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition cursor-pointer"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -362,7 +400,8 @@ export function VendorDashboardShell({
                 </Link>
 
                 <button
-                  onClick={logout}
+                  type="button"
+                  onClick={handleSignOut}
                   className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" /> Sign Out

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Plus,
@@ -7,11 +7,13 @@ import {
   Trash2,
   AlertTriangle,
   CheckCircle2,
+  XCircle,
   ShieldCheck,
   Tag,
   IndianRupee,
   Upload,
 } from "lucide-react";
+import { toast } from "sonner";
 import { GlassCard } from "../glass/GlassCard";
 import { GlassButton } from "../glass/GlassButton";
 import { GlassInput } from "../glass/GlassInput";
@@ -24,11 +26,15 @@ import { useAdminStore } from "@/mocks/admin/adminStore";
 import { AdminProduct } from "@/mocks/admin/types";
 
 export function ProductsScreen() {
-  const { products, bikes, sellers, addProduct, updateProduct, deleteProduct } = useAdminStore();
+  const { products: mockProducts, bikes, sellers, addProduct, updateProduct, deleteProduct } = useAdminStore();
+  const [productsList, setProductsList] = useState<AdminProduct[]>([]);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [deleteModalProduct, setDeleteModalProduct] = useState<AdminProduct | null>(null);
+  const [rejectModalProduct, setRejectModalProduct] = useState<AdminProduct | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   // Add/Edit Form State
   const [title, setTitle] = useState("");
@@ -43,11 +49,136 @@ export function ProductsScreen() {
   const [selectedBikes, setSelectedBikes] = useState<string[]>([bikes[0]?.id || "bike_ather_450x"]);
   const [imageUrl, setImageUrl] = useState("https://images.unsplash.com/photo-1558441719-8b489c652758?w=500&auto=format&fit=crop&q=80");
 
+  // Fetch real products from PostgreSQL backend
+  const loadProducts = () => {
+    setIsLoading(true);
+    fetch("/api/products?all=true")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          const mapped: AdminProduct[] = res.data.map((row: any) => {
+            let firstImg = "https://images.unsplash.com/photo-1558441719-8b489c652758?w=500&auto=format&fit=crop&q=80";
+            if (row.image_url) {
+              try {
+                const arr = JSON.parse(row.image_url);
+                if (Array.isArray(arr) && arr[0]) firstImg = arr[0];
+                else if (typeof arr === "string") firstImg = arr;
+              } catch {
+                firstImg = row.image_url;
+              }
+            }
+
+            let compBikes: string[] = [];
+            if (row.compatible_vehicles) {
+              try {
+                compBikes = Array.isArray(row.compatible_vehicles)
+                  ? row.compatible_vehicles
+                  : JSON.parse(row.compatible_vehicles);
+              } catch {
+                compBikes = [row.compatible_vehicles];
+              }
+            }
+
+            const isPending = row.verification_status === "pending_approval";
+            const isRejected = row.verification_status === "rejected";
+            const rowStock = Number(row.stock) || 0;
+            const status: AdminProduct["status"] = isPending
+              ? "Pending Review"
+              : isRejected
+              ? ("Pending Review" as any)
+              : rowStock <= 0
+              ? "Out of Stock"
+              : rowStock <= 5
+              ? "Low Stock"
+              : "Active";
+
+            return {
+              id: row.id,
+              title: row.name,
+              sku: row.sku || `RZP-${row.id.slice(0, 6).toUpperCase()}`,
+              category: (row.category_name || "Accessories") as any,
+              sellerId: row.seller_id || "seller_01",
+              sellerName: row.seller_name || row.store_name || "Riderzpro Vendor",
+              price: Number(row.mrp) || Number(row.price),
+              discountPrice: Number(row.price),
+              stock: rowStock,
+              minStockThreshold: 5,
+              warrantyMonths: 12,
+              compatibleBikes: compBikes,
+              imageUrl: firstImg,
+              status,
+              specs: {
+                "Fitment Type": row.fitment_type || "Universal",
+                "Verification": row.verification_status || "approved",
+              },
+            };
+          });
+          setProductsList(mapped);
+        } else {
+          setProductsList([]);
+        }
+      })
+      .catch((err) => {
+        console.warn("[Admin Products API Notice]:", err.message);
+        setProductsList([]);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const handleReviewProduct = async (
+    productId: string,
+    action: "APPROVED" | "REJECTED",
+    reason?: string
+  ) => {
+    const toastId = toast.loading(`Reviewing product (${action.toLowerCase()})...`);
+    try {
+      const res = await fetch(`/api/admin/products/${productId}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, reason }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Failed to update product status");
+      }
+
+      toast.success(
+        action === "APPROVED"
+          ? "Product Approved & Published to Customer Storefront! Vendor notified via email."
+          : "Product Rejected. Compliance feedback email sent to vendor.",
+        { id: toastId }
+      );
+      loadProducts();
+    } catch (err: any) {
+      toast.error(err.message, { id: toastId });
+    }
+  };
+
+  const currentDisplayProducts = productsList.length > 0 ? productsList : mockProducts;
+
   const filterTabs = [
-    { label: "All Catalog", value: "ALL", count: products.length },
-    { label: "Active", value: "Active", count: products.filter((p) => p.status === "Active").length },
-    { label: "Low Stock", value: "Low Stock", count: products.filter((p) => p.status === "Low Stock" || p.status === "Out of Stock").length },
-    { label: "Pending Review", value: "Pending Review", count: products.filter((p) => p.status === "Pending Review").length },
+    { label: "All Catalog", value: "ALL", count: currentDisplayProducts.length },
+    {
+      label: "Active",
+      value: "Active",
+      count: currentDisplayProducts.filter((p) => p.status === "Active").length,
+    },
+    {
+      label: "Low Stock",
+      value: "Low Stock",
+      count: currentDisplayProducts.filter((p) => p.status === "Low Stock" || p.status === "Out of Stock").length,
+    },
+    {
+      label: "Pending Review",
+      value: "Pending Review",
+      count: currentDisplayProducts.filter((p) => p.status === "Pending Review").length,
+    },
   ];
 
   const columns: Column<AdminProduct>[] = [
@@ -87,7 +218,9 @@ export function ProductsScreen() {
             ₹{(p.discountPrice || p.price).toLocaleString("en-IN")}
           </span>
           {p.discountPrice && (
-            <p className="text-[10px] text-[#6B7280] line-through font-medium">₹{p.price.toLocaleString("en-IN")}</p>
+            <p className="text-[10px] text-[#6B7280] line-through font-medium">
+              ₹{p.price.toLocaleString("en-IN")}
+            </p>
           )}
         </div>
       ),
@@ -98,11 +231,17 @@ export function ProductsScreen() {
       sortable: true,
       render: (p) => (
         <div>
-          <span className={`font-bold tabular-nums text-xs ${p.stock <= p.minStockThreshold ? "text-red-700" : "text-emerald-700"}`}>
+          <span
+            className={`font-bold tabular-nums text-xs ${
+              p.stock <= p.minStockThreshold ? "text-red-700" : "text-emerald-700"
+            }`}
+          >
             {p.stock} units
           </span>
           {p.stock <= p.minStockThreshold && (
-            <p className="text-[10px] font-bold text-red-700 uppercase">Alert: Below {p.minStockThreshold}</p>
+            <p className="text-[10px] font-bold text-red-700 uppercase">
+              Alert: Below {p.minStockThreshold}
+            </p>
           )}
         </div>
       ),
@@ -112,7 +251,7 @@ export function ProductsScreen() {
       header: "Fitment",
       render: (p) => (
         <span className="rounded-full bg-gray-100 border border-gray-200 px-2.5 py-0.5 text-[11px] font-bold text-[#374151]">
-          {p.compatibleBikes.length} Bikes Compatible
+          {p.compatibleBikes.length} Fitments Mapped
         </span>
       ),
     },
@@ -128,6 +267,24 @@ export function ProductsScreen() {
       className: "text-right",
       render: (p) => (
         <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+          {p.status === "Pending Review" && (
+            <>
+              <button
+                onClick={() => handleReviewProduct(p.id, "APPROVED")}
+                className="rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-200 p-1.5 transition cursor-pointer"
+                title="Approve & Publish to Storefront"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setRejectModalProduct(p)}
+                className="rounded-lg bg-red-100 text-red-700 hover:bg-red-200 p-1.5 transition cursor-pointer"
+                title="Reject Product"
+              >
+                <XCircle className="h-4 w-4" />
+              </button>
+            </>
+          )}
           <button
             onClick={() => {
               setEditingProduct(p);
@@ -193,7 +350,7 @@ export function ProductsScreen() {
         compatibleBikes: selectedBikes,
         imageUrl,
         status: "Active",
-        specs: { "Standard": "Certified OEM Replacement", "Fitment Guarantee": "100% VIN Matched" },
+        specs: { Standard: "Certified OEM Replacement", "Fitment Guarantee": "100% VIN Matched" },
       });
       setIsAddModalOpen(false);
     }
@@ -208,7 +365,7 @@ export function ProductsScreen() {
             Catalog Inventory & Fitment Mapping
           </h1>
           <p className="text-sm text-[#4B5563] font-medium mt-1">
-            Manage EV spare parts, batteries, chargers, threshold stock alerts and multi-brand compatibility.
+            Manage EV spare parts, review vendor catalog submissions, threshold stock alerts and multi-brand compatibility.
           </p>
         </div>
 
@@ -218,27 +375,28 @@ export function ProductsScreen() {
           onClick={() => {
             setTitle("");
             setSku(`RZP-${Math.floor(1000 + Math.random() * 9000)}`);
-            setPrice(3500);
-            setDiscountPrice(2999);
-            setStock(25);
+            setPrice(2500);
+            setDiscountPrice(1999);
+            setStock(20);
+            setSelectedBikes([bikes[0]?.id || "bike_ather_450x"]);
             setIsAddModalOpen(true);
           }}
         >
           <Plus className="h-4 w-4" />
-          <span>Add New Part / Product</span>
+          <span>Add Catalog Part</span>
         </GlassButton>
       </div>
 
       {/* Main Table */}
       <DataTable
-        data={products}
+        data={currentDisplayProducts}
         columns={columns}
-        searchPlaceholder="Search product by title, SKU, category or seller..."
-        searchKey={(p) => `${p.title} ${p.sku} ${p.category} ${p.sellerName}`}
+        searchPlaceholder="Search catalog title, SKU number or seller name..."
+        searchKey={(p) => `${p.title} ${p.sku} ${p.sellerName} ${p.category}`}
         filterTabs={filterTabs}
         currentFilter={statusFilter}
         onFilterChange={setStatusFilter}
-        filterPredicate={(p, filter) => (filter === "Low Stock" ? p.status === "Low Stock" || p.status === "Out of Stock" : p.status === filter)}
+        filterPredicate={(p, filter) => p.status === filter}
         keyExtractor={(p) => p.id}
         exportFileName="riderzpro_products"
       />
@@ -250,136 +408,143 @@ export function ProductsScreen() {
           setIsAddModalOpen(false);
           setEditingProduct(null);
         }}
-        maxWidth="xl"
-        title={editingProduct ? "Edit Product Details" : "Add New EV Component to Catalog"}
-        description="Configure pricing, inventory stock, warranty, and compatible two-wheeler models."
+        title={editingProduct ? "Edit Catalog Item" : "Add New EV Part SKU"}
+        description={
+          editingProduct
+            ? `Update pricing, stock or bike fitment compatibility for ${editingProduct.sku}`
+            : "Register a certified EV component with pricing and fitment mapping."
+        }
       >
-        <form onSubmit={handleSaveProduct} className="space-y-4 text-xs text-[#111111]">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="sm:col-span-2">
-              <label className="block text-[#374151] font-bold mb-1 uppercase text-[10px]">
-                Product Title
-              </label>
-              <GlassInput
-                required
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. VoltRide 60V 30Ah Lithium NMC Replacement Battery Pack"
-              />
-            </div>
+        <form onSubmit={handleSaveProduct} className="space-y-4 text-xs">
+          <div>
+            <label className="block text-[#374151] font-bold mb-1.5 uppercase text-[10px]">
+              Product Title
+            </label>
+            <GlassInput
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. 72V 40Ah Smart NMC Lithium Battery Pack"
+              required
+            />
+          </div>
 
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[#374151] font-bold mb-1 uppercase text-[10px]">
-                SKU Code
+              <label className="block text-[#374151] font-bold mb-1.5 uppercase text-[10px]">
+                SKU Identifier
               </label>
               <GlassInput
-                required
                 value={sku}
                 onChange={(e) => setSku(e.target.value)}
-                placeholder="BAT-VR-60V30AH"
+                placeholder="RZP-BAT-7240"
+                required
               />
             </div>
-
             <div>
-              <label className="block text-[#374151] font-bold mb-1 uppercase text-[10px]">
-                Category
+              <label className="block text-[#374151] font-bold mb-1.5 uppercase text-[10px]">
+                Catalog Category
               </label>
               <GlassSelect
                 value={category}
                 onChange={(e) => setCategory(e.target.value as any)}
                 options={[
-                  { value: "Batteries", label: "Batteries & BMS" },
-                  { value: "Chargers", label: "Chargers & Docks" },
-                  { value: "Brakes & Suspension", label: "Brakes & Suspension" },
-                  { value: "Motors & Controllers", label: "Motors & Controllers" },
-                  { value: "Body & Accessories", label: "Body & Accessories" },
-                  { value: "Riding Gear", label: "Riding Gear & Helmets" },
+                  { label: "Batteries", value: "Batteries" },
+                  { label: "Chargers", value: "Chargers" },
+                  { label: "Controllers", value: "Controllers" },
+                  { label: "Motors", value: "Motors" },
+                  { label: "Brakes", value: "Brakes" },
+                  { label: "Accessories", value: "Accessories" },
                 ]}
               />
             </div>
+          </div>
 
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[#374151] font-bold mb-1 uppercase text-[10px]">
+              <label className="block text-[#374151] font-bold mb-1.5 uppercase text-[10px]">
                 MRP Price (₹)
               </label>
               <GlassInput
                 type="number"
-                required
                 value={price}
-                onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
+                onChange={(e) => setPrice(Number(e.target.value))}
+                required
               />
             </div>
-
             <div>
-              <label className="block text-[#374151] font-bold mb-1 uppercase text-[10px]">
-                Discounted Offer Price (₹)
+              <label className="block text-[#374151] font-bold mb-1.5 uppercase text-[10px]">
+                Discounted / Offer Price (₹)
               </label>
               <GlassInput
                 type="number"
                 value={discountPrice}
-                onChange={(e) => setDiscountPrice(parseFloat(e.target.value) || 0)}
+                onChange={(e) => setDiscountPrice(Number(e.target.value))}
+                required
               />
             </div>
+          </div>
 
+          <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-[#374151] font-bold mb-1 uppercase text-[10px]">
-                Available Stock Units
+              <label className="block text-[#374151] font-bold mb-1.5 uppercase text-[10px]">
+                Inventory Units
               </label>
               <GlassInput
                 type="number"
-                required
                 value={stock}
-                onChange={(e) => setStock(parseInt(e.target.value) || 0)}
+                onChange={(e) => setStock(Number(e.target.value))}
+                required
               />
             </div>
-
             <div>
-              <label className="block text-[#374151] font-bold mb-1 uppercase text-[10px]">
-                Low Stock Threshold
+              <label className="block text-[#374151] font-bold mb-1.5 uppercase text-[10px]">
+                Min Alert Threshold
               </label>
               <GlassInput
                 type="number"
-                required
                 value={minStockThreshold}
-                onChange={(e) => setMinStockThreshold(parseInt(e.target.value) || 0)}
+                onChange={(e) => setMinStockThreshold(Number(e.target.value))}
               />
             </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-[#374151] font-bold mb-1 uppercase text-[10px]">
-                Image URL
+            <div>
+              <label className="block text-[#374151] font-bold mb-1.5 uppercase text-[10px]">
+                Warranty (Months)
               </label>
               <GlassInput
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://..."
+                type="number"
+                value={warrantyMonths}
+                onChange={(e) => setWarrantyMonths(Number(e.target.value))}
               />
             </div>
+          </div>
 
-            {/* Compatible Bikes Checklist */}
-            <div className="sm:col-span-2 rounded-2xl bg-gray-50 p-3.5 border border-[#E5E7EB]">
-              <label className="block text-[#111111] font-bold mb-2 uppercase text-[10px]">
-                Compatible Bike Models (VIN Fitment Mapping)
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {bikes.map((b) => {
-                  const isChecked = selectedBikes.includes(b.id);
-                  return (
-                    <label key={b.id} className="flex items-center gap-2 cursor-pointer text-xs text-[#374151] font-semibold">
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={(e) => {
-                          if (e.target.checked) setSelectedBikes([...selectedBikes, b.id]);
-                          else setSelectedBikes(selectedBikes.filter((id) => id !== b.id));
-                        }}
-                        className="rounded border-gray-300 text-[#E31E24] accent-[#E31E24] focus:ring-0 cursor-pointer"
-                      />
-                      <span>{b.model}</span>
-                    </label>
-                  );
-                })}
-              </div>
+          <div>
+            <label className="block text-[#374151] font-bold mb-1.5 uppercase text-[10px]">
+              Compatible EV Bikes & Scooters
+            </label>
+            <div className="max-h-28 overflow-y-auto rounded-2xl border border-[#E5E7EB] bg-white p-2.5 space-y-1.5">
+              {bikes.map((bike) => {
+                const checked = selectedBikes.includes(bike.id);
+                return (
+                  <label
+                    key={bike.id}
+                    className="flex items-center gap-2 cursor-pointer py-1 px-2 rounded-lg hover:bg-gray-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedBikes([...selectedBikes, bike.id]);
+                        else setSelectedBikes(selectedBikes.filter((id) => id !== bike.id));
+                      }}
+                      className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                    />
+                    <span className="font-semibold text-xs text-[#111111]">
+                      {bike.brand} {bike.model} ({bike.yearRange})
+                    </span>
+                  </label>
+                );
+              })}
             </div>
           </div>
 
@@ -400,6 +565,59 @@ export function ProductsScreen() {
             </GlassButton>
           </div>
         </form>
+      </GlassModal>
+
+      {/* Reject Product Modal with Reason Input */}
+      <GlassModal
+        isOpen={Boolean(rejectModalProduct)}
+        onClose={() => {
+          setRejectModalProduct(null);
+          setRejectReason("");
+        }}
+        title="Reject Catalog Part Submission"
+        description="Provide a compliance or specification reason to send back to the vendor."
+      >
+        <div className="space-y-4 text-xs">
+          <div>
+            <label className="block text-[#374151] font-bold mb-1.5 uppercase text-[10px]">
+              Specification Rejection Reason
+            </label>
+            <textarea
+              rows={3}
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="e.g. Dimensions or voltage compatibility conflict with listed models."
+              className="w-full rounded-2xl border border-[#E5E7EB] bg-white p-3 text-[#111111] placeholder:text-[#9CA3AF] outline-none focus:border-[#E31E24] focus:ring-2 focus:ring-red-500/20"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2.5 pt-2">
+            <GlassButton
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setRejectModalProduct(null);
+                setRejectReason("");
+              }}
+            >
+              Cancel
+            </GlassButton>
+            <GlassButton
+              variant="destructive"
+              size="sm"
+              disabled={!rejectReason.trim()}
+              onClick={() => {
+                if (rejectModalProduct) {
+                  handleReviewProduct(rejectModalProduct.id, "REJECTED", rejectReason.trim());
+                  setRejectModalProduct(null);
+                  setRejectReason("");
+                }
+              }}
+            >
+              Confirm Rejection & Send Email
+            </GlassButton>
+          </div>
+        </div>
       </GlassModal>
 
       {/* Delete Confirm Dialog */}

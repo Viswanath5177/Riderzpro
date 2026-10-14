@@ -438,13 +438,8 @@ function TrackingView({
                   {shipment.currentGps?.speedKmph} km/h
                 </span>
               </div>
-              <LiveMap
-                stops={order?.groups.length ?? 1}
-                progress={0.65}
-                className="h-52 sm:h-64 w-full"
-              />
-              <div className="absolute bottom-3 left-3 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">
-                Simulated animation · Not real GPS
+              <div className="rounded-xl overflow-hidden border border-gray-200">
+                <LiveMap deliveryId={shipment.shipmentId || "delivery_vijayawada_amaravati_live"} className="h-64 sm:h-80 w-full" />
               </div>
             </div>
           ) : (

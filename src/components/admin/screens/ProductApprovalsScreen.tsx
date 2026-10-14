@@ -256,7 +256,7 @@ export function ProductApprovalsScreen() {
       const b = CATALOG_BIKES.find((bk) => bk.id === bikeId);
       if (b && b.voltage && b.voltage !== parsedVolt) {
         warnings.push(
-          `Voltage mismatch with ${b.name}: part is ${parsedVolt}V, bike runs on ${b.voltage}V`
+          `Voltage mismatch with ${(b as any).name || `${b.make} ${b.model}`}: part is ${parsedVolt}V, bike runs on ${b.voltage}V`
         );
       }
     });
@@ -343,7 +343,7 @@ export function ProductApprovalsScreen() {
         const seller = sellers.find((s) => s.id === p.sellerId);
         return (
           <div>
-            <p className="font-bold text-xs text-[#111111]">{p.sellerName || seller?.storeName || "Vendor"}</p>
+            <p className="font-bold text-xs text-[#111111]">{p.sellerName || (seller as any)?.storeName || seller?.businessName || "Vendor"}</p>
             <p className="text-[10px] text-gray-500">ID: {p.sellerId}</p>
           </div>
         );
@@ -675,7 +675,7 @@ export function ProductApprovalsScreen() {
               </h4>
               <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5">
                 {(selectedProduct.vendorProductRecord?.images || [selectedProduct.imageUrl]).map(
-                  (img, index) => (
+                  (img: any, index: number) => (
                     <div
                       key={index}
                       onClick={() => setZoomedImage(img)}
@@ -804,7 +804,7 @@ export function ProductApprovalsScreen() {
                       key={bikeId}
                       className="px-2.5 py-1 bg-red-50 text-[#E31E24] border border-red-200 rounded-lg text-xs font-bold"
                     >
-                      {b?.name || bikeId} {b?.voltage ? `(${b.voltage}V)` : ""}
+                      {(b as any)?.name || (b ? `${b.make} ${b.model}` : bikeId)} {b?.voltage ? `(${b.voltage}V)` : ""}
                     </span>
                   );
                 })}
