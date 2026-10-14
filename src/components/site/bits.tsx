@@ -1,31 +1,20 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Moon, Sun, Zap, CheckCircle2, XCircle, HelpCircle, Star, Heart, ShoppingCart, MapPin } from "lucide-react";
+import { Moon, Sun, Zap, CheckCircle2, XCircle, HelpCircle, Star, Heart, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
-import { bestOffer, fitmentFor, getVendor, inr, distanceKm, etaMinutes, type Fitment, type Product } from "@/lib/data";
+import { bestOffer, fitmentFor, getVendor, inr, type Fitment, type Product } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 import logoImg from "@/assets/riderzpro-logo.png";
 
-export function Logo({
-  className,
-  imgClassName,
-  style,
-}: {
-  className?: string;
-  imgClassName?: string;
-  style?: React.CSSProperties;
-}) {
+export function Logo({ className, imgClassName }: { className?: string; imgClassName?: string }) {
   return (
-    <Link to="/" className={cn("group inline-flex items-center select-none", className)}>
+    <Link to="/" className={cn("group inline-flex items-center", className)}>
       <img
         src={logoImg}
         alt="RiderzPro - Car & Bike Accessories"
-        className={cn(
-          "h-11 sm:h-12 md:h-14 w-auto object-contain object-left transition-transform duration-200 group-hover:scale-[1.03]",
-          imgClassName
-        )}
-        style={style}
+        className={cn("h-8 md:h-9.5 w-auto object-contain transition-transform group-hover:scale-[1.02]", imgClassName)}
       />
     </Link>
   );
@@ -59,7 +48,7 @@ const fitMeta: Record<Fitment, { label: string; cls: string; Icon: typeof CheckC
     Icon: XCircle,
   },
   unknown: {
-    label: "Universal Fit",
+    label: "Fitment unverified",
     cls: "bg-gray-100 text-gray-700 border-gray-200",
     Icon: HelpCircle,
   },
@@ -81,54 +70,63 @@ export function FitmentBadge({ fit, className }: { fit: Fitment; className?: str
 }
 
 export function ProductCard({ p }: { p: Product }) {
-  const { activeBikeId, addToCart, toggleSaved, isSaved, inventoryStock, userLocation } = useStore();
+  const { activeBikeId, addToCart, toggleSaved, isSaved } = useStore();
+  const [imageFailed, setImageFailed] = useState(false);
   const offer = bestOffer(p);
   const fit = fitmentFor(p, activeBikeId);
-  const offerPrice = offer?.price || 0;
-  const mrp = p.mrp || (offerPrice > 0 ? Math.round((offerPrice * 1.14) / 100) * 100 : 0);
-  const discountPct = p.discountPercent || (mrp > offerPrice && offerPrice > 0 ? Math.round(((mrp - offerPrice) / mrp) * 100) : 0);
+  const mrp = Math.round((offer.price * 1.14) / 100) * 100;
+  const discountPct = Math.round(((mrp - offer.price) / mrp) * 100);
   const saved = isSaved(p.id);
-
   const vendor = getVendor(offer.vendorId);
-  const vendorDist = userLocation ? Math.round(distanceKm(vendor, userLocation) * 10) / 10 : null;
-  const deliveryEta = vendorDist !== null ? etaMinutes(vendorDist, vendor.prepMins) : null;
-
-  const currentStock = inventoryStock?.[p.id] ?? offer?.stock ?? p.offers?.[0]?.stock ?? 0;
-  const isLowStock = currentStock < 5;
+  const hasImage = Boolean(p.image && p.image.trim() !== "" && !imageFailed);
+  const batterySummary = p.batterySpec || [
+    p.batteryCapacityKwh ? `${p.batteryCapacityKwh} kWh` : "",
+    p.voltage && p.capacityAh ? `${p.voltage} V · ${p.capacityAh} Ah` : "",
+    p.chemistry || "",
+  ].filter(Boolean).join(" · ");
 
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-2xs transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-gray-300">
       {/* Product Image Area */}
       <div className="relative block aspect-square overflow-hidden bg-[#F5F6F8]">
-        <Link to="/product/$id" params={{ id: p.id }} className="block h-full w-full">
-          <img
-            src={p.image}
-            alt={p.name}
-            loading="lazy"
-            width={600}
-            height={600}
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = "/src/assets/parts.jpg";
-            }}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-          />
-        </Link>
+        {hasImage ? (
+          <Link to="/product/$id" params={{ id: p.id }} className="block h-full w-full">
+            <img
+              src={p.image}
+              alt={p.name}
+              loading="lazy"
+              width={600}
+              height={600}
+              onError={(event) => {
+                if (p.imageFallback && event.currentTarget.src !== p.imageFallback) {
+                  event.currentTarget.src = p.imageFallback;
+                  return;
+                }
+                setImageFailed(true);
+              }}
+              className="h-full w-full object-contain p-2 transition duration-500 group-hover:scale-105"
+            />
+          </Link>
+        ) : (
+          <Link
+            to="/product/$id"
+            params={{ id: p.id }}
+            className="flex h-full w-full flex-col items-center justify-center p-3 text-center bg-gradient-to-b from-[#FAFAFA] to-[#F1F3F5] transition group-hover:bg-[#E5E7EB]"
+          >
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white border border-[#E5E7EB] text-2xl shadow-2xs">
+              🧰
+            </div>
+            <span className="mt-2 text-xs font-semibold text-[#4B5563] leading-snug">
+              Product image not available
+            </span>
+            <span className="mt-0.5 text-[10px] text-[#9CA3AF]">Verified Genuine Spares</span>
+          </Link>
+        )}
         {/* Top Badges */}
         <div className="absolute left-2.5 top-2.5 flex flex-col gap-1 items-start z-10 pointer-events-none">
           {discountPct > 0 && (
             <span className="rounded-md bg-[#E31E24] px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
               {discountPct}% OFF
-            </span>
-          )}
-          {vendorDist !== null && vendorDist <= 4 && (
-            <span className="rounded-md bg-emerald-600 text-white px-2 py-0.5 text-[10px] font-bold shadow-xs flex items-center gap-1">
-              <Zap className="h-2.5 w-2.5 fill-white text-white" />
-              ⚡ {deliveryEta}m
-            </span>
-          )}
-          {isLowStock && (
-            <span className="rounded-md bg-amber-600 text-white px-2 py-0.5 text-[10px] font-bold shadow-xs">
-              Hurry limited Stock
             </span>
           )}
           {activeBikeId && (
@@ -162,80 +160,56 @@ export function ProductCard({ p }: { p: Product }) {
       </div>
 
       {/* Card Content Area */}
-      <div className="flex flex-1 flex-col p-2.5 sm:p-4">
-        <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-[#6B7280]">
-          <span className="font-semibold uppercase tracking-wider truncate max-w-[95px] sm:max-w-[140px]">
+      <div className="flex flex-1 flex-col p-4">
+        <div className="flex items-center justify-between text-[11px] text-[#6B7280]">
+          <span className="font-semibold uppercase tracking-wider truncate max-w-[140px]">
             {p.category} · {p.brand}
           </span>
           <span className="flex items-center gap-1 font-semibold text-gray-700 shrink-0">
             <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-            {getVendor(offer.vendorId).rating}
+            {vendor.rating}
           </span>
         </div>
 
         <Link
           to="/product/$id"
           params={{ id: p.id }}
-          className="mt-1 line-clamp-2 font-semibold text-xs sm:text-sm leading-snug text-[#111111] transition-colors hover:text-[#E31E24]"
+          className="mt-1 line-clamp-2 font-semibold text-sm leading-snug text-[#111111] transition-colors hover:text-[#E31E24]"
         >
           {p.name}
         </Link>
 
-        {/* Availability status */}
-        <div className="mt-1.5 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-[11px] truncate">
-          {isLowStock ? (
-            <>
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
-              <span className="text-amber-700 font-bold truncate">Hurry limited Stock</span>
-              {currentStock > 0 && (
-                <span className="text-amber-600 font-semibold shrink-0">({currentStock})</span>
-              )}
-            </>
-          ) : (
-            <>
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-              <span className="text-emerald-700 font-medium">In Stock</span>
-            </>
-          )}
+        {batterySummary && (
+          <p className="mt-2 text-[10px] leading-snug text-[#6B7280]">
+            <span className="font-semibold text-[#111111]">Battery:</span> {batterySummary}
+          </p>
+        )}
+
+        <div className="mt-2 flex items-center gap-1.5 text-[11px]">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <span className="text-emerald-700 font-medium">In Stock</span>
           <span className="text-gray-400">·</span>
-          <span className="text-[#6B7280] truncate">{p.warrantyMonths}m Warranty</span>
+          {p.warrantyMonths > 0 && <span className="text-[#6B7280]">{p.warrantyMonths}m Warranty</span>}
         </div>
 
         {/* Price and Add to Cart Area */}
-        <div className="mt-auto pt-2.5 sm:pt-3 border-t border-gray-100 flex items-end justify-between gap-1.5 sm:gap-2">
-          <div className="min-w-0">
-            {offerPrice > 0 ? (
-              <div className="flex items-baseline gap-1 sm:gap-1.5 flex-wrap">
-                <span className="font-display text-sm sm:text-base md:text-lg font-extrabold text-[#111111]">
-                  {inr(offerPrice)}
-                </span>
-                {mrp > offerPrice && (
-                  <span className="text-[10px] sm:text-xs text-gray-400 line-through">
-                    {inr(mrp)}
-                  </span>
-                )}
-              </div>
-            ) : (
-              <span className="text-[10px] sm:text-xs font-bold text-gray-700 bg-gray-100 px-1.5 sm:px-2 py-0.5 rounded">
-                Price on Req.
-              </span>
-            )}
-            <div className="flex items-center gap-1 text-[9.5px] sm:text-[10px] text-[#6B7280] truncate max-w-[125px] sm:max-w-[150px] mt-0.5">
+        <div className="mt-auto pt-3 border-t border-gray-100 flex items-end justify-between gap-2">
+          <div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-display text-lg font-extrabold text-[#111111]">{inr(offer.price)}</span>
+              <span className="text-xs text-gray-400 line-through">{inr(mrp)}</span>
+            </div>
+            <div className="flex items-center gap-1 text-[10px] text-[#6B7280]">
+              <span>Sold by</span>
               <Link
                 to="/store/$slug"
-                params={{ slug: (vendor as any).storeSlug || offer.vendorId }}
+                params={{ slug: (getVendor(offer.vendorId) as any).storeSlug || offer.vendorId }}
                 onClick={(e) => e.stopPropagation()}
-                className="font-bold text-gray-800 hover:text-[#E31E24] inline-flex items-center gap-0.5 truncate"
+                className="font-bold text-gray-800 hover:text-[#E31E24] inline-flex items-center gap-0.5 truncate max-w-[120px]"
               >
-                <span className="truncate">{vendor.name}</span>
+                {getVendor(offer.vendorId).name}
                 <CheckCircle2 className="h-2.5 w-2.5 text-blue-500 fill-blue-50 shrink-0" />
               </Link>
-              {vendorDist !== null && (
-                <span className="shrink-0 text-emerald-700 font-bold bg-emerald-50 px-1 py-0.2 rounded text-[9px] flex items-center gap-0.5">
-                  <MapPin className="h-2.5 w-2.5 text-emerald-600" />
-                  {vendorDist}km
-                </span>
-              )}
             </div>
           </div>
 
@@ -246,28 +220,12 @@ export function ProductCard({ p }: { p: Product }) {
               addToCart(p.id, offer.vendorId);
               toast.success(`Added ${p.name} to cart`);
             }}
-            aria-label={`Add ${p.name} to cart`}
-            className="flex items-center gap-1 sm:gap-1.5 rounded-lg bg-[#E31E24] px-2 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-white transition hover:bg-red-700 active:scale-95 shadow-2xs cursor-pointer shrink-0"
+            className="flex items-center gap-1.5 rounded-lg bg-[#E31E24] px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-700 active:scale-95 shadow-2xs"
           >
-            <ShoppingCart className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
+            <ShoppingCart className="h-3.5 w-3.5" />
             <span>Add</span>
           </button>
         </div>
-
-        {/* Low Stock Indicator Below Card */}
-        {isLowStock && (
-          <div className="mt-2.5 sm:mt-3 -mx-2.5 -mb-2.5 sm:-mx-4 sm:-mb-4 bg-amber-50 border-t border-amber-200/90 px-2.5 sm:px-3.5 py-1 sm:py-1.5 flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-amber-800">
-            <span className="flex items-center gap-1 sm:gap-1.5 truncate">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping shrink-0" />
-              <span className="tracking-tight truncate">Limited Stock</span>
-            </span>
-            {currentStock > 0 && (
-              <span className="text-[9.5px] sm:text-[10px] font-bold text-amber-700 bg-amber-200/70 px-1.5 py-0.5 rounded shrink-0">
-                {currentStock} left
-              </span>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

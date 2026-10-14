@@ -486,16 +486,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
 
       // Hydrate user profile from active auth session
-      const rawAuthUser = localStorage.getItem("riderzpro_auth_user");
-      if (rawAuthUser) {
+      const authRaw = localStorage.getItem("riderzpro_auth_user");
+      if (authRaw) {
         try {
-          const parsedAuth = JSON.parse(rawAuthUser);
-          if (parsedAuth && parsedAuth.name) {
+          const authUser = JSON.parse(authRaw);
+          if (authUser?.name) {
             setUserProfile((prev) => ({
               ...prev,
-              name: parsedAuth.name,
-              email: parsedAuth.email || prev.email,
-              phone: parsedAuth.phone || prev.phone,
+              name: authUser.name,
+              email: authUser.email || prev.email,
+              phone: authUser.phone || prev.phone,
             }));
             setIsLoggedIn(true);
           }
@@ -1029,7 +1029,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [userProfile]);
 
   const signIn = useCallback(() => setIsLoggedIn(true), []);
-  const signOut = useCallback(() => setIsLoggedIn(false), []);
+  const signOut = useCallback(() => {
+    setIsLoggedIn(false);
+    localStorage.removeItem("riderzpro_auth_user");
+    localStorage.removeItem("riderzpro_auth_token");
+  }, []);
   const deleteOrder = useCallback((id: string) => setOrders((os) => os.filter((o) => o.id !== id)), []);
   const clearOrders = useCallback(() => setOrders([]), []);
 

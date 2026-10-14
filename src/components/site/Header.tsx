@@ -73,6 +73,7 @@ export function Header() {
     <>
       <header className="sticky top-0 z-40 h-[72px] border-b border-[#ececec] bg-white/95 backdrop-blur-md transition-shadow">
         <div className="mx-auto flex h-full max-w-[1200px] items-center justify-between px-4 sm:px-6 lg:px-8">
+          {/* Left: Brand Logo */}
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
             <button
               onClick={() => setIsMobileDrawerOpen(true)}
@@ -268,7 +269,7 @@ export function Header() {
               </DropdownMenu>
             ) : (
               <Link
-                to="/login"
+                to="/auth"
                 className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#e11d2a] hover:bg-[#c91823] px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-xs transition active:scale-95"
               >
                 <User className="h-3.5 w-3.5" />

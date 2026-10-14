@@ -38,8 +38,13 @@ __pycache__/
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
+.env
+.env.*
+!.env.example
 database/*.db
 database/*.db-*
+*.sqlite
+*.db
 
 # Editor directories and files
 .vscode/*

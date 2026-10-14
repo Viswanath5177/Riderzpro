@@ -72,7 +72,7 @@ export function CategoryGrid() {
         </div>
 
         {/* 6 Equal Cards Grid (3x2 desktop, 2x3 mobile) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">
           {categories.map((c) => {
             const Icon = c.icon;
             return (
@@ -80,22 +80,22 @@ export function CategoryGrid() {
                 key={c.title}
                 to="/shop"
                 search={{ cat: c.cat } as any}
-                className="group relative flex flex-col justify-between rounded-2xl border border-[#ececec] bg-white p-6 transition-all duration-200 hover:border-[#e11d2a] hover:shadow-md"
+                className="group relative flex flex-col justify-between rounded-2xl border border-[#ececec] bg-white p-4 sm:p-6 transition-all duration-200 hover:border-[#e11d2a] hover:shadow-md"
               >
                 <div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#f7f7f8] text-[#111111] transition-colors group-hover:bg-red-50 group-hover:text-[#e11d2a] mb-5">
-                    <Icon className="h-6 w-6" />
+                  <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-[#f7f7f8] text-[#111111] transition-colors group-hover:bg-red-50 group-hover:text-[#e11d2a] mb-3.5 sm:mb-5">
+                    <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
-                  <h3 className="text-lg font-bold text-[#111111] transition-colors group-hover:text-[#e11d2a]">
+                  <h3 className="text-sm sm:text-lg font-bold text-[#111111] transition-colors group-hover:text-[#e11d2a]">
                     {c.title}
                   </h3>
-                  <p className="text-sm text-[#6b7280] mt-1.5 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-[#6b7280] mt-1 sm:mt-1.5 leading-relaxed line-clamp-2 sm:line-clamp-none">
                     {c.desc}
                   </p>
                 </div>
 
-                <div className="mt-6 flex items-center gap-1.5 text-xs font-semibold text-[#e11d2a] opacity-0 transition-opacity group-hover:opacity-100">
-                  <span>Browse department</span>
+                <div className="mt-4 sm:mt-6 flex items-center gap-1.5 text-xs font-semibold text-[#e11d2a] sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                  <span>Browse</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </div>
               </Link>

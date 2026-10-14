@@ -56,6 +56,7 @@ type OfferSortOption = "value" | "price_asc" | "rating_desc" | "delivery_fast";
 
 function ProductPage() {
   const { id } = Route.useParams();
+  const [imageFailed, setImageFailed] = useState(false);
   const { activeBikeId, addToCart } = useStore();
 
   const [product, setProduct] = useState<Product | null>(() => getProduct(id) || null);
@@ -95,6 +96,7 @@ function ProductPage() {
   const p = product;
   const fit = p ? fitmentFor(p, activeBikeId) : "unknown";
   const bike = activeBikeId ? getBike(activeBikeId) : null;
+  const hasValidImage = Boolean(p && p.image && p.image.trim() !== "" && !imageFailed);
 
   // Process and sort offers
   const enrichedOffers = useMemo(() => {
@@ -222,17 +224,27 @@ function ProductPage() {
         <div className="grid gap-10 lg:grid-cols-2">
           {/* Product Media Gallery */}
           <div className="space-y-4">
-            <div className="overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white p-4 shadow-2xs">
-              <img
-                src={p.image}
-                alt={p.name}
-                width={1024}
-                height={1024}
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = "/src/assets/parts.jpg";
-                }}
-                className="aspect-square w-full object-contain rounded-2xl"
-              />
+            <div className="aspect-square overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white p-4 shadow-2xs flex items-center justify-center">
+              {hasValidImage ? (
+                <img
+                  src={p.image}
+                  alt={p.name}
+                  width={1024}
+                  height={1024}
+                  onError={() => setImageFailed(true)}
+                  className="aspect-square w-full object-contain rounded-2xl"
+                />
+              ) : (
+                <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-center p-6 bg-gradient-to-b from-[#FAFAFA] to-[#F1F3F5] rounded-2xl">
+                  <div className="grid h-20 w-20 place-items-center rounded-3xl bg-white border border-[#E5E7EB] text-4xl shadow-sm">
+                    🧰
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-[#111111]">Product image not available</p>
+                    <p className="mt-1 text-xs text-[#6B7280]">Genuine catalog item · {p.brand}</p>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex items-center justify-between text-xs text-[#6B7280] px-2">
               <span className="flex items-center gap-1.5">

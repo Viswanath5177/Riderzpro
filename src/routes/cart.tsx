@@ -51,6 +51,7 @@ function CartPage() {
   const [couponError, setCouponError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
+
   // Address state prefilled from profile
   const [address, setAddress] = useState<AddressRef>({
     name: userProfile.name || "Aakash Sharma",
@@ -95,7 +96,7 @@ function CartPage() {
   const handlePlaceOrder = () => {
     if (!isAuthenticated) {
       toast.info("Please sign in to place your order.");
-      navigate({ to: "/login", search: { redirect: "/cart" } });
+      navigate({ to: "/auth", search: { redirect: "/cart" } });
       return;
     }
     if (stockErrors.length > 0) {

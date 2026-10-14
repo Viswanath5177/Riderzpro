@@ -150,8 +150,6 @@ export function CustomerLayout({
       id: "tracking",
       label: "Track Delivery",
       Icon: Truck,
-      badge: liveOrder ? "Live" : undefined,
-      badgeColor: "bg-[#E31E24] text-white",
     },
     {
       id: "garage",
@@ -546,6 +544,7 @@ export function CustomerLayout({
               {/* Notifications Button on Top Right with Badge & Popover */}
               <div className="relative">
                 <button
+                  type="button"
                   onClick={() => setIsNotifOpen(!isNotifOpen)}
                   className="relative h-9 w-9 sm:h-10 sm:w-10 grid place-items-center rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] hover:border-black/[0.16] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] hover:scale-105 active:scale-95 transition-all duration-200 text-gray-600 hover:text-gray-950 cursor-pointer group shrink-0"
                   aria-label="Notifications"

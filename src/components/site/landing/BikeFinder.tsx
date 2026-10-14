@@ -26,7 +26,9 @@ export function BikeFinder() {
         return;
       }
       addBike({ bikeId: res.bike.id, year: res.year, vin: vinInput.toUpperCase() });
-      toast.success(`Matched ${res.bike.make} ${res.bike.model}${res.year ? ` (${res.year})` : ""}`);
+      toast.success(
+        `Matched ${res.bike.make} ${res.bike.model}${res.year ? ` (${res.year})` : ""}`,
+      );
       navigate({ to: "/shop" });
     } else {
       const selectedBike = bikes.find((b) => b.id === selectedBikeId) || bikes[0];
@@ -36,10 +38,14 @@ export function BikeFinder() {
     }
   };
 
+  const isHero3D = import.meta.env["VITE_HERO_3D"] !== "false";
+
   return (
     <div
       id="bike-finder"
-      className="rounded-2xl border border-[#ececec] bg-white p-4 sm:p-5 shadow-xs transition hover:shadow-md"
+      className={`rounded-2xl border border-[#ececec] ${
+        isHero3D ? "bg-white/75 backdrop-blur-md" : "bg-white"
+      } p-4 sm:p-5 shadow-xs transition hover:shadow-md`}
     >
       {/* Tabs */}
       <div className="flex rounded-xl bg-[#f7f7f8] p-1 mb-4">
@@ -70,13 +76,13 @@ export function BikeFinder() {
       {/* Input & Action Form */}
       <form onSubmit={handleFindParts} className="flex flex-col sm:flex-row gap-2.5">
         {tab === "bike" ? (
-          <div className="relative flex-1">
+          <div className="relative flex-1 min-w-0">
             <div className="flex h-12 w-full items-center gap-2.5 rounded-xl border border-[#ececec] bg-[#f7f7f8] px-3.5 focus-within:border-[#e11d2a] focus-within:bg-white transition">
               <BikeIcon className="h-4 w-4 text-[#e11d2a] shrink-0" />
               <select
                 value={selectedBikeId}
                 onChange={(e) => setSelectedBikeId(e.target.value)}
-                className="w-full bg-transparent text-xs sm:text-sm font-semibold text-[#111111] outline-none cursor-pointer"
+                className="w-full bg-transparent text-xs sm:text-sm font-semibold text-[#111111] outline-none cursor-pointer truncate"
               >
                 {bikes.map((b) => (
                   <option key={b.id} value={b.id}>
@@ -87,7 +93,7 @@ export function BikeFinder() {
             </div>
           </div>
         ) : (
-          <div className="relative flex-1">
+          <div className="relative flex-1 min-w-0">
             <div className="flex h-12 w-full items-center gap-2.5 rounded-xl border border-[#ececec] bg-[#f7f7f8] px-3.5 focus-within:border-[#e11d2a] focus-within:bg-white transition">
               <Search className="h-4 w-4 text-[#e11d2a] shrink-0" />
               <input
@@ -95,7 +101,7 @@ export function BikeFinder() {
                 value={vinInput}
                 onChange={(e) => setVinInput(e.target.value.toUpperCase())}
                 maxLength={17}
-                placeholder="Enter 17-digit VIN (e.g. P6R1S1PR2PN000001)"
+                placeholder="Enter 17-digit VIN (e.g. P6R1S1...)"
                 className="w-full bg-transparent text-xs sm:text-sm font-mono font-semibold text-[#111111] uppercase placeholder:font-sans placeholder:text-[#6b7280] outline-none"
               />
             </div>
@@ -104,7 +110,7 @@ export function BikeFinder() {
 
         <button
           type="submit"
-          className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#e11d2a] hover:bg-[#c91823] px-6 text-xs sm:text-sm font-semibold text-white shadow-xs transition active:scale-95 cursor-pointer whitespace-nowrap"
+          className="flex h-12 w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-[#e11d2a] hover:bg-[#c91823] px-6 text-xs sm:text-sm font-semibold text-white shadow-xs transition active:scale-95 cursor-pointer whitespace-nowrap"
         >
           <span>Find parts</span>
           <ArrowRight className="h-4 w-4" />

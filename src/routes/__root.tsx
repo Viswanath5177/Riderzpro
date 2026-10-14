@@ -70,6 +70,16 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
         <p className="mt-2 text-sm text-muted-foreground">
           Something went wrong on our end. You can try refreshing or head back home.
         </p>
+        {Boolean(error) && (
+          <div className="mt-4 p-3 bg-red-50 text-red-900 border border-red-200 rounded-lg text-xs text-left max-h-56 overflow-auto font-mono">
+            <p className="font-bold">{(error as any)?.message || String(error)}</p>
+            {(error as any)?.stack && (
+              <pre className="mt-1 whitespace-pre-wrap text-[10px] text-red-700">
+                {(error as any).stack}
+              </pre>
+            )}
+          </div>
+        )}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -112,9 +122,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.png", type: "image/png" },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
-      { rel: "apple-touch-icon", href: "/favicon.png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
