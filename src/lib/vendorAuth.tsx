@@ -82,7 +82,7 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
 
         const wasExplicitlySignedOut = localStorage.getItem("vendor_signed_out") === "true";
         const rawSession = localStorage.getItem(VENDOR_SESSION_KEY) || sessionStorage.getItem(VENDOR_SESSION_KEY);
-        if (rawSession) {
+        if (rawSession && !wasExplicitlySignedOut) {
           const parsed = JSON.parse(rawSession) as VendorUserSession;
           setSession(parsed);
         } else if (!wasExplicitlySignedOut) {
@@ -374,13 +374,23 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
   );
 
   const signOutVendor = useCallback(async () => {
-    localStorage.setItem("vendor_signed_out", "true");
-    localStorage.removeItem(VENDOR_SESSION_KEY);
-    sessionStorage.removeItem(VENDOR_SESSION_KEY);
+    try {
+      localStorage.setItem("vendor_signed_out", "true");
+      localStorage.removeItem(VENDOR_SESSION_KEY);
+      sessionStorage.removeItem(VENDOR_SESSION_KEY);
+      localStorage.removeItem("riderzpro_auth_user");
+      localStorage.removeItem("riderzpro_auth_token");
+      localStorage.removeItem("riderzpro_admin_session");
+      sessionStorage.removeItem("riderzpro_auth_user");
+      sessionStorage.removeItem("riderzpro_auth_token");
+      await fetch("/api/auth/signout", { method: "POST", credentials: "include" }).catch(() => {});
+    } catch (e) {
+      console.warn("Storage signout cleanup:", e);
+    }
     setSession(null);
     toast.info("Signed out of Vendor Portal");
     if (typeof window !== "undefined") {
-      window.location.href = "/vendor/auth";
+      window.location.replace("/vendor/auth");
     }
   }, []);
 
@@ -463,7 +473,8 @@ export function VendorRouteGuard({
   }
 
   if (!isAuthenticated || !vendor) {
-    return <Navigate to="/vendor/auth" search={{ redirect: currentPath }} replace />;
+    const wasExplicitlySignedOut = typeof window !== "undefined" && localStorage.getItem("vendor_signed_out") === "true";
+    return <Navigate to="/vendor/auth" search={wasExplicitlySignedOut ? undefined : { redirect: currentPath }} replace />;
   }
 
   // If onboarding is incomplete, redirect to onboarding stepper (unless already on onboarding page)

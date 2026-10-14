@@ -33,6 +33,11 @@ function NotFoundComponent() {
     return <Navigate to="/" replace />;
   }
 
+  // Handle legacy vendor dashboard route alias
+  if (/^\/dashboard\/vendor\/?$/i.test(pathname)) {
+    return <Navigate to="/vendor/dashboard" replace />;
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
