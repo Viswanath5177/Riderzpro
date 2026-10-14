@@ -97,12 +97,13 @@ export function AiChatbotWidget() {
 
       let res: Response | null = null;
       try {
-        res = await fetch("/api/v1/chat", {
+        res = await fetch("/api/assistant", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             query,
             vehicle_model: activeBikeName,
+            order_id: liveOrder?.id || "",
             history: historyPayload,
           }),
         });

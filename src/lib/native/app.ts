@@ -1,8 +1,23 @@
-import { App as CapApp } from "@capacitor/app";
-import { StatusBar, Style } from "@capacitor/status-bar";
-import { SplashScreen } from "@capacitor/splash-screen";
-import { Capacitor } from "@capacitor/core";
 import { toast } from "sonner";
+
+// Safe Capacitor Fallbacks for Web environment
+const win = typeof window !== "undefined" ? (window as any) : {};
+const Capacitor = win.Capacitor || {
+  isNativePlatform: () => false,
+  getPlatform: () => "web",
+};
+const CapApp = win.Capacitor?.Plugins?.App || {
+  exitApp: async () => {},
+  addListener: async () => ({ remove: () => {} }),
+};
+const StatusBar = win.Capacitor?.Plugins?.StatusBar || {
+  setStyle: async () => {},
+  setBackgroundColor: async () => {},
+};
+const Style = { Dark: "DARK", Light: "LIGHT", Default: "DEFAULT" } as const;
+const SplashScreen = win.Capacitor?.Plugins?.SplashScreen || {
+  hide: async () => {},
+};
 
 /**
  * Custom back handlers stack.

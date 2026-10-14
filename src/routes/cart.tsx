@@ -21,6 +21,7 @@ import { getProduct, getVendor, inr, products, GST_RATE } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { createOrder, ApiError, type CreateOrderPayload } from "@/lib/api/orders";
 import { useAuth } from "@/lib/auth";
+import { DownloadInvoiceButton } from "@/components/common/DownloadInvoiceButton";
 import {
   isDeliverablePincode,
   isValidPincodeFormat,
@@ -39,6 +40,7 @@ import {
 import { PaymentStep, type PaymentMethod } from "@/components/checkout/PaymentStep";
 import { MissingFieldsChecklist } from "@/components/checkout/MissingFieldsChecklist";
 import { ServiceabilityBanner } from "@/components/checkout/ServiceabilityBanner";
+
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -60,7 +62,7 @@ export const Route = createFileRoute("/cart")({
 });
 
 function CartPage() {
-  const { cart, setQty, userProfile, inventoryStock, clearCart, addToCart, userLocation } = useStore();
+  const { cart, setQty, userProfile, inventoryStock, clearCart, addToCart, userLocation, placeOrderWithOptions } = useStore();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -417,6 +419,24 @@ function CartPage() {
       };
 
       const newOrder = await createOrder(payload);
+
+      // Record in local store for seamless local state compatibility
+      try {
+        placeOrderWithOptions({
+          payment: paymentMethod === "COD" ? "Cash on Delivery" : `Razorpay (${paymentMethod})`,
+          paymentStatus: paymentMethod === "COD" ? "COD_PENDING" : "PAID",
+          shippingAddress: {
+            name: contact.name.trim() || userProfile.name || "Customer",
+            street: address.street,
+            city: "Delhi",
+            state: "Delhi",
+            pincode: address.pincode,
+            phone: contact.phone,
+          },
+          couponCode: appliedCoupon?.code,
+          discount: discountAmount,
+        });
+      } catch {}
 
       // Success: clear cart and redirect to confirmation page
       clearCart();

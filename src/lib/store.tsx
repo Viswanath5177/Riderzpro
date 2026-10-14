@@ -293,7 +293,7 @@ export type Order = {
   total: number;
   eta: number;
   payment: string;
-  paymentStatus?: "Paid" | "Pending" | "Refunded";
+  paymentStatus?: "Paid" | "Pending" | "Refunded" | "PAID" | "COD_PENDING";
   status: number;
   fulfillmentStatus?:
     "Awaiting Fulfillment" | "Preparing" | "Packed" | "Dispatched" | "Delivered" | "Cancelled";
@@ -381,6 +381,7 @@ type Ctx = {
   placeOrder: (payment: string) => Order;
   placeOrderWithOptions: (options: {
     payment: string;
+    paymentStatus?: "Paid" | "Pending" | "Refunded" | "PAID" | "COD_PENDING";
     shippingAddress: AddressRef;
     couponCode?: string;
     discount?: number;
@@ -919,6 +920,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const placeOrderWithOptions = useCallback(
     (options: {
       payment: string;
+      paymentStatus?: "Paid" | "Pending" | "Refunded" | "PAID" | "COD_PENDING";
       shippingAddress: AddressRef;
       couponCode?: string;
       discount?: number;
@@ -942,11 +944,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         ? !options.shippingAddress.state.toLowerCase().includes("karnataka")
         : false;
 
+      const defaultStatus = (options.payment.includes("COD") || options.payment.includes("Cash on Delivery"))
+        ? "COD_PENDING"
+        : "PAID";
+
       const order: Order = {
         id: newOrderId,
         createdAt: Date.now(),
         payment: options.payment,
-        paymentStatus: options.payment.includes("COD") ? "Pending" : "Paid",
+        paymentStatus: options.paymentStatus || defaultStatus,
         status: 0,
         fulfillmentStatus: "Awaiting Fulfillment",
         shippingAddress: options.shippingAddress,

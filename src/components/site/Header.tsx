@@ -82,7 +82,7 @@ export function Header() {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <Logo className="flex items-center" imgClassName="h-11 sm:h-12 md:h-13.5 w-auto" />
+            <Logo className="flex items-center" imgClassName="h-13 sm:h-14 md:h-16 w-auto" />
           </div>
 
           {/* Center: 5 Nav Links Only (Desktop) */}
@@ -269,7 +269,7 @@ export function Header() {
               </DropdownMenu>
             ) : (
               <Link
-                to="/auth"
+                to="/login"
                 className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#e11d2a] hover:bg-[#c91823] px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-xs transition active:scale-95"
               >
                 <User className="h-3.5 w-3.5" />

@@ -213,6 +213,14 @@ export async function initializeDatabaseSchema() {
 
       CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
       CREATE INDEX IF NOT EXISTS idx_orders_seller_status ON orders(seller_id, status);
+
+      -- Payment and Invoicing columns per Sathwik's Billing specification
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR(64) DEFAULT 'PENDING';
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method VARCHAR(64);
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS razorpay_order_id VARCHAR(128);
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(128);
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS razorpay_signature VARCHAR(256);
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(64);
     `);
 
     // 6. Order Items Table

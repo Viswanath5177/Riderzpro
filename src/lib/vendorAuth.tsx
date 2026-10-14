@@ -21,8 +21,15 @@ export interface VendorAuthContextType {
   session: VendorUserSession | null;
   isAuthenticated: boolean;
   loading: boolean;
-  signInWithPassword: (emailOrPhone: string, password: string, remember?: boolean) => Promise<{ success: boolean; error?: string }>;
-  signInWithOtp: (emailOrPhone: string, code: string) => Promise<{ success: boolean; error?: string }>;
+  signInWithPassword: (
+    emailOrPhone: string,
+    password: string,
+    remember?: boolean,
+  ) => Promise<{ success: boolean; error?: string }>;
+  signInWithOtp: (
+    emailOrPhone: string,
+    code: string,
+  ) => Promise<{ success: boolean; error?: string }>;
   signUpVendor: (data: {
     fullName: string;
     businessType: VendorBusinessType;
@@ -30,10 +37,15 @@ export interface VendorAuthContextType {
     email: string;
     password: string;
   }) => Promise<{ success: boolean; error?: string; vendorId?: string }>;
-  resetPasswordWithOtp: (emailOrPhone: string, code: string, newPass: string) => Promise<{ success: boolean; error?: string }>;
+  resetPasswordWithOtp: (
+    emailOrPhone: string,
+    code: string,
+    newPass: string,
+  ) => Promise<{ success: boolean; error?: string }>;
   signOutVendor: () => Promise<void>;
   logout: () => Promise<void>;
   refreshVendorSession: () => void;
+  setVendorSession: (vendor: Vendor, remember?: boolean) => void;
 }
 
 const VendorAuthContext = createContext<VendorAuthContextType | null>(null);
@@ -58,7 +70,8 @@ async function hashPassword(plain: string): Promise<string> {
 }
 
 export function VendorAuthProvider({ children }: { children: React.ReactNode }) {
-  const { vendors, saveVendorDraft, getVendorByPhone, getVendorByEmail, getVendor } = useVendorStore();
+  const { vendors, saveVendorDraft, getVendorByPhone, getVendorByEmail, getVendor } =
+    useVendorStore();
   const [session, setSession] = useState<VendorUserSession | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -81,7 +94,8 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
         }
 
         const wasExplicitlySignedOut = localStorage.getItem("vendor_signed_out") === "true";
-        const rawSession = localStorage.getItem(VENDOR_SESSION_KEY) || sessionStorage.getItem(VENDOR_SESSION_KEY);
+        const rawSession =
+          localStorage.getItem(VENDOR_SESSION_KEY) || sessionStorage.getItem(VENDOR_SESSION_KEY);
         if (rawSession && !wasExplicitlySignedOut) {
           const parsed = JSON.parse(rawSession) as VendorUserSession;
           setSession(parsed);
@@ -162,7 +176,7 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
         return { success: false, error: "An unexpected error occurred during vendor sign in" };
       }
     },
-    [getVendorByEmail, getVendorByPhone, setVendorSession]
+    [getVendorByEmail, getVendorByPhone, setVendorSession],
   );
 
   const signInWithOtp = useCallback(
@@ -190,7 +204,7 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
         return { success: false, error: "OTP verification failed" };
       }
     },
-    [getVendorByEmail, getVendorByPhone, setVendorSession]
+    [getVendorByEmail, getVendorByPhone, setVendorSession],
   );
 
   const signUpVendor = useCallback(
@@ -207,10 +221,16 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
 
         // Check duplicates
         if (getVendorByPhone(cleanPhone)) {
-          return { success: false, error: "A vendor account with this mobile number already exists." };
+          return {
+            success: false,
+            error: "A vendor account with this mobile number already exists.",
+          };
         }
         if (getVendorByEmail(cleanEmail)) {
-          return { success: false, error: "A vendor account with this email address already exists." };
+          return {
+            success: false,
+            error: "A vendor account with this email address already exists.",
+          };
         }
 
         // Store credentials
@@ -223,7 +243,10 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
 
         const vendorId = `v_${Date.now()}`;
         const defaultStoreName = `${data.fullName}'s EV Store`;
-        const slug = defaultStoreName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        const slug = defaultStoreName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "");
 
         const initialOnboarding: VendorOnboarding = {
           currentStep: 2,
@@ -251,7 +274,8 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
             storeName: defaultStoreName,
             slug,
             tagline: "Quality EV Spares & Accessories",
-            description: "Supplying verified electric vehicle parts and accessories across the city.",
+            description:
+              "Supplying verified electric vehicle parts and accessories across the city.",
             sellerType: "Retailer",
             categories: ["Spare Parts", "Bike Accessories"],
             brands: [],
@@ -343,7 +367,7 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
         return { success: false, error: "Failed to create vendor account" };
       }
     },
-    [getVendorByEmail, getVendorByPhone, saveVendorDraft, setVendorSession]
+    [getVendorByEmail, getVendorByPhone, saveVendorDraft, setVendorSession],
   );
 
   const resetPasswordWithOtp = useCallback(
@@ -370,7 +394,7 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
         return { success: false, error: "Failed to reset password" };
       }
     },
-    []
+    [],
   );
 
   const signOutVendor = useCallback(async () => {
@@ -390,12 +414,13 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
     setSession(null);
     toast.info("Signed out of Vendor Portal");
     if (typeof window !== "undefined") {
-      window.location.replace("/vendor/auth");
+      window.location.replace("/login?role=vendor");
     }
   }, []);
 
   const refreshVendorSession = useCallback(() => {
-    const raw = localStorage.getItem(VENDOR_SESSION_KEY) || sessionStorage.getItem(VENDOR_SESSION_KEY);
+    const raw =
+      localStorage.getItem(VENDOR_SESSION_KEY) || sessionStorage.getItem(VENDOR_SESSION_KEY);
     if (raw) {
       setSession(JSON.parse(raw));
     }
@@ -415,6 +440,7 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
       signOutVendor,
       logout: signOutVendor,
       refreshVendorSession,
+      setVendorSession,
     }),
     [
       currentVendor,
@@ -426,7 +452,8 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
       resetPasswordWithOtp,
       signOutVendor,
       refreshVendorSession,
-    ]
+      setVendorSession,
+    ],
   );
 
   return <VendorAuthContext.Provider value={value}>{children}</VendorAuthContext.Provider>;
@@ -466,15 +493,33 @@ export function VendorRouteGuard({
             <Zap className="h-6 w-6 text-primary" fill="currentColor" />
           </div>
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <p className="text-xs font-medium text-muted-foreground">Checking vendor credentials...</p>
+          <p className="text-xs font-medium text-muted-foreground">
+            Checking vendor credentials...
+          </p>
         </div>
       </div>
     );
   }
 
+  // If an admin opens the vendor dashboard, redirect to admin dashboard (admin has no vendor store)
+  const isAdmin =
+    typeof window !== "undefined" && Boolean(localStorage.getItem("riderzpro_admin_session"));
+  if (isAdmin) {
+    return <Navigate to="/admin" replace />;
+  }
+
   if (!isAuthenticated || !vendor) {
-    const wasExplicitlySignedOut = typeof window !== "undefined" && localStorage.getItem("vendor_signed_out") === "true";
-    return <Navigate to="/vendor/auth" search={wasExplicitlySignedOut ? undefined : { redirect: currentPath }} replace />;
+    const wasExplicitlySignedOut =
+      typeof window !== "undefined" && localStorage.getItem("vendor_signed_out") === "true";
+    return (
+      <Navigate
+        to="/login"
+        search={
+          wasExplicitlySignedOut ? { role: "vendor" } : { redirect: currentPath, role: "vendor" }
+        }
+        replace
+      />
+    );
   }
 
   // If onboarding is incomplete, redirect to onboarding stepper (unless already on onboarding page)
