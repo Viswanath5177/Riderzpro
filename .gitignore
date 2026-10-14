@@ -24,6 +24,7 @@ dist-ssr/
 .tanstack/**
 .nitro/
 *.local
+*.apk
 
 # Environment & Config
 .env

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required. Your session may have expired.",
+    "requestId": "req_auth_401_7731"
+  }
+}
