@@ -38,19 +38,20 @@ export function CartDrawer() {
   } = useStore();
 
   const [paymentMethod, setPaymentMethod] = useState<string>("UPI · Google Pay");
-  const [couponCode, setCouponCode] = useState<string>("EVSAFE");
-  const [appliedDiscount, setAppliedDiscount] = useState<number>(500);
+  const [couponCode, setCouponCode] = useState<string>("");
+  const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState<boolean>(false);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recentPlacedOrder, setRecentPlacedOrder] = useState<Order | null>(null);
 
   const [address, setAddress] = useState<AddressRef>({
-    name: userProfile.name || "Aakash Sharma",
-    phone: userProfile.phone || "+91 98765 43210",
-    street: "Flat 402, Green Glen Layout, Bellandur",
-    city: "Bengaluru",
+    name: userProfile.name || "User",
+    phone: userProfile.phone || "",
+    street: userProfile.address || "",
+    city: userProfile.city || "Bengaluru",
     state: "Karnataka",
-    pincode: "560103",
+    pincode: "560001",
   });
 
   if (!isCartOpen) return null;
@@ -58,24 +59,54 @@ export function CartDrawer() {
   const quote = quoteCart(cart, appliedDiscount);
   const totalItemCount = cart.reduce((acc, c) => acc + c.qty, 0);
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = couponCode.trim().toUpperCase();
-    if (code === "EVSAFE") {
-      setAppliedDiscount(500);
-      toast.success("Coupon EVSAFE applied! ₹500 discount subtracted.");
-    } else if (code === "RIDER10") {
-      const disc = Math.round(quote.itemsTotal * 0.1);
-      setAppliedDiscount(disc);
-      toast.success(`Coupon RIDER10 applied! ₹${disc} discount subtracted.`);
-    } else {
-      toast.error("Invalid coupon code. Try 'EVSAFE' or 'RIDER10'.");
+    if (!code) {
+      toast.error("Please enter a coupon code");
+      return;
+    }
+    setIsValidatingCoupon(true);
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          cart_items: cart.map((c) => {
+            const p = getProduct(c.productId);
+            const offer = p?.offers?.find((o) => o.vendorId === c.vendorId) || p?.offers?.[0];
+            return {
+              product_id: c.productId,
+              price: offer?.price || 0,
+              quantity: c.qty,
+            };
+          }),
+          order_total: quote.itemsTotal,
+        }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setAppliedDiscount(data.discount_amount);
+        toast.success(`Coupon ${code} applied! ₹${data.discount_amount} discount subtracted.`);
+      } else {
+        setAppliedDiscount(0);
+        toast.error(data.reason || "Invalid coupon code or does not apply to items in cart.");
+      }
+    } catch {
+      toast.error("Failed to validate coupon.");
+    } finally {
+      setIsValidatingCoupon(false);
     }
   };
 
   const handleCheckout = () => {
     if (cart.length === 0) {
       toast.error("Your cart is empty");
+      return;
+    }
+    if (!quote.total || quote.total <= 0) {
+      toast.error("Order total cannot be ₹0. Please add items to your cart before checking out.");
       return;
     }
     if (isSubmitting) return;
@@ -142,47 +173,49 @@ export function CartDrawer() {
         {/* Body Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
           {recentPlacedOrder ? (
-            /* Order Placed Success View (matches My Orders) */
-            <div className="rounded-3xl border border-emerald-200 bg-white p-6 shadow-sm space-y-5 animate-in zoom-in-95 duration-200">
-              <div className="text-center py-4 space-y-2">
-                <div className="h-14 w-14 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 grid place-items-center mx-auto shadow-2xs">
-                  <Check className="h-7 w-7 stroke-[3]" />
+            /* Order Placed Success View (matches Screenshot 4) */
+            <div className="rounded-3xl border border-emerald-200 bg-white p-6 sm:p-7 shadow-sm space-y-6 animate-in zoom-in-95 duration-200">
+              <div className="text-center py-2 space-y-2.5">
+                <div className="h-16 w-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 grid place-items-center mx-auto shadow-2xs">
+                  <Check className="h-8 w-8 stroke-[3]" />
                 </div>
-                <span className="inline-block px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold uppercase tracking-wider">
-                  Order Manifested & Dispatched
-                </span>
-                <h3 className="text-xl font-extrabold text-gray-900 font-display">
+                <div>
+                  <span className="inline-block px-3.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold uppercase tracking-wider">
+                    ORDER MANIFESTED &amp; DISPATCHED
+                  </span>
+                </div>
+                <h3 className="text-2xl font-extrabold text-[#111111] font-display">
                   Order #{recentPlacedOrder.id} Placed!
                 </h3>
-                <p className="text-xs text-gray-500 max-w-sm mx-auto">
+                <p className="text-xs text-gray-500 max-w-sm mx-auto leading-relaxed">
                   Courier dispatch has been initialized. Real-time GPS tracking is now live.
                 </p>
               </div>
 
               {/* Order Milestone Progress */}
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                  Dispatch Milestone
+                <p className="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-2.5">
+                  DISPATCH MILESTONE
                 </p>
                 <div className="grid grid-cols-6 gap-1 text-center">
                   {ORDER_STEPS.map((step, idx) => {
-                    const isPassed = idx <= recentPlacedOrder.status;
-                    const isCurrent = idx === recentPlacedOrder.status;
+                    const isPassed = idx < recentPlacedOrder.status;
+                    const isCurrent = idx === 0 || idx === recentPlacedOrder.status;
                     return (
                       <div key={step} className="flex flex-col items-center">
                         <div
                           className={cn(
-                            "h-6 w-6 rounded-full grid place-items-center text-[10px] font-bold transition-all",
+                            "h-7 w-7 rounded-full grid place-items-center text-[10.5px] font-bold transition-all",
                             isCurrent
-                              ? "bg-primary text-white ring-4 ring-emerald-100 scale-105"
+                              ? "bg-[#E31E24] text-white ring-4 ring-red-100 scale-105"
                               : isPassed
-                              ? "bg-emerald-600 text-white"
-                              : "bg-gray-200 text-gray-400"
+                              ? "bg-[#E31E24] text-white"
+                              : "bg-gray-100 text-gray-400"
                           )}
                         >
-                          {isPassed ? <Check className="h-3.5 w-3.5" /> : idx + 1}
+                          {isCurrent || isPassed ? <Check className="h-4 w-4 stroke-[3]" /> : idx + 1}
                         </div>
-                        <span className="mt-1 text-[8.5px] font-medium text-gray-600 line-clamp-1">{step}</span>
+                        <span className="mt-1.5 text-[8.5px] font-medium text-gray-600 line-clamp-1">{step}</span>
                       </div>
                     );
                   })}
@@ -190,10 +223,10 @@ export function CartDrawer() {
               </div>
 
               {/* Order Details */}
-              <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 text-xs space-y-2">
+              <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 text-xs space-y-2.5">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Total Paid:</span>
-                  <span className="font-bold text-gray-900">{inr(recentPlacedOrder.total)}</span>
+                  <span className="font-extrabold text-gray-900">{inr(recentPlacedOrder.total)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Payment:</span>
@@ -201,29 +234,33 @@ export function CartDrawer() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Deliver to:</span>
-                  <span className="font-semibold text-gray-800 truncate max-w-[220px]">
+                  <span className="font-semibold text-gray-800 truncate max-w-[240px]">
                     {recentPlacedOrder.shippingAddress?.street}, {recentPlacedOrder.shippingAddress?.city}
                   </span>
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                <Link
-                  to="/track/$id"
-                  params={{ id: recentPlacedOrder.id }}
+              <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+                <button
                   onClick={() => {
                     setIsCartOpen(false);
                     setRecentPlacedOrder(null);
+                    if (typeof window !== "undefined") {
+                      const url = new URL(window.location.href);
+                      url.pathname = "/dashboard/customer";
+                      url.searchParams.set("tab", "tracking");
+                      window.location.href = url.toString();
+                    }
                   }}
-                  className="flex-1 py-3 rounded-2xl bg-[#E31E24] hover:bg-red-700 text-white text-xs font-bold text-center shadow-xs transition"
+                  className="flex-1 py-3 px-4 rounded-2xl bg-[#E31E24] hover:bg-red-700 text-white text-xs font-bold text-center shadow-xs transition cursor-pointer"
                 >
                   Track Live GPS Courier →
-                </Link>
+                </button>
                 <button
                   onClick={() => setRecentPlacedOrder(null)}
-                  className="py-3 px-4 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-700 transition"
+                  className="py-3 px-4 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-700 transition cursor-pointer"
                 >
-                  Close & Shop More
+                  Close &amp; Shop More
                 </button>
               </div>
             </div>
@@ -483,15 +520,29 @@ export function CartDrawer() {
                   </div>
                   <button
                     type="submit"
-                    className="px-4 h-10 rounded-xl bg-gray-100 hover:bg-[#E31E24] hover:text-white text-xs font-bold text-gray-700 transition"
+                    disabled={isValidatingCoupon || !couponCode.trim()}
+                    className="px-4 h-10 rounded-xl bg-gray-100 hover:bg-[#E31E24] hover:text-white text-xs font-bold text-gray-700 transition disabled:opacity-50"
                   >
-                    Apply
+                    {isValidatingCoupon ? "Validating..." : "Apply"}
                   </button>
                 </form>
                 {appliedDiscount > 0 && (
-                  <p className="text-[11px] text-emerald-700 font-semibold mt-2 flex items-center gap-1">
-                    <Check className="h-3.5 w-3.5" /> ₹{appliedDiscount} discount applied via coupon.
-                  </p>
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+                    <p className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
+                      <Check className="h-3.5 w-3.5" /> ₹{appliedDiscount} discount applied via coupon ({couponCode}).
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAppliedDiscount(0);
+                        setCouponCode("");
+                        toast.info("Coupon removed");
+                      }}
+                      className="text-[10px] text-rose-600 hover:underline font-semibold"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 )}
               </div>
 

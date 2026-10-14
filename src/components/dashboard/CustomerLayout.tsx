@@ -101,13 +101,13 @@ export function CustomerLayout({
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const userInitials = (authUser?.name || userProfile.name || "CP")
+  const userInitials = (authUser?.name || userProfile.name || "U")
     .trim()
     .split(" ")
     .map((n) => n[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase();
+    .toUpperCase() || "U";
 
   const activeOrdersCount = orders.filter((o) => o.status < 5).length;
   const liveOrder = orders.find((o) => o.status < 5);
@@ -422,7 +422,7 @@ export function CustomerLayout({
                     .split(" ")
                     .map((n) => n[0])
                     .join("")
-                    .slice(0, 2) || "AS"}
+                    .slice(0, 2) || "U"}
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
@@ -433,7 +433,7 @@ export function CustomerLayout({
                   </div>
                   <p className="text-[11px] text-[#E31E24] font-medium truncate flex items-center gap-1.5 mt-0.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#E31E24] shrink-0" />
-                    <span>{userProfile.points || 450} pts · Gold Tier</span>
+                    <span>{userProfile.points || 0} pts · Member</span>
                   </p>
                 </div>
               </button>
@@ -469,7 +469,7 @@ export function CustomerLayout({
         >
           {/* Top Header (Apple Glassmorphic Theme) */}
           <header className="sticky top-0 z-20 h-18 sm:h-20 bg-white/65 backdrop-blur-2xl backdrop-saturate-180 border-b border-black/[0.06] px-3 sm:px-4 md:px-8 flex items-center justify-between gap-2 sm:gap-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.85),0_10px_30px_-10px_rgba(0,0,0,0.04)] transition-all duration-200">
-            {/* Left: Mobile hamburger & breadcrumbs */}
+            {/* Left: Mobile hamburger & location selector */}
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
@@ -479,30 +479,20 @@ export function CustomerLayout({
                 <Menu className="h-5 w-5" />
               </button>
 
-              <div className="hidden sm:block min-w-0">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 tracking-wide">
-                  <span className="px-2 py-0.5 rounded-md bg-black/[0.03] border border-black/[0.04] text-gray-500 font-medium">Customer Portal</span>
-                  <span className="text-gray-300">/</span>
-                  <span className="text-gray-800 font-bold truncate">{getBreadcrumbTitle()}</span>
-                </div>
-                <h1 className="text-base sm:text-lg md:text-xl font-extrabold text-gray-900 tracking-tight font-display mt-0.5">
-                  Welcome back, <span className="text-[#111111]">{userProfile.name.split(" ")[0]}</span>
-                </h1>
-              </div>
-
-              {/* Zomato-style Header Location Pill */}
+              {/* Location Drop Down to select saved location or device location */}
               <button
                 onClick={() => setIsLocationModalOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full bg-white/80 hover:bg-white active:bg-white/95 border border-black/[0.08] hover:border-black/[0.18] shadow-2xs hover:shadow-xs text-xs font-semibold text-gray-800 transition-all cursor-pointer shrink-0 max-w-[140px] sm:max-w-[180px] md:max-w-[210px] group"
-                title="Change delivery area"
+                className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/90 hover:bg-white active:bg-white border border-black/[0.08] hover:border-black/[0.18] shadow-2xs hover:shadow-xs text-xs font-semibold text-gray-800 transition-all cursor-pointer shrink-0 max-w-[200px] sm:max-w-[280px] group"
+                title="Select delivery location"
               >
-                <MapPin className="h-3.5 w-3.5 text-[#E31E24] group-hover:scale-110 transition-transform shrink-0" />
-                <div className="text-left min-w-0 flex-1 hidden sm:block">
-                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider leading-none">Delivering to</p>
-                  <p className="text-xs font-bold text-gray-900 truncate leading-tight mt-0.5">{userLocation?.name || "Indiranagar"}</p>
+                <div className="h-6 w-6 rounded-full bg-red-50 text-[#E31E24] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                  <MapPin className="h-3.5 w-3.5" />
                 </div>
-                <span className="sm:hidden text-xs font-bold text-gray-900 truncate">{userLocation?.name?.split(" ")[0] || "Indiranagar"}</span>
-                <ChevronDown className="h-3 w-3 text-gray-400 group-hover:text-gray-700 shrink-0" />
+                <div className="text-left min-w-0 flex-1">
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider leading-none">Delivering to</p>
+                  <p className="text-xs font-bold text-gray-900 truncate leading-tight mt-0.5">{userLocation?.name || "Select delivery location"}</p>
+                </div>
+                <ChevronDown className="h-3.5 w-3.5 text-gray-400 group-hover:text-gray-700 shrink-0" />
               </button>
             </div>
 
@@ -522,7 +512,7 @@ export function CustomerLayout({
               </button>
             </div>
 
-            {/* Right: Actions, Search by VIN, Notifications, Cart, Avatar */}
+            {/* Right: Actions, Search by VIN, Notifications, Wishlist, Cart, Avatar */}
             <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
               {/* Search by VIN Button */}
               <button
@@ -546,6 +536,22 @@ export function CustomerLayout({
 
               {/* Centralized In-Dashboard Notification Bell */}
               <DashboardNotificationBell role="customer" userId={authUser?.id} />
+
+              {/* Wishlist Symbol to Check Wishlisted Items */}
+              <button
+                type="button"
+                onClick={() => onTabChange("saved")}
+                className="relative h-9 w-9 sm:h-10 sm:w-10 grid place-items-center rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] hover:border-black/[0.16] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] hover:scale-105 active:scale-95 transition-all duration-200 text-gray-600 hover:text-[#E31E24] cursor-pointer group shrink-0"
+                aria-label="Wishlist"
+                title="View Saved / Wishlisted Items"
+              >
+                <Heart className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-gray-700 group-hover:text-[#E31E24] transition-colors" />
+                {savedProductIds.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 grid h-4.5 min-w-4.5 px-1 place-items-center rounded-full bg-gradient-to-r from-[#E31E24] to-rose-500 text-[9.5px] font-extrabold text-white shadow-[0_2px_6px_rgba(227,30,36,0.4)] ring-2 ring-white">
+                    {savedProductIds.length}
+                  </span>
+                )}
+              </button>
 
 
               {/* Cart Button to Open Cart Drawer */}
@@ -577,7 +583,7 @@ export function CustomerLayout({
                     {userInitials}
                   </span>
                   <span className="hidden sm:inline-block text-xs font-bold text-gray-800 group-hover:text-gray-950 max-w-[90px] truncate transition-colors">
-                    {userProfile.name.split(" ")[0]}
+                    {(userProfile.name || authUser?.name || "User").split(" ")[0]}
                   </span>
                   <ChevronDown className={cn("h-3 w-3 sm:h-3.5 sm:w-3.5 text-gray-400 group-hover:text-gray-700 transition-transform duration-200", isProfileOpen && "rotate-180")} />
                 </button>
@@ -595,11 +601,11 @@ export function CustomerLayout({
                           {userInitials}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-gray-950 truncate">{userProfile.name}</p>
-                          <p className="text-[11px] text-gray-500 truncate">{userProfile.email}</p>
+                          <p className="text-xs font-bold text-gray-950 truncate">{userProfile.name || authUser?.name || "User"}</p>
+                          <p className="text-[11px] text-gray-500 truncate">{userProfile.email || authUser?.email || "No email"}</p>
                           <div className="flex items-center gap-1.5 mt-1">
                             <span className="h-1.5 w-1.5 rounded-full bg-[#E31E24]" />
-                            <span className="text-[10px] font-semibold text-[#E31E24]">Gold Tier · {userProfile.points || 450} pts</span>
+                            <span className="text-[10px] font-semibold text-[#E31E24]">Member · {userProfile.points || 0} pts</span>
                           </div>
                         </div>
                       </div>

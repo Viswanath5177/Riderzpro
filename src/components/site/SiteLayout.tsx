@@ -4,12 +4,13 @@ import { Home, ShoppingBag, Package, User, MapPin, Mail, Phone } from "lucide-re
 import { Header } from "./Header";
 import { AIChatButton } from "./AIChatButton";
 import { CartDrawer } from "@/components/common/CartDrawer";
+import { LocationPickerModal } from "@/components/common/LocationPickerModal";
 import { useStore } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
 import { Logo } from "@/components/site/bits";
 
 export function SiteLayout({ children }: { children: ReactNode; transparent?: boolean }) {
-  const { cart } = useStore();
+  const { cart, isLocationModalOpen, setIsLocationModalOpen } = useStore();
   const { isAuthenticated } = useAuth();
   const cartCount = cart.reduce((s, c) => s + c.qty, 0);
 
@@ -32,6 +33,12 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
 
       {/* 6. Slide-over Cart Drawer */}
       <CartDrawer />
+
+      {/* 7. Location Picker Modal */}
+      <LocationPickerModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+      />
     </div>
   );
 }
@@ -65,8 +72,8 @@ function MobileBottomBar({
       </Link>
 
       <Link
-        to={isAuthenticated ? "/orders" : "/login"}
-        search={!isAuthenticated ? { redirect: "/orders" } : undefined}
+        to={isAuthenticated ? "/orders" : "/"}
+        search={!isAuthenticated ? { openLogin: "customer", redirect: "/orders" } : undefined}
         className="flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-[#6b7280] transition hover:text-[#111111]"
         activeProps={{ className: "!text-[#e11d2a]" }}
       >
@@ -80,8 +87,8 @@ function MobileBottomBar({
       </Link>
 
       <Link
-        to={isAuthenticated ? "/dashboard/customer" : "/login"}
-        search={!isAuthenticated ? { redirect: "/dashboard/customer" } : undefined}
+        to={isAuthenticated ? "/dashboard/customer" : "/"}
+        search={!isAuthenticated ? { openLogin: "customer", redirect: "/dashboard/customer" } : undefined}
         className="flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-[#6b7280] transition hover:text-[#111111]"
         activeProps={{ className: "!text-[#e11d2a]" }}
       >
@@ -135,7 +142,7 @@ function Footer() {
             <li><Link to="/dashboard/customer" search={{ tab: "orders" } as any} className="hover:text-[#E31E24] transition">Track Your Order</Link></li>
             <li><Link to="/dashboard/customer" className="hover:text-[#E31E24] transition">Customer Dashboard</Link></li>
             <li><Link to="/dashboard/customer" search={{ tab: "help" } as any} className="hover:text-[#E31E24] transition">Help & Support</Link></li>
-            <li><Link to="/login" className="hover:text-[#E31E24] transition">Account Login</Link></li>
+            <li><Link to="/" search={{ openLogin: "customer" }} className="hover:text-[#E31E24] transition">Account Login</Link></li>
             <li><Link to="/cart" className="hover:text-[#E31E24] transition">View Shopping Cart</Link></li>
           </ul>
         </div>

@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "http";
 import crypto from "node:crypto";
 import { initializeDatabaseSchema, query } from "./db";
-import { ProductModel, CategoryModel, GarageModel } from "./models";
+import { ProductModel, CategoryModel, GarageModel, ServiceBookingModel } from "./models";
 import {
   sendVendorApprovedEmail,
   sendVendorRejectedEmail,
@@ -32,6 +32,37 @@ function sendJson(res: ServerResponse, status: number, data: any) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
   res.end(JSON.stringify(data));
+}
+
+function parseCookies(req: IncomingMessage): Record<string, string> {
+  const list: Record<string, string> = {};
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) return list;
+  cookieHeader.split(";").forEach((cookie) => {
+    const parts = cookie.split("=");
+    const name = parts[0]?.trim();
+    if (!name) return;
+    const value = parts.slice(1).join("=").trim();
+    list[name] = decodeURIComponent(value);
+  });
+  return list;
+}
+
+function sha256(val: string): string {
+  return crypto.createHash("sha256").update(val).digest("hex");
+}
+
+async function getAuthenticatedUser(req: IncomingMessage): Promise<{ id: string; role: string; email?: string } | null> {
+  const cookies = parseCookies(req);
+  const token = cookies["auth_session"];
+  if (!token) return null;
+  const tokenHash = sha256(token);
+  const s = await query(
+    "SELECT user_id, user_role FROM auth_sessions WHERE token_hash = $1 AND expires_at > now() LIMIT 1",
+    [tokenHash]
+  );
+  if (!s.rows[0]) return null;
+  return { id: s.rows[0].user_id, role: s.rows[0].user_role };
 }
 
 let isDbInitialized = false;
@@ -66,7 +97,7 @@ export function pgApiMiddleware() {
           cleanUrl.startsWith("/api/admin/invite") ||
           cleanUrl.startsWith("/api/admin/change-requests") ||
           cleanUrl.startsWith("/api/vendor/change-request") ||
-          cleanUrl.startsWith("/api/customer/addresses")
+          cleanUrl.startsWith("/api/customer")
         ) {
           const handled = await handleAuthRoute(req, res, cleanUrl, method || "GET");
           if (handled) return;
@@ -112,13 +143,155 @@ export function pgApiMiddleware() {
               return sendJson(res, 200, { success: true, data: products, total: products.length });
             }
 
+            // POST /api/products/bulk-import (JSON bulk import)
+            if (cleanUrl === "/api/products/bulk-import" && method === "POST") {
+              const body = await parseBody(req);
+              const authUser = await getAuthenticatedUser(req);
+              let sellerId = body.seller_id;
+              if (authUser && (authUser.role === "seller" || authUser.role === "vendor")) {
+                sellerId = authUser.id;
+              } else if (!sellerId && authUser) {
+                sellerId = authUser.id;
+              }
+
+              if (!sellerId) {
+                const sRow = await query("SELECT id FROM sellers WHERE status = 'APPROVED' AND account_status != 'FROZEN' LIMIT 1");
+                sellerId = sRow.rows[0]?.id || "usr_seller_01";
+              }
+
+              // Freeze enforcement
+              if (sellerId) {
+                const sCheck = await query("SELECT account_status, freeze_reason FROM sellers WHERE id = $1", [sellerId]);
+                if (sCheck.rows[0]?.account_status === "FROZEN") {
+                  return sendJson(res, 403, {
+                    success: false,
+                    error: `Vendor account is FROZEN by administration. Bulk import blocked. Reason: ${sCheck.rows[0].freeze_reason || "Compliance review"}.`,
+                  });
+                }
+              }
+
+              const rawList = Array.isArray(body.products) ? body.products : [];
+              if (rawList.length === 0) {
+                return sendJson(res, 400, { success: false, error: "No products array provided in JSON file." });
+              }
+              if (rawList.length > 100) {
+                return sendJson(res, 400, { success: false, error: "Maximum limit is 100 products per import batch." });
+              }
+
+              const importedProducts: any[] = [];
+              const failedItems: any[] = [];
+              const seenSkus = new Set<string>();
+
+              for (let i = 0; i < rawList.length; i++) {
+                const item = rawList[i];
+                const index = i + 1;
+                const name = (item.name || "").trim();
+                const price = Number(item.price);
+                const stock = item.stock !== undefined ? parseInt(String(item.stock), 10) : 0;
+                const category = (item.category || item.department || "Accessories").trim();
+                const brand = (item.brand || "Vendor Certified").trim();
+                let sku = (item.sku || "").trim();
+                const description = (item.description || "").trim();
+
+                if (!name) {
+                  failedItems.push({ index, name: `Item #${index}`, error: "Product name is required and cannot be empty." });
+                  continue;
+                }
+                if (isNaN(price) || price <= 0) {
+                  failedItems.push({ index, name, error: "Price must be a valid positive number." });
+                  continue;
+                }
+                if (isNaN(stock) || stock < 0) {
+                  failedItems.push({ index, name, error: "Stock quantity must be a non-negative integer." });
+                  continue;
+                }
+
+                if (!sku) {
+                  sku = `SKU-${Date.now().toString(36).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
+                } else if (seenSkus.has(sku.toLowerCase())) {
+                  failedItems.push({ index, name, error: `Duplicate SKU '${sku}' found in this import batch.` });
+                  continue;
+                }
+                seenSkus.add(sku.toLowerCase());
+
+                const existingSku = await query("SELECT id FROM products WHERE LOWER(sku) = LOWER($1) LIMIT 1", [sku]);
+                if (existingSku.rows.length > 0) {
+                  failedItems.push({ index, name, error: `SKU '${sku}' already exists in database.` });
+                  continue;
+                }
+
+                let primaryImage = "/src/assets/parts.jpg";
+                let imageArray: string[] = [];
+
+                if (Array.isArray(item.images) && item.images.length > 0) {
+                  imageArray = item.images.map((img: any) => typeof img === "string" ? img : img?.url).filter(Boolean);
+                  if (imageArray[0]) primaryImage = imageArray[0];
+                } else if (typeof item.image_url === "string" && item.image_url) {
+                  primaryImage = item.image_url;
+                  imageArray = [primaryImage];
+                } else if (typeof item.image === "string" && item.image) {
+                  primaryImage = item.image;
+                  imageArray = [primaryImage];
+                }
+
+                let specsText = "";
+                if (item.specifications && typeof item.specifications === "object") {
+                  specsText = Object.entries(item.specifications)
+                    .map(([k, v]) => `${k}: ${v}`)
+                    .join(" | ");
+                }
+
+                const productId = `prod_${crypto.randomBytes(6).toString("hex")}`;
+                const mrp = Number(item.mrp) || Math.round(price * 1.15);
+                const discount = mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0;
+
+                const prodRecord = await ProductModel.create({
+                  id: productId,
+                  seller_id: sellerId,
+                  name,
+                  brand,
+                  sku,
+                  description: specsText ? `${description}\n\nSpecifications: ${specsText}` : description,
+                  price,
+                  mrp,
+                  discount_percent: discount,
+                  stock,
+                  image_url: JSON.stringify(imageArray.length > 0 ? imageArray : [primaryImage]),
+                  verification_status: "pending_approval",
+                  is_active: false,
+                  department: category,
+                  variant_model: item.variant_model || item.model || "",
+                  fitment_type: item.fitment_type || "universal",
+                  compatible_vehicles: Array.isArray(item.compatible_vehicles) ? item.compatible_vehicles : ["universal"],
+                  warranty: item.warranty || "1 Year Manufacturer",
+                });
+
+                importedProducts.push(prodRecord);
+              }
+
+              return sendJson(res, 200, {
+                success: true,
+                importedCount: importedProducts.length,
+                failedCount: failedItems.length,
+                errors: failedItems,
+                importedProducts,
+                message: `Bulk import completed: ${importedProducts.length} imported (awaiting admin certification), ${failedItems.length} failed.`,
+              });
+            }
+
             // POST /api/products (Publish product)
             if (method === "POST") {
               const body = await parseBody(req);
+              const authUser = await getAuthenticatedUser(req);
+              let sellerId = body.seller_id;
+              if (authUser && (authUser.role === "seller" || authUser.role === "vendor")) {
+                sellerId = authUser.id;
+                body.seller_id = sellerId;
+              }
 
               // Freeze enforcement: block product submission if vendor account is frozen
-              if (body.seller_id) {
-                const sCheck = await query("SELECT account_status, freeze_reason, store_name FROM sellers WHERE id = $1", [body.seller_id]);
+              if (sellerId) {
+                const sCheck = await query("SELECT account_status, freeze_reason, store_name FROM sellers WHERE id = $1", [sellerId]);
                 if (sCheck.rows[0]?.account_status === "FROZEN") {
                   return sendJson(res, 403, {
                     success: false,
@@ -127,10 +300,18 @@ export function pgApiMiddleware() {
                 }
               }
 
+              // All new vendor products start in pending_approval
+              if (!body.verification_status || body.verification_status === "approved") {
+                if (!authUser || authUser.role !== "admin") {
+                  body.verification_status = "pending_approval";
+                  body.is_active = false;
+                }
+              }
+
               const created = await ProductModel.create(body);
               return sendJson(res, 201, {
                 success: true,
-                message: "Product saved to PostgreSQL database successfully",
+                message: "Product created and submitted for Product Admin approval",
                 data: created,
               });
             }
@@ -249,6 +430,56 @@ export function pgApiMiddleware() {
             return sendJson(res, 405, { success: false, error: `Method ${method} not allowed` });
           } catch (error: any) {
             console.error("[PostgreSQL Garage API Error]:", error);
+            return sendJson(res, 500, { success: false, error: error.message });
+          }
+        }
+
+        // ====================================================================
+        // 2.5 SERVICE BOOKINGS API: /api/service-bookings
+        // ====================================================================
+        if (cleanUrl.startsWith("/api/service-bookings")) {
+          const parts = cleanUrl.split("/").filter(Boolean);
+          const bookingId = parts.length > 2 ? parts[2] : null;
+          const subAction = parts.length > 3 ? parts[3] : null;
+
+          try {
+            // GET /api/service-bookings
+            if (method === "GET") {
+              const customerId = queryParams.get("customer_id") || "usr_customer_demo";
+              const rows = await ServiceBookingModel.findByCustomer(customerId);
+              return sendJson(res, 200, { success: true, data: rows });
+            }
+
+            // POST /api/service-bookings
+            if (method === "POST") {
+              const body = await parseBody(req);
+              if (!body.service_type) {
+                return sendJson(res, 400, { success: false, error: "service_type is required." });
+              }
+              const created = await ServiceBookingModel.addBooking(body);
+              return sendJson(res, 201, {
+                success: true,
+                message: "Technician appointment booked successfully in database",
+                data: created,
+              });
+            }
+
+            // PUT /api/service-bookings/:id/cancel
+            if (method === "PUT" && bookingId && subAction === "cancel") {
+              const customerId = queryParams.get("customer_id") || undefined;
+              const updated = await ServiceBookingModel.cancelBooking(bookingId, customerId);
+              return sendJson(res, 200, { success: true, data: updated });
+            }
+
+            // DELETE /api/service-bookings/:id
+            if (method === "DELETE" && bookingId) {
+              const ok = await ServiceBookingModel.deleteBooking(bookingId);
+              return sendJson(res, 200, { success: ok, message: "Booking removed" });
+            }
+
+            return sendJson(res, 405, { success: false, error: `Method ${method} not allowed` });
+          } catch (error: any) {
+            console.error("[Service Bookings API Error]:", error);
             return sendJson(res, 500, { success: false, error: error.message });
           }
         }
@@ -1005,8 +1236,8 @@ export function pgApiMiddleware() {
             if (method === "POST" && productId) {
               const body = await parseBody(req);
               const action = body.action as "APPROVED" | "REJECTED";
-              const reason = body.reason || "";
-              const adminId = body.adminId || "adm_product_01";
+              const reason = body.reason || body.remarks || "";
+              const adminId = body.adminId || body.reviewed_by || "adm_product_01";
 
               const prodRes = await query("SELECT name, seller_id FROM products WHERE id = $1", [productId]);
               const product = prodRes.rows[0];
@@ -1047,9 +1278,12 @@ export function pgApiMiddleware() {
                   if (aEmailCheck.rows.length > 0) {
                     verifiedByAdminId = aEmailCheck.rows[0].id;
                   } else {
-                    const fallbackAdmin = await query("SELECT id FROM admins WHERE role = 'PRODUCT_ADMIN' LIMIT 1");
+                    const fallbackAdmin = await query("SELECT id FROM admins WHERE role = 'PRODUCT_ADMIN' OR role = 'SELLER_ADMIN' LIMIT 1");
                     if (fallbackAdmin.rows.length > 0) {
                       verifiedByAdminId = fallbackAdmin.rows[0].id;
+                    } else {
+                      const anyAdmin = await query("SELECT id FROM admins LIMIT 1");
+                      if (anyAdmin.rows.length > 0) verifiedByAdminId = anyAdmin.rows[0].id;
                     }
                   }
                 }
@@ -1067,13 +1301,13 @@ export function pgApiMiddleware() {
                 [newStatus, isActive, verifiedByUserId, action === "REJECTED" ? (reason || null) : null, productId]
               );
 
-              if (verifiedByAdminId) {
-                await query(
-                  `INSERT INTO product_approval_history (product_id, admin_id, action, reason)
-                   VALUES ($1, $2, $3, $4)`,
-                  [productId, verifiedByAdminId, action, reason || null]
-                ).catch((err) => console.warn("[Approval History Insert Warning]:", err?.message));
-              }
+              const pahId = `pah_${Math.random().toString(36).substring(2, 10)}`;
+              const actualAdminId = verifiedByAdminId || "adm_df0c152a38e104fd";
+              await query(
+                `INSERT INTO product_approval_history (id, product_id, admin_id, action, reason)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [pahId, productId, actualAdminId, action, reason || null]
+              ).catch((err) => console.warn("[Approval History Insert Warning]:", err?.message));
 
               // Resolve seller record for email and in-dashboard notification
               const sRes = await query(
@@ -1145,62 +1379,121 @@ export function pgApiMiddleware() {
         // ====================================================================
         // 6. CUSTOMER CART PERSISTENCE API: /api/cart
         // ====================================================================
+        // ====================================================================
+        // ====================================================================
+        // 6. CUSTOMER CART PERSISTENCE API: /api/cart
+        // ====================================================================
         if (cleanUrl.startsWith("/api/cart")) {
-          const rawId = queryParams.get("customer_id") || "usr_customer_demo";
+          const authUser = await getAuthenticatedUser(req);
+          const rawId = queryParams.get("customer_id") || authUser?.id || authUser?.email || "usr_customer_demo";
 
           try {
             const custRow = await query("SELECT id FROM customers WHERE id = $1 OR email = $1 LIMIT 1", [rawId]);
-            const customerId = custRow.rows[0]?.id;
+            const customerId = custRow.rows[0]?.id || rawId;
 
             if (method === "GET") {
-              if (!customerId) return sendJson(res, 200, { success: true, data: [] });
+              if (!customerId || customerId === "usr_customer_demo") {
+                return sendJson(res, 200, { success: true, data: [], items: [] });
+              }
 
               const cartRes = await query("SELECT id FROM carts WHERE customer_id = $1 LIMIT 1", [customerId]);
               if (!cartRes.rows[0]) {
-                return sendJson(res, 200, { success: true, data: [] });
+                return sendJson(res, 200, { success: true, data: [], items: [] });
               }
               const itemsRes = await query(
-                "SELECT product_id, quantity FROM cart_items WHERE cart_id = $1",
+                `SELECT ci.product_id, ci.quantity, p.name, p.price, p.stock, p.image_url, p.is_active, p.verification_status
+                 FROM cart_items ci
+                 LEFT JOIN products p ON ci.product_id = p.id
+                 WHERE ci.cart_id = $1`,
                 [cartRes.rows[0].id]
               );
-              return sendJson(res, 200, { success: true, data: itemsRes.rows });
+              return sendJson(res, 200, { success: true, data: itemsRes.rows, items: itemsRes.rows });
             }
 
             if (method === "POST") {
-              if (!customerId) {
-                return sendJson(res, 200, { success: true, message: "Guest session - local storage used" });
+              if (!customerId || customerId === "usr_customer_demo") {
+                return sendJson(res, 200, { success: true, message: "Guest session - local storage used", items: [] });
               }
 
               const body = await parseBody(req);
-              const items = Array.isArray(body.items) ? body.items : [];
-
               let cartRes = await query("SELECT id FROM carts WHERE customer_id = $1 LIMIT 1", [customerId]);
               let cartId = cartRes.rows[0]?.id;
               if (!cartId) {
-                const ins = await query("INSERT INTO carts (customer_id) VALUES ($1) RETURNING id", [customerId]);
-                cartId = ins.rows[0]?.id;
+                cartId = `crt_${crypto.randomBytes(8).toString("hex")}`;
+                await query("INSERT INTO carts (id, customer_id) VALUES ($1, $2)", [cartId, customerId]);
               }
 
-              if (cartId) {
+              if (Array.isArray(body.items)) {
+                // Batch sync from client store
                 await query("DELETE FROM cart_items WHERE cart_id = $1", [cartId]);
-                for (const it of items) {
+                for (const it of body.items) {
                   const pid = it.productId || it.product_id;
-                  const qty = it.qty || it.quantity || 1;
+                  const qty = Math.max(1, Number(it.qty || it.quantity) || 1);
                   if (pid) {
+                    const itemId = `ci_${crypto.randomBytes(8).toString("hex")}`;
                     await query(
-                      "INSERT INTO cart_items (cart_id, product_id, quantity) VALUES ($1, $2, $3) ON CONFLICT (cart_id, product_id) DO UPDATE SET quantity = EXCLUDED.quantity",
-                      [cartId, pid, qty]
+                      "INSERT INTO cart_items (id, cart_id, product_id, quantity) VALUES ($1, $2, $3, $4)",
+                      [itemId, cartId, pid, qty]
                     ).catch(() => {});
                   }
                 }
+              } else if (body.product_id || body.productId) {
+                // Single item add / increment
+                const pid = body.product_id || body.productId;
+                const addQty = Math.max(1, Number(body.quantity || body.qty) || 1);
+                const existing = await query(
+                  "SELECT id, quantity FROM cart_items WHERE cart_id = $1 AND product_id = $2 LIMIT 1",
+                  [cartId, pid]
+                );
+                if (existing.rows[0]) {
+                  const newQty = Number(existing.rows[0].quantity) + addQty;
+                  await query("UPDATE cart_items SET quantity = $1 WHERE id = $2", [newQty, existing.rows[0].id]);
+                } else {
+                  const itemId = `ci_${crypto.randomBytes(8).toString("hex")}`;
+                  await query(
+                    "INSERT INTO cart_items (id, cart_id, product_id, quantity) VALUES ($1, $2, $3, $4)",
+                    [itemId, cartId, pid, addQty]
+                  );
+                }
               }
 
-              return sendJson(res, 200, { success: true, message: "Cart synced with PostgreSQL" });
+              return sendJson(res, 200, { success: true, message: "Cart synced with database" });
+            }
+
+            if (method === "PUT") {
+              const body = await parseBody(req);
+              const pid = body.product_id || body.productId;
+              const newQty = Number(body.quantity || body.qty);
+              let cartRes = await query("SELECT id FROM carts WHERE customer_id = $1 LIMIT 1", [customerId]);
+              const cartId = cartRes.rows[0]?.id;
+              if (cartId && pid) {
+                if (newQty <= 0) {
+                  await query("DELETE FROM cart_items WHERE cart_id = $1 AND product_id = $2", [cartId, pid]);
+                } else {
+                  await query("UPDATE cart_items SET quantity = $1 WHERE cart_id = $2 AND product_id = $3", [newQty, cartId, pid]);
+                }
+              }
+              return sendJson(res, 200, { success: true, message: "Cart item updated" });
+            }
+
+            if (method === "DELETE") {
+              const body = await parseBody(req).catch(() => ({}));
+              const pid = body.product_id || body.productId || queryParams.get("product_id");
+              let cartRes = await query("SELECT id FROM carts WHERE customer_id = $1 LIMIT 1", [customerId]);
+              const cartId = cartRes.rows[0]?.id;
+              if (cartId) {
+                if (pid) {
+                  await query("DELETE FROM cart_items WHERE cart_id = $1 AND product_id = $2", [cartId, pid]);
+                } else {
+                  await query("DELETE FROM cart_items WHERE cart_id = $1", [cartId]);
+                }
+              }
+              return sendJson(res, 200, { success: true, message: "Item removed from cart" });
             }
 
             return sendJson(res, 405, { success: false, error: `Method ${method} not allowed` });
           } catch (error: any) {
-            console.error("[PostgreSQL Cart API Error]:", error);
+            console.error("[Cart API Error]:", error);
             return sendJson(res, 500, { success: false, error: error.message });
           }
         }
@@ -1209,28 +1502,38 @@ export function pgApiMiddleware() {
         // 7. CUSTOMER WISHLIST PERSISTENCE API: /api/wishlist
         // ====================================================================
         if (cleanUrl.startsWith("/api/wishlist")) {
-          const rawId = queryParams.get("customer_id") || "usr_customer_demo";
+          const authUser = await getAuthenticatedUser(req);
+          const rawId = queryParams.get("customer_id") || authUser?.id || authUser?.email || "usr_customer_demo";
 
           try {
             const custRow = await query("SELECT id FROM customers WHERE id = $1 OR email = $1 LIMIT 1", [rawId]);
-            const customerId = custRow.rows[0]?.id;
+            const customerId = custRow.rows[0]?.id || rawId;
 
             if (method === "GET") {
-              if (!customerId) return sendJson(res, 200, { success: true, data: [] });
+              if (!customerId || customerId === "usr_customer_demo") {
+                return sendJson(res, 200, { success: true, data: [], items: [] });
+              }
 
               const wishRes = await query("SELECT id FROM wishlists WHERE customer_id = $1 LIMIT 1", [customerId]);
               if (!wishRes.rows[0]) {
-                return sendJson(res, 200, { success: true, data: [] });
+                return sendJson(res, 200, { success: true, data: [], items: [] });
               }
               const itemsRes = await query(
-                "SELECT DISTINCT product_id FROM wishlist_items WHERE wishlist_id = $1",
+                `SELECT wi.product_id, p.name, p.price, p.image_url, p.stock, p.is_active
+                 FROM wishlist_items wi
+                 LEFT JOIN products p ON wi.product_id = p.id
+                 WHERE wi.wishlist_id = $1`,
                 [wishRes.rows[0].id]
               );
-              return sendJson(res, 200, { success: true, data: itemsRes.rows.map((r: any) => r.product_id) });
+              return sendJson(res, 200, {
+                success: true,
+                data: itemsRes.rows.map((r: any) => r.product_id),
+                items: itemsRes.rows,
+              });
             }
 
             if (method === "POST") {
-              if (!customerId) {
+              if (!customerId || customerId === "usr_customer_demo") {
                 return sendJson(res, 200, { success: true, message: "Guest session - local storage used" });
               }
 
@@ -1245,16 +1548,23 @@ export function pgApiMiddleware() {
               let wishRes = await query("SELECT id FROM wishlists WHERE customer_id = $1 LIMIT 1", [customerId]);
               let wishId = wishRes.rows[0]?.id;
               if (!wishId) {
-                const ins = await query("INSERT INTO wishlists (customer_id) VALUES ($1) RETURNING id", [customerId]);
-                wishId = ins.rows[0]?.id;
+                wishId = `wsh_${crypto.randomBytes(8).toString("hex")}`;
+                await query("INSERT INTO wishlists (id, customer_id) VALUES ($1, $2)", [wishId, customerId]);
               }
 
               if (wishId) {
                 if (action === "add") {
-                  await query(
-                    "INSERT INTO wishlist_items (wishlist_id, product_id) VALUES ($1, $2) ON CONFLICT (wishlist_id, product_id) DO NOTHING",
+                  const check = await query(
+                    "SELECT id FROM wishlist_items WHERE wishlist_id = $1 AND product_id = $2 LIMIT 1",
                     [wishId, productId]
-                  ).catch(() => {});
+                  );
+                  if (!check.rows[0]) {
+                    const itemId = `wi_${crypto.randomBytes(8).toString("hex")}`;
+                    await query(
+                      "INSERT INTO wishlist_items (id, wishlist_id, product_id) VALUES ($1, $2, $3)",
+                      [itemId, wishId, productId]
+                    ).catch(() => {});
+                  }
                 } else {
                   await query(
                     "DELETE FROM wishlist_items WHERE wishlist_id = $1 AND product_id = $2",
@@ -1263,13 +1573,277 @@ export function pgApiMiddleware() {
                 }
               }
 
-              return sendJson(res, 200, { success: true, message: `Wishlist ${action} completed in PostgreSQL` });
+              return sendJson(res, 200, { success: true, message: `Wishlist ${action} completed` });
+            }
+
+            if (method === "DELETE") {
+              const body = await parseBody(req).catch(() => ({}));
+              const productId = body.productId || body.product_id || queryParams.get("product_id");
+              const wishRes = await query("SELECT id FROM wishlists WHERE customer_id = $1 LIMIT 1", [customerId]);
+              const wishId = wishRes.rows[0]?.id;
+              if (wishId && productId) {
+                await query("DELETE FROM wishlist_items WHERE wishlist_id = $1 AND product_id = $2", [wishId, productId]);
+              }
+              return sendJson(res, 200, { success: true, message: "Product removed from wishlist" });
             }
 
             return sendJson(res, 405, { success: false, error: `Method ${method} not allowed` });
           } catch (error: any) {
-            console.error("[PostgreSQL Wishlist API Error]:", error);
+            console.error("[Wishlist API Error]:", error);
             return sendJson(res, 500, { success: false, error: error.message });
+          }
+        }
+
+        // ====================================================================
+        // 8. VENDOR & STOREFRONT COUPONS API
+        // ====================================================================
+        if (cleanUrl.startsWith("/api/vendor/coupons")) {
+          const parts = cleanUrl.split("/").filter(Boolean); // ['api', 'vendor', 'coupons', optionalId]
+          const couponId = parts.length > 3 ? parts[3] : null;
+
+          try {
+            const authUser = await getAuthenticatedUser(req);
+            const querySellerId = queryParams.get("seller_id") || queryParams.get("vendor_id");
+            let sellerId = querySellerId;
+            if (authUser && (authUser.role === "seller" || authUser.role === "vendor")) {
+              sellerId = authUser.id;
+            }
+            if (!sellerId) {
+              const defSeller = await query("SELECT id FROM sellers WHERE status = 'APPROVED' LIMIT 1");
+              sellerId = defSeller.rows[0]?.id || "usr_seller_01";
+            }
+
+            // GET /api/vendor/coupons
+            if (method === "GET") {
+              const sql = sellerId
+                ? "SELECT * FROM coupons WHERE vendor_id = $1 ORDER BY created_at DESC"
+                : "SELECT * FROM coupons ORDER BY created_at DESC";
+              const params = sellerId ? [sellerId] : [];
+              const cRes = await query(sql, params);
+
+              const coupons = await Promise.all(
+                cRes.rows.map(async (c: any) => {
+                  const pRes = await query("SELECT product_id FROM coupon_products WHERE coupon_id = $1", [c.id]);
+                  return {
+                    ...c,
+                    productIds: pRes.rows.map((p: any) => p.product_id),
+                  };
+                })
+              );
+
+              return sendJson(res, 200, { success: true, coupons });
+            }
+
+            // POST /api/vendor/coupons
+            if (method === "POST") {
+              const body = await parseBody(req);
+              const code = (body.code || "").trim().toUpperCase();
+              const description = (body.description || "").trim();
+              const discountType = body.discount_type || body.discountType || "percentage";
+              const discountValue = Number(body.discount_value || body.discountValue) || 0;
+              const minOrder = Number(body.minimum_order_value || body.minimumOrderValue) || 0;
+              const maxDiscount = body.maximum_discount || body.maximumDiscount ? Number(body.maximum_discount || body.maximumDiscount) : null;
+              const startsAt = body.starts_at || body.startsAt || new Date().toISOString().split("T")[0];
+              const expiresAt = body.expires_at || body.expiresAt || null;
+              const usageLimit = body.usage_limit ? Number(body.usage_limit) : null;
+              const perCustomerLimit = body.per_customer_limit ? Number(body.per_customer_limit) : 1;
+              const selectedProducts: string[] = Array.isArray(body.product_ids || body.productIds) ? (body.product_ids || body.productIds) : [];
+
+              if (!code || code.length < 3) {
+                return sendJson(res, 400, { success: false, error: "Coupon code must be at least 3 characters." });
+              }
+              if (discountValue <= 0) {
+                return sendJson(res, 400, { success: false, error: "Discount value must be greater than zero." });
+              }
+
+              // Check code uniqueness
+              const codeCheck = await query("SELECT id FROM coupons WHERE LOWER(code) = LOWER($1) LIMIT 1", [code]);
+              if (codeCheck.rows.length > 0) {
+                return sendJson(res, 409, { success: false, error: `Coupon code '${code}' already exists.` });
+              }
+
+              // Validate vendor ownership of selected products
+              if (selectedProducts.length > 0 && sellerId) {
+                for (const pid of selectedProducts) {
+                  const pCheck = await query("SELECT seller_id FROM products WHERE id = $1", [pid]);
+                  if (pCheck.rows[0] && pCheck.rows[0].seller_id && pCheck.rows[0].seller_id !== sellerId) {
+                    return sendJson(res, 403, {
+                      success: false,
+                      error: `Unauthorized: Product '${pid}' does not belong to your store. You can only attach coupons to your own products.`,
+                    });
+                  }
+                }
+              }
+
+              const cId = `cpn_${crypto.randomBytes(8).toString("hex")}`;
+              await query(
+                `INSERT INTO coupons (id, vendor_id, code, description, discount_type, discount_value, minimum_order_value, maximum_discount, starts_at, expires_at, usage_limit, per_customer_limit, status)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'active')`,
+                [cId, sellerId, code, description, discountType, discountValue, minOrder, maxDiscount, startsAt, expiresAt, usageLimit, perCustomerLimit]
+              );
+
+              for (const pid of selectedProducts) {
+                await query("INSERT INTO coupon_products (coupon_id, product_id) VALUES ($1, $2)", [cId, pid]).catch(() => {});
+              }
+
+              return sendJson(res, 201, {
+                success: true,
+                message: "Coupon created successfully and linked to selected products",
+                coupon: {
+                  id: cId,
+                  code,
+                  description,
+                  discount_type: discountType,
+                  discount_value: discountValue,
+                  productIds: selectedProducts,
+                },
+              });
+            }
+
+            // PUT /api/vendor/coupons/:id
+            if (method === "PUT" && couponId) {
+              const body = await parseBody(req);
+              const status = body.status;
+              const selectedProducts = body.product_ids || body.productIds;
+
+              if (status) {
+                await query("UPDATE coupons SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2", [status, couponId]);
+              }
+
+              if (Array.isArray(selectedProducts)) {
+                await query("DELETE FROM coupon_products WHERE coupon_id = $1", [couponId]);
+                for (const pid of selectedProducts) {
+                  await query("INSERT INTO coupon_products (coupon_id, product_id) VALUES ($1, $2)", [couponId, pid]).catch(() => {});
+                }
+              }
+
+              return sendJson(res, 200, { success: true, message: "Coupon updated successfully" });
+            }
+
+            // DELETE /api/vendor/coupons/:id
+            if (method === "DELETE" && couponId) {
+              await query("DELETE FROM coupon_products WHERE coupon_id = $1", [couponId]);
+              await query("DELETE FROM coupons WHERE id = $1", [couponId]);
+              return sendJson(res, 200, { success: true, message: "Coupon deleted successfully" });
+            }
+
+            return sendJson(res, 405, { success: false, error: `Method ${method} not allowed` });
+          } catch (err: any) {
+            console.error("[Vendor Coupons API Error]:", err);
+            return sendJson(res, 500, { success: false, error: err.message });
+          }
+        }
+
+        // Coupon Validation & Applicable Coupons: /api/coupons/applicable & /api/coupons/validate
+        if (cleanUrl === "/api/coupons/applicable") {
+          const productId = queryParams.get("product_id");
+          if (!productId) return sendJson(res, 200, { success: true, coupons: [] });
+
+          const rows = await query(
+            `SELECT c.id, c.code, c.description, c.discount_type, c.discount_value, c.minimum_order_value, c.maximum_discount, c.expires_at
+             FROM coupons c
+             JOIN coupon_products cp ON c.id = cp.coupon_id
+             WHERE cp.product_id = $1 AND c.status = 'active'
+             ORDER BY c.discount_value DESC`,
+            [productId]
+          );
+          return sendJson(res, 200, { success: true, coupons: rows.rows });
+        }
+
+        if (cleanUrl === "/api/coupons/validate" && method === "POST") {
+          try {
+            const body = await parseBody(req);
+            const rawCode = (body.code || "").trim().toUpperCase();
+            const items = Array.isArray(body.cart_items) ? body.cart_items : (Array.isArray(body.items) ? body.items : []);
+
+            if (!rawCode) {
+              return sendJson(res, 400, { success: false, valid: false, error: "Please enter a coupon code." });
+            }
+
+            const cRes = await query("SELECT * FROM coupons WHERE UPPER(code) = $1 LIMIT 1", [rawCode]);
+            const coupon = cRes.rows[0];
+            if (!coupon) {
+              return sendJson(res, 200, { success: false, valid: false, error: `Coupon code '${rawCode}' is not valid.` });
+            }
+
+            if (coupon.status !== "active") {
+              return sendJson(res, 200, { success: false, valid: false, error: "This coupon is currently inactive." });
+            }
+
+            if (coupon.expires_at) {
+              const expiry = new Date(coupon.expires_at);
+              if (Date.now() > expiry.getTime() + 86400000) {
+                return sendJson(res, 200, { success: false, valid: false, error: "This coupon has expired." });
+              }
+            }
+
+            if (coupon.starts_at) {
+              const start = new Date(coupon.starts_at);
+              if (Date.now() < start.getTime()) {
+                return sendJson(res, 200, { success: false, valid: false, error: "This coupon promotion has not started yet." });
+              }
+            }
+
+            const cpRes = await query("SELECT product_id FROM coupon_products WHERE coupon_id = $1", [coupon.id]);
+            const eligiblePids = new Set(cpRes.rows.map((r: any) => r.product_id));
+
+            let eligibleItems = items;
+            if (eligiblePids.size > 0) {
+              eligibleItems = items.filter((it: any) => eligiblePids.has(it.productId || it.product_id));
+              if (eligibleItems.length === 0) {
+                return sendJson(res, 200, {
+                  success: false,
+                  valid: false,
+                  error: `Coupon '${coupon.code}' is only valid on selected products, none of which are in your cart.`,
+                });
+              }
+            }
+
+            const eligibleSubtotal = eligibleItems.reduce((acc: number, it: any) => {
+              const p = Number(it.price) || 0;
+              const q = Number(it.quantity ?? it.qty ?? 1);
+              return acc + p * q;
+            }, 0);
+
+            const effectiveTotal = body.order_total !== undefined ? Number(body.order_total) : eligibleSubtotal;
+
+            if (coupon.minimum_order_value && effectiveTotal < Number(coupon.minimum_order_value)) {
+              return sendJson(res, 200, {
+                success: false,
+                valid: false,
+                error: `Minimum order value of ₹${coupon.minimum_order_value} required for this coupon (order total: ₹${effectiveTotal}).`,
+              });
+            }
+
+            let discount = 0;
+            if (coupon.discount_type === "percentage") {
+              discount = Math.round(eligibleSubtotal * (Number(coupon.discount_value) / 100));
+            } else {
+              discount = Math.min(Number(coupon.discount_value), eligibleSubtotal);
+            }
+
+            if (coupon.maximum_discount && discount > Number(coupon.maximum_discount)) {
+              discount = Number(coupon.maximum_discount);
+            }
+
+            return sendJson(res, 200, {
+              success: true,
+              valid: true,
+              discount,
+              discount_amount: discount,
+              coupon: {
+                id: coupon.id,
+                code: coupon.code,
+                description: coupon.description,
+                discountType: coupon.discount_type,
+                discountValue: coupon.discount_value,
+                eligibleProductIds: Array.from(eligiblePids),
+              },
+              message: `Coupon '${coupon.code}' applied! ₹${discount} saved.`,
+            });
+          } catch (err: any) {
+            console.error("[Coupon Validate Error]:", err);
+            return sendJson(res, 500, { success: false, error: err.message });
           }
         }
 
@@ -1312,7 +1886,13 @@ export function pgApiMiddleware() {
               const orderId = `ord_${(await import("node:crypto")).randomBytes(8).toString("hex")}`;
               const custId = body.customer_id || "cst_guest";
               const sellerId = body.seller_id || null;
-              const totalAmount = body.total_amount || body.total || 0;
+              const totalAmount = Number(body.total_amount || body.total || 0);
+              if (isNaN(totalAmount) || totalAmount <= 0) {
+                return sendJson(res, 400, {
+                  success: false,
+                  error: "Order total amount must be greater than ₹0. Please add valid items to your cart.",
+                });
+              }
               const paymentMethod = body.payment_method || "UPI";
               const shippingAddress = JSON.stringify(body.shipping_address || {});
 

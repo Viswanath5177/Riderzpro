@@ -47,11 +47,11 @@ function LandingPage() {
       {/* E. Why Riderzpro: 4 benefit cards + slim stats strip */}
       <WhyRiderzpro />
 
-      {/* F. Are You a Vendor Section */}
-      <VendorSection />
-
-      {/* G. Current Offers: Slim banner row with 3 promo cards */}
+      {/* F. Current Offers: Slim banner row with 3 promo cards */}
       <OffersBanner />
+
+      {/* G. Vendor Section: Marketplace Partner Network with Become a Vendor & Vendor Sign In */}
+      <VendorSection />
 
       {/* H. Final CTA: Single red band with Pick my bike button */}
       <FinalCTA />

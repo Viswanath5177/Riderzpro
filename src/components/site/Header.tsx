@@ -11,6 +11,8 @@ import {
   Bike,
   LogOut,
   LayoutDashboard,
+  Heart,
+  MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "./bits";
@@ -27,7 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function Header() {
-  const { cart, userProfile } = useStore();
+  const { cart, userProfile, savedProductIds, userLocation, setIsLocationModalOpen } = useStore();
   const { user, isAuthenticated, signOut, openCustomerLoginModal } = useAuth();
   const navigate = useNavigate();
 
@@ -73,7 +75,7 @@ export function Header() {
     <>
       <header className="sticky top-0 z-40 h-[72px] border-b border-[#ececec] bg-white/95 backdrop-blur-md transition-shadow">
         <div className="mx-auto flex h-full max-w-[1200px] items-center justify-between px-4 sm:px-6 lg:px-8">
-          {/* Left: Brand Logo */}
+          {/* Left: Brand Logo & Location Selector */}
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
             <button
               onClick={() => setIsMobileDrawerOpen(true)}
@@ -83,6 +85,21 @@ export function Header() {
               <Menu className="h-5 w-5" />
             </button>
             <Logo className="flex items-center" imgClassName="h-11 sm:h-12 md:h-13.5 w-auto" />
+
+            {/* Location Selector Pill */}
+            <button
+              type="button"
+              onClick={() => setIsLocationModalOpen(true)}
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#ececec] bg-white hover:bg-gray-50 text-xs font-semibold text-gray-800 transition cursor-pointer max-w-[190px] shadow-2xs group"
+              title="Select delivery location"
+            >
+              <MapPin className="h-3.5 w-3.5 text-[#e11d2a] shrink-0 group-hover:scale-110 transition-transform" />
+              <div className="text-left min-w-0 flex-1 truncate">
+                <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider block leading-none">Deliver to</span>
+                <span className="text-gray-900 font-bold truncate block text-xs mt-0.5">{userLocation?.name?.split(":")[0] || userLocation?.name || "Select location"}</span>
+              </div>
+              <ChevronDown className="h-3 w-3 text-gray-400 shrink-0" />
+            </button>
           </div>
 
           {/* Center: 5 Nav Links Only (Desktop) */}
@@ -186,6 +203,22 @@ export function Header() {
               )}
             </div>
 
+            {/* Wishlist Icon with Count Badge */}
+            <Link
+              to="/dashboard/customer"
+              search={{ tab: "saved" } as any}
+              className="relative flex h-10 w-10 items-center justify-center rounded-xl text-[#111111] hover:bg-[#f7f7f8] hover:text-[#e11d2a] transition cursor-pointer"
+              aria-label="View Wishlist"
+              title="View Wishlist"
+            >
+              <Heart className="h-4.5 w-4.5" />
+              {savedProductIds.length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-[#e11d2a] px-1 text-[10px] font-bold text-white leading-none shadow-xs">
+                  {savedProductIds.length}
+                </span>
+              )}
+            </Link>
+
             {/* Cart Icon with Count Badge */}
             <Link
               to="/cart"
@@ -225,11 +258,11 @@ export function Header() {
                   </div>
                   <DropdownMenuItem asChild>
                     <Link
-                      to="/dashboard/customer"
+                      to={user?.role === "seller" || userProfile?.role === "seller" ? "/dashboard/vendor" : "/dashboard/customer"}
                       className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-[#f7f7f8] text-[#111111]"
                     >
                       <LayoutDashboard className="h-4 w-4 text-emerald-600" />
-                      <span>Dashboard</span>
+                      <span>{user?.role === "seller" || userProfile?.role === "seller" ? "Vendor Dashboard" : "Customer Dashboard"}</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>

@@ -69,6 +69,7 @@ export type UserProfile = {
   city: string;
   address: string;
   points: number;
+  role?: Role | string;
 };
 
 export type VendorGroup = {
@@ -192,20 +193,20 @@ const StoreCtx = createContext<Ctx | null>(null);
 const KEY = "riderzpro-v7";
 
 const DEFAULT_PROFILE: UserProfile = {
-  name: "Rider",
+  name: "User",
   phone: "",
   email: "",
-  city: "Bengaluru, KA",
+  city: "",
   address: "",
   points: 0,
 };
 
 const DEFAULT_ADDRESS: AddressRef = {
-  name: "Rider",
+  name: "User",
   street: "",
-  city: "Bengaluru",
-  state: "Karnataka",
-  pincode: "560001",
+  city: "",
+  state: "",
+  pincode: "",
   phone: "",
 };
 
@@ -299,13 +300,98 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         } else {
           setNotifications(DEFAULT_NOTIFICATIONS);
         }
-        if (s.userProfile && s.userProfile.name && s.userProfile.name !== "Guest Rider") setUserProfile(s.userProfile);
+        if (s.userProfile) {
+          setUserProfile((prev) => ({
+            ...prev,
+            ...s.userProfile,
+            name: s.userProfile.name || "User",
+          }));
+        }
         if (s.role) setRole(s.role);
         if (s.userLocation && s.userLocation.name) setUserLocation(s.userLocation);
       } else {
         setNotifications(DEFAULT_NOTIFICATIONS);
       }
       setTheme("light");
+
+      // Synchronize verified user profile directly from database
+      fetch("/api/customer/profile", { credentials: "include" })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success && d.profile && d.profile.email) {
+            setUserProfile({
+              name: d.profile.name || "User",
+              phone: d.profile.phone || "",
+              email: d.profile.email || "",
+              city: d.profile.city || "",
+              address: d.profile.address || "",
+              points: d.profile.points || 0,
+            });
+          }
+        })
+        .catch(() => {});
+
+      // Hydrate cart from database
+      fetch("/api/cart", { credentials: "include" })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success && Array.isArray(d.items) && d.items.length > 0) {
+            setCart(
+              d.items.map((it: any) => ({
+                productId: it.productId || it.product_id,
+                vendorId: it.vendorId || it.vendor_id || "v_01",
+                qty: it.qty || it.quantity || 1,
+              }))
+            );
+          }
+        })
+        .catch(() => {});
+
+      // Hydrate wishlist from database
+      fetch("/api/wishlist", { credentials: "include" })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success && Array.isArray(d.items)) {
+            const ids = d.items.map((it: any) => it.product_id || it.productId || it.id);
+            if (ids.length > 0) {
+              setSavedProductIds((prev) => Array.from(new Set([...prev, ...ids])));
+            }
+          }
+        })
+        .catch(() => {});
+
+      // Hydrate delivery location: default saved address from DB or device GPS
+      fetch("/api/customer/addresses", { credentials: "include" })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success && Array.isArray(d.data) && d.data.length > 0) {
+            const def = d.data.find((a: any) => a.is_default) || d.data[0];
+            setUserLocation({
+              id: def.id,
+              name: `${def.label || "Saved"}: ${def.street_address || def.city}`,
+              city: def.city || "Bengaluru",
+              pincode: def.pincode || "560001",
+              lat: 12.9716,
+              lng: 77.5946,
+              tag: def.label || "Saved Address",
+            });
+          } else if (typeof window !== "undefined" && "geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                const { latitude, longitude } = pos.coords;
+                setUserLocation((prev) => ({
+                  ...prev,
+                  lat: latitude,
+                  lng: longitude,
+                  tag: "Device GPS",
+                }));
+              },
+              () => {},
+              { timeout: 6000 }
+            );
+          }
+        })
+        .catch(() => {});
     } catch {}
     setLoaded(true);
   }, []);
@@ -467,6 +553,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }) => {
       const discount = options.discount || 0;
       const q = quoteCart(cart, discount);
+      if (!q.total || q.total <= 0) {
+        throw new Error("Order amount cannot be ₹0. Please add items to your cart.");
+      }
       const newOrderId = `RZ-${Math.floor(100000 + Math.random() * 900000)}`;
 
       const order: Order = {
@@ -579,9 +668,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleSaved = useCallback((id: string) => {
-    setSavedProductIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
+    setSavedProductIds((prev) => {
+      const alreadySaved = prev.includes(id);
+      const next = alreadySaved ? prev.filter((x) => x !== id) : [...prev, id];
+
+      // Persist to backend database
+      fetch("/api/wishlist", {
+        method: alreadySaved ? "DELETE" : "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ product_id: id }),
+      }).catch(() => {});
+
+      return next;
+    });
   }, []);
 
   const isSaved = useCallback((id: string) => savedProductIds.includes(id), [savedProductIds]);
@@ -614,6 +714,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const updateUserProfile = useCallback((p: Partial<UserProfile>) => {
     setUserProfile((prev) => ({ ...prev, ...p }));
+    // Synchronize to backend database
+    fetch("/api/customer/profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(p),
+    }).catch(() => {});
   }, []);
 
   const simulateDemoOrder = useCallback(() => {
@@ -640,8 +747,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       status: 3,
       fulfillmentStatus: "Dispatched",
       riderId: riders[0].id,
-      customerName: "Aakash Sharma",
-      customerPhone: "+91 98765 43210",
+      customerName: userProfile.name || "User",
+      customerPhone: userProfile.phone || "",
       shippingAddress: DEFAULT_ADDRESS,
       shipmentId: "SHP-DEMO-FLEET",
     };

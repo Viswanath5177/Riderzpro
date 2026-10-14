@@ -190,7 +190,7 @@ export class ProductModel {
       // Certified product + Active (non-frozen) vendor + in-stock inventory
       if (verification_status === "approved" && !seller_id) {
         sql += ` AND (s.id IS NULL OR (s.status = 'APPROVED' AND (s.account_status IS NULL OR s.account_status != 'FROZEN')))`;
-        sql += ` AND p.stock > 0`;
+        sql += ` AND p.stock >= 0`;
       }
     }
 

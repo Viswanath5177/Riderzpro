@@ -163,6 +163,10 @@ function CartPage() {
       toast.error("Please adjust quantities to match available inventory.");
       return;
     }
+    if (!quote.total || quote.total <= 0) {
+      toast.error("Order amount cannot be ₹0. Please add items to your cart before proceeding.");
+      return;
+    }
     if (!deliveryDetails.fullName.trim() || !deliveryDetails.phone.trim() || !deliveryDetails.streetLocality.trim() || !deliveryDetails.pincode.trim()) {
       toast.error("Please provide complete delivery details (Full Name, Contact Number, Street & PIN code).");
       setIsEditingAddress(true);
