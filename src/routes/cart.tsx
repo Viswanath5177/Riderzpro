@@ -60,7 +60,7 @@ export const Route = createFileRoute("/cart")({
 });
 
 function CartPage() {
-  const { cart, setQty, userProfile, inventoryStock, clearCart, addToCart } = useStore();
+  const { cart, setQty, userProfile, inventoryStock, clearCart, addToCart, userLocation } = useStore();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -407,7 +407,10 @@ function CartPage() {
           city: "Delhi",
           state: "Delhi",
           pincode: address.pincode.trim(),
+          latitude: userLocation?.latitude ?? userLocation?.lat,
+          longitude: userLocation?.longitude ?? userLocation?.lng,
         },
+
         deliveryInstructions: address.deliveryInstructions.trim() || undefined,
         paymentMethod: paymentMethod,
         couponCode: appliedCoupon?.code,

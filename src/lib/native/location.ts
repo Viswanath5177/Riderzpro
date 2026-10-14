@@ -23,6 +23,140 @@ const listeners = new Set<LocationCallback>();
 const DEFAULT_NOIDA_LAT = 28.6280;
 const DEFAULT_NOIDA_LNG = 77.3730;
 
+export interface DeviceLocationResult {
+  latitude: number;
+  longitude: number;
+  accuracy: number;
+  timestamp: number;
+}
+
+export type GpsErrorCode =
+  | "PERMISSION_DENIED"
+  | "POSITION_UNAVAILABLE"
+  | "TIMEOUT"
+  | "NOT_SUPPORTED";
+
+export class GpsError extends Error {
+  code: GpsErrorCode;
+  constructor(code: GpsErrorCode, message: string) {
+    super(message);
+    this.name = "GpsError";
+    this.code = code;
+  }
+}
+
+/**
+ * Fetch high-accuracy device GPS position without fallback mocks.
+ * Strictly used for customer delivery location detection.
+ */
+export async function getCurrentLocation(options?: {
+  enableHighAccuracy?: boolean;
+  timeout?: number;
+  maximumAge?: number;
+}): Promise<DeviceLocationResult> {
+  const timeoutMs = options?.timeout ?? 10000;
+  const enableHighAccuracy = options?.enableHighAccuracy ?? true;
+  const maximumAge = options?.maximumAge ?? 0;
+
+  // 1. Native Capacitor Geolocation
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const status = await Geolocation.checkPermissions();
+      if (status.location !== "granted") {
+        const req = await Geolocation.requestPermissions({ permissions: ["location"] });
+        if (req.location !== "granted") {
+          throw new GpsError(
+            "PERMISSION_DENIED",
+            "Location permission is required to detect your delivery location."
+          );
+        }
+      }
+
+      const pos: Position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy,
+        timeout: timeoutMs,
+        maximumAge,
+      });
+
+      return {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy ?? 10,
+        timestamp: pos.timestamp || Date.now(),
+      };
+    } catch (err: any) {
+      if (err instanceof GpsError) throw err;
+      const msg = (err?.message || "").toLowerCase();
+      if (msg.includes("denied")) {
+        throw new GpsError(
+          "PERMISSION_DENIED",
+          "Location permission is required to detect your delivery location."
+        );
+      }
+      if (msg.includes("timeout")) {
+        throw new GpsError("TIMEOUT", "Location request timed out. Please try again.");
+      }
+      throw new GpsError(
+        "POSITION_UNAVAILABLE",
+        "Unable to detect your location. Please try again."
+      );
+    }
+  }
+
+  // 2. Browser navigator.geolocation
+  if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
+    throw new GpsError(
+      "NOT_SUPPORTED",
+      "Location services are unavailable on this device or browser."
+    );
+  }
+
+  return new Promise<DeviceLocationResult>((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        resolve({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy ?? 10,
+          timestamp: pos.timestamp || Date.now(),
+        });
+      },
+      (error) => {
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            reject(
+              new GpsError(
+                "PERMISSION_DENIED",
+                "Location permission is required to detect your delivery location."
+              )
+            );
+            break;
+          case error.TIMEOUT:
+            reject(
+              new GpsError("TIMEOUT", "Location request timed out. Please try again.")
+            );
+            break;
+          case error.POSITION_UNAVAILABLE:
+          default:
+            reject(
+              new GpsError(
+                "POSITION_UNAVAILABLE",
+                "Unable to detect your location. Please try again."
+              )
+            );
+            break;
+        }
+      },
+      {
+        enableHighAccuracy,
+        timeout: timeoutMs,
+        maximumAge,
+      }
+    );
+  });
+}
+
+
 /**
  * Request location permission across Android, iOS, and Browser
  */

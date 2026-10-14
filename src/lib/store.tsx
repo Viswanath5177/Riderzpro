@@ -970,7 +970,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         updateInventoryStock(c.productId, -c.qty);
       });
 
-      // Auto-manifest initial shipment
+      // Derive dropoff coordinates from the order's shipping address or customer's confirmed userLocation
+      const dropLat =
+        options.shippingAddress.latitude ??
+        options.shippingAddress.lat ??
+        userLocation?.latitude ??
+        userLocation?.lat ??
+        16.5740;
+      const dropLng =
+        options.shippingAddress.longitude ??
+        options.shippingAddress.lng ??
+        userLocation?.longitude ??
+        userLocation?.lng ??
+        80.3575;
+      const dropAddr = `${options.shippingAddress.street || userLocation?.address || userLocation?.name || "Amaravati"}, ${options.shippingAddress.city || userLocation?.city || "Amaravati"}`;
+
+      // Auto-manifest initial shipment with real destination coordinates
       const autoShipment = createNormalizedShipment({
         orderId: newOrderId,
         provider: "Delhivery",
@@ -981,7 +996,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           pincode: "560100",
           phone: "+91 80 4000 1100",
         },
-        destinationAddress: options.shippingAddress,
+        destinationAddress: {
+          ...options.shippingAddress,
+          latitude: dropLat,
+          longitude: dropLng,
+        },
         weightKg: 4.5,
         itemDescription: `${cart.length} EV Parts & Accessories`,
         orderValue: q.total,
@@ -993,7 +1012,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setShipments((prev) => [autoShipment, ...prev]);
       setCart([]);
 
-      // Asynchronously persist delivery task in real logistics backend
+      // Asynchronously persist delivery task in real logistics backend with customer GPS destination
       const backendPayload = {
         order_id: newOrderId,
         customer_id: userProfile?.phone || "cust_demo",
@@ -1004,12 +1023,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         pickup_address: "Vijayawada Central Hub (16.5062, 80.6480)",
         pickup_lat: 16.5062,
         pickup_lng: 80.6480,
-        dropoff_address: `${options.shippingAddress.street || "Amaravati"}, ${options.shippingAddress.city || "Amaravati"}`,
-        dropoff_lat: 16.5740,
-        dropoff_lng: 80.3575,
+        dropoff_address: dropAddr,
+        dropoff_lat: dropLat,
+        dropoff_lng: dropLng,
         package_weight_kg: 4.5,
         priority: "normal",
       };
+
 
       apiCreateDelivery(backendPayload)
         .then((createdDelivery) => {

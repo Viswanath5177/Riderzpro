@@ -173,6 +173,8 @@ export type Rider = { id: string; name: string; phone: string; vehicle: string; 
 
 export const CUSTOMER_LOCATION = { lat: 12.9716, lng: 77.5946, label: "MG Road, Bengaluru" };
 
+export type LocationSource = "gps" | "search" | "saved" | "hub";
+
 export type LocationArea = {
   id: string;
   name: string;
@@ -182,7 +184,63 @@ export type LocationArea = {
   pincode?: string;
   tag?: string;
   isPopular?: boolean;
+  // Normalized Location Properties
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+  area?: string;
+  state?: string;
+  source?: LocationSource;
+  accuracy?: number;
+  timestamp?: number;
 };
+
+export interface NormalizedLocation {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  address: string;
+  area: string;
+  city: string;
+  state: string;
+  pincode?: string;
+  source: LocationSource;
+  accuracy?: number;
+  timestamp?: number;
+  tag?: string;
+  isPopular?: boolean;
+}
+
+export function toNormalizedLocation(
+  loc: LocationArea,
+  fallbackSource: LocationSource = "hub"
+): NormalizedLocation {
+  const latitude = loc.latitude ?? loc.lat;
+  const longitude = loc.longitude ?? loc.lng;
+  const city = loc.city || "Bengaluru";
+  const state = loc.state || "Karnataka";
+  const area = loc.area || loc.name;
+  const address = loc.address || `${loc.name}, ${city}`;
+
+  return {
+    id: loc.id,
+    name: loc.name,
+    latitude,
+    longitude,
+    address,
+    area,
+    city,
+    state,
+    pincode: loc.pincode,
+    source: loc.source || fallbackSource,
+    accuracy: loc.accuracy,
+    timestamp: loc.timestamp,
+    tag: loc.tag,
+    isPopular: loc.isPopular,
+  };
+}
+
 
 export const DEFAULT_LOCATION: LocationArea = {
   id: "indiranagar",

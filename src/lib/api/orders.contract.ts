@@ -22,6 +22,8 @@ export const OrderShippingAddressSchema = z.object({
   city: z.string(),
   state: z.string(),
   pincode: z.string(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 });
 
 export const OrderItemSnapshotSchema = z.object({

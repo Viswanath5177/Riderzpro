@@ -35,6 +35,8 @@ export type OrderShippingAddress = {
   city: string; // "Delhi"
   state: string; // "Delhi"
   pincode: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 export type OrderItemSnapshot = {
@@ -146,6 +148,8 @@ export async function createOrder(payload: CreateOrderPayload, userId?: string):
         city: "Delhi",
         state: "Delhi",
         pincode: payload.shippingAddress.pincode.trim(),
+        latitude: payload.shippingAddress.latitude,
+        longitude: payload.shippingAddress.longitude,
       },
       deliveryInstructions: payload.deliveryInstructions?.trim() || undefined,
       paymentMethod: payload.paymentMethod,

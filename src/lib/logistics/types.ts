@@ -31,7 +31,12 @@ export interface AddressRef {
   state?: string;
   pincode: string;
   phone: string;
+  latitude?: number;
+  longitude?: number;
+  lat?: number;
+  lng?: number;
 }
+
 
 export interface NormalizedShipment {
   shipmentId: string;

@@ -159,6 +159,8 @@ export function createMockOrder(payload: CreateOrderPayload, userId?: string): A
       city: "Delhi",
       state: "Delhi",
       pincode: pincode.trim(),
+      latitude: payload.shippingAddress.latitude,
+      longitude: payload.shippingAddress.longitude,
     },
     deliveryInstructions: payload.deliveryInstructions?.trim() || undefined,
     items: itemsSnapshot,

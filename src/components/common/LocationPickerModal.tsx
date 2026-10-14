@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   MapPin,
   Search,
@@ -12,6 +12,8 @@ import {
   ArrowRight,
   ShieldCheck,
   Zap,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
@@ -20,20 +22,39 @@ import {
   vendors,
   distanceKm,
   type LocationArea,
+  toNormalizedLocation,
 } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { getCurrentLocation, GpsError } from "@/lib/native/location";
+import { reverseGeocode } from "@/lib/geo/reverseGeocode";
 
 interface LocationPickerModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+type GpsState = "idle" | "loading" | "success" | "error";
+
 export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProps) {
   const { userLocation, setUserLocation } = useStore();
   const [searchQuery, setSearchQuery] = useState("");
-  const [isDetectingGps, setIsDetectingGps] = useState(false);
+  const [gpsState, setGpsState] = useState<GpsState>("idle");
+  const [gpsError, setGpsError] = useState<string | null>(null);
 
-  // Saved addresses like Zomato
+  // Preview state (DO NOT AUTO-CONFIRM immediately)
+  const [previewLocation, setPreviewLocation] = useState<LocationArea | null>(null);
+
+  // Sync preview with userLocation whenever modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setPreviewLocation(userLocation);
+      setGpsState("idle");
+      setGpsError(null);
+      setSearchQuery("");
+    }
+  }, [isOpen, userLocation]);
+
+  // Saved addresses
   const savedAddresses: Array<{
     id: string;
     type: "home" | "work" | "garage";
@@ -52,9 +73,13 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
         city: "Bengaluru",
         lat: 12.9304,
         lng: 77.6784,
+        latitude: 12.9304,
+        longitude: 77.6784,
         pincode: "560103",
         tag: "Outer Ring Rd",
         isPopular: true,
+        source: "saved",
+        address: "Flat 402, Green Glen Layout, Bellandur, Bengaluru 560103",
       },
     },
     {
@@ -68,9 +93,13 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
         city: "Bengaluru",
         lat: 12.9591,
         lng: 77.6974,
+        latitude: 12.9591,
+        longitude: 77.6974,
         pincode: "560037",
         tag: "East Junction",
         isPopular: false,
+        source: "saved",
+        address: "Prestige Tech Park, Outer Ring Road, Marathahalli 560103",
       },
     },
     {
@@ -84,9 +113,13 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
         city: "Bengaluru",
         lat: 12.9784,
         lng: 77.6408,
+        latitude: 12.9784,
+        longitude: 77.6408,
         pincode: "560038",
         tag: "Central-East Hub",
         isPopular: true,
+        source: "saved",
+        address: "100ft Road, HAL 2nd Stage, Indiranagar, Bengaluru 560038",
       },
     },
   ];
@@ -106,83 +139,107 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
 
   if (!isOpen) return null;
 
-  const handleSelect = (loc: LocationArea) => {
-    setUserLocation(loc);
-    toast.success(`Delivery location updated to ${loc.name}`, {
-      description: "Nearby stores, delivery times and fees have been adjusted for this area.",
-    });
-    onClose();
+  // Select location in preview mode
+  const handleSelect = (loc: LocationArea, source: "hub" | "saved" | "search" = "hub") => {
+    const normalized = toNormalizedLocation(loc, source);
+    const enriched: LocationArea = {
+      ...loc,
+      latitude: normalized.latitude,
+      longitude: normalized.longitude,
+      address: normalized.address,
+      area: normalized.area,
+      city: normalized.city,
+      state: normalized.state,
+      pincode: normalized.pincode,
+      source,
+    };
+    setPreviewLocation(enriched);
   };
 
-  const handleDetectGps = () => {
-    setIsDetectingGps(true);
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setIsDetectingGps(false);
-          const { latitude, longitude } = position.coords;
-          // Find closest known hub
-          let closest = POPULAR_LOCATIONS[0];
-          let minDistance = Infinity;
-          POPULAR_LOCATIONS.forEach((loc) => {
-            const d = distanceKm({ lat: latitude, lng: longitude }, loc);
-            if (d < minDistance) {
-              minDistance = d;
-              closest = loc;
-            }
-          });
+  // Real device GPS detection
+  const handleDetectGps = async () => {
+    if (gpsState === "loading") return; // Prevent multiple simultaneous requests
 
-          // Use closest hub or exact coordinates
-          const detectedLoc: LocationArea = {
-            id: closest.id,
-            name: closest.name,
-            city: closest.city,
-            lat: latitude,
-            lng: longitude,
-            pincode: closest.pincode,
-            tag: "GPS Verified",
-          };
-          setUserLocation(detectedLoc);
-          toast.success(`GPS detected: ${detectedLoc.name}`, {
-            description: `Found nearby auto stores within ${Math.round(minDistance * 10) / 10} km.`,
-          });
-          onClose();
-        },
-        () => {
-          // If user denies or offline, fallback smoothly to Indiranagar Hub
-          setIsDetectingGps(false);
-          const fallback = POPULAR_LOCATIONS[0];
-          setUserLocation(fallback);
-          toast.info(`Using standard location: ${fallback.name}`, {
-            description: "Location permission not granted. Set to Indiranagar default hub.",
-          });
-          onClose();
-        },
-        { timeout: 8000 }
-      );
-    } else {
-      setIsDetectingGps(false);
-      const fallback = POPULAR_LOCATIONS[0];
-      setUserLocation(fallback);
-      toast.info(`Using default hub: ${fallback.name}`);
-      onClose();
+    setGpsState("loading");
+    setGpsError(null);
+
+    try {
+      // 1. Fetch real GPS coordinates via Capacitor or Browser
+      const pos = await getCurrentLocation({ enableHighAccuracy: true, timeout: 10000 });
+
+      // 2. Reverse geocode coordinates via OSM / Nominatim
+      const geocoded = await reverseGeocode(pos.latitude, pos.longitude);
+
+      // 3. Construct normalized location object
+      const detectedLoc: LocationArea = {
+        id: `gps-${Date.now()}`,
+        name: geocoded.area || `Location (${pos.latitude.toFixed(4)}, ${pos.longitude.toFixed(4)})`,
+        city: geocoded.city || "Bengaluru",
+        lat: pos.latitude,
+        lng: pos.longitude,
+        latitude: pos.latitude,
+        longitude: pos.longitude,
+        address: geocoded.formattedAddress || geocoded.displayName,
+        area: geocoded.area,
+        state: geocoded.state,
+        pincode: geocoded.pincode,
+        source: "gps",
+        accuracy: pos.accuracy,
+        timestamp: pos.timestamp,
+        tag: "GPS Verified",
+      };
+
+      // Set preview ONLY — do not auto-confirm
+      setPreviewLocation(detectedLoc);
+      setGpsState("success");
+      toast.success(`GPS location detected: ${detectedLoc.name}`, {
+        description: "Review your location and click Done to confirm delivery destination.",
+      });
+    } catch (err: any) {
+      setGpsState("error");
+      const friendlyMessage =
+        err instanceof GpsError
+          ? err.message
+          : "Unable to detect your location. Please try again.";
+      setGpsError(friendlyMessage);
+      toast.error(friendlyMessage);
     }
   };
 
+  // Custom search location handler
   const handleCustomLocation = () => {
     if (!searchQuery.trim()) return;
+    const query = searchQuery.trim();
     const customLoc: LocationArea = {
       id: `custom-${Date.now()}`,
-      name: searchQuery.trim(),
+      name: query,
       city: "Bengaluru",
-      lat: 12.9716, // Center coordinate default
+      lat: 12.9716,
       lng: 77.5946,
-      tag: "Custom Area",
+      latitude: 12.9716,
+      longitude: 77.5946,
+      address: `${query}, Bengaluru`,
+      area: query,
+      state: "Karnataka",
+      tag: "Custom Search",
+      source: "search",
     };
-    setUserLocation(customLoc);
-    toast.success(`Delivery set to: ${customLoc.name}`);
+    setPreviewLocation(customLoc);
+  };
+
+  // Done button confirms the selected preview location
+  const handleDone = () => {
+    if (previewLocation) {
+      setUserLocation(previewLocation);
+      toast.success(`Delivery location updated to ${previewLocation.name}`, {
+        description: "Nearby stores, delivery times and fees have been adjusted for this area.",
+      });
+    }
     onClose();
   };
+
+  const isGpsLoading = gpsState === "loading";
+  const activeSelectedId = previewLocation?.id || userLocation?.id;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
@@ -249,37 +306,134 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
             )}
           </div>
 
-          {/* Detect Live GPS Location Button (Zomato-style) */}
+          {/* Detect Live GPS Location Button with Exact 4 States */}
           <button
             onClick={handleDetectGps}
-            disabled={isDetectingGps}
-            className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-red-50/70 hover:bg-red-50 text-[#E31E24] border border-red-100/90 hover:border-red-200 transition cursor-pointer group active:scale-[0.99]"
+            disabled={isGpsLoading}
+            className={cn(
+              "w-full flex items-center justify-between p-3.5 rounded-2xl border transition cursor-pointer group active:scale-[0.99]",
+              gpsState === "error"
+                ? "bg-amber-50/80 hover:bg-amber-100/70 border-amber-200 text-amber-900"
+                : gpsState === "success"
+                ? "bg-emerald-50/80 hover:bg-emerald-100/70 border-emerald-200 text-emerald-900"
+                : "bg-red-50/70 hover:bg-red-50 text-[#E31E24] border-red-100/90 hover:border-red-200",
+              isGpsLoading && "opacity-80 cursor-not-allowed"
+            )}
           >
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-xl bg-[#E31E24] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition shrink-0">
-                <Navigation
-                  className={cn("h-4 w-4", isDetectingGps ? "animate-spin" : "group-hover:rotate-45 transition-transform")}
-                />
+              <div
+                className={cn(
+                  "h-8 w-8 rounded-xl flex items-center justify-center shadow-xs transition shrink-0",
+                  gpsState === "error"
+                    ? "bg-amber-600 text-white"
+                    : gpsState === "success"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-[#E31E24] text-white group-hover:scale-105"
+                )}
+              >
+                {isGpsLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : gpsState === "success" ? (
+                  <Check className="h-4 w-4 stroke-[3]" />
+                ) : gpsState === "error" ? (
+                  <AlertCircle className="h-4 w-4" />
+                ) : (
+                  <Navigation className="h-4 w-4 group-hover:rotate-45 transition-transform" />
+                )}
               </div>
               <div className="text-left">
-                <p className="text-xs sm:text-sm font-bold text-[#E31E24] flex items-center gap-1.5">
-                  <span>{isDetectingGps ? "Detecting GPS coordinates..." : "Use Current Location"}</span>
-                  <span className="text-[10px] font-semibold bg-white/80 px-1.5 py-0.5 rounded text-red-700 border border-red-200">
+                <p className="text-xs sm:text-sm font-bold flex items-center gap-1.5">
+                  <span>
+                    {isGpsLoading
+                      ? "Detecting Location..."
+                      : gpsState === "success"
+                      ? "Location Detected"
+                      : gpsState === "error"
+                      ? "Unable to detect location — Try Again"
+                      : "Use Current Location"}
+                  </span>
+                  <span
+                    className={cn(
+                      "text-[10px] font-semibold px-1.5 py-0.5 rounded border",
+                      gpsState === "error"
+                        ? "bg-amber-100 text-amber-800 border-amber-300"
+                        : gpsState === "success"
+                        ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                        : "bg-white/80 text-red-700 border-red-200"
+                    )}
+                  >
                     GPS
                   </span>
                 </p>
-                <p className="text-[11px] text-red-600/80">
-                  Using device GPS to find auto parts stores nearest to you
+                <p
+                  className={cn(
+                    "text-[11px]",
+                    gpsState === "error"
+                      ? "text-amber-800/90 font-medium"
+                      : gpsState === "success"
+                      ? "text-emerald-700"
+                      : "text-red-600/80"
+                  )}
+                >
+                  {isGpsLoading
+                    ? "Acquiring GPS fix and resolving street address..."
+                    : gpsState === "success"
+                    ? "GPS location detected. Click Done below to confirm."
+                    : gpsState === "error"
+                    ? gpsError || "Unable to detect your location. Please try again."
+                    : "Using device GPS to find auto parts stores nearest to you"}
                 </p>
               </div>
             </div>
-            <ArrowRight className="h-4 w-4 text-[#E31E24] group-hover:translate-x-1 transition-transform" />
+            <ArrowRight
+              className={cn(
+                "h-4 w-4 transition-transform",
+                gpsState === "error"
+                  ? "text-amber-600 group-hover:translate-x-1"
+                  : gpsState === "success"
+                  ? "text-emerald-600"
+                  : "text-[#E31E24] group-hover:translate-x-1"
+              )}
+            />
           </button>
+
+          {/* Detected GPS / Preview Location Banner (Non auto-confirmed) */}
+          {previewLocation && (
+            <div className="p-3 bg-emerald-50/70 border border-emerald-200/90 rounded-2xl flex items-center justify-between gap-3 animate-in fade-in duration-150">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="h-7 w-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                  <MapPin className="h-3.5 w-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800">
+                      {previewLocation.source === "gps" ? "📍 Current Location" : "Preview Selected Location"}
+                    </span>
+                    {previewLocation.source === "gps" && (
+                      <span className="text-[9.5px] font-bold text-emerald-700 bg-white px-1.5 py-0.2 rounded border border-emerald-200">
+                        GPS Verified
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs font-bold text-gray-900 truncate">
+                    {previewLocation.name}
+                    {previewLocation.city ? `, ${previewLocation.city}` : ""}
+                  </p>
+                  <p className="text-[10.5px] text-gray-500 truncate">
+                    {previewLocation.address || `${previewLocation.city} ${previewLocation.pincode || ""}`}
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-lg border border-emerald-200 shrink-0">
+                Click Done to Confirm
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Scrollable Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-          {/* Saved Addresses Section (Zomato Style) */}
+          {/* Saved Addresses Section */}
           {!searchQuery && (
             <div>
               <div className="flex items-center justify-between mb-3">
@@ -290,12 +444,12 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 {savedAddresses.map((addr) => {
-                  const isSelected = userLocation?.id === addr.loc.id;
+                  const isSelected = activeSelectedId === addr.loc.id;
                   const Icon = addr.type === "home" ? Home : addr.type === "work" ? Building : Wrench;
                   return (
                     <button
                       key={addr.id}
-                      onClick={() => handleSelect(addr.loc)}
+                      onClick={() => handleSelect(addr.loc, "saved")}
                       className={cn(
                         "flex flex-col text-left p-3 rounded-2xl border transition relative group cursor-pointer",
                         isSelected
@@ -358,8 +512,7 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {filteredLocations.map((loc) => {
-                  const isSelected = userLocation?.id === loc.id;
-                  // Compute nearest vendor from this location
+                  const isSelected = activeSelectedId === loc.id;
                   const nearestVendor = vendors
                     .map((v) => ({
                       vendor: v,
@@ -370,7 +523,7 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
                   return (
                     <button
                       key={loc.id}
-                      onClick={() => handleSelect(loc)}
+                      onClick={() => handleSelect(loc, "hub")}
                       className={cn(
                         "flex items-center justify-between p-3 rounded-2xl border transition text-left cursor-pointer group",
                         isSelected
@@ -437,8 +590,8 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
             <span>Hyperlocal delivery powered by RiderzPro Fleet</span>
           </div>
           <button
-            onClick={onClose}
-            className="font-bold text-gray-700 hover:text-black cursor-pointer"
+            onClick={handleDone}
+            className="px-5 py-2 rounded-xl bg-[#111111] hover:bg-black text-white font-bold text-xs shadow-xs cursor-pointer transition active:scale-95"
           >
             Done
           </button>
