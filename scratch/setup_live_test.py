@@ -6,9 +6,6 @@ from logistics.models import Delivery, Rider, DeliveryRoute
 from logistics.route_planning import RoutePlanningService
 import json
 
-init_db()
-db = SessionLocal()
-
 SEED_DATA = [
     {
         "rider": {
@@ -172,100 +169,107 @@ SEED_DATA = [
     },
 ]
 
-planner = RoutePlanningService()
+def main():
+    init_db()
+    db = SessionLocal()
+    planner = RoutePlanningService()
 
-try:
-    for item in SEED_DATA:
-        r_info = item["rider"]
-        d_info = item["delivery"]
+    try:
+        for item in SEED_DATA:
+            r_info = item["rider"]
+            d_info = item["delivery"]
 
-        # 1. Upsert Rider
-        rider = db.query(Rider).filter_by(id=r_info["id"]).first()
-        if not rider:
-            rider = Rider(
-                id=r_info["id"],
-                name=r_info["name"],
-                phone=r_info["phone"],
-                email=r_info["email"],
-                vehicle_type=r_info["vehicle_type"],
-                certification=r_info["certification"],
-                skills=json.dumps(r_info["skills"]),
-                current_lat=r_info["current_lat"],
-                current_lng=r_info["current_lng"],
-                status=r_info["status"],
-                is_online=r_info["is_online"],
-                max_payload_kg=r_info["max_payload_kg"],
-                max_concurrent_orders=r_info["max_concurrent_orders"],
-                current_workload_count=r_info["current_workload_count"],
-                rating=r_info["rating"],
+            # 1. Upsert Rider
+            rider = db.query(Rider).filter_by(id=r_info["id"]).first()
+            if not rider:
+                rider = Rider(
+                    id=r_info["id"],
+                    name=r_info["name"],
+                    phone=r_info["phone"],
+                    email=r_info["email"],
+                    vehicle_type=r_info["vehicle_type"],
+                    certification=r_info["certification"],
+                    skills=json.dumps(r_info["skills"]),
+                    current_lat=r_info["current_lat"],
+                    current_lng=r_info["current_lng"],
+                    status=r_info["status"],
+                    is_online=r_info["is_online"],
+                    max_payload_kg=r_info["max_payload_kg"],
+                    max_concurrent_orders=r_info["max_concurrent_orders"],
+                    current_workload_count=r_info["current_workload_count"],
+                    rating=r_info["rating"],
+                )
+                db.add(rider)
+            else:
+                rider.name = r_info["name"]
+                rider.phone = r_info["phone"]
+                rider.vehicle_type = r_info["vehicle_type"]
+                rider.current_lat = r_info["current_lat"]
+                rider.current_lng = r_info["current_lng"]
+                rider.status = r_info["status"]
+                rider.is_online = r_info["is_online"]
+
+            db.commit()
+            print(f"Rider ready: {rider.id} ({rider.name})")
+
+            # 2. Upsert Delivery
+            deliv = db.query(Delivery).filter_by(id=d_info["id"]).first()
+            if not deliv:
+                deliv = Delivery(
+                    id=d_info["id"],
+                    order_id=d_info["order_id"],
+                    customer_id=d_info["customer_id"],
+                    customer_name=d_info["customer_name"],
+                    customer_phone=d_info["customer_phone"],
+                    vendor_id=d_info["vendor_id"],
+                    vendor_name=d_info["vendor_name"],
+                    pickup_address=d_info["pickup_address"],
+                    pickup_lat=d_info["pickup_lat"],
+                    pickup_lng=d_info["pickup_lng"],
+                    dropoff_address=d_info["dropoff_address"],
+                    dropoff_lat=d_info["dropoff_lat"],
+                    dropoff_lng=d_info["dropoff_lng"],
+                    package_weight_kg=d_info["package_weight_kg"],
+                    package_dimensions=d_info["package_dimensions"],
+                    priority=d_info["priority"],
+                    status=d_info["status"],
+                    assigned_rider_id=d_info["assigned_rider_id"],
+                    notes=d_info["notes"],
+                )
+                db.add(deliv)
+            else:
+                deliv.order_id = d_info["order_id"]
+                deliv.status = d_info["status"]
+                deliv.assigned_rider_id = d_info["assigned_rider_id"]
+                deliv.pickup_lat = d_info["pickup_lat"]
+                deliv.pickup_lng = d_info["pickup_lng"]
+                deliv.dropoff_lat = d_info["dropoff_lat"]
+                deliv.dropoff_lng = d_info["dropoff_lng"]
+                deliv.pickup_address = d_info["pickup_address"]
+                deliv.dropoff_address = d_info["dropoff_address"]
+
+            db.commit()
+            db.refresh(deliv)
+            print(f"Delivery ready: {deliv.id} (order: {deliv.order_id}), assigned to {deliv.assigned_rider_id}")
+
+            # 3. Plan route with OSRM (or fallback)
+            db.query(DeliveryRoute).filter_by(delivery_id=deliv.id).delete()
+            db.commit()
+
+            route = planner.plan_route_for_delivery(db, deliv, provider_name="osrm")
+            raw_wps = json.loads(route.waypoints_json) if route.waypoints_json else []
+            geom_count = (
+                len(raw_wps.get("geometry", raw_wps.get("waypoints", [])))
+                if isinstance(raw_wps, dict)
+                else len(raw_wps)
             )
-            db.add(rider)
-        else:
-            rider.name = r_info["name"]
-            rider.phone = r_info["phone"]
-            rider.vehicle_type = r_info["vehicle_type"]
-            rider.current_lat = r_info["current_lat"]
-            rider.current_lng = r_info["current_lng"]
-            rider.status = r_info["status"]
-            rider.is_online = r_info["is_online"]
+            print(f"  Route planned with {route.provider}: distance={route.distance_km}km, geometry_points={geom_count}")
 
-        db.commit()
-        print(f"Rider ready: {rider.id} ({rider.name})")
+        print("\nSuccessfully seeded 4 independent deliveries with unique riders and OSRM routes.")
 
-        # 2. Upsert Delivery
-        deliv = db.query(Delivery).filter_by(id=d_info["id"]).first()
-        if not deliv:
-            deliv = Delivery(
-                id=d_info["id"],
-                order_id=d_info["order_id"],
-                customer_id=d_info["customer_id"],
-                customer_name=d_info["customer_name"],
-                customer_phone=d_info["customer_phone"],
-                vendor_id=d_info["vendor_id"],
-                vendor_name=d_info["vendor_name"],
-                pickup_address=d_info["pickup_address"],
-                pickup_lat=d_info["pickup_lat"],
-                pickup_lng=d_info["pickup_lng"],
-                dropoff_address=d_info["dropoff_address"],
-                dropoff_lat=d_info["dropoff_lat"],
-                dropoff_lng=d_info["dropoff_lng"],
-                package_weight_kg=d_info["package_weight_kg"],
-                package_dimensions=d_info["package_dimensions"],
-                priority=d_info["priority"],
-                status=d_info["status"],
-                assigned_rider_id=d_info["assigned_rider_id"],
-                notes=d_info["notes"],
-            )
-            db.add(deliv)
-        else:
-            deliv.order_id = d_info["order_id"]
-            deliv.status = d_info["status"]
-            deliv.assigned_rider_id = d_info["assigned_rider_id"]
-            deliv.pickup_lat = d_info["pickup_lat"]
-            deliv.pickup_lng = d_info["pickup_lng"]
-            deliv.dropoff_lat = d_info["dropoff_lat"]
-            deliv.dropoff_lng = d_info["dropoff_lng"]
-            deliv.pickup_address = d_info["pickup_address"]
-            deliv.dropoff_address = d_info["dropoff_address"]
+    finally:
+        db.close()
 
-        db.commit()
-        db.refresh(deliv)
-        print(f"Delivery ready: {deliv.id} (order: {deliv.order_id}), assigned to {deliv.assigned_rider_id}")
 
-        # 3. Plan route with OSRM (or fallback)
-        db.query(DeliveryRoute).filter_by(delivery_id=deliv.id).delete()
-        db.commit()
-
-        route = planner.plan_route_for_delivery(db, deliv, provider_name="osrm")
-        raw_wps = json.loads(route.waypoints_json) if route.waypoints_json else []
-        geom_count = (
-            len(raw_wps.get("geometry", raw_wps.get("waypoints", [])))
-            if isinstance(raw_wps, dict)
-            else len(raw_wps)
-        )
-        print(f"  Route planned with {route.provider}: distance={route.distance_km}km, geometry_points={geom_count}")
-
-    print("\nSuccessfully seeded 4 independent deliveries with unique riders and OSRM routes.")
-
-finally:
-    db.close()
+if __name__ == "__main__":
+    main()
