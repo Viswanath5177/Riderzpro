@@ -123,10 +123,10 @@ export async function handleRoute(
         paymentStatus: "PAID",
         paymentMethod: "Razorpay (Verified)",
         shippingAddress: shipping_address || {
-          street: "Flat 402, Green Glen Layout, Bellandur",
-          city: "Bengaluru",
-          state: "Karnataka",
-          pincode: "560103",
+          street: "B-12, Barakhamba Road, Connaught Place",
+          city: "Delhi",
+          state: "Delhi",
+          pincode: "110001",
         },
         invoiceUrl,
       }).catch((emailErr) => console.warn("[Payments API] Email send error:", emailErr?.message));
@@ -185,10 +185,10 @@ export async function handleRoute(
         paymentStatus: "COD_PENDING",
         paymentMethod: "Cash on Delivery (Doorstep)",
         shippingAddress: shipping_address || {
-          street: "Flat 402, Green Glen Layout, Bellandur",
-          city: "Bengaluru",
-          state: "Karnataka",
-          pincode: "560103",
+          street: "B-12, Barakhamba Road, Connaught Place",
+          city: "Delhi",
+          state: "Delhi",
+          pincode: "110001",
         },
         invoiceUrl,
       }).catch((emailErr) => console.warn("[Payments API] Email send error:", emailErr?.message));
