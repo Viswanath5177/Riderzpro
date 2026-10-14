@@ -24,6 +24,7 @@ import logoImg from "@/assets/riderzpro-logo.png";
 import { useStore } from "@/lib/store";
 import { bikes } from "@/lib/data";
 import { useVendorAuth } from "@/lib/vendorAuth";
+import { useAdminAuth, AdminUser } from "@/lib/adminAuth";
 import { cn } from "@/lib/utils";
 
 export type LoginSearch = {
@@ -63,6 +64,7 @@ function LoginPage() {
   const search = Route.useSearch();
   const { userProfile, setRole, signIn, updateUserProfile, addBike } = useStore();
   const { signInWithPassword, signInWithOtp } = useVendorAuth();
+  const { setAdminSession, login: adminLogin } = useAdminAuth();
 
   // Role: "customer" | "vendor"
   const [roleTab, setRoleTab] = useState<"customer" | "vendor">(search.role || "customer");
@@ -92,109 +94,271 @@ function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const getRedirectTarget = () => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const redir = params.get("redirect");
-      if (redir && redir.startsWith("/")) return redir;
+  /**
+   * Evaluates destination strictly based on authoritative role and permissions.
+   * If a return URL exists and the role is allowed to access it, goes there;
+   * otherwise directs to the role's default dashboard.
+   */
+  const getAllowedRedirect = (role: string, returnUrl?: string | null): string => {
+    if (returnUrl && returnUrl.startsWith("/")) {
+      if (role === "admin" || role.includes("ADMIN")) {
+        return returnUrl;
+      }
+      if (role === "seller") {
+        if (!returnUrl.startsWith("/admin")) {
+          return returnUrl;
+        }
+      }
+      if (role === "customer") {
+        if (!returnUrl.startsWith("/admin") && !returnUrl.startsWith("/vendor")) {
+          return returnUrl;
+        }
+      }
     }
-    return roleTab === "vendor" ? "/vendor/dashboard" : "/dashboard/customer";
+
+    if (role === "admin" || role.includes("ADMIN")) {
+      return "/admin";
+    }
+    if (role === "seller") {
+      return "/vendor/dashboard";
+    }
+    return "/dashboard/customer";
   };
 
-  // -------------------------------------------------------------
-  // Customer Sign In Handler (Unchanged logic)
-  // -------------------------------------------------------------
-  const handleCustomerSignIn = (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
+  /**
+   * Unified Authentication:
+   * The tab selection does NOT decide permissions or destination.
+   * The authoritative role from the server/session decides destination.
+   */
+  interface ServerAuthResponse {
+    success?: boolean;
+    role?: string;
+    user?: {
+      id?: string;
+      email?: string;
+      fullName?: string;
+      phone?: string;
+      storeName?: string;
+    };
+    redirectUrl?: string;
+    error?: string;
+  }
 
-    const cleanContact = signInContact.trim();
+  const executeUnifiedSignIn = async (contact: string, pass: string) => {
+    const cleanContact = contact.trim();
+    const trimmedPass = pass.trim();
+
     if (!cleanContact) {
-      setFormError("Please enter your mobile number or email.");
+      setFormError("Please enter your registered mobile number or email.");
       return;
     }
-    if (!signInPassword.trim()) {
+    if (!trimmedPass) {
       setFormError("Please enter your password.");
       return;
     }
 
-    setIsLoading(true);
-
-    setTimeout(() => {
-      const isEmail = cleanContact.includes("@");
-      const customerEmail = isEmail ? cleanContact : `${cleanContact}@riderzpro.in`;
-      const customerPhone = isEmail ? userProfile?.phone || "" : cleanContact;
-      const customerName =
-        userProfile?.name && userProfile.name !== "Rider"
-          ? userProfile.name
-          : isEmail
-            ? cleanContact.split("@")[0]
-            : "Rider";
-
-      // Clear any conflicting admin session so customer portal loads properly
-      localStorage.removeItem("riderzpro_admin_session");
-
-      // Save customer auth session in localStorage for getCurrentRole() & ProtectedRoute
-      const sessionUser = {
-        id: `usr_${Date.now()}`,
-        name: customerName,
-        email: customerEmail,
-        phone: customerPhone,
-        role: "customer" as const,
-      };
-      localStorage.setItem("riderzpro_auth_user", JSON.stringify(sessionUser));
-      localStorage.setItem("riderzpro_auth_token", `tok_${Date.now()}`);
-
-      updateUserProfile({
-        name: customerName,
-        email: customerEmail,
-        phone: customerPhone,
-      });
-
-      signIn();
-      setRole("customer");
-
-      const welcomeName = customerName.split(" ")[0];
-      toast.success(`Welcome back, ${welcomeName}!`);
-
-      const target = getRedirectTarget();
-      navigate({ to: target as never });
-      setIsLoading(false);
-    }, 350);
-  };
-
-  // -------------------------------------------------------------
-  // Vendor Sign In Handler (Unchanged logic)
-  // -------------------------------------------------------------
-  const handleVendorSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
     setFormError(null);
-
-    const cleanContact = signInContact.trim();
-    if (!cleanContact) {
-      setFormError("Please enter your registered vendor phone or email.");
-      return;
-    }
-    if (!signInPassword.trim()) {
-      setFormError("Please enter your vendor password.");
-      return;
-    }
-
     setIsLoading(true);
+
     try {
-      const res = await signInWithPassword(cleanContact, signInPassword, rememberMe);
-      if (res.success) {
-        toast.success("Welcome back to Seller Dashboard!");
-        const target = getRedirectTarget();
-        navigate({ to: target as never });
-      } else {
-        setFormError(res.error || "Vendor sign in failed. Please check credentials.");
+      // 1. First, check server /api/auth/signin endpoint
+      let serverAuth: ServerAuthResponse | null = null;
+      try {
+        const res = await fetch("/api/auth/signin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email: cleanContact, password: trimmedPass }),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as ServerAuthResponse;
+          if (data && data.success) {
+            serverAuth = data;
+          }
+        }
+      } catch {
+        // Backend offline or unreachable, proceed to local auth check
       }
-    } catch {
-      setFormError("An unexpected error occurred during vendor sign in.");
+
+      // If Server successfully authenticated the credentials:
+      if (serverAuth && serverAuth.role) {
+        const role = serverAuth.role;
+
+        // A. ADMIN ROLE FROM SERVER
+        if (role === "admin" || String(role).includes("ADMIN")) {
+          localStorage.removeItem("riderzpro_auth_user");
+          localStorage.removeItem("riderzpro_auth_token");
+          localStorage.removeItem("riderzpro_vendor_session");
+          sessionStorage.removeItem("riderzpro_vendor_session");
+
+          const adminObj: AdminUser = {
+            id: serverAuth.user?.id || `adm_${Date.now()}`,
+            name: serverAuth.user?.fullName || "Administrator",
+            email: serverAuth.user?.email || cleanContact,
+            role: "admin",
+            roleTitle:
+              role === "PRODUCT_ADMIN"
+                ? "Product Administrator"
+                : role === "SELLER_ADMIN"
+                  ? "Seller Administrator"
+                  : "Super Admin",
+            department: "Operations & Platform Oversight",
+          };
+          setAdminSession(adminObj);
+          toast.success("Welcome back to Admin Console!");
+          const dest = getAllowedRedirect("admin", search.redirect || serverAuth.redirectUrl);
+          navigate({ to: dest as never });
+          return;
+        }
+
+        // B. SELLER ROLE FROM SERVER
+        if (role === "seller") {
+          localStorage.removeItem("riderzpro_admin_session");
+          localStorage.removeItem("vendor_signed_out");
+          const vendorSession = {
+            vendorId: serverAuth.user?.id || "v1",
+            email: serverAuth.user?.email || cleanContact,
+            phone: serverAuth.user?.phone || "",
+            storeName: serverAuth.user?.storeName || "VoltHub Partner",
+            status: "approved" as const,
+            token: `vtok_${Date.now()}`,
+          };
+          localStorage.setItem("riderzpro_vendor_session", JSON.stringify(vendorSession));
+          toast.success("Welcome back to Seller Dashboard!");
+          const dest = getAllowedRedirect("seller", search.redirect || serverAuth.redirectUrl);
+          navigate({ to: dest as never });
+          return;
+        }
+
+        // C. CUSTOMER ROLE FROM SERVER
+        if (role === "customer") {
+          if (roleTab === "vendor") {
+            // Keep existing vendor tab behavior for customer accounts: friendly message
+            setFormError(
+              "No vendor account found with this mobile or email. Please sign in through the Customer tab.",
+            );
+            return;
+          }
+
+          localStorage.removeItem("riderzpro_admin_session");
+          const sessionUser = {
+            id: serverAuth.user?.id || `usr_${Date.now()}`,
+            name: serverAuth.user?.fullName || "Rider",
+            email: serverAuth.user?.email || cleanContact,
+            phone: serverAuth.user?.phone || cleanContact,
+            role: "customer" as const,
+          };
+          localStorage.setItem("riderzpro_auth_user", JSON.stringify(sessionUser));
+          localStorage.setItem("riderzpro_auth_token", `tok_${Date.now()}`);
+          signIn();
+          setRole("customer");
+          toast.success(`Welcome back, ${sessionUser.name.split(" ")[0]}!`);
+          const dest = getAllowedRedirect("customer", search.redirect || serverAuth.redirectUrl);
+          navigate({ to: dest as never });
+          return;
+        }
+      }
+
+      // 2. Demo Seeds & Offline Fallback Checking
+      // Check Admin credentials (works on Vendor tab AND Customer tab)
+      const adminAttempt = await adminLogin(cleanContact, trimmedPass);
+      if (adminAttempt.success) {
+        localStorage.removeItem("riderzpro_auth_user");
+        localStorage.removeItem("riderzpro_auth_token");
+        localStorage.removeItem("riderzpro_vendor_session");
+        sessionStorage.removeItem("riderzpro_vendor_session");
+
+        const adminObj: AdminUser = {
+          id: "adm_vikram_01",
+          name: "Vikram Malhotra",
+          email: cleanContact,
+          role: "admin",
+          roleTitle: "Super Admin",
+          department: "Operations & Platform Oversight",
+        };
+        setAdminSession(adminObj);
+        toast.success("Welcome back to Admin Console!");
+        const dest = getAllowedRedirect("admin", search.redirect);
+        navigate({ to: dest as never });
+        return;
+      }
+
+      // Check Vendor credentials
+      const vendorAttempt = await signInWithPassword(cleanContact, trimmedPass, rememberMe);
+      if (vendorAttempt.success) {
+        localStorage.removeItem("riderzpro_admin_session");
+        toast.success("Welcome back to Seller Dashboard!");
+        const dest = getAllowedRedirect("seller", search.redirect);
+        navigate({ to: dest as never });
+        return;
+      }
+
+      // Check Customer credentials
+      const isCustomerCreds =
+        cleanContact === "9876543210" ||
+        cleanContact.toLowerCase() === "aakash@riderzpro.com" ||
+        trimmedPass === "Customer@123" ||
+        trimmedPass === "Password123" ||
+        (cleanContact.length >= 10 && trimmedPass.length >= 4);
+
+      if (isCustomerCreds) {
+        if (roleTab === "vendor") {
+          // Keep existing behavior: friendly message
+          setFormError(
+            "No vendor account found with this mobile or email. Switch to the Customer tab to sign in.",
+          );
+          return;
+        }
+
+        const isEmail = cleanContact.includes("@");
+        const customerEmail = isEmail ? cleanContact : `${cleanContact}@riderzpro.in`;
+        const customerPhone = isEmail ? userProfile?.phone || "" : cleanContact;
+        const customerName =
+          userProfile?.name && userProfile.name !== "Rider"
+            ? userProfile.name
+            : isEmail
+              ? cleanContact.split("@")[0]
+              : "Rider";
+
+        localStorage.removeItem("riderzpro_admin_session");
+        const sessionUser = {
+          id: `usr_${Date.now()}`,
+          name: customerName,
+          email: customerEmail,
+          phone: customerPhone,
+          role: "customer" as const,
+        };
+        localStorage.setItem("riderzpro_auth_user", JSON.stringify(sessionUser));
+        localStorage.setItem("riderzpro_auth_token", `tok_${Date.now()}`);
+        signIn();
+        setRole("customer");
+        toast.success(`Welcome back, ${customerName.split(" ")[0]}!`);
+        const dest = getAllowedRedirect("customer", search.redirect);
+        navigate({ to: dest as never });
+        return;
+      }
+
+      setFormError("Invalid credentials. Please verify your contact information and password.");
+    } catch (err: unknown) {
+      setFormError(
+        err instanceof Error ? err.message : "An unexpected error occurred during sign in.",
+      );
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // -------------------------------------------------------------
+  // Sign In Handlers (Unified logic by role)
+  // -------------------------------------------------------------
+  const handleCustomerSignIn = (e: React.FormEvent) => {
+    e.preventDefault();
+    executeUnifiedSignIn(signInContact, signInPassword);
+  };
+
+  const handleVendorSignIn = (e: React.FormEvent) => {
+    e.preventDefault();
+    executeUnifiedSignIn(signInContact, signInPassword);
   };
 
   // -------------------------------------------------------------
@@ -224,12 +388,12 @@ function LoginPage() {
         const res = await signInWithOtp(signInContact.trim(), otpCode.trim());
         if (res.success) {
           toast.success("Signed in as Vendor successfully!");
-          navigate({ to: "/vendor/dashboard" });
+          const dest = getAllowedRedirect("seller", search.redirect);
+          navigate({ to: dest as never });
         } else {
           setFormError(res.error || "Invalid OTP code.");
         }
       } else {
-        // Customer OTP verification fallback
         handleCustomerSignIn(e);
       }
     } finally {
@@ -245,9 +409,7 @@ function LoginPage() {
       setIsLoading(true);
       setTimeout(async () => {
         try {
-          await signInWithPassword("9000000001", "Vendor@123");
-          toast.success("Signed in as VoltHub Indiranagar (Demo Seller)!");
-          navigate({ to: "/vendor/dashboard" });
+          await executeUnifiedSignIn("9000000001", "Vendor@123");
         } finally {
           setIsLoading(false);
         }
@@ -256,8 +418,12 @@ function LoginPage() {
       setSignInContact("9876543210");
       setSignInPassword("Customer@123");
       setIsLoading(true);
-      setTimeout(() => {
-        handleCustomerSignIn({ preventDefault: () => {} } as React.FormEvent);
+      setTimeout(async () => {
+        try {
+          await executeUnifiedSignIn("9876543210", "Customer@123");
+        } finally {
+          setIsLoading(false);
+        }
       }, 200);
     }
   };
@@ -346,7 +512,7 @@ function LoginPage() {
 
       toast.success(`Account created! Welcome, ${cleanName.split(" ")[0]}!`);
 
-      const target = getRedirectTarget();
+      const target = getAllowedRedirect("customer", search.redirect);
       navigate({ to: target as never });
       setIsLoading(false);
     }, 400);
@@ -374,10 +540,14 @@ function LoginPage() {
           <div className="relative z-10 flex items-center justify-between">
             <Link
               to="/"
-              className="inline-flex items-center justify-center bg-white px-3.5 py-2 rounded-xl shadow-xs border border-white/60 hover:opacity-95 transition"
+              className="inline-flex items-center justify-center bg-white px-4 py-2.5 rounded-2xl shadow-sm border border-white/80 hover:scale-[1.02] transition"
               title="RiderzPro Home"
             >
-              <img src={logoImg} alt="RiderzPro Logo" className="h-7 w-auto object-contain" />
+              <img
+                src={logoImg}
+                alt="RiderzPro Logo"
+                className="h-10 sm:h-12 w-auto object-contain filter contrast-[1.3] brightness-[0.85] drop-shadow-[0_1px_2px_rgba(0,0,0,0.15)]"
+              />
             </Link>
 
             <Link
@@ -433,9 +603,13 @@ function LoginPage() {
           <div className="relative z-10 p-4 flex items-center justify-between">
             <Link
               to="/"
-              className="inline-flex items-center justify-center bg-white px-3 py-1.5 rounded-xl shadow-xs border border-white/60"
+              className="inline-flex items-center justify-center bg-white px-3.5 py-2 rounded-xl shadow-sm border border-white/80 active:scale-95 transition"
             >
-              <img src={logoImg} alt="RiderzPro Logo" className="h-6 w-auto object-contain" />
+              <img
+                src={logoImg}
+                alt="RiderzPro Logo"
+                className="h-8 sm:h-9 w-auto object-contain filter contrast-[1.3] brightness-[0.85] drop-shadow-[0_1px_2px_rgba(0,0,0,0.15)]"
+              />
             </Link>
 
             <Link
@@ -558,7 +732,7 @@ function LoginPage() {
                 {activeTab === "signin"
                   ? roleTab === "vendor"
                     ? "Manage orders, stock and payouts."
-                    : "Sign in to your garage, live delivery tracking and certified service."
+                    : "Sign in to continue"
                   : roleTab === "vendor"
                     ? "Sell verified EV parts and accessories across India."
                     : "Set up your EV garage to get verified spares and doorstep service."}
@@ -673,6 +847,7 @@ function LoginPage() {
                     {/* Primary Sign In Button */}
                     <button
                       type="submit"
+                      id="signin-submit-btn"
                       disabled={isLoading}
                       className="w-full h-12 rounded-xl bg-[#E11D2A] hover:bg-[#C91824] active:bg-[#B01520] text-white font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-none"
                     >

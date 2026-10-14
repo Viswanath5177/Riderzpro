@@ -101,7 +101,7 @@ export function AdminOrdersBoard() {
             and vendor accounts are not permitted to inspect system-wide logistics.
           </p>
           <a
-            href="/admin/login"
+            href="/login?redirect=/admin/orders"
             className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#E11D2A] hover:bg-[#c91823] px-5 py-2.5 text-xs font-bold text-white shadow-xs transition"
           >
             <span>Sign in to Admin Console</span>

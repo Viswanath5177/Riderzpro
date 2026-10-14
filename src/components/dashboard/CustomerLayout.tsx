@@ -10,6 +10,7 @@ import {
   Tag,
   Receipt,
   Bell,
+  User,
   UserCog,
   LifeBuoy,
   ShoppingBag,
@@ -332,7 +333,7 @@ export function CustomerLayout({
           <div className="relative h-20 flex items-center justify-center px-4 border-b border-black/[0.06] bg-white/60 backdrop-blur-xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.85)]">
             {!isCollapsed ? (
               <div className="flex items-center justify-center">
-                <Logo className="justify-center" imgClassName="h-13 sm:h-14 w-auto" />
+                <Logo className="justify-center" imgClassName="h-15 sm:h-16 md:h-17 w-auto" />
               </div>
             ) : (
               <div className="flex items-center justify-center">
@@ -464,291 +465,132 @@ export function CustomerLayout({
             isCollapsed ? "md:pl-20" : "md:pl-64"
           )}
         >
-          {/* Top Header (Apple Glassmorphic Theme) */}
-          <header className="sticky top-0 z-20 h-18 sm:h-20 bg-white/65 backdrop-blur-2xl backdrop-saturate-180 border-b border-black/[0.06] px-3 sm:px-4 md:px-8 flex items-center justify-between gap-2 sm:gap-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.85),0_10px_30px_-10px_rgba(0,0,0,0.04)] transition-all duration-200">
-            {/* Left: Mobile hamburger & breadcrumbs */}
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <button
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="md:hidden h-9 w-9 sm:h-10 sm:w-10 grid place-items-center rounded-2xl bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_6px_rgba(0,0,0,0.03)] text-gray-700 hover:text-gray-950 active:scale-95 transition-all duration-200 cursor-pointer shrink-0"
-                aria-label="Open navigation menu"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
+          {/* Top Header: Height 56px plus safe-area top. Solid white background with a 1px bottom border, sticky */}
+          <header className="sticky top-0 z-40 h-[calc(56px+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] bg-white border-b border-[#E5E7EB] px-3 sm:px-6 flex items-center justify-between gap-2.5 transition-all">
+            {/* Exactly four items:
+                1. menu button (44px)
+                2. location pill (flex:1, min-width:0, pin icon, one line, truncated with ellipsis)
+                3. cart icon (44px, badge hidden at 0, "9+" max)
+                4. avatar (40px) with small unread dot
+            */}
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="h-11 w-11 min-w-11 min-h-11 rounded-full grid place-items-center hover:bg-gray-100 text-gray-800 active:scale-95 transition-colors cursor-pointer shrink-0"
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
 
-              <div className="hidden sm:block min-w-0">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 tracking-wide">
-                  <span className="px-2 py-0.5 rounded-md bg-black/[0.03] border border-black/[0.04] text-gray-500 font-medium">Customer Portal</span>
-                  <span className="text-gray-300">/</span>
-                  <span className="text-gray-800 font-bold truncate">{getBreadcrumbTitle()}</span>
-                </div>
-                <h1 className="text-base sm:text-lg md:text-xl font-extrabold text-gray-900 tracking-tight font-display mt-0.5">
-                  Welcome back, <span className="text-[#111111]">{userProfile.name.split(" ")[0]}</span>
-                </h1>
-              </div>
+            {/* Location Pill: flex:1, min-width:0, pin icon, one line, truncated with ellipsis */}
+            <button
+              type="button"
+              onClick={() => setIsLocationModalOpen(true)}
+              className="flex-1 min-w-0 h-10 flex items-center gap-2 px-3 rounded-full bg-[#F5F6F8] hover:bg-gray-100 border border-[#E5E7EB] text-left transition-colors cursor-pointer group"
+              title="Change delivery location"
+            >
+              <MapPin className="h-4 w-4 text-[#E31E24] shrink-0" />
+              <span className="truncate text-xs font-semibold text-gray-900 leading-none">
+                {userLocation?.name || "Indiranagar, Bengaluru"}
+              </span>
+            </button>
 
-              {/* Zomato-style Header Location Pill */}
-              <button
-                onClick={() => setIsLocationModalOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full bg-white/80 hover:bg-white active:bg-white/95 border border-black/[0.08] hover:border-black/[0.18] shadow-2xs hover:shadow-xs text-xs font-semibold text-gray-800 transition-all cursor-pointer shrink-0 max-w-[140px] sm:max-w-[180px] md:max-w-[210px] group"
-                title="Change delivery area"
-              >
-                <MapPin className="h-3.5 w-3.5 text-[#E31E24] group-hover:scale-110 transition-transform shrink-0" />
-                <div className="text-left min-w-0 flex-1 hidden sm:block">
-                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider leading-none">Delivering to</p>
-                  <p className="text-xs font-bold text-gray-900 truncate leading-tight mt-0.5">{userLocation?.name || "Indiranagar"}</p>
-                </div>
-                <span className="sm:hidden text-xs font-bold text-gray-900 truncate">{userLocation?.name?.split(" ")[0] || "Indiranagar"}</span>
-                <ChevronDown className="h-3 w-3 text-gray-400 group-hover:text-gray-700 shrink-0" />
-              </button>
-            </div>
-
-            {/* Center: Command Search Bar (Spotlight Glass) */}
-            <div className="flex-1 max-w-md hidden md:block">
-              <button
-                onClick={() => setIsSearchOpen(true)}
-                className="w-full flex items-center justify-between px-4 py-2.5 rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] hover:border-black/[0.16] shadow-[inset_0_1px_1px_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[inset_0_1px_1px_0_rgba(255,255,255,1),0_4px_16px_rgba(0,0,0,0.06)] active:scale-[0.99] text-sm text-gray-700 transition-all duration-200 group cursor-pointer"
-              >
-                <span className="flex items-center gap-2.5">
-                  <Search className="h-4 w-4 text-gray-400 group-hover:text-[#E31E24] group-hover:scale-110 transition-all duration-200" />
-                  <span className="text-xs text-gray-500 group-hover:text-gray-800 transition-colors font-medium">Search EV batteries, chargers, fitments...</span>
+            {/* Cart Icon: 44px, badge hidden at 0, "9+" max */}
+            <button
+              type="button"
+              onClick={() => setIsCartOpen(true)}
+              className="relative h-11 w-11 min-w-11 min-h-11 grid place-items-center rounded-full hover:bg-gray-100 text-gray-800 active:scale-95 transition-colors cursor-pointer shrink-0"
+              aria-label="Shopping Cart"
+              title="Shopping Cart"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {cartCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 grid h-4.5 min-w-4.5 px-1 place-items-center rounded-full bg-[#E31E24] text-[10px] font-bold text-white shadow-xs">
+                  {cartCount > 9 ? "9+" : cartCount}
                 </span>
-                <kbd className="hidden lg:inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-mono font-semibold text-gray-500 group-hover:text-gray-700 bg-white/80 border border-black/[0.08] rounded-md shadow-2xs backdrop-blur-xs transition-colors">
-                  ⌘K
-                </kbd>
-              </button>
-            </div>
+              )}
+            </button>
 
-            {/* Right: Actions, Search by VIN, Notifications, Cart, Avatar */}
-            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-              {/* Search by VIN Button */}
-              <button
-                onClick={() => setIsVinSearchOpen(true)}
-                className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-full border border-emerald-500/25 hover:border-emerald-500/40 bg-emerald-500/[0.08] hover:bg-emerald-500/[0.15] active:bg-emerald-500/[0.22] text-xs font-bold text-emerald-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_2px_8px_rgba(16,185,129,0.06)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_4px_14px_rgba(16,185,129,0.12)] backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 group cursor-pointer shrink-0"
-                title="Search items based on 17-digit VIN number"
-              >
-                <ScanLine className="h-3.5 w-3.5 text-emerald-600 group-hover:rotate-12 transition-transform duration-200" />
-                <span className="hidden sm:inline">Search by VIN</span>
-                <span className="sm:hidden font-mono text-[10.5px]">VIN</span>
-              </button>
-
-              {/* Mobile Search trigger */}
-              <button
-                onClick={() => setIsSearchOpen(true)}
-                className="md:hidden h-9 w-9 sm:h-10 sm:w-10 grid place-items-center rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] text-gray-700 active:scale-95 transition-all duration-200 cursor-pointer shrink-0"
-                aria-label="Search products"
-              >
-                <Search className="h-4 w-4" />
-              </button>
-
-              {/* Notifications Button on Top Right with Badge & Popover */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsNotifOpen(!isNotifOpen)}
-                  className="relative h-9 w-9 sm:h-10 sm:w-10 grid place-items-center rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] hover:border-black/[0.16] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] hover:scale-105 active:scale-95 transition-all duration-200 text-gray-600 hover:text-gray-950 cursor-pointer group shrink-0"
-                  aria-label="Notifications"
-                  title="Notifications"
-                >
-                  <Bell className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-gray-700 group-hover:rotate-12 transition-transform duration-200" />
-                  {unreadNotifsCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 grid h-4.5 min-w-4.5 px-1 place-items-center rounded-full bg-gradient-to-r from-[#E31E24] to-rose-500 text-[9.5px] font-extrabold text-white shadow-[0_2px_6px_rgba(227,30,36,0.4)] ring-2 ring-white">
-                      {unreadNotifsCount}
-                    </span>
-                  )}
-                </button>
-
-                {isNotifOpen && (
-                  <div className="absolute right-0 mt-2.5 w-[calc(100vw-1.5rem)] max-w-sm sm:w-96 rounded-3xl bg-white/94 backdrop-blur-3xl border border-white/80 shadow-[0_24px_60px_-15px_rgba(0,0,0,0.18),inset_0_1px_0_0_rgba(255,255,255,0.95)] p-4 z-50 ring-1 ring-black/[0.06] animate-in fade-in zoom-in-95 duration-150">
-                    <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                      <div>
-                        <p className="text-sm font-bold text-gray-900">Notifications</p>
-                        <p className="text-xs text-gray-500">{unreadNotifsCount} unread alerts</p>
-                      </div>
-                      {unreadNotifsCount > 0 && (
-                        <button
-                          onClick={markAllNotificationsRead}
-                          className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
-                        >
-                          <CheckCheck className="h-3.5 w-3.5" /> Mark all read
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-72 overflow-y-auto divide-y divide-gray-50 py-1">
-                      {notifications.length === 0 ? (
-                        <p className="py-6 text-center text-xs text-gray-500">No notifications yet.</p>
-                      ) : (
-                        notifications.slice(0, 5).map((notif) => (
-                          <div
-                            key={notif.id}
-                            onClick={() => markNotificationRead(notif.id)}
-                            className={cn(
-                              "py-3 px-2 rounded-xl cursor-pointer transition flex items-start gap-3",
-                              notif.read ? "opacity-75 hover:bg-gray-50" : "bg-emerald-50/50 hover:bg-emerald-50"
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                "h-2 w-2 rounded-full mt-1.5 shrink-0",
-                                notif.read ? "bg-gray-300" : "bg-primary"
-                              )}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold text-gray-900">{notif.title}</p>
-                              <p className="text-xs text-gray-600 line-clamp-2 mt-0.5">{notif.message}</p>
-                              <span className="text-[10px] text-gray-400 mt-1 inline-block">{notif.time}</span>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    <div className="pt-2 border-t border-gray-100 text-center">
-                      <button
-                        onClick={() => {
-                          setIsNotifOpen(false);
-                          onTabChange("notifications");
-                        }}
-                        className="text-xs font-semibold text-primary hover:underline cursor-pointer"
-                      >
-                        View all notifications →
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-
-              {/* Cart Button to Open Cart Drawer */}
+            {/* Avatar: 40px, notification dot when unread, no chevron */}
+            <div className="relative shrink-0">
               <button
                 type="button"
-                onClick={() => setIsCartOpen(true)}
-                className="relative h-9 w-9 sm:h-10 sm:w-10 grid place-items-center rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] hover:border-black/[0.16] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] hover:scale-105 active:scale-95 transition-all duration-200 text-gray-600 hover:text-gray-950 cursor-pointer group shrink-0"
-                aria-label="Shopping Cart"
-                title="Open Shopping Cart"
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                className="relative h-10 w-10 min-w-10 min-h-10 rounded-full grid place-items-center bg-[#111111] text-white font-bold text-xs ring-1 ring-black/[0.08] active:scale-95 transition-transform cursor-pointer"
+                aria-label="Account menu"
+                title="Account menu"
               >
-                <ShoppingCart className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-gray-700 group-hover:-translate-y-0.5 transition-transform duration-200" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 grid h-4.5 min-w-4.5 px-1 place-items-center rounded-full bg-gradient-to-r from-[#E31E24] to-rose-500 text-[9.5px] font-extrabold text-white shadow-[0_2px_6px_rgba(227,30,36,0.4)] ring-2 ring-white">
-                    {cartCount}
-                  </span>
+                <span>{userInitials}</span>
+                {unreadNotifsCount > 0 && (
+                  <span className="absolute top-0 right-0 h-2.5 w-2.5 rounded-full bg-[#E31E24] ring-2 ring-white" />
                 )}
               </button>
 
-              {/* Profile Button on Right Top */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="relative flex items-center gap-1.5 sm:gap-2.5 p-1 pl-1 pr-2 sm:pr-3.5 rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] hover:border-black/[0.16] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,1),0_4px_16px_rgba(0,0,0,0.08)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer group shrink-0"
-                  aria-label="Profile and account menu"
-                  title="Profile & Account Menu"
-                >
-                  <span className="grid h-7 w-7 sm:h-8 sm:w-8 place-items-center rounded-full bg-gradient-to-tr from-[#E31E24] via-rose-500 to-red-600 text-white font-extrabold text-xs shadow-xs ring-2 ring-white">
-                    {userInitials}
-                  </span>
-                  <span className="hidden sm:inline-block text-xs font-bold text-gray-800 group-hover:text-gray-950 max-w-[90px] truncate transition-colors">
-                    {userProfile.name.split(" ")[0]}
-                  </span>
-                  <ChevronDown className={cn("h-3 w-3 sm:h-3.5 sm:w-3.5 text-gray-400 group-hover:text-gray-700 transition-transform duration-200", isProfileOpen && "rotate-180")} />
-                </button>
+              {isProfileOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-[58]"
+                    onClick={() => setIsProfileOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white border border-[#E5E7EB] shadow-xl p-1.5 z-[59] animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-3 py-2 border-b border-gray-100">
+                      <p className="text-xs font-bold text-gray-900 truncate">{userProfile.name}</p>
+                      <p className="text-[11px] text-gray-500 truncate">
+                        {userProfile.email && !userProfile.email.includes("@riderzpro.in")
+                          ? userProfile.email
+                          : userProfile.phone || "+91 98765 43210"}
+                      </p>
+                    </div>
 
-                {isProfileOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setIsProfileOpen(false)}
-                    />
-                    <div className="absolute right-0 mt-2.5 w-[calc(100vw-1.5rem)] max-w-xs sm:w-80 rounded-3xl bg-white/94 backdrop-blur-3xl border border-white/80 shadow-[0_24px_60px_-15px_rgba(0,0,0,0.18),inset_0_1px_0_0_rgba(255,255,255,0.95)] p-3.5 z-50 ring-1 ring-black/[0.06] animate-in fade-in zoom-in-95 duration-150">
-                      {/* User Header Preview */}
-                      <div className="p-3.5 rounded-2xl bg-gradient-to-b from-white/70 to-black/[0.02] border border-black/[0.05] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)] mb-2 flex items-center gap-3">
-                        <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-tr from-[#E31E24] to-rose-500 text-white font-extrabold text-sm shadow-xs ring-2 ring-white shrink-0">
-                          {userInitials}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-gray-950 truncate">{userProfile.name}</p>
-                          <p className="text-[11px] text-gray-500 truncate">{userProfile.email}</p>
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#E31E24]" />
-                            <span className="text-[10px] font-semibold text-[#E31E24]">Gold Tier · {userProfile.points || 450} pts</span>
-                          </div>
-                        </div>
-                      </div>
+                    <div className="py-1">
+                      {/* 1. Profile */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          onTabChange("settings");
+                        }}
+                        className="flex w-full items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
+                        <span>Profile</span>
+                        <User className="h-3.5 w-3.5 text-gray-400" />
+                      </button>
 
-                      <div className="space-y-1">
-                        {/* 1. MY ORDERS (Requested) */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsProfileOpen(false);
-                            onTabChange("orders");
-                          }}
-                          className={cn(
-                            "flex w-full items-center justify-between p-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer group",
-                            activeTab === "orders"
-                              ? "bg-[#E31E24]/10 text-[#E31E24]"
-                              : "hover:bg-black/[0.04] text-gray-700 hover:text-gray-900"
-                          )}
-                        >
-                          <span className="flex items-center gap-2.5">
-                            <Package className="h-4 w-4 text-[#E31E24] group-hover:scale-110 transition-transform" />
-                            <span>My Orders</span>
+                      {/* 2. Notifications */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          onTabChange("notifications");
+                        }}
+                        className="flex w-full items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
+                        <span>Notifications</span>
+                        {unreadNotifsCount > 0 ? (
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[#E31E24] text-white">
+                            {unreadNotifsCount}
                           </span>
-                          {activeOrdersCount > 0 ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E31E24] text-white shadow-2xs">
-                              {activeOrdersCount} Active
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-gray-400 font-normal">
-                              {orders.length} Total
-                            </span>
-                          )}
-                        </button>
+                        ) : (
+                          <Bell className="h-3.5 w-3.5 text-gray-400" />
+                        )}
+                      </button>
 
-                        {/* 2. Account & Profile Settings */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsProfileOpen(false);
-                            onTabChange("settings");
-                          }}
-                          className={cn(
-                            "flex w-full items-center justify-between p-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer group",
-                            activeTab === "settings"
-                              ? "bg-[#E31E24]/10 text-[#E31E24]"
-                              : "hover:bg-black/[0.04] text-gray-700 hover:text-gray-900"
-                          )}
-                        >
-                          <span className="flex items-center gap-2.5">
-                            <UserCog className="h-4 w-4 text-gray-500 group-hover:text-gray-900 group-hover:scale-110 transition-transform" />
-                            <span>Profile & Settings</span>
-                          </span>
-                          <ChevronRight className="h-3.5 w-3.5 text-gray-400" />
-                        </button>
+                      {/* 3. Orders */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          onTabChange("orders");
+                        }}
+                        className="flex w-full items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
+                        <span>Orders</span>
+                        <Package className="h-3.5 w-3.5 text-gray-400" />
+                      </button>
+                    </div>
 
-                        {/* 3. My Garage */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsProfileOpen(false);
-                            onTabChange("garage");
-                          }}
-                          className={cn(
-                            "flex w-full items-center justify-between p-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer group",
-                            activeTab === "garage"
-                              ? "bg-[#E31E24]/10 text-[#E31E24]"
-                              : "hover:bg-black/[0.04] text-gray-700 hover:text-gray-900"
-                          )}
-                        >
-                          <span className="flex items-center gap-2.5">
-                            <Bike className="h-4 w-4 text-gray-500 group-hover:text-gray-900 group-hover:scale-110 transition-transform" />
-                            <span>My Garage</span>
-                          </span>
-                          <span className="text-[10px] text-gray-400 font-medium">{garage.length} EV</span>
-                        </button>
-                      </div>
-
-                      <div className="my-2 border-t border-black/[0.06]" />
-
+                    {/* 4. Sign out */}
+                    <div className="border-t border-gray-100 pt-1">
                       <button
                         type="button"
                         onClick={async () => {
@@ -756,26 +598,33 @@ export function CustomerLayout({
                           try {
                             await endServerSession();
                           } catch {
-                            // server session end fallback
+                            // ignore
                           }
                           signOut();
-                          toast.success("Signed out successfully. See you soon!");
+                          toast.success("Signed out successfully");
                           navigate({ to: "/" });
                         }}
-                        className="flex w-full items-center gap-2.5 p-2.5 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer group"
+                        className="flex w-full items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                       >
-                        <LogOut className="h-4 w-4 text-rose-600 group-hover:-translate-x-0.5 transition-transform" />
-                        <span>Sign Out</span>
+                        <span>Sign out</span>
+                        <LogOut className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                  </>
-                )}
-              </div>
+                  </div>
+                </>
+              )}
             </div>
           </header>
 
-          {/* Main Dashboard Body */}
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-8">
+          {/* Main Dashboard Body: padding bottom ensures last item is never hidden behind bottom nav & AI button */}
+          <main
+            className={cn(
+              "flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto z-0",
+              activeTab === "overview" || activeTab === "shop"
+                ? "pb-[calc(var(--nav-h)+64px)] md:pb-8"
+                : "pb-[calc(var(--nav-h)+16px)] md:pb-8"
+            )}
+          >
             {children}
           </main>
         </div>
@@ -786,7 +635,7 @@ export function CustomerLayout({
         <div className="fixed inset-0 z-50 flex md:hidden bg-black/50 backdrop-blur-xs">
           <div className="w-72 bg-white h-full flex flex-col p-5 shadow-2xl animate-in slide-in-from-left duration-200">
             <div className="relative flex items-center justify-center pb-4 border-b border-gray-100">
-              <Logo className="justify-center" imgClassName="h-10 sm:h-11 w-auto" />
+              <Logo className="justify-center" imgClassName="h-11 sm:h-12 w-auto" />
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="absolute right-0 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-gray-400 hover:text-gray-700"
@@ -866,69 +715,86 @@ export function CustomerLayout({
         </div>
       )}
 
-      {/* Apple VisionOS Floating Glass Dock with Central AI Assistant Mic */}
-      <nav className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-md items-center justify-around rounded-full vision-dock px-3 py-1.5 md:hidden">
-        {/* Tab 1: Overview */}
+      {/* Customer Mobile Bottom Navigation: Height 56px plus safe-area bottom, solid white, 1px top border, 5 equal items */}
+      <nav className="fixed inset-x-0 bottom-0 z-50 h-[calc(56px+env(safe-area-inset-bottom,0px))] pb-[env(safe-area-inset-bottom,0px)] bg-white border-t border-[#E5E7EB] md:hidden flex items-center justify-around px-1">
+        {/* Item 1: Home */}
         <button
+          type="button"
           onClick={() => onTabChange("overview")}
           className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[10px] font-semibold transition active:scale-95",
-            activeTab === "overview" ? "text-[#E31E24] font-bold" : "text-[#6B7280] hover:text-[#111111]"
+            "relative flex flex-1 h-full flex-col items-center justify-center gap-1 transition-colors cursor-pointer",
+            activeTab === "overview" ? "text-[#E31E24]" : "text-[#6B7280] hover:text-[#111111]"
           )}
         >
-          <LayoutGrid className={cn("h-5 w-5", activeTab === "overview" && "stroke-[2.5]")} />
-          <span>Overview</span>
+          {activeTab === "overview" && (
+            <span className="absolute top-0 inset-x-3 h-[2px] bg-[#E31E24] rounded-full" />
+          )}
+          <LayoutGrid className="h-[22px] w-[22px]" />
+          <span className="text-[11px] font-medium leading-none">Home</span>
         </button>
 
-        {/* Tab 2: Garage */}
+        {/* Item 2: Shop */}
         <button
+          type="button"
+          onClick={() => onTabChange("shop")}
+          className={cn(
+            "relative flex flex-1 h-full flex-col items-center justify-center gap-1 transition-colors cursor-pointer",
+            activeTab === "shop" ? "text-[#E31E24]" : "text-[#6B7280] hover:text-[#111111]"
+          )}
+        >
+          {activeTab === "shop" && (
+            <span className="absolute top-0 inset-x-3 h-[2px] bg-[#E31E24] rounded-full" />
+          )}
+          <ShoppingBag className="h-[22px] w-[22px]" />
+          <span className="text-[11px] font-medium leading-none">Shop</span>
+        </button>
+
+        {/* Item 3: Garage */}
+        <button
+          type="button"
           onClick={() => onTabChange("garage")}
           className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[10px] font-semibold transition active:scale-95",
-            activeTab === "garage" ? "text-[#E31E24] font-bold" : "text-[#6B7280] hover:text-[#111111]"
+            "relative flex flex-1 h-full flex-col items-center justify-center gap-1 transition-colors cursor-pointer",
+            activeTab === "garage" ? "text-[#E31E24]" : "text-[#6B7280] hover:text-[#111111]"
           )}
         >
-          <Bike className={cn("h-5 w-5", activeTab === "garage" && "stroke-[2.5]")} />
-          <span>Garage</span>
+          {activeTab === "garage" && (
+            <span className="absolute top-0 inset-x-3 h-[2px] bg-[#E31E24] rounded-full" />
+          )}
+          <Bike className="h-[22px] w-[22px]" />
+          <span className="text-[11px] font-medium leading-none">Garage</span>
         </button>
 
-        {/* CENTER ELEVATED AI ASSISTANT MIC ORB */}
-        <Link
-          to="/assistant"
-          aria-label="Voice AI Assistant"
-          className="relative -mt-6 flex flex-col items-center group px-1"
-        >
-          <span className="vision-mic-orb relative grid h-13 w-13 place-items-center rounded-full text-white cursor-pointer active:scale-90 shadow-xl">
-            <span className="vision-mic-pulse animate-mic-pulse" />
-            <Mic className="h-6 w-6 relative z-10 drop-shadow-sm" />
-          </span>
-          <span className="mt-1 text-[10px] font-bold tracking-tight text-[#E31E24]">
-            Ask AI
-          </span>
-        </Link>
-
-        {/* Tab 3: Orders */}
+        {/* Item 4: Orders */}
         <button
+          type="button"
           onClick={() => onTabChange("orders")}
           className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[10px] font-semibold transition active:scale-95",
-            activeTab === "orders" ? "text-[#E31E24] font-bold" : "text-[#6B7280] hover:text-[#111111]"
+            "relative flex flex-1 h-full flex-col items-center justify-center gap-1 transition-colors cursor-pointer",
+            activeTab === "orders" ? "text-[#E31E24]" : "text-[#6B7280] hover:text-[#111111]"
           )}
         >
-          <Package className={cn("h-5 w-5", activeTab === "orders" && "stroke-[2.5]")} />
-          <span>Orders</span>
+          {activeTab === "orders" && (
+            <span className="absolute top-0 inset-x-3 h-[2px] bg-[#E31E24] rounded-full" />
+          )}
+          <Package className="h-[22px] w-[22px]" />
+          <span className="text-[11px] font-medium leading-none">Orders</span>
         </button>
 
-        {/* Tab 4: Track Delivery */}
+        {/* Item 5: Profile */}
         <button
-          onClick={() => onTabChange("tracking")}
+          type="button"
+          onClick={() => onTabChange("settings")}
           className={cn(
-            "flex flex-1 flex-col items-center gap-0.5 py-1 text-[10px] font-semibold transition active:scale-95",
-            activeTab === "tracking" ? "text-[#E31E24] font-bold" : "text-[#6B7280] hover:text-[#111111]"
+            "relative flex flex-1 h-full flex-col items-center justify-center gap-1 transition-colors cursor-pointer",
+            activeTab === "settings" ? "text-[#E31E24]" : "text-[#6B7280] hover:text-[#111111]"
           )}
         >
-          <Truck className={cn("h-5 w-5", activeTab === "tracking" && "stroke-[2.5]")} />
-          <span>Tracking</span>
+          {activeTab === "settings" && (
+            <span className="absolute top-0 inset-x-3 h-[2px] bg-[#E31E24] rounded-full" />
+          )}
+          <User className="h-[22px] w-[22px]" />
+          <span className="text-[11px] font-medium leading-none">Profile</span>
         </button>
       </nav>
 
@@ -941,8 +807,8 @@ export function CustomerLayout({
       {/* Global Cart Slide-Over Drawer */}
       <CartDrawer />
 
-      {/* Floating AI Assistant Copilot Chatbot */}
-      <AiChatbotWidget />
+      {/* Floating AI Assistant (Single Icon-Only Button on Home/Shop) */}
+      <AiChatbotWidget activeTab={activeTab} />
 
       {/* Global Location Picker Modal */}
       <LocationPickerModal
