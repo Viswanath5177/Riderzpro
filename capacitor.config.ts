@@ -1,11 +1,9 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
-// Point Capacitor app at the deployed server URL (or LAN/staging fallback in dev)
-// so all authentication, REST APIs, and WebSockets work natively in Android/iOS builds.
-const serverUrl =
-  process.env.CAPACITOR_SERVER_URL ||
-  process.env.VITE_APP_URL ||
-  "https://app.riderzpro.com";
+// If a remote server URL is explicitly provided (e.g. staging or production once deployed),
+// point Capacitor at it. Otherwise, omit server.url so Capacitor serves the bundled local
+// web assets directly from the device — launching instantly without DNS/network dependencies.
+const serverUrl = process.env.CAPACITOR_SERVER_URL || process.env.VITE_APP_URL;
 
 const config: CapacitorConfig = {
   appId: "com.riderzpro.app",
@@ -13,7 +11,7 @@ const config: CapacitorConfig = {
   webDir: "dist/client",
   backgroundColor: "#14161a",
   server: {
-    url: serverUrl,
+    ...(serverUrl ? { url: serverUrl } : {}),
     cleartext: true,
     androidScheme: "https",
   },
