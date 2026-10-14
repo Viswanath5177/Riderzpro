@@ -20,6 +20,7 @@ import { VendorStoreProvider } from "../lib/vendor/vendorStore";
 import { VendorAuthProvider } from "../lib/vendorAuth";
 import { StoreProvider } from "../lib/store";
 import { Toaster } from "../components/ui/sonner";
+import { initNativeApp } from "../lib/native/app";
 
 function NotFoundComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -111,7 +112,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Riderzpro — EV Batteries & Parts Marketplace" },
       { name: "description", content: "Find EV batteries and parts that fit your bike, order from many sellers at once and track delivery live." },
       { name: "theme-color", content: "#ffffff" },
@@ -159,6 +160,13 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    const cleanup = initNativeApp();
+    return () => {
+      cleanup();
+    };
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

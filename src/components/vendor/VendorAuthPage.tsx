@@ -362,11 +362,14 @@ function VendorSignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }
               </label>
               <input
                 type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="one-time-code"
                 maxLength={6}
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
                 placeholder="123456"
-                className="w-full tracking-widest text-center font-mono font-bold text-lg rounded-xl border border-border bg-background px-3.5 py-2.5 outline-none focus:border-primary"
+                className="w-full tracking-widest text-center font-mono font-bold text-lg rounded-xl border border-border bg-background px-3.5 py-2.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </div>
           )}
@@ -757,11 +760,14 @@ function VendorSignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }
             <div className="flex gap-2 mt-2">
               <input
                 type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="one-time-code"
                 maxLength={6}
                 value={emailOtpCode}
                 onChange={(e) => setEmailOtpCode(e.target.value.replace(/\D/g, ""))}
                 placeholder="OTP (123456)"
-                className="w-32 rounded-xl border border-border bg-background px-3 py-2 text-center text-xs font-mono font-bold"
+                className="w-32 rounded-xl border border-border bg-background px-3 py-2 text-center text-xs font-mono font-bold outline-none focus:border-primary"
               />
               <button
                 type="button"
