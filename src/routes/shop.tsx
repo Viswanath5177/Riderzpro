@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { SlidersHorizontal, Search, Bike, Check, X, ShieldCheck } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
@@ -35,6 +35,7 @@ const CATS: (Category | "All")[] = [
 ];
 
 function Shop() {
+  const location = useLocation();
   const { activeBikeId, setActiveBikeId } = useStore();
   const { products: catalogueProducts } = useCatalogue();
 
@@ -60,19 +61,18 @@ function Shop() {
   const [sort, setSort] = useState("relevance");
 
   useEffect(() => {
-    const handleUrl = () => {
-      if (typeof window !== "undefined") {
-        const p = new URLSearchParams(window.location.search);
-        const urlQ = p.get("q");
-        const urlCat = p.get("cat");
-        if (urlQ !== null) setQ(urlQ);
-        if (urlCat !== null && CATS.includes(urlCat as any)) setCat(urlCat as any);
-      }
-    };
-    handleUrl();
-    window.addEventListener("popstate", handleUrl);
-    return () => window.removeEventListener("popstate", handleUrl);
-  }, []);
+    const p = new URLSearchParams(location.search as any);
+    const urlQ = p.get("q");
+    const urlCat = p.get("cat");
+    if (urlQ !== null) setQ(urlQ);
+    else setQ("");
+
+    if (urlCat && CATS.includes(urlCat as any)) {
+      setCat(urlCat as any);
+    } else if (!urlCat) {
+      setCat("All");
+    }
+  }, [location.search]);
 
   const list = useMemo(() => {
     let l = catalogueProducts.filter(

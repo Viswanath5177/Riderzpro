@@ -199,40 +199,174 @@ const StoreCtx = createContext<Ctx | null>(null);
 const KEY = "riderzpro-v2";
 
 export const DEFAULT_PROFILE: UserProfile = {
-  name: "",
-  phone: "",
-  email: "",
-  city: "",
-  address: "",
-  points: 0,
-  selectedAddressId: "",
-  addresses: [],
+  name: "Aakash Sharma",
+  phone: "9876543210",
+  email: "aakash@riderzpro.com",
+  city: "Bengaluru",
+  address: "#42, 2nd Main, Indiranagar",
+  points: 450,
+  selectedAddressId: "addr-1",
+  addresses: [
+    {
+      id: "addr-1",
+      tag: "Home",
+      name: "Aakash Sharma",
+      phone: "9876543210",
+      street: "#42, 2nd Main, Indiranagar",
+      city: "Bengaluru",
+      pincode: "560038",
+    },
+  ],
 };
 
 const DEFAULT_ADDRESS: AddressRef = {
-  name: "",
-  street: "",
-  city: "",
-  state: "",
-  pincode: "",
-  phone: "",
+  name: "Aakash Sharma",
+  street: "#42, 2nd Main, Indiranagar",
+  city: "Bengaluru",
+  state: "Karnataka",
+  pincode: "560038",
+  phone: "9876543210",
 };
 
-const DEFAULT_BOOKINGS: ServiceBooking[] = [];
+export const DEFAULT_GARAGE: GarageBike[] = [
+  {
+    bikeId: "ather-450x",
+    year: 2024,
+    vin: "MD9A450XAN1234567",
+    nickname: "Ather 450X Gen 3",
+    regNo: "KA 01 EV 4502",
+    odoKm: 8420,
+    batteryHealth: 96,
+    nextServiceDays: 42,
+  },
+];
 
-const DEFAULT_NOTIFICATIONS: CustomerNotification[] = [];
+const DEFAULT_BOOKINGS: ServiceBooking[] = [
+  {
+    id: "SB-1042",
+    bikeId: "ather-450x",
+    serviceType: "Periodic Battery & BMS Health Check",
+    slot: "Tomorrow, 10:30 AM",
+    location: "Doorstep Express Service",
+    status: "Confirmed",
+    technician: "Vikram Sen",
+    cost: 499,
+    createdAt: Date.now() - 48 * 3600 * 1000,
+  },
+];
 
-export const DEFAULT_ORDERS: Order[] = [];
+export const DEFAULT_NOTIFICATIONS: CustomerNotification[] = [
+  {
+    id: "notif-1",
+    title: "Rider on the way! ⚡",
+    message: "Ravi Kumar is heading to your address with your ChargeMax 3.3kW Fast Charger.",
+    time: "5 mins ago",
+    read: false,
+    type: "order",
+    actionUrl: "/track/RZ-849201",
+  },
+  {
+    id: "notif-2",
+    title: "Battery Health Insight",
+    message: "Ather 450X battery health is optimal at 96%. Recommended next cycle check in 42 days.",
+    time: "2 hours ago",
+    read: true,
+    type: "system",
+  },
+];
 
-export const DEFAULT_SHIPMENTS: NormalizedShipment[] = [];
+export const DEFAULT_ORDERS: Order[] = [
+  {
+    id: "RZ-849201",
+    createdAt: Date.now() - 25 * 60 * 1000,
+    groups: [
+      {
+        vendorId: "v1",
+        items: [{ productId: "p7", qty: 1, price: 14500 }],
+        subtotal: 14500,
+        km: 3.8,
+        fee: 86,
+        eta: 18,
+      },
+    ],
+    itemsTotal: 14500,
+    deliveryTotal: 86,
+    tax: 2610,
+    total: 17196,
+    eta: 18,
+    payment: "UPI · Google Pay",
+    paymentStatus: "Paid",
+    status: 4,
+    fulfillmentStatus: "Dispatched",
+    customerName: "Aakash Sharma",
+    customerPhone: "9876543210",
+    riderId: "r1",
+    shippingAddress: DEFAULT_ADDRESS,
+    shipmentId: "SHP-DEMO-FLEET",
+  },
+];
+
+export const DEFAULT_SHIPMENTS: NormalizedShipment[] = [
+  {
+    shipmentId: "SHP-DEMO-FLEET",
+    orderId: "RZ-849201",
+    provider: "RiderzPro Fleet",
+    providerReference: "FLEET-FAST-9021",
+    trackingNumber: "RZP9021334",
+    trackingUrl: "/track/RZ-849201",
+    pickupAddress: {
+      name: "VoltHub Indiranagar",
+      street: "100ft Road",
+      city: "Bengaluru",
+      pincode: "560038",
+      phone: "+91 80 4123 9901",
+    },
+    destinationAddress: DEFAULT_ADDRESS,
+    status: "Out for Delivery",
+    locationType: "Live GPS Telemetry",
+    latestLocation: "100ft Road -> Koramangala Ring Rd",
+    lastEventTimestamp: "2m ago",
+    estimatedDelivery: "Arriving in 18 mins",
+    currentGps: { lat: 12.9554, lng: 77.625, speedKmph: 34, heading: 140 },
+    events: [
+      {
+        id: "evt-fl-1",
+        timestamp: "18m ago",
+        status: "Manifested",
+        location: "VoltHub Indiranagar",
+        description: "Rider Ravi Kumar accepted order and collected package",
+        isGps: true,
+        coordinates: { lat: 12.9784, lng: 77.6408 },
+      },
+      {
+        id: "evt-fl-2",
+        timestamp: "7m ago",
+        status: "In Transit",
+        location: "Intermediate Ring Road",
+        description: "Live GPS broadcast: En route to delivery doorstep",
+        isGps: true,
+        coordinates: { lat: 12.9554, lng: 77.625 },
+      },
+      {
+        id: "evt-fl-3",
+        timestamp: "Just now",
+        status: "Out for Delivery",
+        location: "Indiranagar 2nd Main",
+        description: "Rider is within 1.2km of delivery destination",
+        isGps: true,
+        coordinates: { lat: 12.961, lng: 77.632 },
+      },
+    ],
+  },
+];
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [garage, setGarage] = useState<GarageBike[]>([]);
-  const [activeBikeId, setActiveBikeId] = useState<string | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [shipments, setShipments] = useState<NormalizedShipment[]>([]);
+  const [garage, setGarage] = useState<GarageBike[]>(DEFAULT_GARAGE);
+  const [activeBikeId, setActiveBikeId] = useState<string | null>("ather-450x");
+  const [orders, setOrders] = useState<Order[]>(DEFAULT_ORDERS);
+  const [shipments, setShipments] = useState<NormalizedShipment[]>(DEFAULT_SHIPMENTS);
   const [inventoryStock, setInventoryStock] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
     products.forEach((p) => {
@@ -241,19 +375,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return initial;
   });
   const [savedProductIds, setSavedProductIds] = useState<string[]>([]);
-  const [serviceBookings, setServiceBookings] = useState<ServiceBooking[]>([]);
-  const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
+  const [serviceBookings, setServiceBookings] = useState<ServiceBooking[]>(DEFAULT_BOOKINGS);
+  const [notifications, setNotifications] = useState<CustomerNotification[]>(DEFAULT_NOTIFICATIONS);
   const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [role, setRole] = useState<Role>("customer");
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       const auth = localStorage.getItem("riderzpro_auth");
-      const user = localStorage.getItem(KEY);
-      if (user && (user.includes("Aakash") || user.includes("RZ-849201") || user.includes("P6R1S1PR2PN000001"))) {
-        localStorage.removeItem("riderzpro_auth");
-        localStorage.removeItem(KEY);
-        return false;
-      }
       return auth === "true";
     }
     return false;
@@ -265,50 +393,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const raw = localStorage.getItem(KEY);
       if (raw) {
         const s = JSON.parse(raw);
-        // Clean out any legacy mock data if present
-        const hasLegacyMock =
-          (s.orders && s.orders.some((o: Order) => o.id === "RZ-849201" || o.id === "RZ-793420")) ||
-          (s.garage && s.garage.some((g: GarageBike) => g.vin === "P6R1S1PR2PN000001" || g.bikeId === "ola-s1pro")) ||
-          (s.serviceBookings && s.serviceBookings.some((b: ServiceBooking) => b.id === "SB-1042"));
+        if (Array.isArray(s.cart)) setCart(s.cart);
+        if (Array.isArray(s.garage) && s.garage.length > 0) setGarage(s.garage);
+        else setGarage(DEFAULT_GARAGE);
 
-        if (!hasLegacyMock) {
-          if (Array.isArray(s.cart)) setCart(s.cart);
-          if (Array.isArray(s.garage)) setGarage(s.garage);
-          if ("activeBikeId" in s) setActiveBikeId(s.activeBikeId);
-          if (Array.isArray(s.orders)) setOrders(s.orders);
-          if (Array.isArray(s.shipments)) setShipments(s.shipments);
-          if (s.inventoryStock) setInventoryStock(s.inventoryStock);
-          if (Array.isArray(s.savedProductIds)) setSavedProductIds(s.savedProductIds);
-          if (Array.isArray(s.serviceBookings)) setServiceBookings(s.serviceBookings);
-          if (Array.isArray(s.notifications)) setNotifications(s.notifications);
-          if (s.userProfile) {
-            const isMock =
-              s.userProfile.name === "Aakash Sharma" ||
-              s.userProfile.email === "aakash.sharma@example.com";
-            if (!isMock) {
-              setUserProfile({
-                ...DEFAULT_PROFILE,
-                ...s.userProfile,
-                addresses: Array.isArray(s.userProfile.addresses) ? s.userProfile.addresses : [],
-                selectedAddressId: s.userProfile.selectedAddressId || "",
-              });
-            } else {
-              setUserProfile(DEFAULT_PROFILE);
-            }
-          }
-          if (s.role) setRole(s.role);
+        if ("activeBikeId" in s && s.activeBikeId) setActiveBikeId(s.activeBikeId);
+        else setActiveBikeId("ather-450x");
+
+        if (Array.isArray(s.orders) && s.orders.length > 0) setOrders(s.orders);
+        else setOrders(DEFAULT_ORDERS);
+
+        if (Array.isArray(s.shipments) && s.shipments.length > 0) setShipments(s.shipments);
+        else setShipments(DEFAULT_SHIPMENTS);
+
+        if (s.inventoryStock) setInventoryStock(s.inventoryStock);
+        if (Array.isArray(s.savedProductIds)) setSavedProductIds(s.savedProductIds);
+
+        if (Array.isArray(s.serviceBookings) && s.serviceBookings.length > 0) setServiceBookings(s.serviceBookings);
+        else setServiceBookings(DEFAULT_BOOKINGS);
+
+        if (Array.isArray(s.notifications) && s.notifications.length > 0) setNotifications(s.notifications);
+        else setNotifications(DEFAULT_NOTIFICATIONS);
+
+        if (s.userProfile && s.userProfile.name) {
+          setUserProfile({
+            ...DEFAULT_PROFILE,
+            ...s.userProfile,
+            addresses: Array.isArray(s.userProfile.addresses) && s.userProfile.addresses.length ? s.userProfile.addresses : DEFAULT_PROFILE.addresses,
+            selectedAddressId: s.userProfile.selectedAddressId || "addr-1",
+          });
         } else {
-          // Reset legacy mock state
-          localStorage.removeItem(KEY);
           setUserProfile(DEFAULT_PROFILE);
-          setOrders([]);
-          setShipments([]);
-          setGarage([]);
-          setActiveBikeId(null);
-          setServiceBookings([]);
-          setNotifications([]);
-          setSavedProductIds([]);
         }
+
+        if (s.role) setRole(s.role);
       }
       setTheme("light");
     } catch {}

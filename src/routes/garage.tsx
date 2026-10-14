@@ -44,7 +44,24 @@ function Garage() {
               <input value={vin} onChange={(e) => setVin(e.target.value)} maxLength={17} placeholder="MD9A450XAN1234567" className="h-12 flex-1 rounded-xl border border-border bg-background px-4 font-mono uppercase tracking-wider outline-none focus:border-primary" />
               <button onClick={() => { const r = decodeVin(vin); if (!r.ok || !r.bike) return toast.error(r.error); addBike({ bikeId: r.bike.id, year: r.year, vin: vin.toUpperCase() }); toast.success(`${r.bike.make} ${r.bike.model} ${r.year ?? ""} added`); setVin(""); }} className="rounded-xl bg-primary px-5 font-semibold text-primary-foreground">Decode</button>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">{vin.length}/17 · Try MD9A450XAN1234567 (Ather) or P6R1S1PR2PN000001 (Ola)</p>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+              <span>{vin.length}/17 · Quick test:</span>
+              <button
+                type="button"
+                onClick={() => setVin("MD9A450XAN1234567")}
+                className="underline hover:text-primary font-mono cursor-pointer"
+              >
+                MD9A450XAN1234567 (Ather)
+              </button>
+              <span>·</span>
+              <button
+                type="button"
+                onClick={() => setVin("P6R1S1PR2PN000001")}
+                className="underline hover:text-primary font-mono cursor-pointer"
+              >
+                P6R1S1PR2PN000001 (Ola)
+              </button>
+            </div>
             <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />or pick manually<span className="h-px flex-1 bg-border" /></div>
             <div className="grid grid-cols-2 gap-2">
               <select value={bikeId} onChange={(e) => { setBikeId(e.target.value); setYear(getBike(e.target.value)!.years.at(-1)!); }} className="h-12 rounded-xl border border-border bg-background px-3">

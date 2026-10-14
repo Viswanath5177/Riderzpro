@@ -116,6 +116,26 @@ export function BikeFinder() {
           <ArrowRight className="h-4 w-4" />
         </button>
       </form>
+
+      {tab === "vin" && (
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[11px] text-[#6b7280]">
+          <span className="font-medium">Quick sample VIN:</span>
+          <button
+            type="button"
+            onClick={() => setVinInput("MD9A450XAN1234567")}
+            className="rounded-md border border-[#ececec] bg-[#f7f7f8] px-2 py-0.5 font-mono text-[10px] font-semibold text-[#111111] hover:border-[#e11d2a] hover:text-[#e11d2a] transition cursor-pointer"
+          >
+            MD9A450XAN1234567 (Ather)
+          </button>
+          <button
+            type="button"
+            onClick={() => setVinInput("P6R1S1PR2PN000001")}
+            className="rounded-md border border-[#ececec] bg-[#f7f7f8] px-2 py-0.5 font-mono text-[10px] font-semibold text-[#111111] hover:border-[#e11d2a] hover:text-[#e11d2a] transition cursor-pointer"
+          >
+            P6R1S1PR2PN000001 (Ola)
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -240,13 +240,28 @@ export function SignInForm({ onSwitchToSignUp, targetPath }: SignInFormProps) {
 
   return (
     <div className="rounded-2xl border border-border/80 bg-white dark:bg-card p-6 sm:p-8 shadow-card">
-      <div className="mb-6">
-        <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
-          Welcome back
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Sign in to your Riderzpro account.
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
+            Welcome back
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Sign in to your Riderzpro account.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setIdentifier("aakash@riderzpro.com");
+            setPassword("Password123");
+            toast.info("Demo credentials populated", {
+              description: "Click 'Sign in' to test logged-in profile & garage.",
+            });
+          }}
+          className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-bold text-[#e11d2a] hover:bg-red-100 transition cursor-pointer shrink-0"
+        >
+          ⚡ Demo Fill
+        </button>
       </div>
 
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
