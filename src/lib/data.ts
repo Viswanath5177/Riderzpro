@@ -134,7 +134,6 @@ export type Product = {
   isAccessoryProduct?: boolean;
   subcategory?: string;
   subcategories?: string[];
-  vehicleType?: "car" | "bike" | "both";
   image: string;
   imageFallback?: string;
   voltage?: number;
@@ -547,7 +546,6 @@ export const getVendor = (id: string): Vendor => {
       address: "MG Road, Bengaluru 560001",
       gstin: "29AABCR0000Z1Z0",
       shippingPolicy: "Express delivery across city.",
-      returnPolicy: "7-day replacement warranty.",
       commissionRate: 0.1,
     }
   );
@@ -611,6 +609,7 @@ export function mapDbProductToProduct(row: any): Product {
     priceType: row.price_type || undefined,
   };
 }
+
 
 export const getBike = (id: string) => bikes.find((b) => b.id === id);
 export const bestOffer = (p: Product) => {

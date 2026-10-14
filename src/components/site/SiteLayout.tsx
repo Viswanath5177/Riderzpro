@@ -4,6 +4,7 @@ import { Home, ShoppingBag, Package, User } from "lucide-react";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { AIChatButton } from "./AIChatButton";
+import { CartDrawer } from "@/components/common/CartDrawer";
 import { useStore } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
 
@@ -13,31 +14,13 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
   const cartCount = cart.reduce((s, c) => s + c.qty, 0);
 
   return (
-    <div className="min-h-screen bg-white text-[#111111] pb-16 md:pb-0 font-sans selection:bg-red-500 selection:text-white">
-      {/* ─────────────────────────────────────────────────────────────
-          1. CLEAN SINGLE-ROW HEADER (72px, 5 NAV LINKS, SEARCH, CART, SIGN IN)
-         ───────────────────────────────────────────────────────────── */}
+    <div className="min-h-screen bg-white text-[#111111] pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-0 font-sans selection:bg-red-500 selection:text-white flex flex-col">
       <Header />
-
-      {/* ─────────────────────────────────────────────────────────────
-          2. MAIN CONTENT VIEW
-         ───────────────────────────────────────────────────────────── */}
-      <main className="min-h-[calc(100vh-72px)]">{children}</main>
-
-      {/* ─────────────────────────────────────────────────────────────
-          3. CLEAN 4-COLUMN FOOTER WITH DEV-ONLY ADMIN LINK
-         ───────────────────────────────────────────────────────────── */}
+      <main className="flex-1 min-h-[calc(100vh-72px)]">{children}</main>
       <Footer />
-
-      {/* ─────────────────────────────────────────────────────────────
-          4. FLOATING AI CHAT BUTTON (BOTTOM-RIGHT CIRCULAR RED BUTTON)
-         ───────────────────────────────────────────────────────────── */}
       <AIChatButton />
-
-      {/* ─────────────────────────────────────────────────────────────
-          5. MOBILE TAB BAR (Clean slim bottom bar for phone view)
-         ───────────────────────────────────────────────────────────── */}
       <MobileBottomBar count={cartCount} isAuthenticated={isAuthenticated} />
+      <CartDrawer />
     </div>
   );
 }
@@ -72,7 +55,7 @@ function MobileBottomBar({
   };
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 flex h-14 items-center justify-around border-t border-[#ececec] bg-white/95 px-2 backdrop-blur-md md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-bottom,0px))] pb-[env(safe-area-inset-bottom,0px)] items-center justify-around border-t border-[#ececec] bg-white/95 px-2 backdrop-blur-md md:hidden">
       {tabs.map((t) => (
         <Link
           key={t.label}

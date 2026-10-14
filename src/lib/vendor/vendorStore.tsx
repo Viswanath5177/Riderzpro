@@ -7,6 +7,7 @@ import type {
   VendorNotification,
   VendorSupportTicket,
   ProductRevision,
+  Settlement,
 } from "./types";
 import { SEED_VENDORS, SEED_VENDOR_PRODUCTS } from "./seedData";
 
@@ -25,6 +26,7 @@ export interface VendorStoreContextType {
   getVendorByEmail: (email: string) => Vendor | undefined;
   saveVendorDraft: (vendor: Vendor) => void;
   updateVendor: (id: string, updates: Partial<Vendor>) => void;
+  updateVendorOnboarding: (vendorId: string, partial: Partial<VendorOnboarding>) => void;
   updateOnboardingStep: (vendorId: string, step: number, stepData: Partial<VendorOnboarding>) => void;
   submitOnboarding: (vendorId: string) => void;
   // Admin actions
@@ -37,6 +39,7 @@ export interface VendorStoreContextType {
   addProduct: (productData: Omit<VendorProduct, "id" | "createdAt" | "updatedAt">) => VendorProduct;
   updateProduct: (id: string, updates: Partial<VendorProduct>, options?: { isStaffAction?: boolean }) => void;
   submitProductRevision: (id: string, revision: ProductRevision) => void;
+  requestProductRevision?: (id: string, revision: ProductRevision) => void;
   approveProduct: (id: string, adminEdits?: Partial<VendorProduct>) => void;
   requestProductChanges: (id: string, comments: Record<string, string>) => void;
   rejectProduct: (id: string, reason: string) => void;
@@ -45,6 +48,9 @@ export interface VendorStoreContextType {
   // Notifications & Support
   addNotification: (notif: Omit<VendorNotification, "id" | "time" | "read">) => void;
   markNotificationRead: (id: string) => void;
+  markAllNotificationsRead?: () => void;
+  settlements?: Settlement[];
+  requestBankUpdate?: (vendorId: string, bankData: any) => void;
   createTicket: (vendorId: string, subject: string, category: VendorSupportTicket["category"], message: string) => void;
   replyTicket: (ticketId: string, text: string, sender: "vendor" | "admin", senderName: string) => void;
 }
@@ -281,6 +287,32 @@ export function VendorStoreProvider({ children }: { children: React.ReactNode })
           ...v,
           ...rootUpdates,
           onboarding: updatedOnboarding,
+          updatedAt: Date.now(),
+        };
+      });
+      persistVendors(updated);
+    },
+    [vendors, persistVendors]
+  );
+
+  const updateVendorOnboarding = useCallback(
+    (vendorId: string, partial: Partial<VendorOnboarding>) => {
+      const updated = vendors.map((v) => {
+        if (v.id !== vendorId) return v;
+        const rootUpdates: Partial<Vendor> = {};
+        if (partial.store?.storeName) {
+          rootUpdates.storeName = partial.store.storeName;
+          rootUpdates.slug = partial.store.slug;
+        }
+        return {
+          ...v,
+          ...rootUpdates,
+          onboarding: {
+            ...v.onboarding,
+            ...partial,
+            store: { ...v.onboarding.store, ...partial.store },
+            shipping: { ...v.onboarding.shipping, ...partial.shipping },
+          },
           updatedAt: Date.now(),
         };
       });
@@ -728,6 +760,7 @@ export function VendorStoreProvider({ children }: { children: React.ReactNode })
       getVendorByEmail,
       saveVendorDraft,
       updateVendor,
+      updateVendorOnboarding,
       updateOnboardingStep,
       submitOnboarding,
       approveVendor,
@@ -738,6 +771,7 @@ export function VendorStoreProvider({ children }: { children: React.ReactNode })
       addProduct,
       updateProduct,
       submitProductRevision,
+      requestProductRevision: submitProductRevision,
       approveProduct,
       requestProductChanges,
       rejectProduct,
@@ -745,6 +779,9 @@ export function VendorStoreProvider({ children }: { children: React.ReactNode })
       toggleHolidayMode,
       addNotification,
       markNotificationRead,
+      markAllNotificationsRead: () => setNotifications((prev) => prev.map((n) => ({ ...n, read: true }))),
+      settlements: [],
+      requestBankUpdate: () => {},
       createTicket,
       replyTicket,
     }),
@@ -758,6 +795,7 @@ export function VendorStoreProvider({ children }: { children: React.ReactNode })
       getVendorByEmail,
       saveVendorDraft,
       updateVendor,
+      updateVendorOnboarding,
       updateOnboardingStep,
       submitOnboarding,
       approveVendor,

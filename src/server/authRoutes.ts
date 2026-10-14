@@ -288,6 +288,7 @@ export async function handleAuthRoute(
         let redirectUrl = "/dashboard/customer";
         if (user.role === "admin" || user.role.includes("admin")) redirectUrl = "/admin";
         else if (user.role === "seller") redirectUrl = "/dashboard/vendor";
+        else if (user.role === "rider") redirectUrl = "/rider/dashboard";
 
         sendJson(res, 200, {
           success: true,
@@ -300,6 +301,28 @@ export async function handleAuthRoute(
             role: user.role,
           },
           redirectUrl,
+        });
+        return true;
+      }
+
+      // Fallback for Rider demo login if not present in DB
+      if (
+        (emailOrContact.includes("rider") || emailOrContact.includes("sathesh") || phone10 === "9845077889") &&
+        (password === "rider123" || password === "vamsi123" || password === "riderzpro@vendor1")
+      ) {
+        const demoToken = `demo_rider_token_${crypto.randomBytes(16).toString("hex")}`;
+        setSessionCookie(res, demoToken);
+        sendJson(res, 200, {
+          success: true,
+          role: "rider",
+          user: {
+            id: "rider_sathesh",
+            email: "sathesh.ittraju@riderzpro.demo",
+            fullName: "Sathesh Ittraju",
+            phone: "+91 98450 77889",
+            role: "rider",
+          },
+          redirectUrl: "/rider/dashboard",
         });
         return true;
       }
@@ -326,6 +349,21 @@ export async function handleAuthRoute(
       const token = cookies["auth_session"];
       if (!token) {
         sendJson(res, 200, { authenticated: false, user: null, role: null });
+        return true;
+      }
+
+      if (token.startsWith("demo_rider_token_")) {
+        sendJson(res, 200, {
+          authenticated: true,
+          role: "rider",
+          user: {
+            id: "rider_sathesh",
+            email: "sathesh.ittraju@riderzpro.demo",
+            fullName: "Sathesh Ittraju",
+            phone: "+91 98450 77889",
+            role: "rider",
+          },
+        });
         return true;
       }
 

@@ -10,6 +10,7 @@ export interface GlassModalProps {
   description?: string;
   children: React.ReactNode;
   maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl";
   className?: string;
 }
 
@@ -20,8 +21,10 @@ export function GlassModal({
   description,
   children,
   maxWidth = "md",
+  size,
   className,
 }: GlassModalProps) {
+  const effectiveMaxWidth = size || maxWidth;
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) onClose();
@@ -51,11 +54,11 @@ export function GlassModal({
             transition={{ type: "spring", duration: 0.35, bounce: 0.1 }}
             className={cn(
               "relative z-10 w-full overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white p-6 text-[#111111] shadow-2xl",
-              maxWidth === "sm" && "max-w-sm",
-              maxWidth === "md" && "max-w-md",
-              maxWidth === "lg" && "max-w-lg",
-              maxWidth === "xl" && "max-w-xl",
-              maxWidth === "2xl" && "max-w-2xl",
+              effectiveMaxWidth === "sm" && "max-w-sm",
+              effectiveMaxWidth === "md" && "max-w-md",
+              effectiveMaxWidth === "lg" && "max-w-lg",
+              effectiveMaxWidth === "xl" && "max-w-xl",
+              effectiveMaxWidth === "2xl" && "max-w-2xl",
               className
             )}
           >

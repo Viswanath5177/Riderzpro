@@ -540,11 +540,14 @@ export function VendorSignupFlow() {
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <input
                           type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          autoComplete="one-time-code"
                           maxLength={6}
                           value={emailOtp}
                           onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                           placeholder="• • • • • •"
-                          className="w-28 text-center font-mono font-bold text-sm bg-white border border-blue-300 rounded-md py-1.5 px-2 outline-none tracking-widest text-gray-900"
+                          className="w-28 text-center font-mono font-bold text-sm bg-white border border-blue-300 rounded-md py-1.5 px-2 outline-none tracking-widest text-gray-900 focus:border-[#0066cc]"
                         />
                         <button
                           type="button"

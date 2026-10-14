@@ -7,9 +7,12 @@ export interface GlassDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
+  subtitle?: string;
   description?: string;
   children: React.ReactNode;
   width?: "md" | "lg" | "xl" | "2xl";
+  size?: "md" | "lg" | "xl" | "2xl" | string;
+  footer?: React.ReactNode;
   className?: string;
 }
 
@@ -17,11 +20,16 @@ export function GlassDrawer({
   isOpen,
   onClose,
   title,
+  subtitle,
   description,
   children,
   width = "lg",
+  size,
+  footer,
   className,
 }: GlassDrawerProps) {
+  const effectiveDescription = subtitle || description;
+  const effectiveWidth = size || width;
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) onClose();
@@ -51,10 +59,10 @@ export function GlassDrawer({
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className={cn(
                 "relative flex w-screen flex-col border-l border-[#E5E7EB] bg-white text-[#111111] shadow-2xl",
-                width === "md" && "max-w-md",
-                width === "lg" && "max-w-lg",
-                width === "xl" && "max-w-xl",
-                width === "2xl" && "max-w-2xl",
+                effectiveWidth === "md" && "max-w-md",
+                effectiveWidth === "lg" && "max-w-lg",
+                effectiveWidth === "xl" && "max-w-xl",
+                effectiveWidth === "2xl" && "max-w-2xl",
                 className
               )}
             >
@@ -62,7 +70,7 @@ export function GlassDrawer({
               <div className="flex items-start justify-between gap-4 border-b border-[#E5E7EB] bg-gray-50/70 p-6">
                 <div>
                   {title && <h3 className="font-display text-xl font-bold tracking-tight text-[#111111]">{title}</h3>}
-                  {description && <p className="mt-1 text-xs text-[#4B5563] font-medium">{description}</p>}
+                  {effectiveDescription && <p className="mt-1 text-xs text-[#4B5563] font-medium">{effectiveDescription}</p>}
                 </div>
                 <button
                   onClick={onClose}
@@ -75,6 +83,11 @@ export function GlassDrawer({
 
               {/* Scrollable Body */}
               <div className="flex-1 overflow-y-auto p-6">{children}</div>
+
+              {/* Footer */}
+              {footer && (
+                <div className="border-t border-[#E5E7EB] bg-gray-50/70 p-4">{footer}</div>
+              )}
             </motion.div>
           </div>
         </div>
