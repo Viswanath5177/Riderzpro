@@ -9,6 +9,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { reduceMockStockByOrderItems, notifyInventoryListeners } from "./sellerInventoryApi";
 
 // ==========================================
 // CONFIGURATION & TOGGLE FLAG
@@ -110,9 +111,7 @@ const initialMockOrders: SellerOrder[] = [
     orderNumber: "RP-ORD-9815",
     createdAt: new Date(Date.now() - 28 * 60 * 1000).toISOString(), // 28 mins ago
     status: "PACKED",
-    items: [
-      { name: "EV Hub Motor Seal & Bearing Repair Kit", qty: 1, price: 1850 },
-    ],
+    items: [{ name: "EV Hub Motor Seal & Bearing Repair Kit", qty: 1, price: 1850 }],
     customerName: "Sneha Kapur",
     deliveryCity: "Greater Noida West",
     amount: 1850,
@@ -144,9 +143,7 @@ const initialMockOrders: SellerOrder[] = [
     orderNumber: "RP-ORD-9804",
     createdAt: new Date(Date.now() - 75 * 60 * 1000).toISOString(),
     status: "PICKED_UP",
-    items: [
-      { name: "Digital Tire Pressure Gauge (EV Compatible)", qty: 1, price: 1299 },
-    ],
+    items: [{ name: "Digital Tire Pressure Gauge (EV Compatible)", qty: 1, price: 1299 }],
     customerName: "Priyanka Sen",
     deliveryCity: "Noida Sector 50",
     amount: 1299,
@@ -200,9 +197,7 @@ const initialMockOrders: SellerOrder[] = [
     orderNumber: "RP-ORD-9772",
     createdAt: new Date(Date.now() - 320 * 60 * 1000).toISOString(),
     status: "REJECTED",
-    items: [
-      { name: "Custom 72V Lithium BMS Controller Unit", qty: 1, price: 8400 },
-    ],
+    items: [{ name: "Custom 72V Lithium BMS Controller Unit", qty: 1, price: 8400 }],
     customerName: "Gaurav Mehta",
     deliveryCity: "Noida Sector 93",
     amount: 8400,
@@ -216,9 +211,7 @@ const initialMockOrders: SellerOrder[] = [
     orderNumber: "RP-ORD-9765",
     createdAt: new Date(Date.now() - 480 * 60 * 1000).toISOString(),
     status: "CANCELLED",
-    items: [
-      { name: "Universal Scooter Windshield Deflector", qty: 1, price: 1750 },
-    ],
+    items: [{ name: "Universal Scooter Windshield Deflector", qty: 1, price: 1750 }],
     customerName: "Neha Tiwari",
     deliveryCity: "Noida Sector 137",
     amount: 1750,
@@ -349,7 +342,7 @@ export async function getSellerOrders(): Promise<SellerOrder[]> {
   if (USE_MOCK) {
     // Return shallow copy sorted newest first
     return [...mockOrdersState].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
   }
 
@@ -375,14 +368,17 @@ export async function getSellerOrders(): Promise<SellerOrder[]> {
 
   if (!res.ok) {
     const errBody = await res.json().catch(() => ({}));
-    throw new ApiError(errBody.error || `Failed to fetch seller orders (${res.status})`, res.status);
+    throw new ApiError(
+      errBody.error || `Failed to fetch seller orders (${res.status})`,
+      res.status,
+    );
   }
 
   const data = await res.json();
   // Handle responses wrapped in { orders: [...] } or direct array
   const rawOrders: SellerOrder[] = Array.isArray(data) ? data : data.orders || [];
   return rawOrders.sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 }
 
@@ -394,7 +390,7 @@ export async function getSellerOrders(): Promise<SellerOrder[]> {
 export async function updateSellerOrder(
   id: string,
   action: SellerOrderAction,
-  reason?: string
+  reason?: string,
 ): Promise<SellerOrder> {
   if (USE_MOCK) {
     // Artificial 400ms network delay for realistic UI loading feedback
@@ -419,7 +415,11 @@ export async function updateSellerOrder(
     }
 
     let updatedStatus: SellerOrderStatus = current.status;
-    if (action === "accept") updatedStatus = "ACCEPTED";
+    if (action === "accept") {
+      updatedStatus = "ACCEPTED";
+      // Task 1: Reduce mock stock by order item quantities on order acceptance
+      reduceMockStockByOrderItems(current.items);
+    }
     if (action === "reject") updatedStatus = "REJECTED";
     if (action === "packed") updatedStatus = "PACKED";
 
@@ -431,6 +431,8 @@ export async function updateSellerOrder(
 
     mockOrdersState[idx] = updatedOrder;
     notifyListeners();
+    // Task 1: Refetch inventory immediately after order actions (accept, reject, packed)
+    notifyInventoryListeners();
 
     if (action === "packed") {
       startMockOrderProgression(id);
@@ -515,7 +517,7 @@ export function useSellerOrders(): UseSellerOrdersResult {
       // Check for newly arrived PLACED orders if not the first load
       if (!isInitialLoad.current) {
         const newlyPlaced = fetched.filter(
-          (o) => o.status === "PLACED" && !knownOrderIds.current.has(o.id)
+          (o) => o.status === "PLACED" && !knownOrderIds.current.has(o.id),
         );
 
         if (newlyPlaced.length > 0) {

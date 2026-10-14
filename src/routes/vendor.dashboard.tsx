@@ -82,7 +82,9 @@ function VendorDashboardContent() {
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#F5F6F8] p-4 text-center">
         <div className="max-w-md rounded-2xl bg-white p-6 shadow-sm border border-gray-200 space-y-3">
           <h2 className="text-base font-bold text-gray-900">Vendor Session Required</h2>
-          <p className="text-xs text-gray-500">Please sign in with your vendor credentials to access the dashboard.</p>
+          <p className="text-xs text-gray-500">
+            Please sign in with your vendor credentials to access the dashboard.
+          </p>
           <a
             href="/vendor/auth"
             className="inline-block rounded-xl bg-[#E31E24] px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-red-700 transition"
@@ -104,12 +106,7 @@ function VendorDashboardContent() {
       ordersBadge={placedCount}
     >
       {activeTab === "overview" && (
-        <OverviewSection
-          vendor={activeVendor}
-          products={vendorProducts}
-          orders={orders}
-          onNavigateTab={handleSelectTab}
-        />
+        <OverviewSection vendor={activeVendor} onNavigateTab={handleSelectTab} />
       )}
       {activeTab === "orders" && <OrdersSection vendor={activeVendor} />}
       {activeTab === "products" && <ProductsSection vendor={activeVendor} />}

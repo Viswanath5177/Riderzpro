@@ -57,10 +57,11 @@ export function VendorDashboardShell({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const vendorInitials = (vendor.storeName || vendor.ownerName || "VP")
+  const vendorObj = vendor as unknown as Record<string, any>;
+  const vendorInitials = (vendor.storeName || vendorObj.ownerName || "VP")
     .trim()
     .split(" ")
-    .map((n) => n[0])
+    .map((n: string) => n[0])
     .join("")
     .slice(0, 2)
     .toUpperCase();
@@ -205,7 +206,7 @@ export function VendorDashboardShell({
                   </div>
                   <p className="text-[11px] text-[#E31E24] font-medium truncate flex items-center gap-1.5 mt-0.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#E31E24] shrink-0" />
-                    <span>{vendor.status === "approved" ? "Verified Partner" : "KYC Pending"} · {vendor.city || "Bengaluru"}</span>
+                    <span>{vendor.status === "approved" ? "Verified Partner" : "KYC Pending"} · {vendorObj.city || "Bengaluru"}</span>
                   </p>
                 </div>
               </button>
@@ -271,7 +272,7 @@ export function VendorDashboardShell({
                     {vendorInitials}
                   </span>
                   <span className="hidden sm:inline-block text-xs font-bold text-gray-800 group-hover:text-gray-950 max-w-[120px] truncate transition-colors">
-                    {vendor.ownerName?.split(" ")[0] || vendor.storeName.split(" ")[0]}
+                    {vendorObj.ownerName?.split(" ")[0] || vendor.storeName.split(" ")[0]}
                   </span>
                   <ChevronDown className={cn("h-3 w-3 sm:h-3.5 sm:w-3.5 text-gray-400 group-hover:text-gray-700 transition-transform duration-200", isProfileOpen && "rotate-180")} />
                 </button>
@@ -290,7 +291,7 @@ export function VendorDashboardShell({
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-bold text-gray-950 truncate">{vendor.storeName}</p>
-                          <p className="text-[11px] text-gray-500 truncate">{vendor.email || vendor.ownerName}</p>
+                          <p className="text-[11px] text-gray-500 truncate">{vendor.email || vendorObj.ownerName}</p>
                           <div className="flex items-center gap-1.5 mt-1">
                             <span className="h-1.5 w-1.5 rounded-full bg-[#E31E24]" />
                             <span className="text-[10px] font-semibold text-[#E31E24]">
