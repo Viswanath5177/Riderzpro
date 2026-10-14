@@ -14,6 +14,7 @@ import {
   Clock,
   CircleDot,
   CheckCircle2,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatPaise, type ApiOrder } from "@/lib/api/orders";
@@ -27,9 +28,10 @@ import {
 interface OrderDetailsViewProps {
   order: ApiOrder;
   titlePrefix?: string;
+  onDownloadInvoice?: () => void;
 }
 
-export function OrderDetailsView({ order, titlePrefix }: OrderDetailsViewProps) {
+export function OrderDetailsView({ order, titlePrefix, onDownloadInvoice }: OrderDetailsViewProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopyId = () => {
@@ -97,6 +99,16 @@ export function OrderDetailsView({ order, titlePrefix }: OrderDetailsViewProps) 
             {copied ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
             <span>{copied ? "Copied" : "Copy"}</span>
           </button>
+          {onDownloadInvoice && (
+            <button
+              onClick={onDownloadInvoice}
+              type="button"
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-100 transition cursor-pointer"
+            >
+              <Download className="h-3 w-3 text-gray-500" />
+              <span>Invoice</span>
+            </button>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-gray-500">

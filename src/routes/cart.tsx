@@ -36,10 +36,9 @@ import {
   type AddressData,
   type AddressErrors,
 } from "@/components/checkout/AddressSection";
-import { PaymentSection, type PaymentMethod } from "@/components/checkout/PaymentSection";
+import { PaymentStep, type PaymentMethod } from "@/components/checkout/PaymentStep";
 import { MissingFieldsChecklist } from "@/components/checkout/MissingFieldsChecklist";
 import { ServiceabilityBanner } from "@/components/checkout/ServiceabilityBanner";
-import { PaymentStepSlot } from "@/components/checkout/PaymentStepSlot";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -552,7 +551,7 @@ function CartPage() {
 
   return (
     <SiteLayout>
-      <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
+      <div className="mx-auto max-w-7xl px-4 py-8 md:px-6 pb-28 lg:pb-8">
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-200 pb-4">
           <div>
@@ -613,15 +612,13 @@ function CartPage() {
               pincodeInputRef={pincodeInputRef}
             />
 
-            {/* Section 3: Payment Method */}
-            <PaymentSection
-              selected={paymentMethod}
-              onChange={setPaymentMethod}
-              orderTotalPaise={totalAmountPaise}
+            {/* Section 3: Sathwik's PaymentStep (Razorpay test / COD) */}
+            <PaymentStep
+              method={paymentMethod}
+              onChangeMethod={setPaymentMethod}
+              totalPaise={totalAmountPaise}
+              disabled={isSubmitting}
             />
-
-            {/* Sathwik's PaymentStep Integration Slot */}
-            <PaymentStepSlot paymentMethod={paymentMethod} />
 
             {/* Ordered Items Preview */}
             <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-2xs space-y-4">
