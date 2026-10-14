@@ -1,0 +1,188 @@
+[
+  {
+    "id": "RZ-847291",
+    "orderNumber": "RZ-847291",
+    "createdAt": 1728901200000,
+    "estimatedDelivery": "Delivered in 35–50 mins",
+    "status": "PLACED",
+    "contact": {
+      "name": "Vikas Sharma",
+      "phone": "9812345678",
+      "email": "vikas@example.com"
+    },
+    "shippingAddress": {
+      "street": "Flat 402, Block C, Mayur Vihar",
+      "locality": "Mayur Vihar Phase 1",
+      "landmark": "Near Metro Station",
+      "city": "Delhi",
+      "state": "Delhi",
+      "pincode": "110091"
+    },
+    "deliveryInstructions": "Leave with security",
+    "items": [
+      {
+        "productId": "p1",
+        "name": "Brembo High-Performance Ceramic Brake Pads",
+        "imageUrl": "/src/assets/parts.jpg",
+        "qty": 2,
+        "unitPricePaise": 249900,
+        "lineTotalPaise": 499800,
+        "sellerId": "v1"
+      }
+    ],
+    "sellers": [
+      {
+        "id": "v1",
+        "name": "SpeedX Auto Components"
+      }
+    ],
+    "subtotalPaise": 499800,
+    "deliveryPaise": 4900,
+    "discountPaise": 50000,
+    "couponCode": "EVSAFE",
+    "taxPaise": 80964,
+    "totalPaise": 535664,
+    "payment": {
+      "method": "COD",
+      "status": "COD_DUE",
+      "amountDuePaise": 535664
+    }
+  },
+  {
+    "id": "RZ-732910",
+    "orderNumber": "RZ-732910",
+    "createdAt": 1728814800000,
+    "estimatedDelivery": "Delivered yesterday",
+    "status": "DELIVERED",
+    "contact": {
+      "name": "Vikas Sharma",
+      "phone": "9812345678",
+      "email": "vikas@example.com"
+    },
+    "shippingAddress": {
+      "street": "B-12, Connaught Place",
+      "locality": "Central Delhi",
+      "city": "Delhi",
+      "state": "Delhi",
+      "pincode": "110001"
+    },
+    "items": [
+      {
+        "productId": "p7",
+        "name": "ChargeMax 3.3kW Portable EV Fast Charger",
+        "imageUrl": "/src/assets/parts.jpg",
+        "qty": 1,
+        "unitPricePaise": 1450000,
+        "lineTotalPaise": 1450000,
+        "sellerId": "v2"
+      }
+    ],
+    "sellers": [
+      {
+        "id": "v2",
+        "name": "VoltPower Systems"
+      }
+    ],
+    "subtotalPaise": 1450000,
+    "deliveryPaise": 4900,
+    "discountPaise": 0,
+    "taxPaise": 261000,
+    "totalPaise": 1715900,
+    "payment": {
+      "method": "UPI",
+      "status": "PAID",
+      "amountDuePaise": 0
+    }
+  },
+  {
+    "id": "RZ-619284",
+    "orderNumber": "RZ-619284",
+    "createdAt": 1728728400000,
+    "estimatedDelivery": "Tomorrow by 2 PM",
+    "status": "DISPATCHED",
+    "contact": {
+      "name": "Vikas Sharma",
+      "phone": "9812345678"
+    },
+    "shippingAddress": {
+      "street": "14/2, Karol Bagh",
+      "locality": "Karol Bagh",
+      "city": "Delhi",
+      "state": "Delhi",
+      "pincode": "110005"
+    },
+    "items": [
+      {
+        "productId": "p3",
+        "name": "Michelin City Extra Reinforced Tubeless Tyre",
+        "imageUrl": "/src/assets/parts.jpg",
+        "qty": 1,
+        "unitPricePaise": 285000,
+        "lineTotalPaise": 285000,
+        "sellerId": "v1"
+      }
+    ],
+    "sellers": [
+      {
+        "id": "v1",
+        "name": "SpeedX Auto Components"
+      }
+    ],
+    "subtotalPaise": 285000,
+    "deliveryPaise": 4900,
+    "discountPaise": 28500,
+    "couponCode": "RIDER10",
+    "taxPaise": 46170,
+    "totalPaise": 307570,
+    "payment": {
+      "method": "CARD",
+      "status": "PENDING",
+      "amountDuePaise": 307570
+    }
+  },
+  {
+    "id": "RZ-502847",
+    "orderNumber": "RZ-502847",
+    "createdAt": 1728642000000,
+    "estimatedDelivery": "Order Cancelled",
+    "status": "CANCELLED",
+    "contact": {
+      "name": "Vikas Sharma",
+      "phone": "9812345678"
+    },
+    "shippingAddress": {
+      "street": "77, Defence Colony",
+      "locality": "South Delhi",
+      "city": "Delhi",
+      "state": "Delhi",
+      "pincode": "110024"
+    },
+    "items": [
+      {
+        "productId": "p4",
+        "name": "Bosch Heavy Duty 12V Horn Set",
+        "imageUrl": "/src/assets/parts.jpg",
+        "qty": 1,
+        "unitPricePaise": 120000,
+        "lineTotalPaise": 120000,
+        "sellerId": "v1"
+      }
+    ],
+    "sellers": [
+      {
+        "id": "v1",
+        "name": "SpeedX Auto Components"
+      }
+    ],
+    "subtotalPaise": 120000,
+    "deliveryPaise": 4900,
+    "discountPaise": 0,
+    "taxPaise": 21600,
+    "totalPaise": 146500,
+    "payment": {
+      "method": "UPI",
+      "status": "FAILED",
+      "amountDuePaise": 146500
+    }
+  }
+]

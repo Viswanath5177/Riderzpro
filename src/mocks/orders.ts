@@ -3,43 +3,86 @@ import { ApiError, type ApiOrder, type CreateOrderPayload } from "../lib/api/ord
 import { isDeliverablePincode, NOT_SERVICEABLE_MESSAGE } from "../lib/checkoutConfig";
 import { getProduct, getVendor, GST_RATE } from "../lib/data";
 
-const SESSION_STORAGE_KEY = "riderzpro_orders_session";
-let memoryOrders: ApiOrder[] = [];
-
-function getSessionOrders(): ApiOrder[] {
-  if (typeof window === "undefined") return memoryOrders;
+function getCurrentUserId(): string {
+  if (typeof window === "undefined") return "usr_default";
   try {
-    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    const raw = localStorage.getItem("riderzpro_auth_user");
+    if (raw) {
+      const u = JSON.parse(raw);
+      if (u?.id) return u.id;
+    }
+  } catch {
+    // ignore
+  }
+  return "usr_guest";
+}
+
+function getStorageKey(userId?: string): string {
+  const uid = userId || getCurrentUserId();
+  return `riderzpro_mock_orders_${uid}`;
+}
+
+const memoryOrdersMap = new Map<string, ApiOrder[]>();
+
+export function getSessionOrders(userId?: string): ApiOrder[] {
+  const key = getStorageKey(userId);
+  if (typeof window === "undefined") {
+    return memoryOrdersMap.get(key) || [];
+  }
+  try {
+    const raw = sessionStorage.getItem(key);
     if (raw) {
       return JSON.parse(raw);
+    }
+    // Also check legacy shared session key
+    const legacyRaw = sessionStorage.getItem("riderzpro_orders_session");
+    if (legacyRaw) {
+      const parsed = JSON.parse(legacyRaw);
+      sessionStorage.setItem(key, legacyRaw);
+      return parsed;
     }
   } catch (e) {
     console.error("Failed to read orders from sessionStorage:", e);
   }
-  return memoryOrders;
+  return memoryOrdersMap.get(key) || [];
 }
 
-function saveSessionOrders(orders: ApiOrder[]) {
-  memoryOrders = orders;
+export function saveSessionOrders(orders: ApiOrder[], userId?: string) {
+  const key = getStorageKey(userId);
+  memoryOrdersMap.set(key, orders);
   if (typeof window !== "undefined") {
     try {
-      sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(orders));
+      sessionStorage.setItem(key, JSON.stringify(orders));
+      sessionStorage.setItem("riderzpro_orders_session", JSON.stringify(orders));
     } catch (e) {
       console.error("Failed to save orders to sessionStorage:", e);
     }
   }
 }
 
-export function getAllMockOrders(): ApiOrder[] {
-  return getSessionOrders();
+export function clearMockOrders(userId?: string) {
+  const key = getStorageKey(userId);
+  memoryOrdersMap.delete(key);
+  if (typeof window !== "undefined") {
+    try {
+      sessionStorage.removeItem(key);
+      sessionStorage.removeItem("riderzpro_orders_session");
+    } catch {
+      // ignore
+    }
+  }
 }
 
-export function getMockOrderById(id: string): ApiOrder | undefined {
-  const orders = getSessionOrders();
+export function getAllMockOrders(userId?: string): ApiOrder[] {
+  return getSessionOrders(userId);
+}
+
+export function getMockOrderById(id: string, userId?: string): ApiOrder | undefined {
+  const orders = getSessionOrders(userId);
   return orders.find((o) => o.id === id || o.orderNumber === id);
 }
 
-export function createMockOrder(payload: CreateOrderPayload): ApiOrder {
+export function createMockOrder(payload: CreateOrderPayload, userId?: string): ApiOrder {
   // 1. Enforce Delhi-only delivery
   const pincode = payload.shippingAddress?.pincode || "";
   if (!isDeliverablePincode(pincode)) {
@@ -79,7 +122,6 @@ export function createMockOrder(payload: CreateOrderPayload): ApiOrder {
   const sellers = Array.from(sellersMap.entries()).map(([id, name]) => ({ id, name }));
 
   // 3. Pricing calculations
-  // Coupon calculation
   let discountPaise = 0;
   const couponCode = payload.couponCode ? payload.couponCode.trim().toUpperCase() : undefined;
   if (couponCode === "EVSAFE") {
@@ -104,7 +146,7 @@ export function createMockOrder(payload: CreateOrderPayload): ApiOrder {
     orderNumber: orderNum,
     createdAt: now,
     estimatedDelivery: "Delivered in 35–50 mins",
-    status: 0,
+    status: "PLACED",
     contact: {
       name: payload.contact.name.trim(),
       phone: payload.contact.phone.trim(),
@@ -132,14 +174,91 @@ export function createMockOrder(payload: CreateOrderPayload): ApiOrder {
       status: paymentStatus,
       amountDuePaise: totalPaise,
     },
-    // Backwards compatibility fields
-    total: Math.round(totalPaise / 100),
-    customerName: payload.contact.name.trim(),
-    customerPhone: payload.contact.phone.trim(),
+    statusHistory: [
+      {
+        status: "PLACED",
+        timestamp: now,
+        description: "Order placed by customer",
+        source: "customer",
+      },
+    ],
   };
 
-  const existing = getSessionOrders();
-  saveSessionOrders([order, ...existing]);
+  const existing = getSessionOrders(userId);
+  saveSessionOrders([order, ...existing], userId);
 
   return order;
+}
+
+/**
+ * Advances an order's status along the lifecycle:
+ * PLACED -> PACKED -> DISPATCHED -> OUT_FOR_DELIVERY -> DELIVERED
+ */
+export function advanceMockOrder(orderNumber?: string): boolean {
+  const orders = getSessionOrders();
+  if (orders.length === 0) return false;
+
+  const target = orderNumber
+    ? orders.find((o) => o.orderNumber === orderNumber || o.id === orderNumber)
+    : orders.find((o) => o.status !== "DELIVERED" && o.status !== "CANCELLED");
+
+  if (!target) return false;
+
+  const progression: Record<string, string> = {
+    PLACED: "PACKED",
+    PACKED: "DISPATCHED",
+    DISPATCHED: "OUT_FOR_DELIVERY",
+    OUT_FOR_DELIVERY: "DELIVERED",
+  };
+
+  const currentStatusStr = String(target.status).toUpperCase();
+  const nextStatus = progression[currentStatusStr];
+  if (!nextStatus) return false;
+
+  target.status = nextStatus;
+  const history = target.statusHistory || [];
+  history.push({
+    status: nextStatus,
+    timestamp: Date.now(),
+    description: `Order status automatically updated to ${nextStatus}`,
+    source: "mock-auto-advance",
+  });
+  target.statusHistory = history;
+
+  saveSessionOrders([...orders]);
+  return true;
+}
+
+declare global {
+  interface Window {
+    __mockAdvanceOrder?: (orderNum?: string) => boolean;
+    __mockAutoAdvanceStarted?: boolean;
+  }
+}
+
+// Dev-only auto-advance & window exposure
+if (import.meta.env.DEV) {
+  if (typeof window !== "undefined") {
+    window.__mockAdvanceOrder = (orderNum?: string) => {
+      const advanced = advanceMockOrder(orderNum);
+      if (advanced) {
+        console.log(`[MockOrder] Advanced order status. Refetching...`);
+      } else {
+        console.log(`[MockOrder] No eligible active orders to advance.`);
+      }
+      return advanced;
+    };
+
+    // Auto-advance interval every 20s if VITE_MOCK_AUTO_ADVANCE !== "0"
+    const autoAdvanceEnabled =
+      import.meta.env["VITE_MOCK_AUTO_ADVANCE"] !== "0" &&
+      import.meta.env["VITE_MOCK_AUTO_ADVANCE"] !== "false";
+
+    if (autoAdvanceEnabled && !window.__mockAutoAdvanceStarted) {
+      window.__mockAutoAdvanceStarted = true;
+      setInterval(() => {
+        advanceMockOrder();
+      }, 20000);
+    }
+  }
 }

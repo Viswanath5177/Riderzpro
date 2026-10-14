@@ -1,0 +1,57 @@
+{
+  "id": "RZ-847291",
+  "orderNumber": "RZ-847291",
+  "createdAt": 1728901200000,
+  "estimatedDelivery": "Delivered in 35–50 mins",
+  "status": "PLACED",
+  "contact": {
+    "name": "Vikas Sharma",
+    "phone": "9812345678",
+    "email": "vikas@example.com"
+  },
+  "shippingAddress": {
+    "street": "Flat 402, Block C, Mayur Vihar",
+    "locality": "Mayur Vihar Phase 1",
+    "landmark": "Near Metro Station",
+    "city": "Delhi",
+    "state": "Delhi",
+    "pincode": "110091"
+  },
+  "deliveryInstructions": "Call on arrival",
+  "items": [
+    {
+      "productId": "p1",
+      "name": "Brembo High-Performance Ceramic Brake Pads",
+      "imageUrl": "/src/assets/parts.jpg",
+      "qty": 2,
+      "unitPricePaise": 249900,
+      "lineTotalPaise": 499800,
+      "sellerId": "v1"
+    }
+  ],
+  "sellers": [
+    {
+      "id": "v1",
+      "name": "SpeedX Auto Components"
+    }
+  ],
+  "subtotalPaise": 499800,
+  "deliveryPaise": 4900,
+  "discountPaise": 50000,
+  "couponCode": "EVSAFE",
+  "taxPaise": 80964,
+  "totalPaise": 535664,
+  "payment": {
+    "method": "COD",
+    "status": "COD_DUE",
+    "amountDuePaise": 535664
+  },
+  "statusHistory": [
+    {
+      "status": "PLACED",
+      "timestamp": 1728901200000,
+      "description": "Order received by system",
+      "source": "system"
+    }
+  ]
+}

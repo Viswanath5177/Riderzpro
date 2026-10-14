@@ -45,6 +45,8 @@ import { Route as AdminTeamRouteImport } from './routes/admin.team'
 import { Route as AdminWarrantyRouteImport } from './routes/admin.warranty'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard.admin'
 import { Route as DashboardCustomerRouteImport } from './routes/dashboard.customer'
+import { Route as OrderConfirmationIdRouteImport } from './routes/order-confirmation.$id'
+import { Route as OrderIdRouteImport } from './routes/order.$id'
 import { Route as ProductIdRouteImport } from './routes/product.$id'
 import { Route as StoreSlugRouteImport } from './routes/store.$slug'
 import { Route as TrackIdRouteImport } from './routes/track.$id'
@@ -235,6 +237,16 @@ const DashboardCustomerRoute = DashboardCustomerRouteImport.update({
   path: '/dashboard/customer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrderConfirmationIdRoute = OrderConfirmationIdRouteImport.update({
+  id: '/order-confirmation/$id',
+  path: '/order-confirmation/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrderIdRoute = OrderIdRouteImport.update({
+  id: '/order/$id',
+  path: '/order/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductIdRoute = ProductIdRouteImport.update({
   id: '/product/$id',
   path: '/product/$id',
@@ -317,6 +329,8 @@ export interface FileRoutesByFullPath {
   '/admin/warranty': typeof AdminWarrantyRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/customer': typeof DashboardCustomerRoute
+  '/order-confirmation/$id': typeof OrderConfirmationIdRoute
+  '/order/$id': typeof OrderIdRoute
   '/product/$id': typeof ProductIdRoute
   '/store/$slug': typeof StoreSlugRoute
   '/track/$id': typeof TrackIdRoute
@@ -363,6 +377,8 @@ export interface FileRoutesByTo {
   '/admin/warranty': typeof AdminWarrantyRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/customer': typeof DashboardCustomerRoute
+  '/order-confirmation/$id': typeof OrderConfirmationIdRoute
+  '/order/$id': typeof OrderIdRoute
   '/product/$id': typeof ProductIdRoute
   '/store/$slug': typeof StoreSlugRoute
   '/track/$id': typeof TrackIdRoute
@@ -411,6 +427,8 @@ export interface FileRoutesById {
   '/admin/warranty': typeof AdminWarrantyRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/customer': typeof DashboardCustomerRoute
+  '/order-confirmation/$id': typeof OrderConfirmationIdRoute
+  '/order/$id': typeof OrderIdRoute
   '/product/$id': typeof ProductIdRoute
   '/store/$slug': typeof StoreSlugRoute
   '/track/$id': typeof TrackIdRoute
@@ -460,6 +478,8 @@ export interface FileRouteTypes {
     | '/admin/warranty'
     | '/dashboard/admin'
     | '/dashboard/customer'
+    | '/order-confirmation/$id'
+    | '/order/$id'
     | '/product/$id'
     | '/store/$slug'
     | '/track/$id'
@@ -506,6 +526,8 @@ export interface FileRouteTypes {
     | '/admin/warranty'
     | '/dashboard/admin'
     | '/dashboard/customer'
+    | '/order-confirmation/$id'
+    | '/order/$id'
     | '/product/$id'
     | '/store/$slug'
     | '/track/$id'
@@ -553,6 +575,8 @@ export interface FileRouteTypes {
     | '/admin/warranty'
     | '/dashboard/admin'
     | '/dashboard/customer'
+    | '/order-confirmation/$id'
+    | '/order/$id'
     | '/product/$id'
     | '/store/$slug'
     | '/track/$id'
@@ -583,6 +607,8 @@ export interface RootRouteChildren {
   VendorSignUpRoute: typeof VendorSignUpRoute
   DashboardAdminRoute: typeof DashboardAdminRoute
   DashboardCustomerRoute: typeof DashboardCustomerRoute
+  OrderConfirmationIdRoute: typeof OrderConfirmationIdRoute
+  OrderIdRoute: typeof OrderIdRoute
   ProductIdRoute: typeof ProductIdRoute
   StoreSlugRoute: typeof StoreSlugRoute
   TrackIdRoute: typeof TrackIdRoute
@@ -848,6 +874,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardCustomerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/order-confirmation/$id': {
+      id: '/order-confirmation/$id'
+      path: '/order-confirmation/$id'
+      fullPath: '/order-confirmation/$id'
+      preLoaderRoute: typeof OrderConfirmationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/order/$id': {
+      id: '/order/$id'
+      path: '/order/$id'
+      fullPath: '/order/$id'
+      preLoaderRoute: typeof OrderIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/product/$id': {
       id: '/product/$id'
       path: '/product/$id'
@@ -978,6 +1018,8 @@ const rootRouteChildren: RootRouteChildren = {
   VendorSignUpRoute: VendorSignUpRoute,
   DashboardAdminRoute: DashboardAdminRoute,
   DashboardCustomerRoute: DashboardCustomerRoute,
+  OrderConfirmationIdRoute: OrderConfirmationIdRoute,
+  OrderIdRoute: OrderIdRoute,
   ProductIdRoute: ProductIdRoute,
   StoreSlugRoute: StoreSlugRoute,
   TrackIdRoute: TrackIdRoute,
