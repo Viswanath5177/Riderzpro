@@ -13,7 +13,6 @@ import {
   Settings,
   Bell,
   Headphones,
-  ArrowLeft,
   ExternalLink,
   ShieldCheck,
   LogOut,
@@ -177,13 +176,6 @@ export function VendorDashboardShell({
             <ChevronRight className="h-3.5 w-3.5 text-gray-400" />
           </Link>
 
-          <Link
-            to="/"
-            className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-gray-500 hover:text-[#E31E24] hover:bg-red-50 transition"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Marketplace
-          </Link>
 
           <button
             onClick={logout}
@@ -353,13 +345,6 @@ export function VendorDashboardShell({
                   <ChevronRight className="h-3.5 w-3.5 text-gray-400" />
                 </Link>
 
-                <Link
-                  to="/"
-                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-gray-500 hover:text-gray-900 transition"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                  Marketplace Home
-                </Link>
 
                 <button
                   onClick={logout}
