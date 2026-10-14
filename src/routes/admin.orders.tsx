@@ -1,23 +1,29 @@
-import { lazy, Suspense } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Skeleton } from "@/components/admin/glass/Skeleton";
-
-const OrdersScreen = lazy(() =>
-  import("@/components/admin/screens/OrdersScreen").then((m) => ({
-    default: m.OrdersScreen,
-  }))
-);
+import { AdminRouteGuard } from "@/lib/adminAuth";
+import { AdminOrdersBoard } from "@/components/admin/AdminOrdersBoard";
 
 export const Route = createFileRoute("/admin/orders")({
   head: () => ({
     meta: [
-      { title: "Orders Management — RiderzPro Admin" },
-      { name: "description", content: "Hyperlocal orders tracking, fitment validation and dispatch routing." },
+      { title: "Live Orders Operations Board — RiderzPro Admin" },
+      {
+        name: "description",
+        content:
+          "Real-time orders operations console, fulfillment tracking, and courier dispatch oversight.",
+      },
     ],
   }),
-  component: () => (
-    <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-3xl" />}>
-      <OrdersScreen />
-    </Suspense>
-  ),
+  component: AdminOrdersRoute,
 });
+
+function AdminOrdersRoute() {
+  return (
+    <AdminRouteGuard>
+      <div className="min-h-screen bg-[#F6F7F9] p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+          <AdminOrdersBoard />
+        </div>
+      </div>
+    </AdminRouteGuard>
+  );
+}

@@ -1,23 +1,29 @@
-import { lazy, Suspense } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Skeleton } from "@/components/admin/glass/Skeleton";
-
-const SellersScreen = lazy(() =>
-  import("@/components/admin/screens/SellersScreen").then((m) => ({
-    default: m.SellersScreen,
-  }))
-);
+import { AdminRouteGuard } from "@/lib/adminAuth";
+import { AdminSellersBoard } from "@/components/admin/AdminSellersBoard";
 
 export const Route = createFileRoute("/admin/sellers")({
   head: () => ({
     meta: [
-      { title: "Sellers & KYC Queue — RiderzPro Admin" },
-      { name: "description", content: "Vendor KYC document verification, tier assignments and commission rates." },
+      { title: "Sellers & KYC Operations — RiderzPro Admin" },
+      {
+        name: "description",
+        content:
+          "Merchant directory, KYC verification, GST compliance records, and store fulfillment hubs.",
+      },
     ],
   }),
-  component: () => (
-    <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-3xl" />}>
-      <SellersScreen />
-    </Suspense>
-  ),
+  component: AdminSellersRoute,
 });
+
+function AdminSellersRoute() {
+  return (
+    <AdminRouteGuard>
+      <div className="min-h-screen bg-[#F6F7F9] p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+          <AdminSellersBoard />
+        </div>
+      </div>
+    </AdminRouteGuard>
+  );
+}
