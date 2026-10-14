@@ -25,15 +25,19 @@ import {
   ShieldCheck,
   LocateFixed,
   Zap,
+  RefreshCw,
 } from "lucide-react";
 import type { DeliveryTrackingData, LatLng, ConnectionState } from "./types";
 import { useMap, MapProvider } from "./MapProvider";
 import { PickupMarker, DropoffMarker, RiderMarker } from "./MapMarker";
 import { RouteLayer } from "./RouteLayer";
 import { latLngToUnitPoint, screenToLatLng, TILE_SIZE } from "./MercatorProjection";
+import { useDeliveryTracking } from "./useDeliveryTracking";
 
 export interface DeliveryMapProps {
-  tracking: DeliveryTrackingData | null;
+  orderId?: string | null;
+  deliveryId?: string | null;
+  tracking?: DeliveryTrackingData | null;
   connectionState?: ConnectionState;
   isApproaching?: boolean;
   isArrived?: boolean;
@@ -44,9 +48,107 @@ export interface DeliveryMapProps {
 }
 
 export function DeliveryMap(props: DeliveryMapProps) {
+  if (props.tracking !== undefined) {
+    return (
+      <MapProvider>
+        <DeliveryMapInner {...props} />
+      </MapProvider>
+    );
+  }
+
+  return <ConnectedDeliveryMap {...props} />;
+}
+
+function ConnectedDeliveryMap({
+  orderId,
+  deliveryId,
+  className = "",
+  ...rest
+}: DeliveryMapProps) {
+  const effectiveId = orderId || deliveryId || null;
+  const {
+    data: tracking,
+    connectionState,
+    isApproaching,
+    isArrived,
+    isDeviating,
+    deviationDistance,
+    deviationThreshold,
+    error,
+  } = useDeliveryTracking({
+    deliveryId: effectiveId,
+    userRole: "customer",
+  });
+
+  if (!effectiveId) {
+    return (
+      <div
+        className={`relative flex flex-col items-center justify-center p-8 text-center rounded-3xl border border-slate-200/90 bg-[#f8fafc] shadow-md min-h-[320px] ${className}`}
+      >
+        <div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 mb-3">
+          <AlertTriangle className="h-6 w-6" />
+        </div>
+        <p className="font-display font-bold text-slate-800 text-sm sm:text-base">
+          Live tracking is not available for this order yet.
+        </p>
+        <p className="text-xs text-slate-500 mt-1 max-w-xs">
+          Courier GPS telemetry will become active as soon as this delivery is dispatched.
+        </p>
+      </div>
+    );
+  }
+
+  // Connecting / loading state
+  if (connectionState === "connecting" && !tracking && !error) {
+    return (
+      <div
+        className={`relative flex flex-col items-center justify-center p-8 text-center rounded-3xl border border-slate-200/90 bg-[#f8fafc] shadow-md min-h-[320px] ${className}`}
+      >
+        <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-red-50 text-[#E31E24] mb-3">
+          <RefreshCw className="h-6 w-6 animate-spin" />
+        </div>
+        <p className="font-display font-bold text-slate-800 text-sm sm:text-base">
+          Connecting to Live Courier Telemetry...
+        </p>
+        <p className="text-xs text-slate-500 mt-1 max-w-xs">
+          Establishing real-time GPS telemetry link for order {effectiveId}
+        </p>
+      </div>
+    );
+  }
+
+  // Not found or error state
+  if (error || !tracking) {
+    return (
+      <div
+        className={`relative flex flex-col items-center justify-center p-8 text-center rounded-3xl border border-slate-200/90 bg-[#f8fafc] shadow-md min-h-[320px] ${className}`}
+      >
+        <div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 mb-3">
+          <AlertTriangle className="h-6 w-6" />
+        </div>
+        <p className="font-display font-bold text-slate-800 text-sm sm:text-base">
+          Live tracking is not available for this order yet.
+        </p>
+        <p className="text-xs text-slate-500 mt-1 max-w-xs">
+          Courier GPS telemetry will become active as soon as this delivery is dispatched.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <MapProvider>
-      <DeliveryMapInner {...props} />
+      <DeliveryMapInner
+        tracking={tracking}
+        connectionState={connectionState}
+        isApproaching={isApproaching}
+        isArrived={isArrived}
+        isDeviating={isDeviating}
+        deviationDistance={deviationDistance}
+        deviationThreshold={deviationThreshold}
+        className={className}
+        {...rest}
+      />
     </MapProvider>
   );
 }
@@ -438,6 +540,7 @@ function DeliveryMapInner({
 
   // Header status text for floating card
   const headerStatus = useMemo(() => {
+    const riderName = tracking?.rider?.name || "Rider";
     if (isDelivered) {
       return {
         icon: "✓",
@@ -451,7 +554,7 @@ function DeliveryMapInner({
         icon: "🟢",
         color: "text-emerald-600 bg-emerald-50 border-emerald-200",
         dot: "bg-emerald-500",
-        title: "Sathesh has arrived",
+        title: `${riderName} has arrived`,
       };
     }
     if (isApproaching) {
@@ -459,7 +562,7 @@ function DeliveryMapInner({
         icon: "🟡",
         color: "text-blue-600 bg-blue-50 border-blue-200",
         dot: "bg-blue-500",
-        title: "Sathesh is approaching destination",
+        title: `${riderName} is approaching destination`,
       };
     }
     if (isDeviating) {
@@ -474,9 +577,9 @@ function DeliveryMapInner({
       icon: "🟢",
       color: "text-emerald-700 bg-emerald-50/80 border-emerald-200/80",
       dot: "bg-emerald-500",
-      title: "Sathesh is on the way",
+      title: `${riderName} is on the way`,
     };
-  }, [isDelivered, isArrived, isApproaching, isDeviating]);
+  }, [isDelivered, isArrived, isApproaching, isDeviating, tracking?.rider?.name]);
 
   return (
     <div
@@ -700,7 +803,7 @@ function DeliveryMapInner({
               </div>
               <div className="min-w-0">
                 <p className="font-display font-bold text-base text-slate-900 truncate">
-                  {rider?.name || "Sathesh Ittraju"}
+                  {rider?.name || "Delivery Partner"}
                 </p>
                 <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5">
                   <span className="inline-flex items-center gap-0.5 text-emerald-600 font-medium">

@@ -1,15 +1,58 @@
-import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Package, ArrowRight, Check, MapPin, Download, RefreshCw, ShoppingBag, Eye, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore, ORDER_STEPS, type Order } from "@/lib/store";
 import { getProduct, getVendor, inr } from "@/lib/data";
+import { fetchDeliveries, checkLogisticsDelivery } from "@/lib/api";
 import { InvoiceModal } from "./InvoiceModal";
 
 export function OrdersTab() {
   const { orders, deleteOrder, clearOrders } = useStore();
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<"all" | "active" | "delivered">("all");
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
+  const [verifiedDeliveries, setVerifiedDeliveries] = useState<Record<string, boolean>>({});
+  const [checkingOrderId, setCheckingOrderId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchDeliveries({ limit: 100 })
+      .then((res) => {
+        if (isMounted && res?.items) {
+          const map: Record<string, boolean> = {};
+          res.items.forEach((d) => {
+            if (d.order_id) map[d.order_id] = true;
+            if (d.id) map[d.id] = true;
+          });
+          setVerifiedDeliveries(map);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [orders]);
+
+  const handleTrackOrder = async (order: Order) => {
+    const canonicalId = order.id;
+    setCheckingOrderId(canonicalId);
+    try {
+      const delivery = await checkLogisticsDelivery(canonicalId);
+      if (delivery) {
+        navigate({ to: "/track/$id", params: { id: canonicalId } });
+      } else {
+        toast.info("Live tracking is not available for this order yet.", {
+          description: "Your order is being processed. Live GPS tracking will become active once dispatched.",
+        });
+      }
+    } catch {
+      toast.info("Live tracking is not available for this order yet.");
+    } finally {
+      setCheckingOrderId(null);
+    }
+  };
+
 
   const filteredOrders = orders.filter((o) => {
     if (filter === "active") return o.status < 5;
@@ -224,14 +267,36 @@ export function OrdersTab() {
                     </button>
                   </div>
 
-                  <Link
-                    to="/track/$id"
-                    params={{ id: o.shipmentId || o.id }}
-                    className="px-4 py-2 rounded-xl bg-[#E31E24] text-white text-xs font-semibold shadow-xs hover:bg-red-700 transition flex items-center gap-1.5"
-                  >
-                    <MapPin className="h-3.5 w-3.5" />
-                    <span>Track Live GPS Courier</span>
-                  </Link>
+                  {verifiedDeliveries[o.id] || (o.shipmentId && verifiedDeliveries[o.shipmentId]) || o.status >= 3 ? (
+                    <button
+                      type="button"
+                      onClick={() => handleTrackOrder(o)}
+                      disabled={checkingOrderId === o.id}
+                      className="px-4 py-2 rounded-xl bg-[#E31E24] text-white text-xs font-semibold shadow-xs hover:bg-red-700 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-75"
+                      title="Track live courier on GPS map"
+                    >
+                      {checkingOrderId === o.id ? (
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <MapPin className="h-3.5 w-3.5" />
+                      )}
+                      <span>{checkingOrderId === o.id ? "Connecting..." : "Track Live GPS Courier"}</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        toast.info("Live tracking is not available for this order yet.", {
+                          description: "Live courier tracking activates once the vendor dispatches your order.",
+                        })
+                      }
+                      className="px-4 py-2 rounded-xl bg-gray-100 text-gray-500 text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer hover:bg-gray-200"
+                      title="Live tracking is not available for this order yet."
+                    >
+                      <MapPin className="h-3.5 w-3.5 text-gray-400" />
+                      <span>Live tracking not available yet</span>
+                    </button>
+                  )}
                 </div>
               </div>
             );

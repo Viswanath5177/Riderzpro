@@ -89,6 +89,22 @@ export interface BackendDelivery {
   updated_at?: string;
 }
 
+export const ACTIVE_DELIVERY_STATUSES = ["assigned", "picked_up", "in_transit"] as const;
+export type ActiveDeliveryStatus = (typeof ACTIVE_DELIVERY_STATUSES)[number];
+
+export const COMPLETED_DELIVERY_STATUSES = ["delivered"] as const;
+export type CompletedDeliveryStatus = (typeof COMPLETED_DELIVERY_STATUSES)[number];
+
+export function isDeliveryActive(status?: string | null): boolean {
+  if (!status) return false;
+  return (ACTIVE_DELIVERY_STATUSES as readonly string[]).includes(status.toLowerCase().trim());
+}
+
+export function isDeliveryCompleted(status?: string | null): boolean {
+  if (!status) return false;
+  return (COMPLETED_DELIVERY_STATUSES as readonly string[]).includes(status.toLowerCase().trim());
+}
+
 /**
  * Fetch list of deliveries from backend REST API with optional filtering.
  */
@@ -141,6 +157,36 @@ export async function fetchDelivery(
 
   return res.json();
 }
+
+/**
+ * Verify whether an order or delivery has an active or valid Logistics delivery in backend.
+ * Resolves via canonical order_id or delivery_id.
+ */
+export async function checkLogisticsDelivery(
+  orderIdOrDeliveryId: string,
+  headers?: Record<string, string>
+): Promise<BackendDelivery | null> {
+  if (!orderIdOrDeliveryId) return null;
+  try {
+    const tracking = await fetchDeliveryTracking(orderIdOrDeliveryId, headers);
+    if (tracking && (tracking.delivery_id || tracking.order_id)) {
+      return {
+        id: tracking.delivery_id,
+        order_id: tracking.order_id,
+        status: tracking.status,
+      } as BackendDelivery;
+    }
+  } catch (_err: any) {
+    try {
+      const res = await fetchDeliveries({ order_id: orderIdOrDeliveryId }, headers);
+      if (res?.items && res.items.length > 0) {
+        return res.items[0];
+      }
+    } catch {}
+  }
+  return null;
+}
+
 
 /**
  * Create a new delivery fulfillment task in backend.

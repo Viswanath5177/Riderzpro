@@ -73,10 +73,17 @@ class DeliveryConnectionManager:
             self.connection_meta.pop(websocket, None)
         logger.info(f"WebSocket client disconnected from delivery {delivery_id}")
 
-    async def broadcast_to_delivery(self, delivery_id: str, message: Dict[str, Any]):
-        """Broadcast real-time message strictly to clients watching the given delivery ID."""
+    async def broadcast_to_delivery(self, delivery_id: str, message: Dict[str, Any], order_id: Optional[str] = None):
+        """Broadcast real-time message strictly to clients watching the given delivery ID or order ID."""
+        target_ids = [delivery_id]
+        if order_id and order_id != delivery_id:
+            target_ids.append(order_id)
+
         async with self._lock:
-            clients = list(self.active_connections.get(delivery_id, set()))
+            client_set: Set[WebSocket] = set()
+            for did in target_ids:
+                client_set.update(self.active_connections.get(did, set()))
+            clients = list(client_set)
 
         if not clients:
             logger.debug(f"No active WebSocket clients subscribed to delivery {delivery_id}")
@@ -94,8 +101,9 @@ class DeliveryConnectionManager:
         if dead_clients:
             async with self._lock:
                 for ws in dead_clients:
-                    if delivery_id in self.active_connections:
-                        self.active_connections[delivery_id].discard(ws)
+                    for did in target_ids:
+                        if did in self.active_connections:
+                            self.active_connections[did].discard(ws)
                     self.connection_meta.pop(ws, None)
 
     async def close_delivery_connections(
@@ -136,7 +144,8 @@ def handle_realtime_event(event_name: str, payload: Dict[str, Any]):
     """
     if event_name == "RIDER_LOCATION_UPDATED":
         delivery_id = payload.get("delivery_id")
-        if not delivery_id:
+        order_id = payload.get("order_id")
+        if not delivery_id and not order_id:
             return
 
         battery_data = None
@@ -149,6 +158,7 @@ def handle_realtime_event(event_name: str, payload: Dict[str, Any]):
         realtime_payload = {
             "event": "RIDER_LOCATION_UPDATED",
             "delivery_id": delivery_id,
+            "order_id": order_id,
             "rider": {
                 "id": payload.get("rider_id"),
                 "latitude": payload.get("latitude"),
@@ -161,41 +171,45 @@ def handle_realtime_event(event_name: str, payload: Dict[str, Any]):
             "timestamp": payload.get("timestamp"),
             "battery": battery_data
         }
-        dispatch_coroutine(realtime_manager.broadcast_to_delivery(delivery_id, realtime_payload))
+        dispatch_coroutine(realtime_manager.broadcast_to_delivery(delivery_id, realtime_payload, order_id=order_id))
 
     elif event_name in ("RIDER_APPROACHING", "RIDER_ARRIVED", "RIDER_ROUTE_DEVIATION"):
         # Geofence milestone and route deviation events — broadcast the payload directly to the delivery's WebSocket clients.
-        # The payload is already fully formed by GeofenceService / RouteDeviationService and requires no
-        # additional transformation here.
         delivery_id = payload.get("delivery_id")
-        if delivery_id:
-            dispatch_coroutine(realtime_manager.broadcast_to_delivery(delivery_id, payload))
+        order_id = payload.get("order_id")
+        if delivery_id or order_id:
+            dispatch_coroutine(realtime_manager.broadcast_to_delivery(delivery_id or order_id, payload, order_id=order_id))
 
     elif event_name == "DELIVERY_STATUS_CHANGED":
         delivery_id = payload.get("delivery_id")
+        order_id = payload.get("order_id")
         to_status = payload.get("to_status")
-        if delivery_id:
+        if delivery_id or order_id:
+            target_id = delivery_id or order_id
             if to_status in ("delivered", "cancelled", "failed"):
                 final_event = {
                     "event": "DELIVERY_COMPLETED",
                     "delivery_id": delivery_id,
+                    "order_id": order_id,
                     "status": to_status,
                     "reason": payload.get("reason"),
                     "message": f"Delivery transitioned to terminal state '{to_status}'. Tracking concluded.",
                     "timestamp": datetime.utcnow().isoformat()
                 }
-                dispatch_coroutine(realtime_manager.close_delivery_connections(delivery_id, final_event=final_event, code=1000))
+                dispatch_coroutine(realtime_manager.close_delivery_connections(target_id, final_event=final_event, code=1000))
+                if order_id and order_id != target_id:
+                    dispatch_coroutine(realtime_manager.close_delivery_connections(order_id, final_event=final_event, code=1000))
             else:
                 status_event = {
                     "event": "DELIVERY_STATUS_UPDATED",
                     "delivery_id": delivery_id,
-                    "order_id": payload.get("order_id"),
+                    "order_id": order_id,
                     "from_status": payload.get("from_status"),
                     "status": to_status,
                     "reason": payload.get("reason"),
                     "timestamp": datetime.utcnow().isoformat()
                 }
-                dispatch_coroutine(realtime_manager.broadcast_to_delivery(delivery_id, status_event))
+                dispatch_coroutine(realtime_manager.broadcast_to_delivery(target_id, status_event, order_id=order_id))
 
 
 def setup_realtime_subscribers(loc_service, del_service):
@@ -283,7 +297,13 @@ async def delivery_tracking_websocket(
         websocket=websocket,
         meta={"user_id": effective_user_id, "user_role": effective_user_role}
     )
-    if delivery_id != delivery.id:
+    if delivery.order_id and delivery.order_id != delivery.id:
+        await realtime_manager.connect(
+            delivery_id=delivery.order_id,
+            websocket=websocket,
+            meta={"user_id": effective_user_id, "user_role": effective_user_role}
+        )
+    if delivery_id not in (delivery.id, delivery.order_id):
         await realtime_manager.connect(
             delivery_id=delivery_id,
             websocket=websocket,
@@ -334,4 +354,8 @@ async def delivery_tracking_websocket(
     except Exception as e:
         logger.warning(f"WebSocket communication error on delivery {delivery_id}: {e}")
     finally:
-        await realtime_manager.disconnect(delivery_id, websocket)
+        await realtime_manager.disconnect(delivery.id, websocket)
+        if delivery.order_id and delivery.order_id != delivery.id:
+            await realtime_manager.disconnect(delivery.order_id, websocket)
+        if delivery_id not in (delivery.id, delivery.order_id):
+            await realtime_manager.disconnect(delivery_id, websocket)

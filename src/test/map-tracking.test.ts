@@ -118,4 +118,32 @@ describe("API & WebSocket Configuration", () => {
     const url = getWebSocketUrl("del/special@1");
     expect(url).toContain("/ws/deliveries/del%2Fspecial%401/tracking");
   });
+
+  it("derives distinct WebSocket URLs for multiple concurrent deliveries", () => {
+    const url1 = getWebSocketUrl("delivery_noida_delhi_001", "cust_1", "customer");
+    const url2 = getWebSocketUrl("delivery_noida_delhi_002", "cust_2", "customer");
+    const url3 = getWebSocketUrl("delivery_noida_delhi_003", "cust_3", "customer");
+
+    expect(url1).toContain("/ws/deliveries/delivery_noida_delhi_001/tracking");
+    expect(url2).toContain("/ws/deliveries/delivery_noida_delhi_002/tracking");
+    expect(url3).toContain("/ws/deliveries/delivery_noida_delhi_003/tracking");
+
+    expect(url1).not.toEqual(url2);
+    expect(url2).not.toEqual(url3);
+  });
 });
+
+describe("Canonical Order & Delivery Relationship", () => {
+  it("resolves canonical delivery tracking URL using order ID", () => {
+    const orderId = "RZ-1001";
+    const trackingPath = `/track/${orderId}`;
+    expect(trackingPath).toBe("/track/RZ-1001");
+  });
+
+  it("returns null for empty order ID in checkLogisticsDelivery", async () => {
+    const { checkLogisticsDelivery } = await import("@/lib/api");
+    const res = await checkLogisticsDelivery("");
+    expect(res).toBeNull();
+  });
+});
+

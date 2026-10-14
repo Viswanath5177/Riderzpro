@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import { useStore, ORDER_STEPS } from "@/lib/store";
 import { getBike, getProduct, inr, products, riders } from "@/lib/data";
 import { cn } from "@/lib/utils";
-import { LiveMap } from "@/components/site/LiveMap";
+import { DeliveryMap } from "@/components/map/DeliveryMap";
 import type { CustomerTab } from "./CustomerLayout";
 
 interface OverviewTabProps {
@@ -275,7 +275,7 @@ export function OverviewTab({
 
           {/* Live Road Route Tracking Map */}
           <div className="overflow-hidden rounded-xl border border-gray-200">
-            <LiveMap deliveryId={liveOrder.shipmentId || liveOrder.id || "delivery_vijayawada_amaravati_live"} className="aspect-video w-full" />
+            <DeliveryMap orderId={liveOrder.id} className="aspect-video w-full" />
           </div>
 
           <div className="flex items-center justify-between text-xs sm:text-sm text-gray-600 bg-white p-3 rounded-xl border border-gray-200/70">
@@ -283,13 +283,14 @@ export function OverviewTab({
               <Truck className="h-4 w-4 text-[#E31E24] shrink-0" />
               <span className="truncate">Status: <strong className="text-gray-900">{ORDER_STEPS[liveOrder.status]}</strong></span>
             </div>
-            <button
-              onClick={() => onTabChange("orders")}
+            <Link
+              to="/track/$id"
+              params={{ id: liveOrder.id }}
               className="text-xs sm:text-sm font-bold text-[#E31E24] hover:underline flex items-center gap-0.5 shrink-0"
             >
               <span>Track Live</span>
               <ChevronRight className="h-4 w-4" />
-            </button>
+            </Link>
           </div>
         </div>
       ) : (

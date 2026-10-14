@@ -29,8 +29,8 @@ export async function handleRoute(
     }
 
     const sessionUser = await getSessionUser(req);
-    const riderId = sessionUser?.id || body.rider_id || "rider_sathesh";
-    const deliveryId = body.delivery_id || body.deliveryId || "delivery_vijayawada_amaravati_live";
+    const riderId = sessionUser?.id || body.rider_id || "";
+    const deliveryId = body.delivery_id || body.deliveryId || "";
     const lat = Number(body.lat ?? body.latitude ?? 16.5062);
     const lng = Number(body.lng ?? body.longitude ?? 80.6480);
     const heading = body.heading != null ? Number(body.heading) : 0;
@@ -158,24 +158,9 @@ export async function handleRoute(
       }
     }
 
-    // Default fallback demo delivery
     return sendJson(res, 200, {
       success: true,
-      data: [
-        {
-          id: "delivery_vijayawada_amaravati_live",
-          order_id: "delivery_vijayawada_amaravati_live",
-          order_number: "RZ-104921",
-          status: "in_transit",
-          pickup_address: "Vijayawada Central Hub (16.5062, 80.6480)",
-          dropoff_address: "Amaravati Secretariat / City Center (16.5740, 80.3575)",
-          assigned_at: new Date().toISOString(),
-          picked_up_at: new Date().toISOString(),
-          delivered_at: null,
-          total_amount: 1499,
-          order_status: "in_transit",
-        },
-      ],
+      data: [],
     });
   }
 

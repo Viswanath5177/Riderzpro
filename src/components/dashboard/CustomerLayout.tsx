@@ -196,7 +196,7 @@ export function CustomerLayout({
       case "orders":
         return "My Orders";
       case "tracking":
-        return "Track Delivery & Courier Shipments";
+        return "Track Your Deliveries";
       case "saved":
         return "Saved Items & Wishlist";
       case "service":

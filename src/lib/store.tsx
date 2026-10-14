@@ -76,39 +76,43 @@ export function backendDeliveryToOrder(del: BackendDelivery): Order {
   const km = del.latest_route?.distance_km || 18.4;
   const eta = Math.round(del.latest_route?.duration_minutes || 25);
 
+  const customerName = del.customer_name || "Customer";
+  const customerPhone = del.customer_phone || "";
+  const street = del.dropoff_address || "";
+
   return {
     id: del.order_id || del.id,
     createdAt,
     groups: [
       {
         vendorId: del.vendor_id || "v1",
-        items: [{ productId: "p7", qty: 1, price: 14500 }],
-        subtotal: 14500,
+        items: [],
+        subtotal: 0,
         km,
-        fee: 86,
+        fee: 0,
         eta,
       },
     ],
-    itemsTotal: 14500,
-    deliveryTotal: 86,
-    tax: 2610,
-    total: 17196,
+    itemsTotal: 0,
+    deliveryTotal: 0,
+    tax: 0,
+    total: 0,
     eta,
     payment: "UPI · Paid Online",
     paymentStatus: del.status === "cancelled" ? "Refunded" : "Paid",
     status: numStatus,
     fulfillmentStatus,
     riderId: del.assigned_rider_id || del.assigned_rider?.id || riders[0]?.id,
-    customerName: del.customer_name || "Aakash Sharma",
-    customerPhone: del.customer_phone || "+91 98765 43210",
+    customerName,
+    customerPhone,
     shipmentId: del.id,
     shippingAddress: {
-      name: del.customer_name || "Aakash Sharma",
-      phone: del.customer_phone || "+91 98765 43210",
-      street: del.dropoff_address || "Amaravati Capital Complex",
-      city: "Amaravati",
-      state: "Andhra Pradesh",
-      pincode: "522237",
+      name: customerName,
+      phone: customerPhone,
+      street,
+      city: "",
+      state: "",
+      pincode: "",
     },
   };
 }
@@ -423,7 +427,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") {
       const auth = localStorage.getItem("riderzpro_auth");
       const user = localStorage.getItem(KEY);
-      if (user && (user.includes("RZ-849201") || user.includes("P6R1S1PR2PN000001"))) {
+      if (
+        user &&
+        (user.includes("RZ-849201") ||
+          user.includes("P6R1S1PR2PN000001") ||
+          user.includes("delivery_noida_delhi") ||
+          user.includes("delivery_vijayawada_amaravati_live"))
+      ) {
         localStorage.removeItem(KEY);
       }
       return auth === "true";
@@ -442,7 +452,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const s = JSON.parse(raw);
         // Clean out any legacy mock data if present
         const hasLegacyMock =
-          (s.orders && s.orders.some((o: Order) => o.id === "RZ-849201" || o.id === "RZ-793420")) ||
+          (s.orders &&
+            s.orders.some(
+              (o: Order) =>
+                o.id === "RZ-849201" ||
+                o.id === "RZ-793420" ||
+                o.id === "delivery_vijayawada_amaravati_live" ||
+                o.id?.startsWith?.("delivery_noida_delhi")
+            )) ||
+          (s.shipments &&
+            s.shipments.some(
+              (shp: NormalizedShipment) =>
+                shp.shipmentId === "delivery_vijayawada_amaravati_live" ||
+                shp.orderId === "delivery_vijayawada_amaravati_live" ||
+                shp.shipmentId?.startsWith?.("delivery_noida_delhi") ||
+                shp.orderId?.startsWith?.("delivery_noida_delhi")
+            )) ||
           (s.garage && s.garage.some((g: GarageBike) => g.vin === "P6R1S1PR2PN000001" || g.bikeId === "ola-s1pro")) ||
           (s.serviceBookings && s.serviceBookings.some((b: ServiceBooking) => b.id === "SB-1042"));
 
@@ -450,8 +475,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           if (Array.isArray(s.cart)) setCart(s.cart);
           if (Array.isArray(s.garage)) setGarage(s.garage);
           if ("activeBikeId" in s) setActiveBikeId(s.activeBikeId);
-          if (Array.isArray(s.orders)) setOrders(s.orders);
-          if (Array.isArray(s.shipments)) setShipments(s.shipments);
+          if (Array.isArray(s.orders)) {
+            setOrders(
+              s.orders.filter(
+                (o: Order) =>
+                  o.id !== "delivery_vijayawada_amaravati_live" &&
+                  !o.id?.startsWith?.("delivery_noida_delhi") &&
+                  o.id !== "RZ-849201" &&
+                  o.id !== "RZ-793420"
+              )
+            );
+          }
+          if (Array.isArray(s.shipments)) {
+            setShipments(
+              s.shipments.filter(
+                (shp: NormalizedShipment) =>
+                  shp.shipmentId !== "delivery_vijayawada_amaravati_live" &&
+                  shp.orderId !== "delivery_vijayawada_amaravati_live" &&
+                  !shp.shipmentId?.startsWith?.("delivery_noida_delhi") &&
+                  !shp.orderId?.startsWith?.("delivery_noida_delhi")
+              )
+            );
+          }
           if (s.inventoryStock) setInventoryStock(s.inventoryStock);
           if (Array.isArray(s.savedProductIds)) setSavedProductIds(s.savedProductIds);
           if (Array.isArray(s.serviceBookings)) setServiceBookings(s.serviceBookings);
@@ -924,107 +969,44 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const simulateDemoOrder = useCallback(() => {
+    const randomSuffix = Math.floor(100000 + Math.random() * 900000);
+    const orderId = `RZ-${randomSuffix}`;
     const demoOrder: Order = {
-      id: "delivery_vijayawada_amaravati_live",
-      createdAt: Date.now() - 25 * 60 * 1000,
+      id: orderId,
+      createdAt: Date.now(),
       groups: [
         {
           vendorId: "v1",
-          items: [{ productId: "p7", qty: 1, price: 14500 }],
-          subtotal: 14500,
-          km: 18.4,
-          fee: 86,
-          eta: 25,
+          items: [{ productId: "p1", qty: 1, price: 1250 }],
+          subtotal: 1250,
+          km: 5.2,
+          fee: 45,
+          eta: 15,
         },
       ],
-      itemsTotal: 14500,
-      deliveryTotal: 86,
-      tax: 2610,
-      total: 17196,
-      eta: 25,
-      payment: "UPI · Google Pay",
+      itemsTotal: 1250,
+      deliveryTotal: 45,
+      tax: 225,
+      total: 1520,
+      eta: 15,
+      payment: "UPI · Paid Online",
       paymentStatus: "Paid",
-      status: 4,
-      fulfillmentStatus: "Dispatched",
+      status: 1,
+      fulfillmentStatus: "Preparing",
       riderId: riders[0]?.id || "r1",
-      customerName: userProfile?.name?.trim() || "Aakash Sharma",
+      customerName: userProfile?.name?.trim() || "Customer",
       customerPhone: userProfile?.phone?.trim() || "+91 98765 43210",
       shippingAddress: {
-        name: "Aakash Sharma",
-        phone: "+91 98765 43210",
-        street: "Amaravati Secretariat / City Center",
-        city: "Amaravati",
-        state: "Andhra Pradesh",
-        pincode: "522237",
+        name: userProfile?.name?.trim() || "Customer",
+        phone: userProfile?.phone?.trim() || "+91 98765 43210",
+        street: "Indiranagar 100ft Road",
+        city: "Bengaluru",
+        state: "Karnataka",
+        pincode: "560038",
       },
-      shipmentId: "delivery_vijayawada_amaravati_live",
     };
 
-    const demoShipment: NormalizedShipment = {
-      shipmentId: "delivery_vijayawada_amaravati_live",
-      orderId: "delivery_vijayawada_amaravati_live",
-      provider: "RiderzPro Fleet",
-      providerReference: "VIJ-AMA-LIVE",
-      trackingNumber: "RZPVJA849201",
-      trackingUrl: `/track/delivery_vijayawada_amaravati_live`,
-      pickupAddress: {
-        name: "Vijayawada Central Hub",
-        street: "MG Road, Vijayawada Central Hub",
-        city: "Vijayawada",
-        pincode: "520001",
-        phone: "+91 866 245 1100",
-      },
-      destinationAddress: {
-        name: "Aakash Sharma",
-        street: "Amaravati Secretariat / City Center",
-        city: "Amaravati",
-        pincode: "522237",
-        phone: "+91 98765 43210",
-      },
-      status: "In Transit",
-      locationType: "Live GPS Telemetry",
-      latestLocation: "Sathesh Ittraju en route (Seed Access Road)",
-      lastEventTimestamp: "Live GPS Active",
-      estimatedDelivery: "Arriving in 24 mins",
-      currentGps: { lat: 16.5182, lng: 80.6050, speedKmph: 32.5, heading: 285 },
-      events: [
-        {
-          id: "evt-vja-1",
-          timestamp: "20m ago",
-          status: "Manifested",
-          location: "Vijayawada Central Hub",
-          description: "Rider Sathesh Ittraju accepted order and collected package",
-          isGps: true,
-          coordinates: { lat: 16.5062, lng: 80.6480 },
-        },
-        {
-          id: "evt-vja-2",
-          timestamp: "Live",
-          status: "In Transit",
-          location: "Krishna River Crossing / Prakasam Barrage",
-          description: "Live GPS broadcast: En route to Amaravati Secretariat",
-          isGps: true,
-          coordinates: { lat: 16.5182, lng: 80.6050 },
-        },
-      ],
-    };
-
-    setOrders((prev) => [demoOrder, ...prev.filter((o) => o.id !== demoOrder.id && o.shipmentId !== demoOrder.shipmentId)]);
-    setShipments((prev) => [demoShipment, ...prev.filter((s) => s.shipmentId !== demoShipment.shipmentId)]);
-
-    // Trigger async fetch from backend to refresh live data
-    fetchDeliveries({ customer_id: "9876543210" })
-      .then((res) => {
-        if (res && res.items && res.items.length > 0) {
-          const liveDel = res.items.find((d) => d.id === "delivery_vijayawada_amaravati_live") || res.items[0];
-          const ord = backendDeliveryToOrder(liveDel);
-          const shp = backendDeliveryToShipment(liveDel);
-          setOrders((p) => [ord, ...p.filter((o) => o.id !== ord.id && o.shipmentId !== ord.shipmentId)]);
-          setShipments((p) => [shp, ...p.filter((s) => s.shipmentId !== shp.shipmentId)]);
-        }
-      })
-      .catch(() => {});
-
+    setOrders((prev) => [demoOrder, ...prev.filter((o) => o.id !== demoOrder.id)]);
     return demoOrder;
   }, [userProfile]);
 

@@ -147,7 +147,9 @@ class LocationTrackingService:
         # 5. Delivery validation if delivery_id is supplied
         target_delivery: Optional[Delivery] = None
         if update.delivery_id:
-            target_delivery = db.query(Delivery).filter(Delivery.id == update.delivery_id).first()
+            target_delivery = db.query(Delivery).filter(
+                (Delivery.id == update.delivery_id) | (Delivery.order_id == update.delivery_id)
+            ).first()
             if not target_delivery:
                 logger.warning(f"Location update rejected: Delivery '{update.delivery_id}' not found.")
                 raise DeliveryNotFoundError(f"Delivery with ID '{update.delivery_id}' was not found.")
@@ -198,7 +200,7 @@ class LocationTrackingService:
         # 7. Persist historical record
         location_record = RiderLocation(
             rider_id=rider.id,
-            delivery_id=update.delivery_id,
+            delivery_id=target_delivery.id if target_delivery else update.delivery_id,
             latitude=lat,
             longitude=lng,
             accuracy_meters=update.accuracy_meters,
@@ -230,7 +232,8 @@ class LocationTrackingService:
         # 9. Trigger real-time event hook
         event_payload = {
             "rider_id": rider.id,
-            "delivery_id": update.delivery_id,
+            "delivery_id": target_delivery.id if target_delivery else update.delivery_id,
+            "order_id": target_delivery.order_id if target_delivery else None,
             "latitude": lat,
             "longitude": lng,
             "timestamp": timestamp.isoformat(),
