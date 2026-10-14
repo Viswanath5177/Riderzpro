@@ -13,7 +13,7 @@ export function SiteLayout({ children }: { children: ReactNode; transparent?: bo
   const cartCount = cart.reduce((s, c) => s + c.qty, 0);
 
   return (
-    <div className="min-h-screen bg-white text-[#111111] pb-16 md:pb-0 font-sans selection:bg-red-500 selection:text-white">
+    <div className="min-h-screen bg-white text-[#111111] pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-0 font-sans selection:bg-red-500 selection:text-white">
       {/* ─────────────────────────────────────────────────────────────
           1. CLEAN SINGLE-ROW HEADER (72px, 5 NAV LINKS, SEARCH, CART, SIGN IN)
          ───────────────────────────────────────────────────────────── */}
@@ -72,7 +72,7 @@ function MobileBottomBar({
   };
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 flex h-14 items-center justify-around border-t border-[#ececec] bg-white/95 px-2 backdrop-blur-md md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-bottom,0px))] pb-[env(safe-area-inset-bottom,0px)] items-center justify-around border-t border-[#ececec] bg-white/95 px-2 backdrop-blur-md md:hidden">
       {tabs.map((t) => (
         <Link
           key={t.label}

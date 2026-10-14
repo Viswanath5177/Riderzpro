@@ -6,7 +6,7 @@ export function AIChatButton() {
   const [showTooltip, setShowTooltip] = useState(false);
 
   return (
-    <div className="fixed bottom-6 right-6 z-40">
+    <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:bottom-6 right-4 sm:right-6 z-40">
       {/* Tooltip */}
       {showTooltip && (
         <div className="absolute bottom-full right-0 mb-2 whitespace-nowrap rounded-lg bg-[#111111] px-3 py-1.5 text-xs font-semibold text-white shadow-lg animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
