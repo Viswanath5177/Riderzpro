@@ -75,20 +75,43 @@
 ### ✅ Completed Tests
 - Bug board documentation created
 - Labels defined and documented
+- BEFORE LUNCH smoke testing completed (0 blockers found)
+- Code review of new logistics/rider features
 
-### 🔄 In Progress
-- Smoke testing current main
-- Baseline bug identification
+### 🔄 In Progress  
+- AFTER LUNCH testing (blocked on FastAPI server)
+- Logistics integration verification
+
+### ⏳ Pending FastAPI Server Start
+- Rider panel end-to-end testing
+- GPS location streaming verification
+- Live tracking WebSocket testing
+- Route planning and geofencing
 
 ### ⏳ Pending First Deploy
 - Seller signup → admin approval flow
 - Catalog with real products
-- Mock data identification
+- Full order → delivery → tracking flow
+
+---
+
+## Current Blockers (2026-10-14 After Lunch)
+
+### 🔴 BLOCKER #1: FastAPI Logistics Server Not Running
+**Owner:** Viswanath / Amrutha  
+**Impact:** Cannot test rider panel, GPS streaming, or live tracking  
+**Action Required:** Start `uvicorn main:app --port 8000`  
+**Files Ready:** All logistics/ code merged to main
+
+### 🟡 BLOCKER #2: GitHub Labels Not Created
+**Owner:** Viswanath (or grant Hima admin access)  
+**Impact:** Cannot properly tag bugs in GitHub  
+**Action Required:** Create demo-blocker and demo-polish labels manually
 
 ---
 
 ## Next Actions
-1. Create labels on GitHub (manual step via web UI)
-2. Run smoke tests and document findings
-3. Wait for Amrutha's API split before deeper testing
-4. Test after Hema's first deployment
+1. ⏸️ **BLOCKED:** Wait for FastAPI server to start on port 8000
+2. ⏸️ **BLOCKED:** Create GitHub labels (need admin access)
+3. ✅ **DONE:** Document new features from logistics merge
+4. ⏸️ **PENDING:** Test after Hema's first deployment
