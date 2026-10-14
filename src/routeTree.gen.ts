@@ -20,6 +20,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as OffersRouteImport } from './routes/offers'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RiderRouteImport } from './routes/rider'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SupportRouteImport } from './routes/support'
@@ -50,6 +51,8 @@ import { Route as DashboardRiderRouteImport } from './routes/dashboard.rider'
 import { Route as DashboardVendorRouteImport } from './routes/dashboard.vendor'
 import { Route as DashboardWorkshopRouteImport } from './routes/dashboard.workshop'
 import { Route as ProductIdRouteImport } from './routes/product.$id'
+import { Route as RiderIndexRouteImport } from './routes/rider.index'
+import { Route as RiderDashboardRouteImport } from './routes/rider.dashboard'
 import { Route as StoreSlugRouteImport } from './routes/store.$slug'
 import { Route as TrackIdRouteImport } from './routes/track.$id'
 import { Route as VendorIdRouteImport } from './routes/vendor.$id'
@@ -112,6 +115,11 @@ const OrdersRoute = OrdersRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RiderRoute = RiderRouteImport.update({
+  id: '/rider',
+  path: '/rider',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShopRoute = ShopRouteImport.update({
@@ -264,6 +272,16 @@ const ProductIdRoute = ProductIdRouteImport.update({
   path: '/product/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RiderIndexRoute = RiderIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RiderRoute,
+} as any)
+const RiderDashboardRoute = RiderDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => RiderRoute,
+} as any)
 const StoreSlugRoute = StoreSlugRouteImport.update({
   id: '/store/$slug',
   path: '/store/$slug',
@@ -317,6 +335,7 @@ export interface FileRoutesByFullPath {
   '/offers': typeof OffersRoute
   '/orders': typeof OrdersRoute
   '/privacy': typeof PrivacyRoute
+  '/rider': typeof RiderRouteWithChildren
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
@@ -346,6 +365,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/vendor': typeof DashboardVendorRoute
   '/dashboard/workshop': typeof DashboardWorkshopRoute
   '/product/$id': typeof ProductIdRoute
+  '/rider/dashboard': typeof RiderDashboardRoute
   '/store/$slug': typeof StoreSlugRoute
   '/track/$id': typeof TrackIdRoute
   '/vendor/$id': typeof VendorIdRoute
@@ -355,6 +375,7 @@ export interface FileRoutesByFullPath {
   '/vendor/pending': typeof VendorPendingRoute
   '/vendor/signup': typeof VendorSignupRoute
   '/admin/': typeof AdminIndexRoute
+  '/rider/': typeof RiderIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -396,6 +417,7 @@ export interface FileRoutesByTo {
   '/dashboard/vendor': typeof DashboardVendorRoute
   '/dashboard/workshop': typeof DashboardWorkshopRoute
   '/product/$id': typeof ProductIdRoute
+  '/rider/dashboard': typeof RiderDashboardRoute
   '/store/$slug': typeof StoreSlugRoute
   '/track/$id': typeof TrackIdRoute
   '/vendor/$id': typeof VendorIdRoute
@@ -405,6 +427,7 @@ export interface FileRoutesByTo {
   '/vendor/pending': typeof VendorPendingRoute
   '/vendor/signup': typeof VendorSignupRoute
   '/admin': typeof AdminIndexRoute
+  '/rider': typeof RiderIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -419,6 +442,7 @@ export interface FileRoutesById {
   '/offers': typeof OffersRoute
   '/orders': typeof OrdersRoute
   '/privacy': typeof PrivacyRoute
+  '/rider': typeof RiderRouteWithChildren
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
@@ -448,6 +472,7 @@ export interface FileRoutesById {
   '/dashboard/vendor': typeof DashboardVendorRoute
   '/dashboard/workshop': typeof DashboardWorkshopRoute
   '/product/$id': typeof ProductIdRoute
+  '/rider/dashboard': typeof RiderDashboardRoute
   '/store/$slug': typeof StoreSlugRoute
   '/track/$id': typeof TrackIdRoute
   '/vendor/$id': typeof VendorIdRoute
@@ -457,6 +482,7 @@ export interface FileRoutesById {
   '/vendor/pending': typeof VendorPendingRoute
   '/vendor/signup': typeof VendorSignupRoute
   '/admin/': typeof AdminIndexRoute
+  '/rider/': typeof RiderIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -472,6 +498,7 @@ export interface FileRouteTypes {
     | '/offers'
     | '/orders'
     | '/privacy'
+    | '/rider'
     | '/shop'
     | '/signup'
     | '/support'
@@ -501,6 +528,7 @@ export interface FileRouteTypes {
     | '/dashboard/vendor'
     | '/dashboard/workshop'
     | '/product/$id'
+    | '/rider/dashboard'
     | '/store/$slug'
     | '/track/$id'
     | '/vendor/$id'
@@ -510,6 +538,7 @@ export interface FileRouteTypes {
     | '/vendor/pending'
     | '/vendor/signup'
     | '/admin/'
+    | '/rider/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -551,6 +580,7 @@ export interface FileRouteTypes {
     | '/dashboard/vendor'
     | '/dashboard/workshop'
     | '/product/$id'
+    | '/rider/dashboard'
     | '/store/$slug'
     | '/track/$id'
     | '/vendor/$id'
@@ -560,6 +590,7 @@ export interface FileRouteTypes {
     | '/vendor/pending'
     | '/vendor/signup'
     | '/admin'
+    | '/rider'
   id:
     | '__root__'
     | '/'
@@ -573,6 +604,7 @@ export interface FileRouteTypes {
     | '/offers'
     | '/orders'
     | '/privacy'
+    | '/rider'
     | '/shop'
     | '/signup'
     | '/support'
@@ -602,6 +634,7 @@ export interface FileRouteTypes {
     | '/dashboard/vendor'
     | '/dashboard/workshop'
     | '/product/$id'
+    | '/rider/dashboard'
     | '/store/$slug'
     | '/track/$id'
     | '/vendor/$id'
@@ -611,6 +644,7 @@ export interface FileRouteTypes {
     | '/vendor/pending'
     | '/vendor/signup'
     | '/admin/'
+    | '/rider/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -625,6 +659,7 @@ export interface RootRouteChildren {
   OffersRoute: typeof OffersRoute
   OrdersRoute: typeof OrdersRoute
   PrivacyRoute: typeof PrivacyRoute
+  RiderRoute: typeof RiderRouteWithChildren
   ShopRoute: typeof ShopRoute
   SignupRoute: typeof SignupRoute
   SupportRoute: typeof SupportRoute
@@ -723,6 +758,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rider': {
+      id: '/rider'
+      path: '/rider'
+      fullPath: '/rider'
+      preLoaderRoute: typeof RiderRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/shop': {
@@ -935,6 +977,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProductIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rider/': {
+      id: '/rider/'
+      path: '/'
+      fullPath: '/rider/'
+      preLoaderRoute: typeof RiderIndexRouteImport
+      parentRoute: typeof RiderRoute
+    }
+    '/rider/dashboard': {
+      id: '/rider/dashboard'
+      path: '/dashboard'
+      fullPath: '/rider/dashboard'
+      preLoaderRoute: typeof RiderDashboardRouteImport
+      parentRoute: typeof RiderRoute
+    }
     '/store/$slug': {
       id: '/store/$slug'
       path: '/store/$slug'
@@ -1040,6 +1096,18 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface RiderRouteChildren {
+  RiderDashboardRoute: typeof RiderDashboardRoute
+  RiderIndexRoute: typeof RiderIndexRoute
+}
+
+const RiderRouteChildren: RiderRouteChildren = {
+  RiderDashboardRoute: RiderDashboardRoute,
+  RiderIndexRoute: RiderIndexRoute,
+}
+
+const RiderRouteWithChildren = RiderRoute._addFileChildren(RiderRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
@@ -1052,6 +1120,7 @@ const rootRouteChildren: RootRouteChildren = {
   OffersRoute: OffersRoute,
   OrdersRoute: OrdersRoute,
   PrivacyRoute: PrivacyRoute,
+  RiderRoute: RiderRouteWithChildren,
   ShopRoute: ShopRoute,
   SignupRoute: SignupRoute,
   SupportRoute: SupportRoute,
