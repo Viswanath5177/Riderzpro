@@ -57,3 +57,6 @@ database/*.db-*
 *.sln
 *.sw?
 scratch/
+
+# Demo repository cleanup
+products_missing_images.xlsx
