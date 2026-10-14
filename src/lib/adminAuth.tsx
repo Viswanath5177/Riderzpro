@@ -171,17 +171,11 @@ export function useAdminAuth() {
 
 /**
  * Route guard for /admin/* paths.
- * Redirects unauthenticated visits to /admin/login.
+ * Redirects unauthenticated visits to /login with return path preserved.
  */
 export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAdminAuth();
   const location = useLocation();
-  const isLoginPage = location.pathname.startsWith("/admin/login");
-
-  // If at /admin/login, don't guard
-  if (isLoginPage) {
-    return <>{children}</>;
-  }
 
   if (loading) {
     return (
@@ -195,7 +189,7 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to="/login" search={{ redirect: location.pathname }} replace />;
   }
 
   return <>{children}</>;

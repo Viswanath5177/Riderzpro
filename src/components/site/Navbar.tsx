@@ -14,7 +14,7 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
-import { getCurrentRole, signOut as endServerSession } from "@/lib/auth";
+import { getCurrentRole, signOut as endServerSession, useAuth } from "@/lib/auth";
 import { Logo } from "./bits";
 
 export interface NavCategory {
@@ -43,6 +43,7 @@ export const STORE_CATEGORIES: NavCategory[] = [
 export function Navbar() {
   const { cart, userProfile, isLoggedIn, signOut, signIn, setRole } = useStore();
   const navigate = useNavigate();
+  const { openCustomerLoginModal } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
@@ -71,8 +72,7 @@ export function Navbar() {
   const handleCartClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!isLoggedIn) {
-      toast.info("Please sign in to view your orders and delivery tracking");
-      navigate({ to: "/login", search: { redirect: "/dashboard/customer?tab=orders" } as any });
+      openCustomerLoginModal({ redirectTo: "/dashboard/customer?tab=orders" });
     } else {
       navigate({ to: "/dashboard/customer", search: { tab: "orders" } as any });
     }
@@ -81,8 +81,7 @@ export function Navbar() {
   const handleCarClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!isLoggedIn) {
-      toast.info("Please sign in to access your registered vehicle & garage");
-      navigate({ to: "/login", search: { redirect: "/dashboard/customer?tab=garage" } as any });
+      openCustomerLoginModal({ redirectTo: "/dashboard/customer?tab=garage" });
     } else {
       navigate({ to: "/dashboard/customer", search: { tab: "garage" } as any });
     }
@@ -176,13 +175,14 @@ export function Navbar() {
 
           {/* Authentication: Sign In button OR Account Dropdown */}
           {!isLoggedIn ? (
-            <Link
-              to="/login"
+            <button
+              type="button"
+              onClick={() => openCustomerLoginModal()}
               id="navbar-signin-btn"
               className="inline-flex items-center justify-center rounded-full bg-[#E31E24] px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-red-700 active:scale-95 cursor-pointer"
             >
               Sign In
-            </Link>
+            </button>
           ) : (
             <div className="relative">
               <button
@@ -360,13 +360,16 @@ export function Navbar() {
                 </Link>
               )}
               {!isLoggedIn ? (
-                <Link
-                  to="/login"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center justify-center rounded-lg bg-[#E31E24] py-2.5 text-xs font-semibold text-white shadow-2xs mt-2"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    openCustomerLoginModal();
+                  }}
+                  className="flex items-center justify-center rounded-lg bg-[#E31E24] py-2.5 text-xs font-semibold text-white shadow-2xs mt-2 w-full cursor-pointer"
                 >
                   Sign In to Account
-                </Link>
+                </button>
               ) : (
                 <button
                   onClick={() => {

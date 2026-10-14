@@ -375,21 +375,7 @@ export function SignInForm({ onSwitchToSignUp, targetPath }: SignInFormProps) {
           </p>
         </div>
 
-        {/* Development Phase Admin Bypass (DEV Only) */}
-        {isDevAdminEnabled && (
-          <div className="mt-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 p-2.5 text-xs text-amber-900 dark:text-amber-200 flex items-center justify-between">
-            <div>
-              <p className="font-semibold text-amber-800 dark:text-amber-300">Development Phase:</p>
-              <p className="text-[11px] text-amber-700 dark:text-amber-400">Operations & Admin console testing</p>
-            </div>
-            <Link
-              to="/admin/login"
-              className="rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold px-2.5 py-1 text-[11px] transition shadow-xs shrink-0"
-            >
-              Admin Bypass →
-            </Link>
-          </div>
-        )}
+
       </form>
 
       {/* Footer Switcher */}

@@ -149,6 +149,10 @@ export type Product = {
     powerRating?: string;
   };
   verificationStatus?: "pending_approval" | "approved" | "rejected";
+  rejectionReason?: string;
+  sellerId?: string;
+  sellerName?: string;
+  sellerEmail?: string;
   variantModel?: string;
   material?: string;
   fitmentSize?: string;
@@ -446,6 +450,10 @@ export function mapDbProductToProduct(row: any): Product {
       },
     ],
     verificationStatus: row.verification_status || "approved",
+    rejectionReason: row.rejection_reason || undefined,
+    sellerId: row.seller_id,
+    sellerName: row.seller_name || row.store_name,
+    sellerEmail: row.seller_email,
     sku: row.sku,
     variantModel: row.variant_model,
     vehicleType: row.vehicle_type || (row.category_name?.toLowerCase().includes("car") ? "car" : "universal"),

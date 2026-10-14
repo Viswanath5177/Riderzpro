@@ -34,6 +34,8 @@ import {
   Mail,
   FileText,
   Percent,
+  Bell,
+  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardShell, Panel, Stat, StatusPill, type Section } from "@/components/site/DashboardShell";
@@ -111,6 +113,9 @@ export function VendorDashboard() {
     address?: string;
     gstin?: string;
     status: string;
+    accountStatus?: "ACTIVE" | "FROZEN";
+    freezeReason?: string;
+    frozenAt?: string;
     created_at?: string;
     bankAccount?: {
       accountHolderName: string;
@@ -164,13 +169,115 @@ export function VendorDashboard() {
   });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
+  // Vendor Business Details Freeze & Change Request Policy State
+  const [changeRequests, setChangeRequests] = useState<any[]>([]);
+  const [isChangeModalOpen, setIsChangeModalOpen] = useState(false);
+  const [crField, setCrField] = useState<"owner_name" | "business_type" | "gstin" | "business_address">("owner_name");
+  const [crNewValue, setCrNewValue] = useState("");
+  const [crReason, setCrReason] = useState("");
+  const [crDocUrl, setCrDocUrl] = useState("");
+  const [isSubmittingCr, setIsSubmittingCr] = useState(false);
+
+  const fetchChangeRequests = (sellerId: string) => {
+    fetch(`/api/vendor/change-requests?seller_id=${sellerId}`)
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setChangeRequests(res.data);
+        }
+      })
+      .catch(() => {});
+  };
+
+  const handleSubmitChangeRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!crNewValue.trim() || !crReason.trim()) {
+      toast.error("Please enter the new proposed value and justification reason.");
+      return;
+    }
+    setIsSubmittingCr(true);
+    try {
+      const fieldLabels: Record<string, string> = {
+        owner_name: "Legal Business / Owner Name",
+        business_type: "Business Type",
+        gstin: "GSTIN Tax Registration",
+        business_address: "Registered Business Address",
+      };
+      const oldValues: Record<string, string> = {
+        owner_name: dbVendor?.ownerName || profileForm.ownerName,
+        business_type: dbVendor?.businessType || "Proprietorship",
+        gstin: dbVendor?.gstin || profileForm.gstin,
+        business_address: `${profileForm.address}, ${profileForm.city}`,
+      };
+
+      const res = await fetch("/api/vendor/change-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          sellerId: dbVendor?.id || "sel_01",
+          fieldName: crField,
+          fieldLabel: fieldLabels[crField] || crField,
+          oldValue: oldValues[crField] || "",
+          newValue: crNewValue.trim(),
+          reason: crReason.trim(),
+          supportingDocUrl: crDocUrl.trim() || undefined,
+          requestedBy: dbVendor?.ownerName || "Vendor",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to submit change request.");
+      }
+
+      toast.success("Business detail change request submitted for administrator verification!");
+      setIsChangeModalOpen(false);
+      setCrNewValue("");
+      setCrReason("");
+      setCrDocUrl("");
+      if (dbVendor?.id) fetchChangeRequests(dbVendor.id);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to submit change request.");
+    } finally {
+      setIsSubmittingCr(false);
+    }
+  };
+
   useEffect(() => {
     getCurrentUser().then((u) => {
       if (u) setCurrentUser(u as any);
     });
   }, []);
 
-  const [tab, setTab] = useState<string>("overview");
+  const [tab, setTabState] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      const urlTab = p.get("tab") || p.get("tabs");
+      if (urlTab && vendorSections.some((s) => s.id === urlTab)) return urlTab;
+    }
+    return "overview";
+  });
+
+  const setTab = (newTab: string) => {
+    setTabState(newTab);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", newTab);
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
+
+  useEffect(() => {
+    const onPop = () => {
+      const p = new URLSearchParams(window.location.search);
+      const urlTab = p.get("tab") || p.get("tabs");
+      if (urlTab && vendorSections.some((s) => s.id === urlTab)) {
+        setTabState(urlTab);
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   // Dynamic Products State from DB
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -218,6 +325,7 @@ export function VendorDashboard() {
               accountNumber: res.data.vendor.bankAccount?.accountNumber || "",
               ifscCode: res.data.vendor.bankAccount?.ifscCode || "",
             });
+            fetchChangeRequests(res.data.vendor.id);
           }
           if (res.data.metrics) {
             setDbMetrics(res.data.metrics);
@@ -257,6 +365,19 @@ export function VendorDashboard() {
     fetchVendorDashboard();
   }, []);
 
+  // Floating aside alerts & modals state
+  const [isStoreActionModalOpen, setIsStoreActionModalOpen] = useState(false);
+  const [isProductNotifModalOpen, setIsProductNotifModalOpen] = useState(false);
+  const [isUpdateSuccessModalOpen, setIsUpdateSuccessModalOpen] = useState(false);
+
+  // Track if seller confirmed / saved details
+  const [hasConfirmedStore, setHasConfirmedStore] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("riderzpro_seller_store_confirmed") === "true";
+    }
+    return false;
+  });
+
   // Save profile updates to database
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -276,6 +397,12 @@ export function VendorDashboard() {
           ...(prev || {}),
           ...data.vendor,
         }));
+        setHasConfirmedStore(true);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("riderzpro_seller_store_confirmed", "true");
+        }
+        setIsStoreActionModalOpen(false);
+        setIsUpdateSuccessModalOpen(true);
         toast.success("Store details and settlement accounts updated successfully in database!");
       } else {
         toast.error(data.error || "Failed to update store details");
@@ -302,9 +429,63 @@ export function VendorDashboard() {
       });
   };
 
+  const [vendorNotifications, setVendorNotifications] = useState<any[]>([]);
+
+  const loadVendorNotifications = () => {
+    const vId = dbVendor?.id || currentUser?.id || "sel_2571cac9469b8dce";
+    fetch(`/api/vendor/notifications?seller_id=${vId}`)
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setVendorNotifications(res.data);
+        }
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     fetchProductsFromDb();
   }, []);
+
+  useEffect(() => {
+    loadVendorNotifications();
+  }, [dbVendor?.id, currentUser?.id]);
+
+  // Determine if store action is actually needed (only if incomplete AND unconfirmed)
+  const needsStoreAction = useMemo(() => {
+    if (hasConfirmedStore) return false;
+    const hasAddress = Boolean(dbVendor?.address && dbVendor.address.trim().length > 3);
+    const hasCity = Boolean(dbVendor?.city && dbVendor.city.trim().length > 1);
+    const hasPhone = Boolean(dbVendor?.phone && dbVendor.phone.trim().length >= 10);
+    const hasBank = Boolean(
+      dbVendor?.bankAccount?.accountNumber && dbVendor.bankAccount.accountNumber.trim().length > 4
+    );
+    if (hasAddress && hasCity && hasPhone && hasBank) return false;
+    return true;
+  }, [hasConfirmedStore, dbVendor]);
+
+  const rejectedNotifications = useMemo(() => {
+    return vendorNotifications.filter((n) => n.type === "product_rejected" && !n.is_read);
+  }, [vendorNotifications]);
+
+  const handleDismissNotification = async (notifId: string) => {
+    try {
+      await fetch(`/api/vendor/notifications/${notifId}/read`, { method: "PUT" });
+      setVendorNotifications((prev) =>
+        prev.map((n) => (n.id === notifId ? { ...n, is_read: true } : n))
+      );
+    } catch {}
+  };
+
+  const handleDismissAllNotifications = async () => {
+    try {
+      const vId = dbVendor?.id || currentUser?.id || "sel_2571cac9469b8dce";
+      await fetch(`/api/vendor/notifications/all/read?seller_id=${vId}`, { method: "PUT" });
+      setVendorNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      toast.success("All product alerts cleared");
+      setIsProductNotifModalOpen(false);
+    } catch {}
+  };
 
   const currentVendor = useMemo(() => {
     return {
@@ -367,6 +548,12 @@ export function VendorDashboard() {
   };
 
   const handleOpenAdd = () => {
+    if (dbVendor?.accountStatus === "FROZEN") {
+      toast.error("Account Frozen by Administration", {
+        description: `Your vendor account has been temporarily frozen. Product submissions are blocked. Reason: ${dbVendor.freezeReason || "Compliance review"}. Contact riderzpro@selleradmin.com`,
+      });
+      return;
+    }
     if (!isApproved) {
       toast.error("Product Listing Locked", {
         description: "Your seller KYC verification is currently under review. Product creation unlocks once approved.",
@@ -378,6 +565,12 @@ export function VendorDashboard() {
   };
 
   const handleOpenEdit = (p: Product) => {
+    if (dbVendor?.accountStatus === "FROZEN") {
+      toast.error("Account Frozen by Administration", {
+        description: `Your vendor account has been temporarily frozen. Product modifications are blocked. Reason: ${dbVendor.freezeReason || "Compliance review"}. Contact riderzpro@selleradmin.com`,
+      });
+      return;
+    }
     if (!isApproved) {
       toast.error("Product Modification Locked", {
         description: "Your seller KYC verification is currently under review.",
@@ -477,6 +670,42 @@ export function VendorDashboard() {
 
   // Vendor KYC Status Banner Component
   const renderStatusBanner = () => {
+    if (dbVendor?.accountStatus === "FROZEN") {
+      return (
+        <div className="rounded-2xl border-2 border-red-500 bg-red-50 p-4 sm:p-5 flex items-start gap-3.5 mb-6 shadow-sm">
+          <div className="rounded-xl bg-red-600 text-white p-2 shrink-0">
+            <Lock className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0 text-xs">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-red-950">Vendor Account Temporarily FROZEN</h3>
+              <span className="rounded-full bg-red-200 px-2.5 py-0.5 text-[10px] font-black text-red-900 uppercase">
+                Frozen
+              </span>
+            </div>
+            <p className="mt-1 text-red-800 leading-relaxed">
+              Your vendor selling operations, catalog listings, and product submissions have been temporarily frozen by marketplace compliance.
+            </p>
+            {dbVendor.freezeReason && (
+              <div className="mt-2 rounded-lg bg-white/90 p-2.5 border border-red-200">
+                <span className="font-bold text-red-900 block mb-0.5">Compliance Reason:</span>
+                <span className="text-red-800">{dbVendor.freezeReason}</span>
+              </div>
+            )}
+            <div className="mt-3 flex items-center gap-2 text-red-800 font-medium">
+              <span>Designated Assistance:</span>
+              <a
+                href="mailto:riderzpro@selleradmin.com"
+                className="font-bold text-red-950 underline hover:text-black font-mono"
+              >
+                riderzpro@selleradmin.com
+              </a>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (isApproved) {
       return (
         <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 flex items-center justify-between mb-6 shadow-sm">
@@ -587,31 +816,269 @@ export function VendorDashboard() {
         name: currentVendor.ownerName || currentVendor.name,
         email: currentVendor.email,
       }}
+      actions={
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Aside Product Notifications Header Symbol */}
+          {rejectedNotifications.length > 0 && (
+            <button
+              onClick={() => setIsProductNotifModalOpen(true)}
+              title={`${rejectedNotifications.length} Product Alert(s)`}
+              className="relative flex items-center gap-1.5 rounded-full border border-red-500/40 bg-red-50/90 dark:bg-red-950/40 px-2.5 sm:px-3 py-1.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 transition cursor-pointer"
+            >
+              <Bell className="h-3.5 w-3.5 text-red-600 dark:text-red-400 animate-bounce" />
+              <span className="hidden sm:inline">Product Alerts</span>
+              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-black text-white">
+                {rejectedNotifications.length}
+              </span>
+            </button>
+          )}
+
+          {/* Aside Store Action Required Header Symbol */}
+          {needsStoreAction && (
+            <button
+              onClick={() => setIsStoreActionModalOpen(true)}
+              title="Store Action Required"
+              className="flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-50/90 dark:bg-amber-950/40 px-2.5 sm:px-3 py-1.5 text-xs font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-100 transition cursor-pointer animate-pulse"
+            >
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+              <span className="hidden sm:inline">Store Action</span>
+            </button>
+          )}
+        </div>
+      }
     >
-      {/* Mandatory Store Location & Profile Verification Alert Banner */}
-      <div className="rounded-2xl border-2 border-amber-500/40 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-4 sm:p-5 shadow-xs mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-500 text-white font-bold shadow-xs">
-            <AlertTriangle className="h-5 w-5" />
-          </div>
-          <div>
-            <h4 className="text-sm font-extrabold text-foreground flex items-center gap-2">
-              Action Required: Verify & Update Store Location & Details
-              <span className="rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-200 px-2 py-0.5 text-[10px] font-bold uppercase">Mandatory</span>
-            </h4>
-            <p className="text-xs text-muted-foreground mt-1 max-w-2xl leading-relaxed">
-              Your registered store location is currently set to <strong className="text-foreground">{currentVendor.city || "Not Provided"} ({currentVendor.state || "Not Provided"})</strong>. Please verify your exact store address, city, contact phone, and payout bank account. Keeping this updated ensures proper rider dispatch and timely weekly payouts.
-            </p>
+      {/* ─────────────────────────────────────────────────────────────
+          FLOATING ALERTS & NOTIFICATIONS DOCK (ASIDE)
+         ───────────────────────────────────────────────────────────── */}
+      <div className="fixed right-3 top-20 sm:right-6 sm:top-24 z-40 flex flex-col items-end gap-2.5 pointer-events-auto">
+        {/* Floating Product Details Notification Symbol */}
+        {rejectedNotifications.length > 0 && (
+          <button
+            onClick={() => setIsProductNotifModalOpen(true)}
+            title="Product Review Notifications"
+            className="group flex items-center gap-2 rounded-full border-2 border-red-500 bg-white dark:bg-[#121620] px-3.5 py-2 text-xs font-bold text-red-600 dark:text-red-400 shadow-xl hover:bg-red-50 dark:hover:bg-red-950/50 hover:scale-105 active:scale-95 transition-all cursor-pointer backdrop-blur-md"
+          >
+            <div className="relative">
+              <Bell className="h-4 w-4 animate-bounce text-red-600 dark:text-red-400" />
+              <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-black text-white shadow-xs">
+                {rejectedNotifications.length}
+              </span>
+            </div>
+            <span className="hidden sm:inline font-extrabold">
+              {rejectedNotifications.length} Product Alert{rejectedNotifications.length > 1 ? "s" : ""}
+            </span>
+          </button>
+        )}
+
+        {/* Floating Store & Payment Action Required Symbol */}
+        {needsStoreAction && (
+          <button
+            onClick={() => setIsStoreActionModalOpen(true)}
+            title="Store Details Action Required"
+            className="group flex items-center gap-2 rounded-full border-2 border-amber-500 bg-white dark:bg-[#121620] px-3.5 py-2 text-xs font-bold text-amber-700 dark:text-amber-300 shadow-xl hover:bg-amber-50 dark:hover:bg-amber-950/50 hover:scale-105 active:scale-95 transition-all cursor-pointer backdrop-blur-md animate-pulse"
+          >
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+            </span>
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <span className="hidden sm:inline font-extrabold">Store Action Needed</span>
+          </button>
+        )}
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          POP-UP MODAL 1: PRODUCT REVIEW & NOTIFICATIONS MODAL
+         ───────────────────────────────────────────────────────────── */}
+      {isProductNotifModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="relative w-full max-w-lg rounded-3xl border border-red-500/30 bg-card p-5 sm:p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-8 w-8 place-items-center rounded-xl bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-400">
+                  <Bell className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-foreground">Product Review Notifications</h3>
+                  <p className="text-[11px] text-muted-foreground">{rejectedNotifications.length} items require attention</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleDismissAllNotifications}
+                  className="text-[11px] font-bold text-muted-foreground hover:text-foreground hover:underline cursor-pointer"
+                >
+                  Clear All
+                </button>
+                <button
+                  onClick={() => setIsProductNotifModalOpen(false)}
+                  className="rounded-xl p-1 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-3 overflow-y-auto flex-1 pr-1">
+              {rejectedNotifications.length === 0 ? (
+                <div className="py-8 text-center text-xs text-muted-foreground">
+                  <CheckCircle2 className="h-8 w-8 mx-auto text-emerald-500 mb-2 opacity-80" />
+                  All product notifications are cleared!
+                </div>
+              ) : (
+                rejectedNotifications.map((notif) => (
+                  <div
+                    key={notif.id}
+                    className="rounded-2xl border border-red-500/30 bg-red-50/60 dark:bg-red-950/20 p-3.5 space-y-2 text-xs"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-extrabold uppercase text-white">
+                          Declined
+                        </span>
+                        <h4 className="font-bold text-red-950 dark:text-red-200">{notif.title}</h4>
+                      </div>
+                      <button
+                        onClick={() => handleDismissNotification(notif.id)}
+                        className="text-[10px] font-semibold text-muted-foreground hover:text-red-600 cursor-pointer"
+                        title="Dismiss notification"
+                      >
+                        Dismiss ✕
+                      </button>
+                    </div>
+
+                    <p className="text-[11px] text-red-800 dark:text-red-300 leading-relaxed bg-white/70 dark:bg-black/30 p-2.5 rounded-xl border border-red-200/60 dark:border-red-900/40">
+                      <strong>Rejection Reason:</strong> {notif.message}
+                    </p>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[10px] text-muted-foreground">
+                        {notif.created_at ? new Date(notif.created_at).toLocaleDateString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recently"}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setIsProductNotifModalOpen(false);
+                          setTab("listings");
+                        }}
+                        className="rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1 text-xs transition cursor-pointer"
+                      >
+                        Review in Listings →
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-border flex justify-end">
+              <button
+                onClick={() => setIsProductNotifModalOpen(false)}
+                className="rounded-xl border border-border px-4 py-1.5 text-xs font-bold hover:bg-muted transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
-        <button
-          onClick={() => setTab("settings")}
-          className="shrink-0 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-amber-600 transition flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
-        >
-          <Settings className="h-4 w-4" />
-          <span>Update Store Details</span>
-        </button>
-      </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          POP-UP MODAL 2: STORE ACTION REQUIRED MODAL
+         ───────────────────────────────────────────────────────────── */}
+      {isStoreActionModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="relative w-full max-w-md rounded-3xl border border-amber-500/40 bg-card p-5 sm:p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-amber-500 text-white font-bold shadow-xs">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-foreground">Action Required: Store Details</h3>
+                  <span className="rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-200 px-2 py-0.5 text-[10px] font-bold uppercase">
+                    Mandatory Setup
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsStoreActionModalOpen(false)}
+                className="rounded-xl p-1 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Your store location, operational address, contact phone, or payout bank account are missing or need verification. Keeping these updated ensures correct delivery rider routing and timely automated weekly payouts.
+            </p>
+
+            <div className="rounded-2xl bg-muted/60 p-3 space-y-1.5 text-xs">
+              <p className="text-muted-foreground">
+                <strong className="text-foreground">Store City:</strong> {currentVendor.city || "Not provided"}
+              </p>
+              <p className="text-muted-foreground">
+                <strong className="text-foreground">Payout Bank:</strong>{" "}
+                {currentVendor.bankAccount?.bankName
+                  ? `${currentVendor.bankAccount.bankName} · ••••${currentVendor.bankAccount.accountNumber?.slice(-4) || ""}`
+                  : "Not configured"}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setIsStoreActionModalOpen(false)}
+                className="rounded-xl border border-border px-3.5 py-2 text-xs font-bold hover:bg-muted transition cursor-pointer"
+              >
+                Dismiss
+              </button>
+              <button
+                onClick={() => {
+                  setIsStoreActionModalOpen(false);
+                  setTab("settings");
+                }}
+                className="rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold px-4 py-2 text-xs transition cursor-pointer shadow-xs flex items-center gap-1.5"
+              >
+                <Settings className="h-3.5 w-3.5" />
+                <span>Update Store Details</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          POP-UP MODAL 3: CELEBRATION POP-UP (ONLY AFTER UPDATING)
+         ───────────────────────────────────────────────────────────── */}
+      {isUpdateSuccessModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="relative w-full max-w-md rounded-3xl border border-emerald-500/40 bg-card p-6 shadow-2xl text-center space-y-4">
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+              <CheckCircle2 className="h-8 w-8" />
+            </div>
+
+            <div>
+              <h3 className="text-base font-extrabold text-foreground">
+                Store & Payment Details Saved!
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+                Your store address, operational contact, and payout bank accounts have been confirmed and synchronized with the database. Automated dispatches and payouts are fully active.
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={() => {
+                  setIsUpdateSuccessModalOpen(false);
+                  setTab("overview");
+                }}
+                className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 text-xs transition cursor-pointer shadow-md"
+              >
+                View Updated Dashboard →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Incoming Orders Notification for Seller */}
       {vendorOrders.length > 0 && (
@@ -1128,7 +1595,12 @@ export function VendorDashboard() {
                           />
                           <div>
                             <span className="font-semibold block leading-tight">{p.name}</span>
-                            <span className="text-xs text-muted-foreground">{p.brand}</span>
+                            <span className="text-xs text-muted-foreground">{p.brand} {p.sku ? `· ${p.sku}` : ""}</span>
+                            {p.verificationStatus === "rejected" && p.rejectionReason && (
+                              <p className="text-[11px] text-red-600 font-semibold mt-1 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded border border-red-200 dark:border-red-800">
+                                Rejection reason: {p.rejectionReason}
+                              </p>
+                            )}
                           </div>
                         </td>
 
@@ -1161,7 +1633,15 @@ export function VendorDashboard() {
                         </td>
 
                         <td>
-                          {isPaused ? (
+                          {p.verificationStatus === "rejected" ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-700 bg-red-50 dark:bg-red-950/40 px-2.5 py-0.5 rounded-full border border-red-200 dark:border-red-800">
+                              <X className="h-3 w-3" /> Declined
+                            </span>
+                          ) : p.verificationStatus === "pending_approval" ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
+                              <Clock className="h-3 w-3" /> Pending Review
+                            </span>
+                          ) : isPaused ? (
                             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
                               <Pause className="h-3 w-3" /> Paused
                             </span>
@@ -1174,25 +1654,37 @@ export function VendorDashboard() {
 
                         <td className="text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => handleToggleOfferStatus(p.id)}
-                              title={isPaused ? "Resume Offer" : "Pause Offer"}
-                              className="rounded-lg border border-border p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted"
-                            >
-                              {isPaused ? <Play className="h-3.5 w-3.5 text-emerald-600" /> : <Pause className="h-3.5 w-3.5" />}
-                            </button>
-                            <button
-                              onClick={() => {
-                                const newP = prompt("Enter new selling price in INR:", String(off.price));
-                                const newS = prompt("Enter available stock units:", String(off.stock));
-                                if (newP && newS) {
-                                  handleUpdateOffer(p.id, Number(newP), Number(newS));
-                                }
-                              }}
-                              className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary hover:text-white transition"
-                            >
-                              Edit Price
-                            </button>
+                            {p.verificationStatus === "rejected" ? (
+                              <button
+                                onClick={() => handleOpenEdit(p)}
+                                className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-red-700 transition cursor-pointer"
+                                title="Edit product and resubmit for admin approval"
+                              >
+                                Edit & Resubmit
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleToggleOfferStatus(p.id)}
+                                  title={isPaused ? "Resume Offer" : "Pause Offer"}
+                                  className="rounded-lg border border-border p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                >
+                                  {isPaused ? <Play className="h-3.5 w-3.5 text-emerald-600" /> : <Pause className="h-3.5 w-3.5" />}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const newP = prompt("Enter new selling price in INR:", String(off.price));
+                                    const newS = prompt("Enter available stock units:", String(off.stock));
+                                    if (newP && newS) {
+                                      handleUpdateOffer(p.id, Number(newP), Number(newS));
+                                    }
+                                  }}
+                                  className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary hover:text-white transition"
+                                >
+                                  Edit Price
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1607,214 +2099,432 @@ export function VendorDashboard() {
       )}
 
       {/* ─────────────────────────────────────────────────────────────
-          9. SHOP SETTINGS TAB
+          9. SHOP SETTINGS TAB — FREEZE & UPDATE POLICY
          ───────────────────────────────────────────────────────────── */}
-      {tab === "settings" && (
-        <div className="space-y-6">
-          <Panel title="Marketplace Store Configuration & Profile">
-            <form onSubmit={handleSaveProfile} className="space-y-6 max-w-3xl">
-              {/* Mandatory Store Location & Address Update Note */}
-              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs">
-                <p className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-                  Mandatory Store Details & Location Setup
-                </p>
-                <p className="text-amber-800/90 dark:text-amber-300 mt-1 leading-relaxed">
-                  Please review and confirm your operational store location ({profileForm.city || "Pending"}), street address, and bank payout details below. All saved updates persist directly to the PostgreSQL database.
-                </p>
-              </div>
+      {tab === "settings" && (() => {
+        const isApproved = dbVendor?.status === "APPROVED";
 
-              {/* 1. Store & Owner Identity */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-bold text-foreground pb-2 border-b border-border">
-                  1. Business Identity & Contact Details
-                </h4>
-                <div className="grid gap-4 sm:grid-cols-2 text-xs">
-                  <div>
-                    <label className="text-muted-foreground block mb-1 font-semibold">Store / Trading Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={profileForm.storeName}
-                      onChange={(e) => setProfileForm({ ...profileForm, storeName: e.target.value })}
-                      placeholder="e.g. Vamsi Auto Spares"
-                      className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
-                    />
+        return (
+          <div className="space-y-6">
+            <Panel title="Marketplace Store Configuration & Profile">
+              <form onSubmit={handleSaveProfile} className="space-y-6 max-w-3xl">
+                {/* Save, Freeze & Update Policy Notice */}
+                {isApproved ? (
+                  <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 text-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <p className="font-bold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
+                          <Lock className="h-4 w-4 text-blue-600 shrink-0" />
+                          Verified Business Details Locked (Compliance Policy)
+                        </p>
+                        <p className="text-blue-800/90 dark:text-blue-300 mt-1 leading-relaxed">
+                          Your legal business name, GSTIN, business type, and registered address have been verified and frozen after approval. To request modifications, submit an administrator change request. Non-sensitive store details remain editable below.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsChangeModalOpen(true)}
+                        className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shrink-0 text-xs shadow-xs transition cursor-pointer"
+                      >
+                        Request Business Detail Change
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-muted-foreground block mb-1 font-semibold">Owner / Authorized Person Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={profileForm.ownerName}
-                      onChange={(e) => setProfileForm({ ...profileForm, ownerName: e.target.value })}
-                      placeholder="e.g. G Naga Vamsi"
-                      className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
-                    />
+                ) : (
+                  <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs">
+                    <p className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                      <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                      Onboarding Status: KYC Review Pending
+                    </p>
+                    <p className="text-amber-800/90 dark:text-amber-300 mt-1 leading-relaxed">
+                      You may freely adjust your store, contact, and business registration details during onboarding before your store is verified and approved.
+                    </p>
                   </div>
-                  <div>
-                    <label className="text-muted-foreground block mb-1 font-semibold">Contact Phone Number *</label>
-                    <input
-                      type="text"
-                      required
-                      value={profileForm.phone}
-                      onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                      placeholder="e.g. 9876543210"
-                      className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-muted-foreground block mb-1 font-semibold">GSTIN Tax ID</label>
-                    <input
-                      type="text"
-                      value={profileForm.gstin}
-                      onChange={(e) => setProfileForm({ ...profileForm, gstin: e.target.value })}
-                      placeholder="e.g. 37AAAAA0000A1Z5 or Unregistered"
-                      className="w-full h-9 rounded-xl border border-border px-3 font-mono font-semibold bg-background"
-                    />
-                  </div>
-                </div>
-              </div>
+                )}
 
-              {/* 2. Store Location & Address */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-bold text-foreground pb-2 border-b border-border">
-                  2. Operational Location & Street Address
-                </h4>
-                <div className="space-y-4 text-xs">
-                  <div>
-                    <label className="text-muted-foreground block mb-1 font-semibold">Store Street Address *</label>
-                    <input
-                      type="text"
-                      required
-                      value={profileForm.address}
-                      onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
-                      placeholder="e.g. 3-24/2, Near Vinayaka Temple, Garagaparru"
-                      className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
-                    />
+                {/* 1. Store & Owner Identity */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-border">
+                    <h4 className="text-sm font-bold text-foreground">
+                      1. Business Identity & Legal Verification
+                    </h4>
+                    {isApproved && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        <CheckCircle2 className="h-3 w-3" /> KYC Verified & Frozen
+                      </span>
+                    )}
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-3">
+
+                  <div className="grid gap-4 sm:grid-cols-2 text-xs">
+                    {/* Editable: Trading Store Name */}
                     <div>
-                      <label className="text-muted-foreground block mb-1 font-semibold">City / Town *</label>
+                      <label className="text-muted-foreground block mb-1 font-semibold flex items-center justify-between">
+                        <span>Store / Trading Name *</span>
+                        <span className="text-[10px] text-emerald-600 font-normal">Editable</span>
+                      </label>
                       <input
                         type="text"
                         required
-                        value={profileForm.city}
-                        onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
-                        placeholder="e.g. Bhimavaram"
+                        value={profileForm.storeName}
+                        onChange={(e) => setProfileForm({ ...profileForm, storeName: e.target.value })}
+                        placeholder="e.g. Vamsi Auto Spares"
+                        className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                      />
+                    </div>
+
+                    {/* Frozen after approval: Legal Business Name */}
+                    <div>
+                      <label className="text-muted-foreground block mb-1 font-semibold flex items-center justify-between">
+                        <span>Legal Business / Owner Name *</span>
+                        {isApproved && (
+                          <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                            <Lock className="h-2.5 w-2.5" /> Frozen
+                          </span>
+                        )}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        disabled={isApproved}
+                        value={profileForm.ownerName}
+                        onChange={(e) => setProfileForm({ ...profileForm, ownerName: e.target.value })}
+                        placeholder="e.g. G Naga Vamsi"
+                        className={cn(
+                          "w-full h-9 rounded-xl border border-border px-3 font-semibold",
+                          isApproved ? "bg-muted/50 text-muted-foreground cursor-not-allowed" : "bg-background"
+                        )}
+                      />
+                    </div>
+
+                    {/* Editable: Contact Phone */}
+                    <div>
+                      <label className="text-muted-foreground block mb-1 font-semibold flex items-center justify-between">
+                        <span>Business Contact Phone *</span>
+                        <span className="text-[10px] text-emerald-600 font-normal">Editable</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={profileForm.phone}
+                        onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                        placeholder="e.g. 9876543210"
+                        className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                      />
+                    </div>
+
+                    {/* Frozen after approval: GSTIN */}
+                    <div>
+                      <label className="text-muted-foreground block mb-1 font-semibold flex items-center justify-between">
+                        <span>GSTIN Tax Identification</span>
+                        {isApproved && (
+                          <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                            <Lock className="h-2.5 w-2.5" /> Frozen
+                          </span>
+                        )}
+                      </label>
+                      <input
+                        type="text"
+                        disabled={isApproved}
+                        value={profileForm.gstin}
+                        onChange={(e) => setProfileForm({ ...profileForm, gstin: e.target.value })}
+                        placeholder="e.g. 37AAAAA0000A1Z5 or Unregistered"
+                        className={cn(
+                          "w-full h-9 rounded-xl border border-border px-3 font-mono font-semibold",
+                          isApproved ? "bg-muted/50 text-muted-foreground cursor-not-allowed" : "bg-background"
+                        )}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Store Location & Address */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-bold text-foreground pb-2 border-b border-border">
+                    2. Operational Location & Street Address
+                  </h4>
+                  <div className="space-y-4 text-xs">
+                    <div>
+                      <label className="text-muted-foreground block mb-1 font-semibold flex items-center justify-between">
+                        <span>Registered Street Address *</span>
+                        {isApproved && (
+                          <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                            <Lock className="h-2.5 w-2.5" /> Frozen
+                          </span>
+                        )}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        disabled={isApproved}
+                        value={profileForm.address}
+                        onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
+                        placeholder="e.g. 3-24/2, Near Vinayaka Temple"
+                        className={cn(
+                          "w-full h-9 rounded-xl border border-border px-3 font-semibold",
+                          isApproved ? "bg-muted/50 text-muted-foreground cursor-not-allowed" : "bg-background"
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <div>
+                        <label className="text-muted-foreground block mb-1 font-semibold">City / Town *</label>
+                        <input
+                          type="text"
+                          required
+                          value={profileForm.city}
+                          onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
+                          placeholder="e.g. Bhimavaram"
+                          className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-muted-foreground block mb-1 font-semibold">State *</label>
+                        <input
+                          type="text"
+                          required
+                          value={profileForm.state}
+                          onChange={(e) => setProfileForm({ ...profileForm, state: e.target.value })}
+                          placeholder="e.g. Andhra Pradesh"
+                          className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-muted-foreground block mb-1 font-semibold flex items-center justify-between">
+                          <span>Pincode *</span>
+                          {isApproved && (
+                            <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                              <Lock className="h-2.5 w-2.5" /> Frozen
+                            </span>
+                          )}
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          disabled={isApproved}
+                          value={profileForm.pincode}
+                          onChange={(e) => setProfileForm({ ...profileForm, pincode: e.target.value })}
+                          placeholder="e.g. 534201"
+                          className={cn(
+                            "w-full h-9 rounded-xl border border-border px-3 font-semibold",
+                            isApproved ? "bg-muted/50 text-muted-foreground cursor-not-allowed" : "bg-background"
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Bank Account & Settlements */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-bold text-foreground pb-2 border-b border-border">
+                    3. Bank Account for NEFT/RTGS Order Payouts
+                  </h4>
+                  <div className="grid gap-4 sm:grid-cols-2 text-xs">
+                    <div>
+                      <label className="text-muted-foreground block mb-1 font-semibold">Account Holder Name *</label>
+                      <input
+                        type="text"
+                        value={profileForm.accountHolderName}
+                        onChange={(e) => setProfileForm({ ...profileForm, accountHolderName: e.target.value })}
+                        placeholder="Name as printed on bank passbook"
                         className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
                       />
                     </div>
                     <div>
-                      <label className="text-muted-foreground block mb-1 font-semibold">State *</label>
+                      <label className="text-muted-foreground block mb-1 font-semibold">Bank Name *</label>
                       <input
                         type="text"
-                        required
-                        value={profileForm.state}
-                        onChange={(e) => setProfileForm({ ...profileForm, state: e.target.value })}
-                        placeholder="e.g. Andhra Pradesh"
+                        value={profileForm.bankName}
+                        onChange={(e) => setProfileForm({ ...profileForm, bankName: e.target.value })}
+                        placeholder="e.g. HDFC / SBI"
                         className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
                       />
                     </div>
                     <div>
-                      <label className="text-muted-foreground block mb-1 font-semibold">Pincode *</label>
+                      <label className="text-muted-foreground block mb-1 font-semibold">Bank Account Number *</label>
                       <input
                         type="text"
-                        required
-                        value={profileForm.pincode}
-                        onChange={(e) => setProfileForm({ ...profileForm, pincode: e.target.value })}
-                        placeholder="e.g. 534201"
-                        className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                        value={profileForm.accountNumber}
+                        onChange={(e) => setProfileForm({ ...profileForm, accountNumber: e.target.value })}
+                        placeholder="e.g. 7738293690"
+                        className="w-full h-9 rounded-xl border border-border px-3 font-mono font-semibold bg-background"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-muted-foreground block mb-1 font-semibold">IFSC Code *</label>
+                      <input
+                        type="text"
+                        value={profileForm.ifscCode}
+                        onChange={(e) => setProfileForm({ ...profileForm, ifscCode: e.target.value.toUpperCase() })}
+                        placeholder="e.g. HDFC0001234"
+                        className="w-full h-9 rounded-xl border border-border px-3 font-mono font-bold bg-background"
                       />
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* 3. Bank Account & Settlement Payouts */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-bold text-foreground pb-2 border-b border-border">
-                  3. Bank Account for NEFT/RTGS Order Payouts
-                </h4>
-                <div className="grid gap-4 sm:grid-cols-2 text-xs">
-                  <div>
-                    <label className="text-muted-foreground block mb-1 font-semibold">Account Holder Name *</label>
-                    <input
-                      type="text"
-                      value={profileForm.accountHolderName}
-                      onChange={(e) => setProfileForm({ ...profileForm, accountHolderName: e.target.value })}
-                      placeholder="Name as printed on bank passbook"
-                      className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
-                    />
+                {/* Submit Button */}
+                <div className="pt-4 border-t border-border flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setTab("shop")}
+                    className="rounded-xl border border-border px-4 py-2 text-xs font-semibold hover:bg-muted transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingProfile}
+                    className="rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-2xs hover:opacity-95 transition disabled:opacity-50 cursor-pointer"
+                  >
+                    {isSavingProfile ? "Saving..." : "Save Editable Store Details"}
+                  </button>
+                </div>
+              </form>
+            </Panel>
+
+            {/* Change Requests History Card */}
+            <Panel title="Business Detail Change Requests & Audit History">
+              {changeRequests.length === 0 ? (
+                <div className="py-8 text-center text-xs text-muted-foreground">
+                  <FileText className="h-7 w-7 mx-auto mb-2 opacity-30" />
+                  No change requests submitted yet. All verified business details are current.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="text-left text-muted-foreground uppercase border-b pb-2">
+                      <tr>
+                        <th className="py-2">Field</th>
+                        <th>Proposed Value</th>
+                        <th>Reason</th>
+                        <th>Submitted</th>
+                        <th>Status</th>
+                        <th>Admin Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {changeRequests.map((cr) => (
+                        <tr key={cr.id} className="hover:bg-muted/20">
+                          <td className="py-2.5 font-bold">{cr.field_label || cr.field_name}</td>
+                          <td className="font-mono">{cr.new_value}</td>
+                          <td className="text-gray-500 max-w-xs truncate">{cr.reason}</td>
+                          <td className="text-gray-400">{new Date(cr.created_at).toLocaleDateString()}</td>
+                          <td>
+                            <span
+                              className={cn(
+                                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                                cr.status === "APPROVED"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : cr.status === "REJECTED"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-amber-100 text-amber-800"
+                              )}
+                            >
+                              {cr.status}
+                            </span>
+                          </td>
+                          <td className="text-gray-500 text-[11px]">{cr.admin_notes || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Panel>
+
+            {/* Change Request Modal */}
+            {isChangeModalOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+                <div className="w-full max-w-lg rounded-3xl bg-card border border-border p-6 shadow-2xl space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-border">
+                    <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                      <Lock className="h-4 w-4 text-blue-600" />
+                      Request Business Detail Change
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setIsChangeModalOpen(false)}
+                      className="p-1 rounded-lg text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
-                  <div>
-                    <label className="text-muted-foreground block mb-1 font-semibold">Bank Name *</label>
-                    <input
-                      type="text"
-                      value={profileForm.bankName}
-                      onChange={(e) => setProfileForm({ ...profileForm, bankName: e.target.value })}
-                      placeholder="e.g. Indian Bank / State Bank of India / HDFC"
-                      className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-muted-foreground block mb-1 font-semibold">Bank Account Number *</label>
-                    <input
-                      type="text"
-                      value={profileForm.accountNumber}
-                      onChange={(e) => setProfileForm({ ...profileForm, accountNumber: e.target.value })}
-                      placeholder="e.g. 7738293690"
-                      className="w-full h-9 rounded-xl border border-border px-3 font-mono font-semibold bg-background"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-muted-foreground block mb-1 font-semibold">IFSC Code *</label>
-                    <input
-                      type="text"
-                      value={profileForm.ifscCode}
-                      onChange={(e) => setProfileForm({ ...profileForm, ifscCode: e.target.value.toUpperCase() })}
-                      placeholder="e.g. IDIB000V144"
-                      className="w-full h-9 rounded-xl border border-border px-3 font-mono font-bold bg-background"
-                    />
-                  </div>
+
+                  <form onSubmit={handleSubmitChangeRequest} className="space-y-4 text-xs">
+                    <div>
+                      <label className="block font-semibold mb-1">Select Field to Modify *</label>
+                      <select
+                        value={crField}
+                        onChange={(e) => setCrField(e.target.value as any)}
+                        className="w-full h-9 rounded-xl border border-border px-3 bg-background"
+                      >
+                        <option value="owner_name">Verified Legal Owner / Business Name</option>
+                        <option value="business_type">Verified Business Type (Proprietorship / Partnership / Company)</option>
+                        <option value="gstin">Verified GSTIN Tax Identification</option>
+                        <option value="business_address">Registered Business Address</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold mb-1">Proposed New Value *</label>
+                      <input
+                        type="text"
+                        required
+                        value={crNewValue}
+                        onChange={(e) => setCrNewValue(e.target.value)}
+                        placeholder="Enter new verified value"
+                        className="w-full h-9 rounded-xl border border-border px-3 bg-background font-semibold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold mb-1">Reason & Justification *</label>
+                      <textarea
+                        required
+                        rows={3}
+                        value={crReason}
+                        onChange={(e) => setCrReason(e.target.value)}
+                        placeholder="Explain why this change is necessary (e.g. Legal business name update per MCA filing, GSTIN migration)"
+                        className="w-full rounded-xl border border-border p-3 bg-background"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold mb-1">Supporting Document URL / Link (Optional)</label>
+                      <input
+                        type="url"
+                        value={crDocUrl}
+                        onChange={(e) => setCrDocUrl(e.target.value)}
+                        placeholder="https://... (Supporting document certificate or gazette)"
+                        className="w-full h-9 rounded-xl border border-border px-3 bg-background"
+                      />
+                    </div>
+
+                    <div className="pt-3 border-t border-border flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsChangeModalOpen(false)}
+                        className="px-4 py-2 rounded-xl border border-border hover:bg-muted font-semibold"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSubmittingCr}
+                        className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold disabled:opacity-50"
+                      >
+                        {isSubmittingCr ? "Submitting Request..." : "Submit for Admin Review"}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
-
-              {/* Operating Preferences */}
-              <div className="space-y-3 pt-2">
-                <h4 className="text-sm font-bold text-foreground pb-2 border-b border-border">
-                  4. Operational Preferences
-                </h4>
-                <div className="flex items-center justify-between p-3.5 rounded-2xl border border-border bg-muted/20">
-                  <div>
-                    <h5 className="font-bold text-xs">Automated Order Confirmation</h5>
-                    <p className="text-[11px] text-muted-foreground">Automatically acknowledge orders for high-stock items</p>
-                  </div>
-                  <input type="checkbox" defaultChecked className="h-4 w-4 accent-primary cursor-pointer" />
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <div className="pt-4 border-t border-border flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setTab("shop")}
-                  className="rounded-xl border border-border px-4 py-2 text-xs font-semibold hover:bg-muted transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingProfile}
-                  className="rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-2xs hover:opacity-95 transition disabled:opacity-50 cursor-pointer"
-                >
-                  {isSavingProfile ? "Saving to Database..." : "Save Store Details to Database"}
-                </button>
-              </div>
-            </form>
-          </Panel>
-        </div>
-      )}
+            )}
+          </div>
+        );
+      })()}
     </DashboardShell>
   );
 }

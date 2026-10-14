@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Minus,
   Plus,
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/cart")({
 
 function CartPage() {
   const { cart, setQty, placeOrderWithOptions, userProfile, inventoryStock, addToCart } = useStore();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated, openCustomerLoginModal } = useAuth();
   const navigate = useNavigate();
 
   const [paymentMethod, setPaymentMethod] = useState<string>("UPI");
@@ -51,17 +51,74 @@ function CartPage() {
   const [couponError, setCouponError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
-  // Address state prefilled from profile
-  const [address, setAddress] = useState<AddressRef>({
-    name: userProfile.name || "Aakash Sharma",
-    phone: userProfile.phone || "+91 98765 43210",
-    street: "Flat 402, Green Glen Layout, Bellandur",
+
+  // Saved Addresses list from database
+  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+
+  // Detailed delivery information collected at checkout
+  const [deliveryDetails, setDeliveryDetails] = useState({
+    fullName: user?.name || userProfile.name || "Customer",
+    email: user?.email || userProfile.email || "customer@example.com",
+    phone: userProfile.phone || "",
+    houseFlat: "Flat 402, Block B",
+    streetLocality: "Green Glen Layout, Bellandur",
     city: "Bengaluru",
     state: "Karnataka",
     pincode: "560103",
+    deliveryInstructions: "Ring bell twice, leave with security if unavailable",
   });
 
   const [isEditingAddress, setIsEditingAddress] = useState(false);
+
+  // Auto-populate email & name from authenticated customer session
+  useEffect(() => {
+    if (user?.email) {
+      setDeliveryDetails((prev) => ({
+        ...prev,
+        email: user.email,
+        fullName: prev.fullName === "Customer" || !prev.fullName ? (user.name || "Customer") : prev.fullName,
+      }));
+    }
+  }, [user]);
+
+  // Load existing saved addresses from database
+  useEffect(() => {
+    fetch("/api/customer/addresses", { credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+          setSavedAddresses(data.data);
+          const defaultAddr = data.data.find((a: any) => a.is_default) || data.data[0];
+          if (defaultAddr) {
+            setDeliveryDetails((prev) => ({
+              ...prev,
+              fullName: defaultAddr.recipient_name || prev.fullName,
+              phone: defaultAddr.phone || prev.phone,
+              houseFlat: defaultAddr.house_flat || "",
+              streetLocality: defaultAddr.street_address || prev.streetLocality,
+              city: defaultAddr.city || prev.city,
+              state: defaultAddr.state || prev.state,
+              pincode: defaultAddr.pincode || prev.pincode,
+              deliveryInstructions: defaultAddr.delivery_instructions || "",
+            }));
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const fullStreetAddress = deliveryDetails.houseFlat
+    ? `${deliveryDetails.houseFlat}, ${deliveryDetails.streetLocality}`
+    : deliveryDetails.streetLocality;
+
+  const address: AddressRef = {
+    name: deliveryDetails.fullName,
+    phone: deliveryDetails.phone,
+    street: fullStreetAddress,
+    city: deliveryDetails.city,
+    state: deliveryDetails.state,
+    pincode: deliveryDetails.pincode,
+  };
 
   const discountAmount = appliedCoupon ? appliedCoupon.discount : 0;
   const quote = quoteCart(cart, discountAmount);
@@ -94,16 +151,20 @@ function CartPage() {
 
   const handlePlaceOrder = () => {
     if (!isAuthenticated) {
-      toast.info("Please sign in to place your order.");
-      navigate({ to: "/login", search: { redirect: "/cart" } });
+      toast.info("Please sign in to complete your checkout.");
+      openCustomerLoginModal({
+        onAuthenticated: () => {
+          toast.success("Signed in! Your cart is preserved. Review delivery details and confirm order.");
+        },
+      });
       return;
     }
     if (stockErrors.length > 0) {
       toast.error("Please adjust quantities to match available inventory.");
       return;
     }
-    if (!address.name || !address.phone || !address.street || !address.pincode) {
-      toast.error("Please complete your delivery address before placing order.");
+    if (!deliveryDetails.fullName.trim() || !deliveryDetails.phone.trim() || !deliveryDetails.streetLocality.trim() || !deliveryDetails.pincode.trim()) {
+      toast.error("Please provide complete delivery details (Full Name, Contact Number, Street & PIN code).");
       setIsEditingAddress(true);
       return;
     }
@@ -111,6 +172,42 @@ function CartPage() {
     // Prevent duplicate orders
     if (isSubmitting) return;
     setIsSubmitting(true);
+
+    // Save delivery address to database
+    fetch("/api/customer/addresses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        fullName: deliveryDetails.fullName,
+        email: deliveryDetails.email,
+        phone: deliveryDetails.phone,
+        houseFlat: deliveryDetails.houseFlat,
+        streetLocality: deliveryDetails.streetLocality,
+        city: deliveryDetails.city,
+        state: deliveryDetails.state,
+        pincode: deliveryDetails.pincode,
+        deliveryInstructions: deliveryDetails.deliveryInstructions,
+        isDefault: true,
+      }),
+    }).catch(() => {});
+
+    // Save order in backend database & trigger notifications
+    fetch("/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        customer_id: user?.id,
+        seller_id: quote.groups[0]?.vendorId || "sel_01",
+        total_amount: quote.total,
+        payment_method: paymentMethod,
+        shipping_address: {
+          ...deliveryDetails,
+          fullStreet: fullStreetAddress,
+        },
+      }),
+    }).catch(() => {});
 
     setTimeout(() => {
       try {
@@ -123,7 +220,7 @@ function CartPage() {
 
         setIsSubmitting(false);
         setConfirmedOrder(order);
-        toast.success(`Order ${order.id} placed successfully!`);
+        toast.success(`Order ${order.id} placed successfully! Delivery updates will be sent to ${deliveryDetails.email}.`);
       } catch (err) {
         setIsSubmitting(false);
         toast.error("Error processing order. Please try again.");
@@ -324,9 +421,39 @@ function CartPage() {
                   onClick={() => setIsEditingAddress(!isEditingAddress)}
                   className="text-xs font-semibold text-[#E31E24] hover:underline cursor-pointer"
                 >
-                  {isEditingAddress ? "Done" : "Change Address"}
+                  {isEditingAddress ? "Save Address" : "Edit / Change Address"}
                 </button>
               </div>
+
+              {/* Saved Addresses Selector */}
+              {savedAddresses.length > 1 && !isEditingAddress && (
+                <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
+                  <span className="text-[11px] font-semibold text-gray-500 shrink-0">Saved Addresses:</span>
+                  {savedAddresses.map((sa) => (
+                    <button
+                      key={sa.id}
+                      type="button"
+                      onClick={() => {
+                        setDeliveryDetails((prev) => ({
+                          ...prev,
+                          fullName: sa.recipient_name || prev.fullName,
+                          phone: sa.phone || prev.phone,
+                          houseFlat: sa.house_flat || "",
+                          streetLocality: sa.street_address || prev.streetLocality,
+                          city: sa.city || prev.city,
+                          state: sa.state || prev.state,
+                          pincode: sa.pincode || prev.pincode,
+                          deliveryInstructions: sa.delivery_instructions || "",
+                        }));
+                        toast.success(`Selected delivery address: ${sa.recipient_name}`);
+                      }}
+                      className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 bg-gray-50 hover:bg-red-50 hover:border-[#E31E24] font-medium transition shrink-0"
+                    >
+                      {sa.label || sa.recipient_name}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {isEditingAddress ? (
                 <div className="mt-3 grid gap-3 sm:grid-cols-2 text-xs">
@@ -334,56 +461,148 @@ function CartPage() {
                     <label className="block font-semibold text-gray-700 mb-1">Full Name</label>
                     <input
                       type="text"
-                      value={address.name}
-                      onChange={(e) => setAddress({ ...address, name: e.target.value })}
-                      className="w-full h-9 rounded-lg border border-gray-300 px-3 text-xs"
+                      required
+                      value={deliveryDetails.fullName}
+                      onChange={(e) => setDeliveryDetails({ ...deliveryDetails, fullName: e.target.value })}
+                      placeholder="Receiver's full name"
+                      className="w-full h-9 rounded-lg border border-gray-300 px-3 text-xs focus:outline-none focus:border-[#E31E24]"
                     />
                   </div>
+
                   <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Contact Phone</label>
+                    <label className="block font-semibold text-gray-700 mb-1 flex items-center justify-between">
+                      <span>Email Address</span>
+                      <span className="text-[10px] text-gray-400 font-normal">Auto-populated</span>
+                    </label>
                     <input
-                      type="text"
-                      value={address.phone}
-                      onChange={(e) => setAddress({ ...address, phone: e.target.value })}
-                      className="w-full h-9 rounded-lg border border-gray-300 px-3 text-xs"
+                      type="email"
+                      readOnly
+                      value={deliveryDetails.email}
+                      className="w-full h-9 rounded-lg border border-gray-200 bg-gray-50 px-3 text-xs text-gray-600 cursor-not-allowed"
                     />
                   </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1 flex items-center justify-between">
+                      <span>Contact Mobile Number</span>
+                      <span className="text-[10px] text-[#E31E24] font-normal">For delivery only</span>
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={deliveryDetails.phone}
+                      onChange={(e) => setDeliveryDetails({ ...deliveryDetails, phone: e.target.value })}
+                      placeholder="10-digit mobile number"
+                      className="w-full h-9 rounded-lg border border-gray-300 px-3 text-xs focus:outline-none focus:border-[#E31E24]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">House / Flat / Block No.</label>
+                    <input
+                      type="text"
+                      value={deliveryDetails.houseFlat}
+                      onChange={(e) => setDeliveryDetails({ ...deliveryDetails, houseFlat: e.target.value })}
+                      placeholder="e.g. Flat 402, Block B"
+                      className="w-full h-9 rounded-lg border border-gray-300 px-3 text-xs focus:outline-none focus:border-[#E31E24]"
+                    />
+                  </div>
+
                   <div className="sm:col-span-2">
-                    <label className="block font-semibold text-gray-700 mb-1">Street Address / Landmark</label>
+                    <label className="block font-semibold text-gray-700 mb-1">Street / Locality / Landmark</label>
                     <input
                       type="text"
-                      value={address.street}
-                      onChange={(e) => setAddress({ ...address, street: e.target.value })}
-                      className="w-full h-9 rounded-lg border border-gray-300 px-3 text-xs"
+                      required
+                      value={deliveryDetails.streetLocality}
+                      onChange={(e) => setDeliveryDetails({ ...deliveryDetails, streetLocality: e.target.value })}
+                      placeholder="e.g. Green Glen Layout, near Central Park"
+                      className="w-full h-9 rounded-lg border border-gray-300 px-3 text-xs focus:outline-none focus:border-[#E31E24]"
                     />
                   </div>
+
                   <div>
                     <label className="block font-semibold text-gray-700 mb-1">City</label>
                     <input
                       type="text"
-                      value={address.city}
-                      onChange={(e) => setAddress({ ...address, city: e.target.value })}
-                      className="w-full h-9 rounded-lg border border-gray-300 px-3 text-xs"
+                      required
+                      value={deliveryDetails.city}
+                      onChange={(e) => setDeliveryDetails({ ...deliveryDetails, city: e.target.value })}
+                      className="w-full h-9 rounded-lg border border-gray-300 px-3 text-xs focus:outline-none focus:border-[#E31E24]"
                     />
                   </div>
-                  <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Pincode</label>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">State</label>
+                      <input
+                        type="text"
+                        required
+                        value={deliveryDetails.state}
+                        onChange={(e) => setDeliveryDetails({ ...deliveryDetails, state: e.target.value })}
+                        className="w-full h-9 rounded-lg border border-gray-300 px-3 text-xs focus:outline-none focus:border-[#E31E24]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">PIN Code</label>
+                      <input
+                        type="text"
+                        required
+                        maxLength={6}
+                        value={deliveryDetails.pincode}
+                        onChange={(e) => setDeliveryDetails({ ...deliveryDetails, pincode: e.target.value })}
+                        className="w-full h-9 rounded-lg border border-gray-300 px-3 text-xs focus:outline-none focus:border-[#E31E24]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block font-semibold text-gray-700 mb-1">
+                      Delivery Instructions (Optional)
+                    </label>
                     <input
                       type="text"
-                      value={address.pincode}
-                      onChange={(e) => setAddress({ ...address, pincode: e.target.value })}
-                      className="w-full h-9 rounded-lg border border-gray-300 px-3 text-xs"
+                      value={deliveryDetails.deliveryInstructions}
+                      onChange={(e) => setDeliveryDetails({ ...deliveryDetails, deliveryInstructions: e.target.value })}
+                      placeholder="e.g. Ring bell, leave with security desk, or call upon arrival"
+                      className="w-full h-9 rounded-lg border border-gray-300 px-3 text-xs focus:outline-none focus:border-[#E31E24]"
                     />
+                  </div>
+
+                  <div className="sm:col-span-2 pt-1 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingAddress(false);
+                        toast.success("Delivery address updated for this order.");
+                      }}
+                      className="px-4 py-2 rounded-lg bg-[#E31E24] text-white text-xs font-bold hover:bg-red-700 transition"
+                    >
+                      Save & Use This Address
+                    </button>
                   </div>
                 </div>
               ) : (
                 <div className="mt-3 flex items-start justify-between text-xs text-[#6B7280]">
-                  <div>
-                    <p className="font-bold text-[#111111]">{address.name} ({address.phone})</p>
-                    <p className="mt-0.5">{address.street}, {address.city} - {address.pincode}</p>
-                    <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      <Truck className="h-3 w-3" /> Serviceable via Delhivery & Bluedart
-                    </span>
+                  <div className="space-y-1">
+                    <p className="font-bold text-[#111111]">
+                      {deliveryDetails.fullName} {deliveryDetails.phone ? `(${deliveryDetails.phone})` : ""}
+                    </p>
+                    <p className="text-gray-500 text-[11px]">
+                      Email: <span className="font-mono text-gray-700">{deliveryDetails.email}</span>
+                    </p>
+                    <p className="text-gray-700">
+                      {fullStreetAddress}, {deliveryDetails.city}, {deliveryDetails.state} - {deliveryDetails.pincode}
+                    </p>
+                    {deliveryDetails.deliveryInstructions && (
+                      <p className="text-gray-500 italic text-[11px]">
+                        Note: "{deliveryDetails.deliveryInstructions}"
+                      </p>
+                    )}
+                    <div className="pt-1.5 flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        <Truck className="h-3 w-3" /> Serviceable via Delhivery & Bluedart
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}

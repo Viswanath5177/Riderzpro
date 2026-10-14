@@ -68,18 +68,26 @@ export function AnalyticsScreen() {
   const [range, setRange] = useState<"7d" | "30d" | "all">("7d");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "APPROVED" | "PENDING_REVIEW">("ALL");
 
+  const [viewTab, setViewTab] = useState<"top_products" | "top_sellers">("top_products");
+  const [productsList, setProductsList] = useState<any[]>([]);
+
   const loadAnalytics = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/sellers/analytics");
+      const [res, prodRes] = await Promise.all([
+        fetch("/api/admin/sellers/analytics"),
+        fetch("/api/products?all=true"),
+      ]);
       const json = await res.json();
       if (json.success && json.data) {
         setData(json.data);
-      } else {
-        toast.error("Failed to load live seller analytics from database");
+      }
+      const prodJson = await prodRes.json();
+      if (prodJson.success && Array.isArray(prodJson.data)) {
+        setProductsList(prodJson.data);
       }
     } catch (err: any) {
-      console.error("Error fetching seller analytics:", err);
+      console.error("Error fetching analytics:", err);
       toast.error("Failed to connect to analytics service");
     } finally {
       setLoading(false);
@@ -111,6 +119,16 @@ export function AnalyticsScreen() {
     return matchesSearch && matchesStatus;
   });
 
+  const filteredProducts = productsList.filter((p) => {
+    const matches =
+      p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.category_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.seller_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.store_name?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matches;
+  });
+
   // Chart data: Top sellers by weekly revenue
   const chartData = sellers.slice(0, 7).map((s) => ({
     name: s.store_name?.length > 14 ? s.store_name.slice(0, 14) + "..." : s.store_name,
@@ -126,7 +144,7 @@ export function AnalyticsScreen() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[#111111] tracking-tight">
-              Seller Directory & Revenue Analytics
+              Analytics & Top Products
             </h1>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -134,11 +152,37 @@ export function AnalyticsScreen() {
             </span>
           </div>
           <p className="text-sm text-[#4B5563] font-medium mt-1">
-            Real-time PostgreSQL tracking of weekly top sellers, GMV revenue distribution, and vendor compliance.
+            Real-time catalog performance, velocity of top-selling products, and verified seller volume.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Tab Switcher */}
+          <div className="flex rounded-2xl border border-[#E5E7EB] bg-gray-50 p-1 text-xs font-bold">
+            <button
+              onClick={() => setViewTab("top_products")}
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                viewTab === "top_products"
+                  ? "bg-white text-[#111111] shadow-2xs"
+                  : "text-gray-500 hover:text-gray-900"
+              }`}
+            >
+              <Package className="h-3.5 w-3.5 text-[#E31E24]" />
+              Top Products ({productsList.length})
+            </button>
+            <button
+              onClick={() => setViewTab("top_sellers")}
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                viewTab === "top_sellers"
+                  ? "bg-white text-[#111111] shadow-2xs"
+                  : "text-gray-500 hover:text-gray-900"
+              }`}
+            >
+              <Store className="h-3.5 w-3.5 text-blue-600" />
+              Top Sellers ({sellers.length})
+            </button>
+          </div>
+
           <GlassButton
             onClick={loadAnalytics}
             disabled={loading}
@@ -270,157 +314,305 @@ export function AnalyticsScreen() {
         </div>
       )}
 
-      {/* Sellers List Table */}
-      <div className="rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-2xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 mb-4 border-b border-[#E5E7EB]">
-          <div>
-            <h3 className="font-bold text-base text-[#111111]">Sellers Performance Directory</h3>
-            <p className="text-xs text-[#6B7280] font-medium mt-0.5">
-              Ranked list of verified vendors and stores registered in PostgreSQL
-            </p>
-          </div>
+      {viewTab === "top_products" ? (
+        /* Top Products Performance Table */
+        <div className="rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-2xs">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 mb-4 border-b border-[#E5E7EB]">
+            <div>
+              <h3 className="font-bold text-base text-[#111111]">Top Products & SKU Performance</h3>
+              <p className="text-xs text-[#6B7280] font-medium mt-0.5">
+                Ranked catalog components, stock availability, seller attribution, and verification status
+              </p>
+            </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search store, owner or city..."
+                placeholder="Search product, SKU or seller..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-9 w-52 sm:w-64 rounded-2xl border border-[#E5E7EB] bg-gray-50/70 pl-8 pr-3 text-xs font-medium text-[#111111] placeholder-gray-400 focus:border-[#E31E24] focus:bg-white focus:outline-none"
               />
             </div>
+          </div>
 
-            {/* Filter */}
-            <div className="flex rounded-2xl border border-[#E5E7EB] bg-gray-50 p-1 text-xs font-bold">
-              {(["ALL", "APPROVED", "PENDING_REVIEW"] as const).map((st) => (
-                <button
-                  key={st}
-                  onClick={() => setStatusFilter(st)}
-                  className={`rounded-xl px-2.5 py-1 text-[11px] transition cursor-pointer ${
-                    statusFilter === st
-                      ? "bg-white text-[#111111] shadow-2xs"
-                      : "text-gray-500 hover:text-gray-900"
-                  }`}
-                >
-                  {st === "ALL" ? "All" : st === "APPROVED" ? "Approved" : "Pending KYC"}
-                </button>
-              ))}
-            </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-[#E5E7EB] bg-gray-50/70 text-[10px] font-extrabold uppercase text-[#6B7280]">
+                  <th className="py-3 px-4">Rank</th>
+                  <th className="py-3 px-4">Product & SKU</th>
+                  <th className="py-3 px-4">Category</th>
+                  <th className="py-3 px-4">Publishing Seller</th>
+                  <th className="py-3 px-4 text-right">Price</th>
+                  <th className="py-3 px-4 text-right">Stock</th>
+                  <th className="py-3 px-4">Verification</th>
+                  <th className="py-3 px-4 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#F3F4F6]">
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="py-10 text-center text-[#6B7280]">
+                      <div className="flex items-center justify-center gap-2">
+                        <RefreshCw className="h-4 w-4 animate-spin text-[#E31E24]" />
+                        <span>Loading top catalog products from PostgreSQL...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredProducts.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-[#6B7280]">
+                      <Package className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                      <p className="font-bold text-sm text-[#111111]">No products found</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Products submitted by sellers will appear here.
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredProducts.map((p, idx) => {
+                    let firstImg = "https://images.unsplash.com/photo-1558441719-8b489c652758?w=500&auto=format&fit=crop&q=80";
+                    if (p.image_url) {
+                      try {
+                        const parsed = JSON.parse(p.image_url);
+                        if (Array.isArray(parsed) && parsed[0]) firstImg = parsed[0];
+                        else if (typeof parsed === "string") firstImg = parsed;
+                      } catch {
+                        firstImg = p.image_url;
+                      }
+                    }
+
+                    const isPending = p.verification_status === "pending_approval";
+                    const isRejected = p.verification_status === "rejected";
+
+                    return (
+                      <tr key={p.id} className="hover:bg-gray-50/50 transition">
+                        <td className="py-3.5 px-4 font-mono font-bold">
+                          {idx === 0 ? (
+                            <span className="inline-flex items-center gap-1 text-amber-700 font-extrabold bg-amber-100 border border-amber-300 rounded-md px-1.5 py-0.5 text-[10px]">
+                              ⭐ #1
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">#{idx + 1}</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={firstImg}
+                              alt=""
+                              className="h-10 w-10 rounded-xl object-cover border border-[#E5E7EB] shrink-0 bg-gray-100"
+                            />
+                            <div className="min-w-0 max-w-xs">
+                              <p className="font-bold text-[#111111] truncate">{p.name}</p>
+                              <p className="text-[11px] text-[#6B7280] font-mono mt-0.5">
+                                SKU: {p.sku || `RZP-${p.id.slice(0, 6).toUpperCase()}`}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 font-semibold text-[#111111]">
+                          {p.category_name || "EV Accessories"}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <p className="font-bold text-[#111111]">{p.store_name || p.seller_name || "Official Partner"}</p>
+                          <p className="text-[10px] text-[#6B7280]">{p.seller_name}</p>
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-extrabold text-[#111111]">
+                          ₹{Number(p.price || 0).toLocaleString("en-IN")}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-bold">
+                          <span className={Number(p.stock) <= 5 ? "text-red-600" : "text-emerald-700"}>
+                            {p.stock} units
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {isPending ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200">
+                              <Clock className="h-3 w-3" /> Pending Review
+                            </span>
+                          ) : isRejected ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-0.5 text-[10px] font-bold text-red-700 border border-red-200">
+                              <XCircle className="h-3 w-3" /> Declined
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 className="h-3 w-3" /> Approved & Live
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <Link
+                            to="/admin/products"
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#E31E24] hover:underline"
+                          >
+                            Manage
+                            <ExternalLink className="h-3 w-3" />
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
+      ) : (
+        /* Sellers List Table */
+        <div className="rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-2xs">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 mb-4 border-b border-[#E5E7EB]">
+            <div>
+              <h3 className="font-bold text-base text-[#111111]">Sellers Performance Directory</h3>
+              <p className="text-xs text-[#6B7280] font-medium mt-0.5">
+                Ranked list of verified vendors and stores registered in PostgreSQL
+              </p>
+            </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-[#E5E7EB] bg-gray-50/70 text-[10px] font-extrabold uppercase text-[#6B7280]">
-                <th className="py-3 px-4">Rank</th>
-                <th className="py-3 px-4">Store Name & Owner</th>
-                <th className="py-3 px-4">Location</th>
-                <th className="py-3 px-4">KYC Status</th>
-                <th className="py-3 px-4 text-right">Weekly Orders</th>
-                <th className="py-3 px-4 text-right">Weekly Revenue</th>
-                <th className="py-3 px-4 text-right">Total Revenue</th>
-                <th className="py-3 px-4 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F3F4F6]">
-              {loading ? (
-                <tr>
-                  <td colSpan={8} className="py-10 text-center text-[#6B7280]">
-                    <div className="flex items-center justify-center gap-2">
-                      <RefreshCw className="h-4 w-4 animate-spin text-[#E31E24]" />
-                      <span>Loading seller analytics from PostgreSQL...</span>
-                    </div>
-                  </td>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search store, owner or city..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-9 w-52 sm:w-64 rounded-2xl border border-[#E5E7EB] bg-gray-50/70 pl-8 pr-3 text-xs font-medium text-[#111111] placeholder-gray-400 focus:border-[#E31E24] focus:bg-white focus:outline-none"
+                />
+              </div>
+
+              {/* Filter */}
+              <div className="flex rounded-2xl border border-[#E5E7EB] bg-gray-50 p-1 text-xs font-bold">
+                {(["ALL", "APPROVED", "PENDING_REVIEW"] as const).map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => setStatusFilter(st)}
+                    className={`rounded-xl px-2.5 py-1 text-[11px] transition cursor-pointer ${
+                      statusFilter === st
+                        ? "bg-white text-[#111111] shadow-2xs"
+                        : "text-gray-500 hover:text-gray-900"
+                    }`}
+                  >
+                    {st === "ALL" ? "All" : st === "APPROVED" ? "Approved" : "Pending KYC"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-[#E5E7EB] bg-gray-50/70 text-[10px] font-extrabold uppercase text-[#6B7280]">
+                  <th className="py-3 px-4">Rank</th>
+                  <th className="py-3 px-4">Store Name & Owner</th>
+                  <th className="py-3 px-4">Location</th>
+                  <th className="py-3 px-4">KYC Status</th>
+                  <th className="py-3 px-4 text-right">Weekly Orders</th>
+                  <th className="py-3 px-4 text-right">Weekly Revenue</th>
+                  <th className="py-3 px-4 text-right">Total Revenue</th>
+                  <th className="py-3 px-4 text-center">Action</th>
                 </tr>
-              ) : filteredSellers.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center text-[#6B7280]">
-                    <Store className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                    <p className="font-bold text-sm text-[#111111]">No seller records found</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {searchQuery
-                        ? "No sellers matched your search criteria."
-                        : "Vendors will appear here as soon as they submit applications via /vendor/signup."}
-                    </p>
-                  </td>
-                </tr>
-              ) : (
-                filteredSellers.map((s, idx) => {
-                  const isTop = idx === 0 && Number(s.weekly_revenue || 0) >= 0;
-                  return (
-                    <tr key={s.id} className="hover:bg-gray-50/50 transition">
-                      <td className="py-3.5 px-4 font-mono font-bold">
-                        {isTop ? (
-                          <span className="inline-flex items-center gap-1 text-amber-700 font-extrabold bg-amber-100 border border-amber-300 rounded-md px-1.5 py-0.5 text-[10px]">
-                            🏆 #1
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">#{idx + 1}</span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gray-100 font-bold text-xs text-[#111111]">
-                            {s.store_name?.charAt(0) || "S"}
+              </thead>
+              <tbody className="divide-y divide-[#F3F4F6]">
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="py-10 text-center text-[#6B7280]">
+                      <div className="flex items-center justify-center gap-2">
+                        <RefreshCw className="h-4 w-4 animate-spin text-[#E31E24]" />
+                        <span>Loading seller analytics from PostgreSQL...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredSellers.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-[#6B7280]">
+                      <Store className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                      <p className="font-bold text-sm text-[#111111]">No seller records found</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {searchQuery
+                          ? "No sellers matched your search criteria."
+                          : "Vendors will appear here as soon as they submit applications via /vendor/signup."}
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredSellers.map((s, idx) => {
+                    const isTop = idx === 0 && Number(s.weekly_revenue || 0) >= 0;
+                    return (
+                      <tr key={s.id} className="hover:bg-gray-50/50 transition">
+                        <td className="py-3.5 px-4 font-mono font-bold">
+                          {isTop ? (
+                            <span className="inline-flex items-center gap-1 text-amber-700 font-extrabold bg-amber-100 border border-amber-300 rounded-md px-1.5 py-0.5 text-[10px]">
+                              🏆 #1
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">#{idx + 1}</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gray-100 font-bold text-xs text-[#111111]">
+                              {s.store_name?.charAt(0) || "S"}
+                            </div>
+                            <div>
+                              <p className="font-bold text-[#111111]">{s.store_name}</p>
+                              <p className="text-[11px] text-[#6B7280]">{s.owner_name} • {s.email}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-bold text-[#111111]">{s.store_name}</p>
-                            <p className="text-[11px] text-[#6B7280]">{s.owner_name} • {s.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 text-gray-600 font-medium">
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin className="h-3 w-3 text-gray-400" />
-                          {s.city || "India"}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        {s.status === "APPROVED" ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
-                            <CheckCircle2 className="h-3 w-3" /> Approved
+                        </td>
+                        <td className="py-3.5 px-4 text-gray-600 font-medium">
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin className="h-3 w-3 text-gray-400" />
+                            {s.city || "India"}
                           </span>
-                        ) : s.status === "PENDING_REVIEW" ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200">
-                            <Clock className="h-3 w-3" /> Pending KYC
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-0.5 text-[10px] font-bold text-red-700 border border-red-200">
-                            <XCircle className="h-3 w-3" /> Rejected
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-[#111111]">
-                        {s.weekly_orders || 0}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-extrabold text-emerald-700">
-                        ₹{Number(s.weekly_revenue || 0).toLocaleString("en-IN")}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-[#111111]">
-                        ₹{Number(s.total_revenue || 0).toLocaleString("en-IN")}
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <Link
-                          to="/admin/sellers"
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-[#E31E24] hover:underline"
-                        >
-                          Review KYC
-                          <ExternalLink className="h-3 w-3" />
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {s.status === "APPROVED" ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 className="h-3 w-3" /> Approved
+                            </span>
+                          ) : s.status === "PENDING_REVIEW" ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200">
+                              <Clock className="h-3 w-3" /> Pending KYC
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-0.5 text-[10px] font-bold text-red-700 border border-red-200">
+                              <XCircle className="h-3 w-3" /> Rejected
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-bold text-[#111111]">
+                          {s.weekly_orders || 0}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-extrabold text-emerald-700">
+                          ₹{Number(s.weekly_revenue || 0).toLocaleString("en-IN")}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-bold text-[#111111]">
+                          ₹{Number(s.total_revenue || 0).toLocaleString("en-IN")}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <Link
+                            to="/admin/sellers"
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#E31E24] hover:underline"
+                          >
+                            Review KYC
+                            <ExternalLink className="h-3 w-3" />
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

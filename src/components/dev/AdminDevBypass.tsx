@@ -31,10 +31,7 @@ export function AdminDevBypass() {
         (e.key === "A" || e.key === "a")
       ) {
         e.preventDefault();
-        toast.info("⚡ Admin Entry Triggered", {
-          description: "Navigating to /admin/login...",
-        });
-        navigate({ to: "/admin/login" });
+        navigate({ to: "/login", search: { redirect: "/admin" } });
       }
     };
     window.addEventListener("keydown", handleKeyDown);

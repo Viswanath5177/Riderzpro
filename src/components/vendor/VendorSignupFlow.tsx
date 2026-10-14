@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/site/bits";
-import { sendEmailOtp, verifyEmailOtp, registerVendor } from "@/lib/auth";
+import { sendEmailOtp, verifyEmailOtp, registerVendor, checkPhoneExists, checkEmailExists } from "@/lib/auth";
 
 export type VendorStep = "account" | "business" | "success";
 
@@ -81,8 +81,11 @@ export function VendorSignupFlow() {
   // STEP 1: EMAIL & PASSWORD STATE
   // ==========================================
   const [mobileNumber, setMobileNumber] = useState("");
+  const [mobileError, setMobileError] = useState<string | null>(null);
+  const [isCheckingMobile, setIsCheckingMobile] = useState(false);
 
   const [emailId, setEmailId] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [isEmailOtpSent, setIsEmailOtpSent] = useState(false);
   const [emailOtp, setEmailOtp] = useState("");
   const [isEmailVerified, setIsEmailVerified] = useState(false);
@@ -149,21 +152,70 @@ export function VendorSignupFlow() {
   const [applicationId, setApplicationId] = useState("");
 
   // ==========================================
-  // STEP 1 HANDLERS: EMAIL OTP DISPATCH & VERIFY
+  // STEP 1 HANDLERS: MOBILE CHECK & EMAIL OTP DISPATCH & VERIFY
   // ==========================================
+  const checkMobileAvailability = async (phoneVal: string): Promise<boolean> => {
+    const cleanPhone = phoneVal.replace(/\D/g, "").slice(-10);
+    if (cleanPhone.length < 10) {
+      setMobileError(null);
+      return false;
+    }
+    setIsCheckingMobile(true);
+    try {
+      const res = await checkPhoneExists(cleanPhone);
+      if (res.exists) {
+        setMobileError("This mobile number is already aligned with an existing account.");
+        return true;
+      } else {
+        setMobileError(null);
+        return false;
+      }
+    } catch {
+      setMobileError(null);
+      return false;
+    } finally {
+      setIsCheckingMobile(false);
+    }
+  };
+
+  const handleMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setMobileNumber(val);
+    const digits = val.replace(/\D/g, "");
+    if (digits.length >= 10) {
+      checkMobileAvailability(digits);
+    } else {
+      setMobileError(null);
+    }
+  };
+
   const handleSendEmailOtp = async () => {
-    if (!emailId || !emailId.includes("@") || !emailId.includes(".")) {
+    const cleanEmail = emailId.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes("@") || !cleanEmail.includes(".")) {
       toast.error("Please enter a valid business email address.");
       return;
     }
+    setEmailError(null);
     setIsSendingEmailOtp(true);
     try {
-      const res = await sendEmailOtp(emailId.trim(), "VENDOR_SIGNUP");
+      // 1. Check database first to see if an account already exists with that email
+      const checkRes = await checkEmailExists(cleanEmail);
+      if (checkRes.isRegistered) {
+        const errorMsg = "An account with this email address already exists. Please sign in instead.";
+        setEmailError(errorMsg);
+        toast.error(errorMsg);
+        return;
+      }
+
+      // 2. Dispatch OTP only if email does not exist in db
+      const res = await sendEmailOtp(cleanEmail, "VENDOR_SIGNUP");
       setIsEmailOtpSent(true);
       setEmailCountdown(res.cooldownSeconds || 60);
-      toast.success(`Verification code dispatched to ${emailId.trim()}`);
+      toast.success(`Verification code dispatched to ${cleanEmail}`);
     } catch (err: any) {
-      toast.error(err?.message || "Failed to dispatch verification code.");
+      const msg = err?.message || "Failed to dispatch verification code.";
+      setEmailError(msg);
+      toast.error(msg);
     } finally {
       setIsSendingEmailOtp(false);
     }
@@ -187,16 +239,32 @@ export function VendorSignupFlow() {
   };
 
   // Continue from Step 1 to Step 2
-  const handleStep1Continue = (e: React.FormEvent) => {
+  const handleStep1Continue = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const cleanPhone = mobileNumber.replace(/\D/g, "");
+    const cleanPhone = mobileNumber.replace(/\D/g, "").slice(-10);
     if (cleanPhone.length < 10) {
       toast.error("Please enter a valid 10-digit contact mobile number.");
       return;
     }
+    if (mobileError) {
+      toast.error(mobileError);
+      return;
+    }
+
+    // Safety check for mobile uniqueness against DB
+    const isMobileInUse = await checkMobileAvailability(cleanPhone);
+    if (isMobileInUse) {
+      toast.error("This mobile number is already aligned with an existing account.");
+      return;
+    }
+
     if (!emailId.trim() || !emailId.includes("@")) {
       toast.error("Please enter a valid business email address.");
+      return;
+    }
+    if (emailError) {
+      toast.error(emailError);
       return;
     }
     if (!isEmailVerified) {
@@ -486,29 +554,58 @@ export function VendorSignupFlow() {
               <form onSubmit={handleStep1Continue} className="space-y-5">
                 {/* 1. Enter Mobile Number (Contact only - Mobile OTP explicitly postponed) */}
                 <div>
-                  <div className="relative flex items-center rounded-lg border border-gray-300 bg-white px-4 py-3.5 transition focus-within:border-[#0066cc] focus-within:ring-2 focus-within:ring-[#0066cc]/10">
+                  <div
+                    className={`relative flex items-center rounded-lg border bg-white px-4 py-3.5 transition ${
+                      mobileError
+                        ? "border-red-500 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-500/10"
+                        : "border-gray-300 focus-within:border-[#0066cc] focus-within:ring-2 focus-within:ring-[#0066cc]/10"
+                    }`}
+                  >
                     <input
                       type="tel"
                       required
                       value={mobileNumber}
-                      onChange={(e) => setMobileNumber(e.target.value)}
+                      onChange={handleMobileChange}
+                      onBlur={() => {
+                        if (mobileNumber.trim()) {
+                          checkMobileAvailability(mobileNumber);
+                        }
+                      }}
                       placeholder="Enter Contact Mobile Number *"
                       className="w-full text-sm text-gray-900 placeholder:text-gray-400 outline-none bg-transparent pr-28"
                     />
-                    <div className="absolute right-3.5 flex items-center">
-                      <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2 py-0.5 rounded">
+                    <div className="absolute right-3.5 flex items-center gap-2">
+                      {isCheckingMobile && (
+                        <span className="text-[11px] text-gray-400 animate-pulse">Checking...</span>
+                      )}
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                        mobileError ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-400"
+                      }`}>
                         Contact Info
                       </span>
                     </div>
                   </div>
-                  <p className="mt-1 text-[11px] text-gray-500">
-                    Used for courier dispatch notifications and logistics coordination.
-                  </p>
+                  {mobileError ? (
+                    <div className="mt-1.5 flex items-center gap-1.5 text-xs text-red-600 font-medium animate-in fade-in duration-150">
+                      <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+                      <span>{mobileError}</span>
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-[11px] text-gray-500">
+                      Used for courier dispatch notifications and logistics coordination.
+                    </p>
+                  )}
                 </div>
 
                 {/* 2. Email ID & Mandatory Email OTP */}
                 <div>
-                  <div className="relative flex items-center rounded-lg border border-gray-300 bg-white px-4 py-3.5 transition focus-within:border-[#0066cc] focus-within:ring-2 focus-within:ring-[#0066cc]/10">
+                  <div
+                    className={`relative flex items-center rounded-lg border bg-white px-4 py-3.5 transition ${
+                      emailError
+                        ? "border-red-500 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-500/10"
+                        : "border-gray-300 focus-within:border-[#0066cc] focus-within:ring-2 focus-within:ring-[#0066cc]/10"
+                    }`}
+                  >
                     <input
                       type="email"
                       required
@@ -516,6 +613,7 @@ export function VendorSignupFlow() {
                       onChange={(e) => {
                         setEmailId(e.target.value);
                         setIsEmailVerified(false);
+                        setEmailError(null);
                       }}
                       placeholder="Official Business Email Address *"
                       className="w-full text-sm text-gray-900 placeholder:text-gray-400 outline-none bg-transparent pr-28"
@@ -532,14 +630,30 @@ export function VendorSignupFlow() {
                           onClick={handleSendEmailOtp}
                           className="text-xs sm:text-sm font-semibold text-[#0066cc] hover:text-[#0052a3] transition cursor-pointer disabled:opacity-50"
                         >
-                          {isSendingEmailOtp ? "Sending..." : emailCountdown > 0 ? `Resend (${emailCountdown}s)` : isEmailOtpSent ? "Resend OTP" : "Send OTP"}
+                          {isSendingEmailOtp ? "Checking..." : emailCountdown > 0 ? `Resend (${emailCountdown}s)` : isEmailOtpSent ? "Resend OTP" : "Send OTP"}
                         </button>
                       )}
                     </div>
                   </div>
 
+                  {/* Inline Email Duplicate Alert */}
+                  {emailError && (
+                    <div className="mt-2 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-in fade-in duration-150">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
+                        <span>{emailError}</span>
+                      </div>
+                      <Link
+                        to="/vendor/login"
+                        className="inline-flex items-center gap-1 font-bold text-[#0066cc] hover:text-[#0052a3] hover:underline shrink-0"
+                      >
+                        Sign In to Vendor Hub →
+                      </Link>
+                    </div>
+                  )}
+
                   {/* Inline 6-digit Email OTP Input */}
-                  {isEmailOtpSent && !isEmailVerified && (
+                  {isEmailOtpSent && !isEmailVerified && !emailError && (
                     <div className="mt-2.5 p-3.5 rounded-xl bg-blue-50/80 border border-blue-200 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in duration-150">
                       <div className="flex items-center gap-2 text-xs text-blue-900">
                         <Mail className="h-4 w-4 text-[#0066cc] shrink-0" />

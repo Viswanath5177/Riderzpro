@@ -28,7 +28,7 @@ import { AdminProduct } from "@/mocks/admin/types";
 export function ProductsScreen() {
   const { products: mockProducts, bikes, sellers, addProduct, updateProduct, deleteProduct } = useAdminStore();
   const [productsList, setProductsList] = useState<AdminProduct[]>([]);
-  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("Pending Review");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [deleteModalProduct, setDeleteModalProduct] = useState<AdminProduct | null>(null);
@@ -85,7 +85,7 @@ export function ProductsScreen() {
             const status: AdminProduct["status"] = isPending
               ? "Pending Review"
               : isRejected
-              ? ("Pending Review" as any)
+              ? "Rejected"
               : rowStock <= 0
               ? "Out of Stock"
               : rowStock <= 5
@@ -107,6 +107,8 @@ export function ProductsScreen() {
               compatibleBikes: compBikes,
               imageUrl: firstImg,
               status,
+              verificationStatus: row.verification_status,
+              rejectionReason: row.rejection_reason || "",
               specs: {
                 "Fitment Type": row.fitment_type || "Universal",
                 "Verification": row.verification_status || "approved",
@@ -162,23 +164,21 @@ export function ProductsScreen() {
 
   const currentDisplayProducts = productsList;
 
+  const pendingCount = currentDisplayProducts.filter(
+    (p: any) => p.status === "Pending Review" || p.verificationStatus === "pending_approval"
+  ).length;
+  const activeCount = currentDisplayProducts.filter(
+    (p: any) => p.status === "Active" || p.verificationStatus === "approved" || p.status === "Low Stock"
+  ).length;
+  const rejectedCount = currentDisplayProducts.filter(
+    (p: any) => p.status === "Rejected" || p.verificationStatus === "rejected"
+  ).length;
+
   const filterTabs = [
-    { label: "All Catalog", value: "ALL", count: currentDisplayProducts.length },
-    {
-      label: "Active",
-      value: "Active",
-      count: currentDisplayProducts.filter((p) => p.status === "Active").length,
-    },
-    {
-      label: "Low Stock",
-      value: "Low Stock",
-      count: currentDisplayProducts.filter((p) => p.status === "Low Stock" || p.status === "Out of Stock").length,
-    },
-    {
-      label: "Pending Review",
-      value: "Pending Review",
-      count: currentDisplayProducts.filter((p) => p.status === "Pending Review").length,
-    },
+    { label: "Approval Queue", value: "Pending Review", count: pendingCount },
+    { label: "Approved Catalog", value: "Active", count: activeCount },
+    { label: "Declined Submissions", value: "Rejected", count: rejectedCount },
+    { label: "All Products", value: "ALL", count: currentDisplayProducts.length },
   ];
 
   const columns: Column<AdminProduct>[] = [
@@ -196,7 +196,7 @@ export function ProductsScreen() {
           <div className="min-w-0 max-w-sm">
             <p className="font-bold text-[#111111] truncate text-sm">{p.title}</p>
             <p className="text-xs text-[#4B5563] font-mono mt-0.5">
-              SKU: {p.sku} · Seller: {p.sellerName}
+              SKU: {p.sku} · Seller: <strong className="text-[#111111]">{p.sellerName}</strong>
             </p>
           </div>
         </div>
@@ -259,60 +259,99 @@ export function ProductsScreen() {
       key: "status",
       header: "Status",
       sortable: true,
-      render: (p) => <StatusBadge status={p.status} size="sm" />,
+      render: (p) => {
+        if (p.status === "Pending Review" || p.verificationStatus === "pending_approval") {
+          return (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[11px] font-extrabold text-amber-800">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+              Pending Review
+            </span>
+          );
+        }
+        if (p.status === "Rejected" || p.verificationStatus === "rejected") {
+          return (
+            <div className="flex flex-col gap-0.5">
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-50 border border-red-200 px-2.5 py-0.5 text-[11px] font-extrabold text-red-700 w-fit">
+                Declined
+              </span>
+              {p.rejectionReason && (
+                <span className="text-[10px] text-red-600 max-w-[140px] truncate" title={p.rejectionReason}>
+                  {p.rejectionReason}
+                </span>
+              )}
+            </div>
+          );
+        }
+        return <StatusBadge status={p.status} size="sm" />;
+      },
     },
     {
       key: "actions",
-      header: "Actions",
+      header: "Verification & Actions",
       className: "text-right",
-      render: (p) => (
-        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-          {p.status === "Pending Review" && (
-            <>
+      render: (p) => {
+        const isPending = p.status === "Pending Review" || p.verificationStatus === "pending_approval";
+        return (
+          <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+            {isPending && (
+              <>
+                <button
+                  onClick={() => handleReviewProduct(p.id, "APPROVED")}
+                  className="flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 text-xs shadow-xs transition cursor-pointer"
+                  title="Accept product & publish live to customer store"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span>Accept</span>
+                </button>
+                <button
+                  onClick={() => setRejectModalProduct(p)}
+                  className="flex items-center gap-1 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold px-2.5 py-1.5 text-xs transition cursor-pointer"
+                  title="Decline submission & notify seller"
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                  <span>Decline</span>
+                </button>
+              </>
+            )}
+            {p.status === "Rejected" && (
               <button
                 onClick={() => handleReviewProduct(p.id, "APPROVED")}
-                className="rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-200 p-1.5 transition cursor-pointer"
-                title="Approve & Publish to Storefront"
+                className="flex items-center gap-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold px-2.5 py-1 text-xs transition cursor-pointer"
+                title="Re-approve product"
               >
-                <CheckCircle2 className="h-4 w-4" />
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span>Re-Approve</span>
               </button>
-              <button
-                onClick={() => setRejectModalProduct(p)}
-                className="rounded-lg bg-red-100 text-red-700 hover:bg-red-200 p-1.5 transition cursor-pointer"
-                title="Reject Product"
-              >
-                <XCircle className="h-4 w-4" />
-              </button>
-            </>
-          )}
-          <button
-            onClick={() => {
-              setEditingProduct(p);
-              setTitle(p.title);
-              setSku(p.sku);
-              setCategory(p.category);
-              setPrice(p.price);
-              setDiscountPrice(p.discountPrice || p.price);
-              setStock(p.stock);
-              setMinStockThreshold(p.minStockThreshold);
-              setWarrantyMonths(p.warrantyMonths);
-              setSelectedBikes(p.compatibleBikes);
-              setImageUrl(p.imageUrl);
-            }}
-            className="rounded-lg bg-gray-100 text-[#374151] hover:bg-gray-200 p-1.5 transition cursor-pointer"
-            title="Edit Product"
-          >
-            <Edit2 className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={() => setDeleteModalProduct(p)}
-            className="rounded-lg bg-red-100 text-red-700 hover:bg-red-200 p-1.5 transition cursor-pointer"
-            title="Delete Product"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      ),
+            )}
+            <button
+              onClick={() => {
+                setEditingProduct(p);
+                setTitle(p.title);
+                setSku(p.sku);
+                setCategory(p.category);
+                setPrice(p.price);
+                setDiscountPrice(p.discountPrice || p.price);
+                setStock(p.stock);
+                setMinStockThreshold(p.minStockThreshold);
+                setWarrantyMonths(p.warrantyMonths);
+                setSelectedBikes(p.compatibleBikes);
+                setImageUrl(p.imageUrl);
+              }}
+              className="rounded-lg bg-gray-100 text-[#374151] hover:bg-gray-200 p-1.5 transition cursor-pointer"
+              title="Edit Product"
+            >
+              <Edit2 className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => setDeleteModalProduct(p)}
+              className="rounded-lg bg-red-100 text-red-700 hover:bg-red-200 p-1.5 transition cursor-pointer"
+              title="Delete Product"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -362,13 +401,35 @@ export function ProductsScreen() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[#111111] tracking-tight">
-            Catalog Inventory & Fitment Mapping
+            Product Verification & Approval Queue
           </h1>
           <p className="text-sm text-[#4B5563] font-medium mt-1">
-            Manage EV spare parts, review vendor catalog submissions, threshold stock alerts and multi-brand compatibility.
+            Review vendor product verification requests. Accepted products are published live to customer catalog; declined items notify sellers via email and dashboard.
           </p>
         </div>
       </div>
+
+      {/* Verification Queue Focus Banner */}
+      {statusFilter === "Pending Review" && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white font-bold shadow-xs">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">
+                Pending Product Approvals ({pendingCount})
+              </h3>
+              <p className="text-xs text-gray-600 mt-0.5">
+                Click <strong className="text-emerald-700 font-bold">Accept</strong> to approve and publish immediately to the live customer storefront, or <strong className="text-red-700 font-bold">Decline</strong> to send compliance feedback to the vendor.
+              </p>
+            </div>
+          </div>
+          <span className="shrink-0 self-start sm:self-auto rounded-full bg-amber-100 text-amber-800 text-xs font-extrabold px-3 py-1">
+            {pendingCount} Awaiting Review
+          </span>
+        </div>
+      )}
 
       {/* Main Table */}
       <DataTable
@@ -379,7 +440,12 @@ export function ProductsScreen() {
         filterTabs={filterTabs}
         currentFilter={statusFilter}
         onFilterChange={setStatusFilter}
-        filterPredicate={(p, filter) => p.status === filter}
+        filterPredicate={(p, filter) => {
+          if (filter === "Pending Review") return p.status === "Pending Review" || (p as any).verificationStatus === "pending_approval";
+          if (filter === "Active") return p.status === "Active" || (p as any).verificationStatus === "approved" || p.status === "Low Stock";
+          if (filter === "Rejected") return p.status === "Rejected" || (p as any).verificationStatus === "rejected";
+          return true;
+        }}
         keyExtractor={(p) => p.id}
         exportFileName="riderzpro_products"
       />
@@ -550,26 +616,48 @@ export function ProductsScreen() {
         </form>
       </GlassModal>
 
-      {/* Reject Product Modal with Reason Input */}
+      {/* Decline Product Modal with Quick Reason Tags */}
       <GlassModal
         isOpen={Boolean(rejectModalProduct)}
         onClose={() => {
           setRejectModalProduct(null);
           setRejectReason("");
         }}
-        title="Reject Catalog Part Submission"
-        description="Provide a compliance or specification reason to send back to the vendor."
+        title="Decline Product Verification"
+        description={`Submit rejection feedback for "${rejectModalProduct?.title}". An email will be dispatched to ${rejectModalProduct?.sellerName} and a notification posted to their vendor dashboard.`}
       >
         <div className="space-y-4 text-xs">
           <div>
             <label className="block text-[#374151] font-bold mb-1.5 uppercase text-[10px]">
-              Specification Rejection Reason
+              Quick Rejection Reasons
+            </label>
+            <div className="flex flex-wrap gap-1.5 mb-2.5">
+              {[
+                "Incomplete vehicle fitment specs",
+                "Low resolution / non-OEM images",
+                "MRP and selling price mismatch",
+                "Missing warranty or safety documentation",
+                "Non-compliant automotive component",
+              ].map((reasonText) => (
+                <button
+                  key={reasonText}
+                  type="button"
+                  onClick={() => setRejectReason(reasonText)}
+                  className="rounded-lg bg-gray-100 hover:bg-gray-200 text-[#374151] px-2.5 py-1 text-[11px] font-medium transition cursor-pointer"
+                >
+                  {reasonText}
+                </button>
+              ))}
+            </div>
+
+            <label className="block text-[#374151] font-bold mb-1.5 uppercase text-[10px]">
+              Detailed Rejection Reason
             </label>
             <textarea
               rows={3}
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="e.g. Dimensions or voltage compatibility conflict with listed models."
+              placeholder="e.g. Dimensions or voltage compatibility conflict with listed models. Please update specification sheet and resubmit."
               className="w-full rounded-2xl border border-[#E5E7EB] bg-white p-3 text-[#111111] placeholder:text-[#9CA3AF] outline-none focus:border-[#E31E24] focus:ring-2 focus:ring-red-500/20"
             />
           </div>
@@ -597,7 +685,7 @@ export function ProductsScreen() {
                 }
               }}
             >
-              Confirm Rejection & Send Email
+              Confirm Decline & Notify Seller
             </GlassButton>
           </div>
         </div>

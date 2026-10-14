@@ -70,6 +70,7 @@ export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: Adm
   const location = useLocation();
   const pathname = location.pathname;
   const [pendingKycCount, setPendingKycCount] = useState<number>(0);
+  const [pendingProductsCount, setPendingProductsCount] = useState<number>(0);
 
   useEffect(() => {
     fetch("/api/admin/sellers/analytics")
@@ -80,10 +81,65 @@ export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: Adm
         }
       })
       .catch(() => {});
-  }, []);
+
+    fetch("/api/products?all=true")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          const pending = res.data.filter((p: any) => p.verification_status === "pending_approval").length;
+          setPendingProductsCount(pending);
+        }
+      })
+      .catch(() => {});
+  }, [pathname]);
 
   const navGroups = React.useMemo(() => {
-    const isProductAdmin = adminUser?.roleTitle?.includes("Product") || adminUser?.department?.includes("Product");
+    const isProductAdmin =
+      adminUser?.roleTitle?.includes("Product") ||
+      adminUser?.department?.includes("Product") ||
+      adminUser?.email?.includes("product") ||
+      adminUser?.role === ("PRODUCT_ADMIN" as any);
+
+    if (isProductAdmin) {
+      return [
+        {
+          title: "Product Operations",
+          items: [
+            {
+              title: "Sellers List",
+              to: "/admin/sellers",
+              icon: <Store className="h-4 w-4" />,
+            },
+            {
+              title: "Approval",
+              to: "/admin/products",
+              icon: <ShieldCheck className="h-4 w-4" />,
+              badge: pendingProductsCount > 0 ? String(pendingProductsCount) : undefined,
+            },
+          ],
+        },
+        {
+          title: "Performance & Growth",
+          items: [
+            {
+              title: "Analytics & Top Products",
+              to: "/admin/analytics",
+              icon: <BarChart3 className="h-4 w-4" />,
+            },
+          ],
+        },
+        {
+          title: "Platform Administration",
+          items: [
+            {
+              title: "Settings",
+              to: "/admin/settings",
+              icon: <Settings className="h-4 w-4" />,
+            },
+          ],
+        },
+      ];
+    }
 
     return [
       {
@@ -96,9 +152,6 @@ export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: Adm
             icon: <Store className="h-4 w-4" />,
             badge: pendingKycCount > 0 ? String(pendingKycCount) : undefined,
           },
-          ...(isProductAdmin
-            ? [{ title: "Products & Stock", to: "/admin/products", icon: <Box className="h-4 w-4" /> }]
-            : []),
         ],
       },
       {
@@ -114,7 +167,7 @@ export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: Adm
         ],
       },
     ];
-  }, [adminUser, pendingKycCount]);
+  }, [adminUser, pendingKycCount, pendingProductsCount]);
 
   return (
     <aside

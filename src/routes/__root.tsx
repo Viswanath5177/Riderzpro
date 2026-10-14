@@ -18,6 +18,7 @@ import { AuthProvider } from "../lib/auth";
 import { AdminAuthProvider } from "../lib/adminAuth";
 import { StoreProvider } from "../lib/store";
 import { Toaster } from "../components/ui/sonner";
+import { CustomerLoginModal } from "../components/auth/CustomerLoginModal";
 
 function NotFoundComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -152,6 +153,7 @@ function RootComponent() {
         <AdminAuthProvider>
           <StoreProvider>
             <Outlet />
+            <CustomerLoginModal />
             <Toaster position="top-center" />
           </StoreProvider>
         </AdminAuthProvider>

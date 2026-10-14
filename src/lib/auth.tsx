@@ -30,7 +30,55 @@ export interface VendorRegistrationPayload {
 }
 
 // Client wrappers using direct PostgreSQL backend API
-export async function sendEmailOtp(email: string, purpose: "CUSTOMER_SIGNUP" | "VENDOR_SIGNUP" | "RESET_PASSWORD" = "CUSTOMER_SIGNUP") {
+export async function checkPhoneExists(phone: string): Promise<{ exists: boolean; error?: string; role?: string; storeName?: string }> {
+  if (typeof window === "undefined") {
+    return { exists: false };
+  }
+  const cleanPhone = phone.replace(/\D/g, "").slice(-10);
+  if (!cleanPhone || cleanPhone.length < 10) {
+    return { exists: false };
+  }
+  try {
+    const res = await fetch("/api/auth/check-phone", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: cleanPhone }),
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      return { exists: !!data.exists, error: data.error, role: data.role, storeName: data.storeName };
+    }
+  } catch (e) {
+    console.warn("[checkPhoneExists failed]", e);
+  }
+  return { exists: false };
+}
+
+export async function checkEmailExists(email: string): Promise<{ isRegistered: boolean; error?: string; role?: string; fullName?: string }> {
+  if (typeof window === "undefined") {
+    return { isRegistered: false };
+  }
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail || !cleanEmail.includes("@")) {
+    return { isRegistered: false };
+  }
+  try {
+    const res = await fetch("/api/auth/check-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: cleanEmail }),
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      return { isRegistered: !!data.isRegistered, role: data.role, fullName: data.fullName };
+    }
+  } catch (e) {
+    console.warn("[checkEmailExists failed]", e);
+  }
+  return { isRegistered: false };
+}
+
+export async function sendEmailOtp(email: string, purpose: "CUSTOMER_SIGNUP" | "CUSTOMER_SIGNIN" | "VENDOR_SIGNUP" | "RESET_PASSWORD" = "CUSTOMER_SIGNUP") {
   if (typeof window === "undefined") {
     return { success: true };
   }
@@ -260,6 +308,12 @@ type StoredUser = User & {
   passwordHash: string;
 };
 
+export type CustomerLoginModalOptions = {
+  redirectTo?: string;
+  onAuthenticated?: () => void;
+  initialIdentifier?: string;
+};
+
 export type AuthContextType = {
   user: User | null;
   setUser: (user: User | null) => void;
@@ -269,6 +323,10 @@ export type AuthContextType = {
   signUp: (data: { name: string; email: string; phone: string; password: string }) => Promise<{ success: boolean; error?: string }>;
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
+  isCustomerLoginModalOpen: boolean;
+  customerLoginModalOptions: CustomerLoginModalOptions | null;
+  openCustomerLoginModal: (options?: CustomerLoginModalOptions) => void;
+  closeCustomerLoginModal: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -296,6 +354,20 @@ async function hashPassword(plain: string): Promise<string> {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Customer Login Modal state & controls
+  const [isCustomerLoginModalOpen, setIsCustomerLoginModalOpen] = useState(false);
+  const [customerLoginModalOptions, setCustomerLoginModalOptions] = useState<CustomerLoginModalOptions | null>(null);
+
+  const openCustomerLoginModal = useCallback((options?: CustomerLoginModalOptions) => {
+    setCustomerLoginModalOptions(options || null);
+    setIsCustomerLoginModalOpen(true);
+  }, []);
+
+  const closeCustomerLoginModal = useCallback(() => {
+    setIsCustomerLoginModalOpen(false);
+    setCustomerLoginModalOptions(null);
+  }, []);
 
   // Initialize and check PostgreSQL session
   useEffect(() => {
@@ -463,8 +535,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp,
       signInWithGoogle,
       signOut: handleSignOut,
+      isCustomerLoginModalOpen,
+      customerLoginModalOptions,
+      openCustomerLoginModal,
+      closeCustomerLoginModal,
     }),
-    [user, loading, signIn, signUp, signInWithGoogle, handleSignOut]
+    [user, loading, signIn, signUp, signInWithGoogle, handleSignOut, isCustomerLoginModalOpen, customerLoginModalOptions, openCustomerLoginModal, closeCustomerLoginModal]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

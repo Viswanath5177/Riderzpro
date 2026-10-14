@@ -157,21 +157,22 @@ export class ProductModel {
       seller_id,
       fit_vehicle,
       search,
-      is_active = true,
       verification_status,
       limit,
       offset,
     } = options;
+    const is_active = "is_active" in options ? options.is_active : true;
 
     let sql = `
       SELECT 
         p.*, 
         c.name as category_name, 
-        u.full_name as seller_name, 
-        u.store_name
+        COALESCE(s.owner_name, u.full_name, p.supplier) as seller_name, 
+        COALESCE(s.store_name, u.store_name, p.supplier) as store_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN users u ON p.seller_id = u.id
+      LEFT JOIN sellers s ON (p.seller_id = s.id OR p.seller_id IN (SELECT id FROM users WHERE email = s.email) OR u.email = s.email)
       WHERE 1=1
     `;
     const params: any[] = [];
@@ -184,6 +185,13 @@ export class ProductModel {
     if (verification_status) {
       params.push(verification_status);
       sql += ` AND p.verification_status = $${params.length}`;
+
+      // Customer listing eligibility (PDF Algorithm):
+      // Certified product + Active (non-frozen) vendor + in-stock inventory
+      if (verification_status === "approved" && !seller_id) {
+        sql += ` AND (s.id IS NULL OR (s.status = 'APPROVED' AND (s.account_status IS NULL OR s.account_status != 'FROZEN')))`;
+        sql += ` AND p.stock > 0`;
+      }
     }
 
     if (seller_id) {

@@ -9,6 +9,7 @@ import {
   sendProductApprovalEmail,
 } from "../lib/email.server";
 import { handleAuthRoute } from "./authRoutes";
+import { createNotification, notifyAdminRole } from "./notifications";
 
 async function parseBody(req: IncomingMessage): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -57,9 +58,16 @@ export function pgApiMiddleware() {
         const queryParams = new URLSearchParams(queryString);
 
         // ====================================================================
-        // 0. AUTHENTICATION API: /api/auth/*
+        // 0. AUTHENTICATION & NOTIFICATIONS API
         // ====================================================================
-        if (cleanUrl.startsWith("/api/auth")) {
+        if (
+          cleanUrl.startsWith("/api/auth") ||
+          cleanUrl.startsWith("/api/notifications") ||
+          cleanUrl.startsWith("/api/admin/invite") ||
+          cleanUrl.startsWith("/api/admin/change-requests") ||
+          cleanUrl.startsWith("/api/vendor/change-request") ||
+          cleanUrl.startsWith("/api/customer/addresses")
+        ) {
           const handled = await handleAuthRoute(req, res, cleanUrl, method || "GET");
           if (handled) return;
         }
@@ -107,6 +115,18 @@ export function pgApiMiddleware() {
             // POST /api/products (Publish product)
             if (method === "POST") {
               const body = await parseBody(req);
+
+              // Freeze enforcement: block product submission if vendor account is frozen
+              if (body.seller_id) {
+                const sCheck = await query("SELECT account_status, freeze_reason, store_name FROM sellers WHERE id = $1", [body.seller_id]);
+                if (sCheck.rows[0]?.account_status === "FROZEN") {
+                  return sendJson(res, 403, {
+                    success: false,
+                    error: `Vendor account is FROZEN by administration. Product submissions and selling operations are blocked. Reason: ${sCheck.rows[0].freeze_reason || "Compliance review"}. Designated assistance: riderzpro@selleradmin.com`,
+                  });
+                }
+              }
+
               const created = await ProductModel.create(body);
               return sendJson(res, 201, {
                 success: true,
@@ -422,6 +442,9 @@ export function pgApiMiddleware() {
                   address: sellerRow.business_address,
                   gstin: sellerRow.gstin,
                   status: sellerRow.status,
+                  accountStatus: sellerRow.account_status || "ACTIVE",
+                  freezeReason: sellerRow.freeze_reason || null,
+                  frozenAt: sellerRow.frozen_at || null,
                   created_at: sellerRow.created_at,
                   bankAccount,
                   documents: docsRes.rows,
@@ -586,6 +609,47 @@ export function pgApiMiddleware() {
         }
 
         // ====================================================================
+        // 3.9 VENDOR NOTIFICATIONS API: /api/vendor/notifications
+        // ====================================================================
+        if (cleanUrl.startsWith("/api/vendor/notifications")) {
+          try {
+            const sellerId = queryParams.get("seller_id") || "sel_2571cac9469b8dce";
+            if (method === "GET") {
+              const notifsRes = await query(
+                `SELECT * FROM vendor_notifications 
+                 WHERE seller_id = $1 
+                    OR seller_id IN (SELECT id FROM sellers WHERE email = (SELECT email FROM users WHERE id = $1 LIMIT 1))
+                    OR seller_id IN (SELECT id FROM users WHERE email = (SELECT email FROM sellers WHERE id = $1 LIMIT 1))
+                 ORDER BY created_at DESC 
+                 LIMIT 30`,
+                [sellerId]
+              );
+              const unreadCount = notifsRes.rows.filter((n: any) => !n.is_read).length;
+              return sendJson(res, 200, { success: true, data: notifsRes.rows, unreadCount });
+            }
+
+            if (method === "PUT") {
+              const parts = cleanUrl.split("/").filter(Boolean);
+              const notifId = parts[3];
+              if (notifId === "all") {
+                await query(
+                  `UPDATE vendor_notifications SET is_read = TRUE 
+                   WHERE seller_id = $1 
+                      OR seller_id IN (SELECT id FROM sellers WHERE email = (SELECT email FROM users WHERE id = $1 LIMIT 1))`,
+                  [sellerId]
+                );
+              } else if (notifId) {
+                await query(`UPDATE vendor_notifications SET is_read = TRUE WHERE id = $1`, [notifId]);
+              }
+              return sendJson(res, 200, { success: true, message: "Notifications updated" });
+            }
+          } catch (err: any) {
+            console.error("[Vendor Notifications Error]:", err);
+            return sendJson(res, 500, { success: false, error: err.message });
+          }
+        }
+
+        // ====================================================================
         // 3.10 ADMIN NOTIFICATIONS API: /api/admin/notifications
         // ====================================================================
         if (cleanUrl === "/api/admin/notifications" && method === "GET") {
@@ -687,11 +751,20 @@ export function pgApiMiddleware() {
             // GET /api/admin/sellers
             if (method === "GET") {
               const sellersRes = await query(`
-                SELECT id, email, phone, store_name, owner_name, business_type, business_address, 
-                       city, state, pincode, country, gstin, status, approved_by, approved_at, 
-                       rejection_reason, created_at 
-                FROM sellers 
-                ORDER BY created_at DESC
+                SELECT s.id, s.email, s.phone, s.store_name, s.owner_name, s.business_type, s.business_address, 
+                       s.city, s.state, s.pincode, s.country, s.gstin, s.status, 
+                       COALESCE(s.account_status, 'ACTIVE') AS account_status, 
+                       s.freeze_reason, s.frozen_by, s.frozen_at,
+                       s.approved_by, s.approved_at, 
+                       s.rejection_reason, s.created_at,
+                       COUNT(DISTINCT p.id)::int AS published_products_count,
+                       COUNT(DISTINCT o.id)::int AS sales_count,
+                       COALESCE(SUM(o.total_amount), 0)::numeric AS total_revenue
+                FROM sellers s
+                LEFT JOIN products p ON (p.seller_id = s.id OR p.seller_id IN (SELECT id FROM users WHERE email = s.email))
+                LEFT JOIN orders o ON (s.id = o.seller_id OR o.seller_id IN (SELECT id FROM users WHERE email = s.email))
+                GROUP BY s.id
+                ORDER BY s.created_at DESC
               `);
               const docsRes = await query("SELECT id, seller_id, doc_type, doc_number, file_path, is_verified FROM seller_documents");
               const bankRes = await query("SELECT id, seller_id, account_holder_name, bank_name, account_number, ifsc_code, is_verified FROM seller_bank_accounts");
@@ -775,6 +848,27 @@ export function pgApiMiddleware() {
               const host = req.headers.host || "localhost:8080";
               const loginUrl = `http://${host}/login`;
 
+              // Dispatch in-dashboard notification to vendor
+              if (action === "APPROVED") {
+                await createNotification({
+                  userId: sellerId,
+                  userRole: "seller",
+                  type: "store_approved",
+                  title: "Store Approved & Verified!",
+                  message: `Congratulations! Your vendor store '${seller.store_name}' has been approved. Your verified business details are now locked.`,
+                  targetRoute: "/dashboard/vendor?tab=store",
+                });
+              } else if (action === "REJECTED") {
+                await createNotification({
+                  userId: sellerId,
+                  userRole: "seller",
+                  type: "store_rejected",
+                  title: "Store Application Declined",
+                  message: `Your store application for '${seller.store_name}' was not approved. Reason: ${reason || "Application does not meet marketplace compliance standards."}`,
+                  targetRoute: "/dashboard/vendor?tab=store",
+                });
+              }
+
               // Dispatch transactional emails via Resend API
               if (action === "APPROVED") {
                 await sendVendorApprovedEmail(seller.email, seller.owner_name, seller.store_name, loginUrl).catch(() => {});
@@ -785,6 +879,112 @@ export function pgApiMiddleware() {
               }
 
               return sendJson(res, 200, { success: true, status: action, message: `Seller KYC updated to ${action}` });
+            }
+
+            // POST /api/admin/sellers/:id/freeze (Freeze Vendor Account)
+            if (method === "POST" && sellerId && subAction === "freeze") {
+              const body = await parseBody(req);
+              const reason = (body.reason || "").trim();
+              const adminId = body.adminId || "adm_seller_01";
+
+              if (!reason) {
+                return sendJson(res, 400, {
+                  success: false,
+                  error: "A valid compliance reason is required to freeze a vendor account.",
+                });
+              }
+
+              const sRes = await query("SELECT id, email, store_name, owner_name FROM sellers WHERE id = $1", [sellerId]);
+              const seller = sRes.rows[0];
+              if (!seller) {
+                return sendJson(res, 404, { success: false, error: "Seller not found" });
+              }
+
+              await query(
+                `UPDATE sellers 
+                 SET account_status = 'FROZEN', 
+                     freeze_reason = $1, 
+                     frozen_by = $2, 
+                     frozen_at = datetime('now'), 
+                     updated_at = now() 
+                 WHERE id = $3`,
+                [reason, adminId, sellerId]
+              );
+
+              // Deactivate corresponding user account so active sessions are blocked
+              await query("UPDATE users SET is_active = false WHERE email = $1", [seller.email]).catch(() => {});
+
+              // Create compliance audit log
+              await query(
+                `INSERT INTO audit_logs (id, actor_id, actor_role, action, target_type, target_id, details)
+                 VALUES ($1, $2, 'admin', 'VENDOR_ACCOUNT_FROZEN', 'seller', $3, $4)`,
+                [`audit_${Date.now()}`, adminId, sellerId, JSON.stringify({ reason })]
+              ).catch(() => {});
+
+              // Dispatch notification to vendor with designated assistance
+              await createNotification({
+                userId: sellerId,
+                userRole: "seller",
+                type: "account_frozen",
+                title: "Vendor Account Suspended (Frozen)",
+                message: `Your vendor account has been frozen by administration. Reason: ${reason}. Selling operations and product submissions are paused. Designated assistance: riderzpro@selleradmin.com`,
+                targetRoute: "/dashboard/vendor",
+              });
+
+              return sendJson(res, 200, {
+                success: true,
+                message: `Vendor '${seller.store_name}' account frozen successfully.`,
+                account_status: "FROZEN",
+              });
+            }
+
+            // POST /api/admin/sellers/:id/unfreeze (Unfreeze Vendor Account)
+            if (method === "POST" && sellerId && subAction === "unfreeze") {
+              const body = await parseBody(req);
+              const adminId = body.adminId || "adm_seller_01";
+
+              const sRes = await query("SELECT id, email, store_name, owner_name FROM sellers WHERE id = $1", [sellerId]);
+              const seller = sRes.rows[0];
+              if (!seller) {
+                return sendJson(res, 404, { success: false, error: "Seller not found" });
+              }
+
+              await query(
+                `UPDATE sellers 
+                 SET account_status = 'ACTIVE', 
+                     freeze_reason = NULL, 
+                     frozen_by = NULL, 
+                     frozen_at = NULL, 
+                     updated_at = now() 
+                 WHERE id = $1`,
+                [sellerId]
+              );
+
+              // Reactivate corresponding user account
+              await query("UPDATE users SET is_active = true WHERE email = $1", [seller.email]).catch(() => {});
+
+              // Create compliance audit log
+              await query(
+                `INSERT INTO audit_logs (id, actor_id, actor_role, action, target_type, target_id, details)
+                 VALUES ($1, $2, 'admin', 'VENDOR_ACCOUNT_UNFROZEN', 'seller', $3, $4)`,
+                [`audit_${Date.now()}`, adminId, sellerId, JSON.stringify({ unfreezer: adminId })]
+              ).catch(() => {});
+
+              // Dispatch notification to vendor
+              await createNotification({
+                userId: sellerId,
+                userRole: "seller",
+                type: "account_unfrozen",
+                title: "Vendor Account Restored (Active)",
+                message: "Your vendor account has been restored to ACTIVE status. Full selling and product submission capabilities are resumed.",
+                targetRoute: "/dashboard/vendor",
+              });
+
+              return sendJson(res, 200, {
+                success: true,
+                message: `Vendor '${seller.store_name}' account restored to ACTIVE status.`,
+                account_status: "ACTIVE",
+              });
             }
 
             return sendJson(res, 405, { success: false, error: `Method ${method} not allowed` });
@@ -814,26 +1014,125 @@ export function pgApiMiddleware() {
                 return sendJson(res, 404, { success: false, error: "Product not found" });
               }
 
-              const newStatus = action === "APPROVED" ? "approved" : "rejected";
-              await query(
-                `UPDATE products 
-                 SET verification_status = $1, verified_by = $2, verified_at = now(), rejection_reason = $3, updated_at = now()
-                 WHERE id = $4`,
-                [newStatus, adminId, reason || null, productId]
-              );
+              const newStatus = action === "APPROVED" ? "approved" : action === ("PENDING_APPROVAL" as any) ? "pending_approval" : "rejected";
+              const isActive = action === "APPROVED";
 
-              await query(
-                `INSERT INTO product_approval_history (product_id, admin_id, action, reason)
-                 VALUES ($1, $2, $3, $4)`,
-                [productId, adminId, action, reason || null]
-              );
-
-              const sRes = await query("SELECT email FROM sellers WHERE id = $1", [product.seller_id]);
-              if (sRes.rows[0]?.email) {
-                await sendProductApprovalEmail(sRes.rows[0].email, product.name, action === "APPROVED", reason).catch(() => {});
+              // Resolve verifiedByUserId for products.verified_by (references users.id)
+              let verifiedByUserId: string | null = null;
+              if (adminId) {
+                const uCheck = await query("SELECT id FROM users WHERE id = $1 LIMIT 1", [adminId]);
+                if (uCheck.rows.length > 0) {
+                  verifiedByUserId = uCheck.rows[0].id;
+                } else {
+                  const uEmailCheck = await query("SELECT id FROM users WHERE email = (SELECT email FROM admins WHERE id = $1 LIMIT 1) LIMIT 1", [adminId]);
+                  if (uEmailCheck.rows.length > 0) {
+                    verifiedByUserId = uEmailCheck.rows[0].id;
+                  } else {
+                    const fallbackUser = await query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
+                    if (fallbackUser.rows.length > 0) {
+                      verifiedByUserId = fallbackUser.rows[0].id;
+                    }
+                  }
+                }
               }
 
-              return sendJson(res, 200, { success: true, status: newStatus, message: `Product status updated to ${newStatus}` });
+              // Resolve verifiedByAdminId for product_approval_history.admin_id (references admins.id)
+              let verifiedByAdminId: string | null = null;
+              if (adminId) {
+                const aCheck = await query("SELECT id FROM admins WHERE id = $1 LIMIT 1", [adminId]);
+                if (aCheck.rows.length > 0) {
+                  verifiedByAdminId = aCheck.rows[0].id;
+                } else {
+                  const aEmailCheck = await query("SELECT id FROM admins WHERE email = (SELECT email FROM users WHERE id = $1 LIMIT 1) LIMIT 1", [adminId]);
+                  if (aEmailCheck.rows.length > 0) {
+                    verifiedByAdminId = aEmailCheck.rows[0].id;
+                  } else {
+                    const fallbackAdmin = await query("SELECT id FROM admins WHERE role = 'PRODUCT_ADMIN' LIMIT 1");
+                    if (fallbackAdmin.rows.length > 0) {
+                      verifiedByAdminId = fallbackAdmin.rows[0].id;
+                    }
+                  }
+                }
+              }
+
+              await query(
+                `UPDATE products 
+                 SET verification_status = $1, 
+                     is_active = $2,
+                     verified_by = $3, 
+                     verified_at = now(), 
+                     rejection_reason = $4, 
+                     updated_at = now()
+                 WHERE id = $5`,
+                [newStatus, isActive, verifiedByUserId, action === "REJECTED" ? (reason || null) : null, productId]
+              );
+
+              if (verifiedByAdminId) {
+                await query(
+                  `INSERT INTO product_approval_history (product_id, admin_id, action, reason)
+                   VALUES ($1, $2, $3, $4)`,
+                  [productId, verifiedByAdminId, action, reason || null]
+                ).catch((err) => console.warn("[Approval History Insert Warning]:", err?.message));
+              }
+
+              // Resolve seller record for email and in-dashboard notification
+              const sRes = await query(
+                `SELECT s.id, s.email, s.store_name, s.owner_name 
+                 FROM sellers s 
+                 WHERE s.id = $1 OR s.email = (SELECT email FROM users WHERE id = $1 LIMIT 1) 
+                 LIMIT 1`,
+                [product.seller_id]
+              );
+              const sellerRow = sRes.rows[0];
+              const sellerEmail = sellerRow?.email;
+              const targetSellerId = sellerRow?.id || product.seller_id;
+
+              // Insert in-dashboard notification for seller
+              await query(
+                `INSERT INTO vendor_notifications (id, seller_id, title, message, type, product_id, is_read)
+                 VALUES ($1, $2, $3, $4, $5, $6, FALSE)`,
+                [
+                  `vnotif_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                  targetSellerId,
+                  action === "APPROVED"
+                    ? `Product Approved: ${product.name}`
+                    : `Product Declined: ${product.name}`,
+                  action === "APPROVED"
+                    ? `Great news! Your product "${product.name}" has been approved by the Product Administrator and is now live on the RiderzPro customer storefront.`
+                    : `Your product submission "${product.name}" was declined. Reason: ${reason || "Does not meet catalog compliance guidelines."}`,
+                  action === "APPROVED" ? "product_approved" : "product_rejected",
+                  productId,
+                ]
+              ).catch((err) => console.warn("[Vendor Notif Insertion Warning]:", err?.message));
+
+              // Also write to centralized notifications table
+              await createNotification({
+                userId: targetSellerId,
+                userRole: "seller",
+                type: action === "APPROVED" ? "product_approved" : "product_rejected",
+                title: action === "APPROVED" ? `Product Approved: ${product.name}` : `Product Declined: ${product.name}`,
+                message: action === "APPROVED"
+                  ? `Great news! Your product "${product.name}" has been approved and published to the customer storefront.`
+                  : `Your product submission "${product.name}" was declined. Reason: ${reason || "Does not meet catalog compliance guidelines."}`,
+                entityId: productId,
+                targetRoute: "/dashboard/vendor?tab=products",
+              });
+
+              // Dispatch transactional email via Gmail SMTP / Resend
+              if (sellerEmail) {
+                await sendProductApprovalEmail(sellerEmail, product.name, action === "APPROVED", reason).catch((err) => {
+                  console.warn("[Product Approval Email Warning]:", err?.message);
+                });
+              }
+
+              return sendJson(res, 200, {
+                success: true,
+                status: newStatus,
+                isActive,
+                message: action === "APPROVED"
+                  ? `Product approved and published to customer storefront. Seller notified via email and dashboard.`
+                  : `Product declined. Rejection email sent to seller and notification posted to seller dashboard.`,
+              });
             }
 
             return sendJson(res, 405, { success: false, error: `Method ${method} not allowed` });
@@ -1031,6 +1330,39 @@ export function pgApiMiddleware() {
                   await query("DELETE FROM cart_items WHERE cart_id = $1", [cRow.rows[0].id]);
                 }
               }
+
+              // In-app notifications
+              if (custId && custId !== "cst_guest") {
+                await createNotification({
+                  userId: custId,
+                  userRole: "customer",
+                  type: "order_placed",
+                  title: "Order Placed Successfully",
+                  message: `Order #${orderNum} has been placed for ₹${Number(totalAmount).toLocaleString()}. We are processing your delivery.`,
+                  entityId: orderId,
+                  targetRoute: "/orders",
+                });
+              }
+
+              if (sellerId) {
+                await createNotification({
+                  userId: sellerId,
+                  userRole: "seller",
+                  type: "new_order_received",
+                  title: "New Order Received",
+                  message: `New order #${orderNum} received for ₹${Number(totalAmount).toLocaleString()}. Please prepare items for dispatch.`,
+                  entityId: orderId,
+                  targetRoute: "/dashboard/vendor?tab=orders",
+                });
+              }
+
+              await notifyAdminRole("SELLER_ADMIN", {
+                type: "marketplace_order",
+                title: "New Marketplace Order",
+                message: `Order #${orderNum} placed for ₹${Number(totalAmount).toLocaleString()}.`,
+                entityId: orderId,
+                targetRoute: "/admin/orders",
+              });
 
               return sendJson(res, 201, { success: true, data: ins.rows[0], message: "Order placed successfully" });
             }

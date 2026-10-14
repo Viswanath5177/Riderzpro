@@ -18,6 +18,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { Logo } from "./bits";
+import { useAuth } from "@/lib/auth";
 
 interface MobileDrawerProps {
   isOpen: boolean;
@@ -46,6 +47,7 @@ export function MobileDrawer({
   const [isShopExpanded, setIsShopExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+  const { openCustomerLoginModal } = useAuth();
 
   if (!isOpen) return null;
 
@@ -200,14 +202,17 @@ export function MobileDrawer({
               </div>
             </div>
           ) : (
-            <Link
-              to="/login"
-              onClick={onClose}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#e11d2a] text-xs font-semibold text-white transition hover:bg-[#c91823]"
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                openCustomerLoginModal();
+              }}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#e11d2a] text-xs font-semibold text-white transition hover:bg-[#c91823] cursor-pointer"
             >
               <User className="h-3.5 w-3.5" />
               <span>Sign in</span>
-            </Link>
+            </button>
           )}
         </div>
       </div>

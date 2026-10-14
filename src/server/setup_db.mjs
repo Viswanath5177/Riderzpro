@@ -126,6 +126,13 @@ async function setup() {
     `);
   }
 
+  // Ensure seller users exist in users table so products_seller_id_fkey is satisfied
+  await client.query(`
+    INSERT INTO users (id, email, phone, password_hash, full_name, role)
+    VALUES ('usr_seller_01', 'seller@volthub.com', '+91 91111 22222', '$2a$10$dummyHashForSeller01SeedPlaceholder', 'VoltHub Indiranagar', 'seller')
+    ON CONFLICT (email) DO NOTHING;
+  `);
+
   // 7. Seed Initial Catalog Products if products table only has 1 or few items
   const productCount = await client.query(`SELECT count(*) FROM products`);
   console.log(`Current products in DB: ${productCount.rows[0].count}`);
@@ -256,6 +263,56 @@ async function setup() {
       warranty: '1 Year Warranty',
       image_url: '/src/assets/parts.jpg',
       verification_status: 'approved'
+    },
+    {
+      id: 'prod_volt_smart_chg_60v',
+      seller_id: 'usr_demo_02',
+      category_id: 'cat_chargers',
+      name: 'Smart 60V 5A Fast Charger Auto Cut-Off',
+      brand: 'VoltPro Tech',
+      sku: 'VPT-60V-5A',
+      description: 'Intelligent high-efficiency EV scooter battery charger with dynamic temperature control and auto shut-off.',
+      price: 2899,
+      mrp: 3499,
+      discount_percent: 17,
+      stock: 25,
+      moq: 1,
+      supplier: "GATTIKOPPULA NAGA VAMSI SUBBARAYUDU's Auto Parts",
+      variant_model: '60V 5A Dual Fan Smart',
+      material: 'Aluminum Extrusion IP54',
+      fitment_size: 'Universal Trunk / Bag',
+      fitment_type: 'universal',
+      compatible_vehicles: JSON.stringify(['ola-s1pro', 'ather-450x', 'bajaj-chetak', 'tvs-iqube']),
+      color_options: JSON.stringify(['Matte Black']),
+      key_features: 'Over-voltage protection, auto cut-off, active dual fan cooling',
+      warranty: '1 Year Comprehensive',
+      image_url: '/src/assets/charger.jpg',
+      verification_status: 'pending_approval'
+    },
+    {
+      id: 'prod_brembo_ceramic_pads',
+      seller_id: 'usr_demo_02',
+      category_id: 'cat_brakes',
+      name: 'Sintered Ceramic Brake Pad Kit (Front & Rear)',
+      brand: 'Brembo Racing',
+      sku: 'BRM-CP-002',
+      description: 'High-friction sintered ceramic disc brake pad set engineered for heavy regenerative deceleration on modern EV scooters.',
+      price: 1499,
+      mrp: 1899,
+      discount_percent: 21,
+      stock: 40,
+      moq: 1,
+      supplier: "GATTIKOPPULA NAGA VAMSI SUBBARAYUDU's Auto Parts",
+      variant_model: 'Ceramic Composite Heavy Duty',
+      material: 'Copper-free Ceramic Composite',
+      fitment_size: 'OEM Caliper Direct Fit',
+      fitment_type: 'specific',
+      compatible_vehicles: JSON.stringify(['ather-450x', 'ola-s1pro', 'hero-vida-v1']),
+      color_options: JSON.stringify(['Gold Backplate']),
+      key_features: 'Zero brake fade, rotor-friendly formulation, low dust',
+      warranty: '6 Months Replacement',
+      image_url: '/src/assets/parts.jpg',
+      verification_status: 'pending_approval'
     }
   ];
 
@@ -300,6 +357,21 @@ async function setup() {
       p.image_url, p.verification_status
     ]);
   }
+
+  // Create vendor_notifications table for approval/rejection and order alerts
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS vendor_notifications (
+      id VARCHAR(64) PRIMARY KEY DEFAULT ('vnotif_' || substr(md5(random()::text || clock_timestamp()::text), 1, 16)),
+      seller_id VARCHAR(64) NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      message TEXT NOT NULL,
+      type VARCHAR(64) NOT NULL,
+      product_id VARCHAR(64),
+      is_read BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_vendor_notifications_seller ON vendor_notifications(seller_id);
+  `);
 
   console.log('Database tables successfully verified and seeded!');
   await client.end();

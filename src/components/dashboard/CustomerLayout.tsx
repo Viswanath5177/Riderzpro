@@ -44,6 +44,7 @@ import { VinSearchModal } from "./VinSearchModal";
 import { CartDrawer } from "@/components/common/CartDrawer";
 import { AiChatbotWidget } from "@/components/common/AiChatbotWidget";
 import { LocationPickerModal } from "@/components/common/LocationPickerModal";
+import { DashboardNotificationBell } from "@/components/common/DashboardNotificationBell";
 
 export type CustomerTab =
   | "overview"
@@ -543,80 +544,8 @@ export function CustomerLayout({
                 <Search className="h-4 w-4" />
               </button>
 
-              {/* Notifications Button on Top Right with Badge & Popover */}
-              <div className="relative">
-                <button
-                  onClick={() => setIsNotifOpen(!isNotifOpen)}
-                  className="relative h-9 w-9 sm:h-10 sm:w-10 grid place-items-center rounded-full bg-white/70 hover:bg-white active:bg-white/95 backdrop-blur-md border border-black/[0.08] hover:border-black/[0.16] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] hover:scale-105 active:scale-95 transition-all duration-200 text-gray-600 hover:text-gray-950 cursor-pointer group shrink-0"
-                  aria-label="Notifications"
-                  title="Notifications"
-                >
-                  <Bell className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-gray-700 group-hover:rotate-12 transition-transform duration-200" />
-                  {unreadNotifsCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 grid h-4.5 min-w-4.5 px-1 place-items-center rounded-full bg-gradient-to-r from-[#E31E24] to-rose-500 text-[9.5px] font-extrabold text-white shadow-[0_2px_6px_rgba(227,30,36,0.4)] ring-2 ring-white">
-                      {unreadNotifsCount}
-                    </span>
-                  )}
-                </button>
-
-                {isNotifOpen && (
-                  <div className="absolute right-0 mt-2.5 w-[calc(100vw-1.5rem)] max-w-sm sm:w-96 rounded-3xl bg-white/94 backdrop-blur-3xl border border-white/80 shadow-[0_24px_60px_-15px_rgba(0,0,0,0.18),inset_0_1px_0_0_rgba(255,255,255,0.95)] p-4 z-50 ring-1 ring-black/[0.06] animate-in fade-in zoom-in-95 duration-150">
-                    <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                      <div>
-                        <p className="text-sm font-bold text-gray-900">Notifications</p>
-                        <p className="text-xs text-gray-500">{unreadNotifsCount} unread alerts</p>
-                      </div>
-                      {unreadNotifsCount > 0 && (
-                        <button
-                          onClick={markAllNotificationsRead}
-                          className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
-                        >
-                          <CheckCheck className="h-3.5 w-3.5" /> Mark all read
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-72 overflow-y-auto divide-y divide-gray-50 py-1">
-                      {notifications.length === 0 ? (
-                        <p className="py-6 text-center text-xs text-gray-500">No notifications yet.</p>
-                      ) : (
-                        notifications.slice(0, 5).map((notif) => (
-                          <div
-                            key={notif.id}
-                            onClick={() => markNotificationRead(notif.id)}
-                            className={cn(
-                              "py-3 px-2 rounded-xl cursor-pointer transition flex items-start gap-3",
-                              notif.read ? "opacity-75 hover:bg-gray-50" : "bg-emerald-50/50 hover:bg-emerald-50"
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                "h-2 w-2 rounded-full mt-1.5 shrink-0",
-                                notif.read ? "bg-gray-300" : "bg-primary"
-                              )}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold text-gray-900">{notif.title}</p>
-                              <p className="text-xs text-gray-600 line-clamp-2 mt-0.5">{notif.message}</p>
-                              <span className="text-[10px] text-gray-400 mt-1 inline-block">{notif.time}</span>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    <div className="pt-2 border-t border-gray-100 text-center">
-                      <button
-                        onClick={() => {
-                          setIsNotifOpen(false);
-                          onTabChange("notifications");
-                        }}
-                        className="text-xs font-semibold text-primary hover:underline cursor-pointer"
-                      >
-                        View all notifications →
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              {/* Centralized In-Dashboard Notification Bell */}
+              <DashboardNotificationBell role="customer" userId={authUser?.id} />
 
 
               {/* Cart Button to Open Cart Drawer */}

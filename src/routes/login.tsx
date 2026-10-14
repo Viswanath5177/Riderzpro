@@ -1,21 +1,16 @@
 import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
-  Phone,
   Mail,
   Lock,
   ArrowRight,
   ShieldCheck,
   Zap,
-  Bike,
   Eye,
   EyeOff,
-  User,
-  ChevronRight,
   CheckCircle2,
   ArrowLeft,
   KeyRound,
-  Check,
   RefreshCw,
   AlertCircle,
   HelpCircle,
@@ -24,59 +19,35 @@ import {
   Shield,
   Clock,
   Wrench,
-  X,
   Store,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import evShowcaseImg from "@/assets/ev-login-showcase.jpg";
 import { Logo } from "@/components/site/bits";
 import { useStore } from "@/lib/store";
-import { bikes } from "@/lib/data";
-import { cn } from "@/lib/utils";
-import {
-  sendEmailOtp,
-  verifyEmailOtp,
-  registerCustomer,
-  customerSignIn,
-  sellerSignIn,
-  adminSignIn,
-  getCurrentRole,
-  useAuth,
-  type User as AuthUser,
-} from "@/lib/auth";
+import { sendEmailOtp, getCurrentRole, useAuth } from "@/lib/auth";
 
 export type LoginSearch = {
   redirect?: string;
-  username?: string;
   email?: string;
-  password?: string;
-  tab?: string;
-  mode?: string;
 };
 
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>): LoginSearch => {
     return {
       redirect: typeof search["redirect"] === "string" ? search["redirect"] : undefined,
-      username: typeof search["username"] === "string" ? search["username"] : undefined,
       email: typeof search["email"] === "string" ? search["email"] : undefined,
-      password: typeof search["password"] === "string" ? search["password"] : undefined,
-      tab: typeof search["tab"] === "string" ? search["tab"] : undefined,
-      mode: typeof search["mode"] === "string" ? search["mode"] : undefined,
     };
   },
   beforeLoad: async ({ search }) => {
-    // If credentials are in URL or user specifically came to log in, do not bounce them
-    const hasCreds = Boolean((search as any)?.username || (search as any)?.password);
-    if (hasCreds) return;
-
     try {
       const role = await getCurrentRole();
       if (!role) return;
       if (role === "PRODUCT_ADMIN") throw redirect({ to: "/admin/products" });
       if (role === "SELLER_ADMIN") throw redirect({ to: "/admin/sellers" });
       if (role === "seller") throw redirect({ to: "/dashboard/vendor" });
-      if (role === "admin") throw redirect({ to: "/dashboard/admin" });
+      if (role === "admin") throw redirect({ to: "/admin" });
       if (role === "customer") {
         const target = (search as any)?.redirect;
         if (target && target !== "/login") {
@@ -92,1400 +63,694 @@ export const Route = createFileRoute("/login")({
       { title: "Sign In & Register — RiderzPro" },
       {
         name: "description",
-        content:
-          "Sign in or register your RiderzPro account to manage your electric vehicle garage, track orders, and schedule doorstep certified service.",
+        content: "Sign in or create your customer account to access exact-fit EV parts, order tracking, and doorstep certified service.",
       },
       { property: "og:title", content: "Customer Sign In & Registration — RiderzPro" },
-      { property: "og:description", content: "Access your EV ownership, spares, and service dashboard." },
+      { property: "og:description", content: "Email-only quick sign in and account activation." },
     ],
   }),
   component: () => <CustomerLogin />,
 });
 
-interface CustomerLoginProps {
-  defaultTab?: "signin" | "signup";
-}
-
-export function CustomerLogin({ defaultTab }: CustomerLoginProps) {
+export function CustomerLogin({ defaultTab }: { defaultTab?: string } = {}) {
   const navigate = useNavigate();
-  const { userProfile, setRole, signIn, updateUserProfile, addBike } = useStore();
+  const search = Route.useSearch();
+  const { setRole, signIn: storeSignIn } = useStore();
   const { setUser: setAuthUser } = useAuth();
 
-  // Tab state: "signin" | "signup"
-  const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
+  // Workflow Step: "enter_email" | "existing_choice" | "existing_password" | "existing_otp" | "new_user_otp"
+  const [step, setStep] = useState<"enter_email" | "existing_choice" | "existing_password" | "existing_otp" | "new_user_otp">("enter_email");
 
-  // Sign In State
-  const [signInMode, setSignInMode] = useState<"password" | "otp">("password");
-  const [signInContact, setSignInContact] = useState("");
-  const [signInPassword, setSignInPassword] = useState("");
-  const [showSignInPassword, setShowSignInPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
-
-  // Read search params on mount
-  useEffect(() => {
-    if (defaultTab) {
-      setActiveTab(defaultTab);
-      return;
-    }
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const urlContact = params.get("username") || params.get("email");
-      const urlPassword = params.get("password");
-      const tabParam = params.get("tab") || params.get("mode");
-
-      if (urlContact) {
-        setSignInContact(urlContact);
-      }
-      if (urlPassword) {
-        setSignInPassword(urlPassword);
-      }
-      if (tabParam === "signup" || tabParam === "register") {
-        setActiveTab("signup");
-      }
-
-      // If sensitive credentials leaked into query params, cleanly sanitize URL bar without page reload
-      if (params.has("password") || params.has("username")) {
-        params.delete("password");
-        params.delete("username");
-        params.delete("email");
-        const remaining = params.toString();
-        const cleanPath = window.location.pathname + (remaining ? `?${remaining}` : "");
-        window.history.replaceState({}, document.title, cleanPath);
-      }
-    }
-  }, [defaultTab]);
-
-  // OTP State
-  const [otpPhone, setOtpPhone] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpDigits, setOtpDigits] = useState(["", "", "", ""]);
-  const [otpCountdown, setOtpCountdown] = useState(30);
-
-  // Sign Up State
-  const [signUpName, setSignUpName] = useState("");
-  const [signUpPhone, setSignUpPhone] = useState("");
-  const [signUpEmail, setSignUpEmail] = useState("");
-  const [signUpBikeId, setSignUpBikeId] = useState("");
-  const [signUpPassword, setSignUpPassword] = useState("");
-  const [showSignUpPassword, setShowSignUpPassword] = useState(false);
-  const [agreedTerms, setAgreedTerms] = useState(true);
-
-  // Showcase Carousel slide
-  const [activeSlide, setActiveSlide] = useState(0);
-
-  // Loading state
+  // Form States
+  const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpCountdown, setOtpCountdown] = useState(0);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Email OTP Verification Modal State
-  const [isEmailOtpModalOpen, setIsEmailOtpModalOpen] = useState(false);
-  const [emailOtpCode, setEmailOtpCode] = useState("");
-  const [emailOtpCooldown, setEmailOtpCooldown] = useState(0);
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
-  const [isResendingOtp, setIsResendingOtp] = useState(false);
+  // Carousel Slide for Left Showcase
+  const [activeSlide, setActiveSlide] = useState(0);
 
-  // Forgot Password Modal
-  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
-  const [forgotInput, setForgotInput] = useState("");
-  const [isForgotSubmitting, setIsForgotSubmitting] = useState(false);
-
-  // Rotate showcase slides automatically
+  // Rotating slide timer
   useEffect(() => {
     const timer = setInterval(() => {
       setActiveSlide((prev) => (prev + 1) % 3);
-    }, 6000);
+    }, 5500);
     return () => clearInterval(timer);
   }, []);
 
-  // Email OTP Cooldown timer
+  // OTP Countdown timer
   useEffect(() => {
     let interval: any = null;
-    if (emailOtpCooldown > 0) {
-      interval = setInterval(() => setEmailOtpCooldown((c) => Math.max(0, c - 1)), 1000);
+    if (otpCountdown > 0) {
+      interval = setInterval(() => setOtpCountdown((c) => Math.max(0, c - 1)), 1000);
     }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [emailOtpCooldown]);
+    return () => clearInterval(interval);
+  }, [otpCountdown]);
 
-  // Mobile Mock OTP Countdown timer
+  // Read URL email if provided
   useEffect(() => {
-    let interval: any = null;
-    if (otpSent && otpCountdown > 0) {
-      interval = setInterval(() => setOtpCountdown((c) => c - 1), 1000);
+    if (search.email) {
+      setEmail(search.email);
     }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [otpSent, otpCountdown]);
+  }, [search.email]);
 
-  // Dynamic Password Strength Meter
-  const passwordStrength = useMemo(() => {
-    if (!signUpPassword) return { score: 0, label: "Enter password", color: "bg-gray-200" };
-    let score = 0;
-    if (signUpPassword.length >= 6) score++;
-    if (signUpPassword.length >= 8) score++;
-    if (/[0-9]/.test(signUpPassword)) score++;
-    if (/[^A-Za-z0-9]/.test(signUpPassword) || /[A-Z]/.test(signUpPassword)) score++;
+  const redirectTarget = search.redirect && search.redirect.startsWith("/") ? search.redirect : "/dashboard/customer";
 
-    if (score === 1) return { score: 1, label: "Weak", color: "bg-red-500", text: "text-red-500" };
-    if (score === 2) return { score: 2, label: "Fair", color: "bg-amber-500", text: "text-amber-500" };
-    if (score === 3) return { score: 3, label: "Good", color: "bg-blue-500", text: "text-blue-500" };
-    return { score: 4, label: "Strong & Secure", color: "bg-emerald-500", text: "text-emerald-600" };
-  }, [signUpPassword]);
-
-  const getRedirectTarget = () => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const redir = params.get("redirect");
-      if (redir && redir.startsWith("/")) return redir;
-    }
-    return "/dashboard/customer";
-  };
-
-  // Handle Standard Sign In
-  const handleSignIn = async (e?: React.FormEvent) => {
-    if (e && typeof e.preventDefault === "function") {
-      e.preventDefault();
-    }
-    if (!signInContact.trim()) {
-      toast.error("Please enter your mobile number or email.");
+  // Step 1: Check Email
+  const handleCheckEmail = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes("@") || !cleanEmail.includes(".")) {
+      toast.error("Please enter a valid email address.");
       return;
     }
-    if (!signInPassword.trim()) {
+
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/auth/check-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: cleanEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to check email.");
+
+      setIsRegistered(data.isRegistered);
+      if (data.fullName) setFullName(data.fullName);
+
+      if (data.isRegistered) {
+        // User exists -> offer options
+        setStep("existing_choice");
+      } else {
+        // New user -> initiate OTP verification immediately
+        setStep("new_user_otp");
+        await triggerSendOtp(cleanEmail, "CUSTOMER_SIGNUP");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to check email.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Helper to send OTP
+  const triggerSendOtp = async (targetEmail: string, purpose: "CUSTOMER_SIGNUP" | "CUSTOMER_SIGNIN" | "RESET_PASSWORD") => {
+    setIsSendingOtp(true);
+    try {
+      await sendEmailOtp(targetEmail, purpose);
+      setOtpCountdown(60);
+      toast.success(`6-digit verification code sent to ${targetEmail}`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to send verification code.");
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  // Login via Password
+  const handlePasswordSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!password) {
       toast.error("Please enter your password.");
       return;
     }
 
     setIsLoading(true);
-
     try {
-      // Authenticate with PostgreSQL database backend across admins, sellers, customers, and users
-      const response = await fetch("/api/auth/signin", {
+      const res = await fetch("/api/auth/signin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          email: signInContact.trim(),
-          password: signInPassword.trim(),
+          email: email.trim().toLowerCase(),
+          password,
+          authType: "password",
         }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        toast.error(data.error || "Invalid email or password. Please verify your database credentials.");
-        return;
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Incorrect password.");
       }
 
-      const user = data.user;
-      const role = data.role;
-      const redirectUrl = data.redirectUrl || "/dashboard/customer";
-
-      // 1. Update store profile with real user data from database
-      updateUserProfile({
-        name: user.fullName || user.storeName || "Rider",
-        email: user.email,
-        phone: user.phone || "",
-      });
-      signIn();
-
-      // 2. Set role & persistence based on database role
-      if (
-        role === "PRODUCT_ADMIN" ||
-        role === "SELLER_ADMIN" ||
-        role === "SUPPORT_ADMIN" ||
-        role === "SUPER_ADMIN" ||
-        role === "admin"
-      ) {
-        setRole("admin");
-        const adminSession = {
-          token: `sess_adm_${Date.now()}`,
-          role: "admin",
-          user: {
-            id: user.id,
-            name: user.fullName,
-            email: user.email,
-            role: "admin",
-            roleTitle:
-              role === "PRODUCT_ADMIN"
-                ? "Product Administrator"
-                : role === "SELLER_ADMIN"
-                ? "Seller Administrator"
-                : "System Administrator",
-            department:
-              role === "PRODUCT_ADMIN"
-                ? "Product Catalog & Inventory Review"
-                : role === "SELLER_ADMIN"
-                ? "Seller Verification & Compliance"
-                : "Operations & Platform Oversight",
-          },
-          loginTime: Date.now(),
-        };
-        localStorage.setItem("riderzpro_admin_session", JSON.stringify(adminSession));
-        localStorage.setItem(
-          "riderzpro_auth_user",
-          JSON.stringify({
-            id: user.id,
-            name: user.fullName,
-            email: user.email,
-            phone: user.phone || "",
-            role: "admin",
-          })
-        );
-        localStorage.setItem("riderzpro_auth_token", "session_active");
-
-        const displayRole =
-          role === "PRODUCT_ADMIN"
-            ? "Product Admin"
-            : role === "SELLER_ADMIN"
-            ? "Seller Admin"
-            : "Admin";
-        toast.success(`Welcome back, ${user.fullName}! (${displayRole})`);
-        navigate({ to: redirectUrl as any });
-      } else if (role === "seller") {
-        setRole("seller");
-        localStorage.setItem(
-          "riderzpro_auth_user",
-          JSON.stringify({
-            id: user.id,
-            name: user.fullName || user.storeName,
-            email: user.email,
-            phone: user.phone || "",
-            role: "seller",
-          })
-        );
-        localStorage.setItem("riderzpro_auth_token", "session_active");
-        toast.success(`Welcome back, ${user.storeName || user.fullName}! (Vendor Portal)`);
-        navigate({ to: redirectUrl as any });
-      } else {
-        setRole("customer");
-        const customerAuthUser: AuthUser = {
-          id: user.id,
-          name: user.fullName,
-          email: user.email,
-          phone: user.phone || "",
-          role: "customer",
-        };
-        setAuthUser(customerAuthUser);
-        localStorage.setItem("riderzpro_auth_user", JSON.stringify(customerAuthUser));
-        localStorage.setItem("riderzpro_auth_token", "session_active");
-        toast.success(`Welcome back, ${user.fullName.split(" ")[0]}!`);
-        const target = getRedirectTarget();
-        navigate({ to: target as any });
-      }
+      completeSession(data);
     } catch (err: any) {
-      console.error("[Login Error]:", err);
-      toast.error(err.message || "Failed to authenticate with database.");
+      toast.error(err?.message || "Sign in failed.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handle Quick Demo Rider Login
-  const handleQuickDemoLogin = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      updateUserProfile({
-        name: "Rahul Verma",
-        phone: "+91 98450 12345",
-        email: "rahul.verma@example.com",
-        city: "Bengaluru, KA",
-        address: "74, Indiranagar 100ft Rd, Bengaluru, Karnataka 560038",
-        points: 450,
-      });
-
-      // Register Ather 450X if empty
-      addBike({
-        bikeId: "ather-450x",
-        year: 2024,
-        nickname: "Rahul's 450X Gen 3",
-        regNo: "KA 03 EQ 4521",
-        batteryHealth: 98,
-        nextServiceDays: 28,
-        odoKm: 3450,
-      });
-
-      signIn();
-      setRole("customer");
-      const demoUser: AuthUser = {
-        id: "usr_demo_rahul",
-        name: "Rahul Verma",
-        phone: "+91 98450 12345",
-        email: "rahul.verma@example.com",
-        role: "customer",
-      };
-      setAuthUser(demoUser);
-      localStorage.setItem("riderzpro_auth_user", JSON.stringify(demoUser));
-      localStorage.setItem("riderzpro_auth_token", "session_active");
-
-      toast.success("Signed in as Demo Rider Rahul Verma (Ather 450X owner)!");
-      const target = getRedirectTarget();
-      navigate({ to: target as any });
-      setIsLoading(false);
-    }, 200);
-  };
-
-  // Handle Send OTP
-  const handleSendOtp = async (e: React.FormEvent) => {
+  // Login via Email OTP
+  const handleOtpSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    const clean = otpPhone.replace(/\D/g, "");
-    if (clean.length < 10) {
-      toast.error("Please enter a valid 10-digit mobile number.");
-      return;
-    }
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setOtpSent(true);
-      setOtpCountdown(30);
-      setOtpDigits(["1", "2", "3", "4"]); // Pre-fill mock OTP for effortless instant sign-in
-      toast.success("Security OTP sent! Auto-filled demo code '1234'.");
-    }, 400);
-  };
-
-  // Handle Verify OTP
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const code = otpDigits.join("");
-    if (code.length < 4) {
-      toast.error("Please enter the 4-digit verification code.");
-      return;
-    }
-
-    setIsLoading(true);
-
-    setTimeout(() => {
-      if (!userProfile?.phone) {
-        updateUserProfile({ phone: `+91 ${otpPhone.trim()}` });
-      }
-      signIn();
-      setRole("customer");
-      toast.success("Mobile number verified! Welcome to RiderzPro.");
-      const target = getRedirectTarget();
-      navigate({ to: target as any });
-      setIsLoading(false);
-    }, 400);
-  };
-
-  // Handle Customer Sign Up: Step 1 dispatches Email OTP
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!signUpName.trim()) {
-      toast.error("Please enter your full legal name.");
-      return;
-    }
-    if (!signUpEmail.trim() || !signUpEmail.includes("@")) {
-      toast.error("Please enter a valid email address to receive your verification code.");
-      return;
-    }
-    if (!signUpPassword.trim() || signUpPassword.length < 6) {
-      toast.error("Password must be at least 6 characters long.");
-      return;
-    }
-    if (!agreedTerms) {
-      toast.error("Please accept the Terms of Service to continue.");
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const res = await sendEmailOtp(signUpEmail.trim(), "CUSTOMER_SIGNUP");
-      setEmailOtpCooldown(res.cooldownSeconds || 60);
-      setIsEmailOtpModalOpen(true);
-      setEmailOtpCode("");
-      toast.success(`Verification code dispatched to ${signUpEmail.trim()}`);
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to dispatch verification code. Please check your email.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle Verify Email OTP and Create Customer Account in PostgreSQL
-  const handleVerifyEmailOtpAndRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailOtpCode.trim() || emailOtpCode.trim().length !== 6) {
+    if (!otpCode || otpCode.trim().length !== 6) {
       toast.error("Please enter the 6-digit code received in your email.");
       return;
     }
 
-    setIsVerifyingOtp(true);
+    setIsLoading(true);
     try {
-      const res = await registerCustomer({
-        fullName: signUpName.trim(),
-        email: signUpEmail.trim(),
-        password: signUpPassword,
-        phone: signUpPhone.trim() || undefined,
-        otpCode: emailOtpCode.trim(),
+      const res = await fetch("/api/auth/signin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          code: otpCode.trim(),
+          authType: "otp",
+        }),
       });
-
-      updateUserProfile({
-        name: res.customer.fullName,
-        email: res.customer.email,
-        phone: res.customer.phone || "",
-        points: 100,
-      });
-
-      if (signUpBikeId && signUpBikeId !== "none") {
-        const selectedBike = bikes.find((b) => b.id === signUpBikeId);
-        if (selectedBike) {
-          addBike({
-            bikeId: selectedBike.id,
-            year: selectedBike.years.at(-1),
-            nickname: `${signUpName.trim().split(" ")[0]}'s ${selectedBike.model}`,
-            batteryHealth: 100,
-            nextServiceDays: 90,
-            odoKm: 0,
-          });
-        }
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Invalid verification code.");
       }
 
-      signIn();
-      setRole("customer");
-      setIsEmailOtpModalOpen(false);
-      toast.success(`Account verified! Welcome to RiderzPro, ${res.customer.fullName.split(" ")[0]}! 🎉 +100 ProPoints`);
-
-      const target = getRedirectTarget();
-      navigate({ to: target as any });
+      completeSession(data);
     } catch (err: any) {
-      toast.error(err?.message || "Invalid or expired verification code.");
+      toast.error(err?.message || "OTP sign in failed.");
     } finally {
-      setIsVerifyingOtp(false);
+      setIsLoading(false);
     }
   };
 
-  const handleResendSignupOtp = async () => {
-    if (emailOtpCooldown > 0) return;
-    setIsResendingOtp(true);
-    try {
-      await sendEmailOtp(signUpEmail.trim(), "CUSTOMER_SIGNUP");
-      setEmailOtpCooldown(60);
-      toast.success("A fresh verification code was sent to your email.");
-    } catch (err: any) {
-      toast.error(err?.message || "Could not resend code. Try again shortly.");
-    } finally {
-      setIsResendingOtp(false);
-    }
-  };
-
-  // Handle Forgot Password
-  const handleForgotSubmit = (e: React.FormEvent) => {
+  // New Customer Signup via OTP
+  const handleNewCustomerSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!forgotInput.trim()) {
-      toast.error("Please enter your registered mobile number or email.");
+    if (!otpCode || otpCode.trim().length !== 6) {
+      toast.error("Please enter the 6-digit code sent to your email.");
       return;
     }
-    setIsForgotSubmitting(true);
-    setTimeout(() => {
-      setIsForgotSubmitting(false);
-      setIsForgotModalOpen(false);
-      toast.success(`Password reset link sent to ${forgotInput.trim()}!`);
-      setForgotInput("");
-    }, 600);
+
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          otpCode: otpCode.trim(),
+          password: password || undefined,
+          fullName: fullName.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to create account.");
+      }
+
+      toast.success("Account created successfully! Welcome to Riderzpro.");
+      completeSession(data);
+    } catch (err: any) {
+      toast.error(err?.message || "Registration failed.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const showcaseSlides = [
-    {
-      title: "Guaranteed 100% OEM Spares Matching",
-      desc: "Our automated fitment engine maps every lithium battery pack, BMS module, belt, and brake rotor directly to your EV's make and year.",
-      stat: "18,400+",
-      statLabel: "Compatible SKUs",
-      icon: Zap,
-    },
-    {
-      title: "Certified 24-Point Battery Diagnostics",
-      desc: "Book doorstep BMS cell health inspections and rapid emergency roadside assistance across major EV hubs in India.",
-      stat: "15 Mins",
-      statLabel: "Avg. Dispatch Time",
-      icon: Wrench,
-    },
-    {
-      title: "Direct From Tier-1 OEM Manufacturers",
-      desc: "Backed by direct warranty replacement guarantees and 24-48 hour expedited express delivery to your doorstep.",
-      stat: "4.9 ★",
-      statLabel: "Customer Satisfaction",
-      icon: ShieldCheck,
-    },
-  ];
+  // Common Session Completion
+  const completeSession = (data: any) => {
+    const userObj = data.user || data.customer;
+    const sessionUser = {
+      id: userObj.id,
+      name: userObj.fullName || userObj.email.split("@")[0],
+      email: userObj.email,
+      phone: userObj.phone || "",
+      role: (data.role || "customer") as any,
+    };
+
+    localStorage.setItem("riderzpro_auth_user", JSON.stringify(sessionUser));
+    localStorage.setItem("riderzpro_token", "session_active");
+    setAuthUser(sessionUser);
+    setRole("customer");
+
+    toast.success(`Signed in as ${sessionUser.name}!`);
+
+    // Redirect to requested page (e.g. checkout /cart) or customer dashboard
+    setTimeout(() => {
+      window.location.href = redirectTarget;
+    }, 300);
+  };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col antialiased selection:bg-[#E31E24]/20 selection:text-[#E31E24]">
-      {/* Top Mobile Bar (Visible on mobile only) */}
-      <div className="lg:hidden bg-neutral-950 text-white px-4 py-3 flex items-center justify-between border-b border-white/10 shrink-0">
-        <div className="flex items-center gap-2">
-          <Logo imgClassName="h-9 sm:h-10 w-auto" />
-        </div>
-        <Link
-          to="/"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition active:scale-95"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          <span>Back to Store</span>
+    <div className="min-h-screen bg-[#F8F9FA] flex flex-col font-sans text-[#111111]">
+      {/* Top Header */}
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-30">
+        <Link to="/" className="flex items-center gap-2.5">
+          <Logo className="flex items-center" imgClassName="h-9 sm:h-10 w-auto" />
         </Link>
-      </div>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/vendor/login"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 hover:border-gray-300 bg-white text-xs font-semibold text-gray-700 hover:text-black transition"
+          >
+            <Store className="h-3.5 w-3.5 text-[#E31E24]" />
+            <span>Vendor Portal</span>
+          </Link>
+          <Link
+            to="/"
+            className="text-xs font-medium text-gray-500 hover:text-gray-900 transition flex items-center gap-1"
+          >
+            <span>Back to Store</span>
+          </Link>
+        </div>
+      </header>
 
-      {/* Main Grid: Left Cinematic Showcase + Right Form */}
-      <div className="flex-1 grid lg:grid-cols-12 min-h-screen">
-        {/* ─────────────────────────────────────────────────────────────
-            LEFT PANE: DYNAMIC CINEMATIC SHOWCASE (Desktop & Tablet)
-           ───────────────────────────────────────────────────────────── */}
-        <div className="lg:col-span-5 xl:col-span-6 relative bg-neutral-950 text-white overflow-hidden hidden lg:flex flex-col justify-between p-8 xl:p-14 border-r border-white/10">
-          {/* Background Image with Dark Vignette */}
-          <div className="absolute inset-0 pointer-events-none">
-            <img
-              src={evShowcaseImg}
-              alt="RiderzPro Electric Motorcycle"
-              className="h-full w-full object-cover object-center scale-105 filter brightness-75 contrast-110"
-            />
-            {/* Ambient gradients */}
-            <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/80 to-neutral-950/40" />
-            <div className="absolute inset-0 bg-gradient-to-r from-neutral-950/90 via-transparent to-neutral-950/60" />
-            <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-[#E31E24]/20 blur-3xl pointer-events-none" />
-            <div className="absolute bottom-10 right-10 w-96 h-96 rounded-full bg-blue-600/15 blur-3xl pointer-events-none" />
-          </div>
+      {/* Main Body */}
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-10">
+        <div className="w-full max-w-5xl bg-white rounded-3xl border border-gray-200 shadow-xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[580px]">
+          {/* Left Column: Brand Showcase */}
+          <div className="hidden lg:flex lg:col-span-5 bg-gradient-to-br from-[#12141A] to-[#1A1D24] p-8 sm:p-10 flex-col justify-between text-white relative overflow-hidden">
+            <div className="absolute inset-0 bg-cover bg-center opacity-20 mix-blend-luminosity" style={{ backgroundImage: `url(${evShowcaseImg})` }} />
+            <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-[#E31E24]/20 blur-3xl pointer-events-none" />
 
-          {/* Top Brand Bar */}
-          <div className="relative z-10 flex items-center justify-between">
-            <div className="inline-flex items-center gap-3">
-              <div className="bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-lg transition-transform hover:scale-105">
-                <Logo imgClassName="h-10 sm:h-11 w-auto" />
+            <div className="relative z-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-white text-xs font-semibold mb-6 border border-white/10">
+                <ShieldCheck className="h-3.5 w-3.5 text-[#E31E24]" />
+                <span>Verified EV Marketplace</span>
               </div>
-            </div>
-          </div>
-
-          {/* Center Dynamic Showcase Content */}
-          <div className="relative z-10 my-auto py-8 xl:py-12 max-w-xl">
-            {/* Headline */}
-            <h1 className="text-3xl xl:text-5xl font-black text-white tracking-tight leading-[1.15] drop-shadow-md">
-              {showcaseSlides[activeSlide].title}
-            </h1>
-
-            {/* Description */}
-            <p className="mt-4 text-base xl:text-lg text-white/75 leading-relaxed font-normal">
-              {showcaseSlides[activeSlide].desc}
-            </p>
-
-            {/* Interactive Slide Pills */}
-            <div className="flex items-center gap-2.5 mt-8">
-              {showcaseSlides.map((slide, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setActiveSlide(idx)}
-                  className={cn(
-                    "h-2 rounded-full transition-all duration-300 cursor-pointer",
-                    activeSlide === idx
-                      ? "w-8 bg-[#E31E24] shadow-[0_0_12px_rgba(227,30,36,0.8)]"
-                      : "w-2 bg-white/30 hover:bg-white/60"
-                  )}
-                  aria-label={`Slide ${idx + 1}`}
-                />
-              ))}
-            </div>
-
-            {/* Floating Glassmorphic Telemetry Preview Card */}
-            <div className="mt-10 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/15 p-4.5 shadow-2xl">
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#E31E24] to-[#ff595e] grid place-items-center text-white shadow-md">
-                    <Bike className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-white/60 font-medium">Active Garage Profile</p>
-                    <p className="text-sm font-bold text-white">Ather 450X · Gen 3</p>
-                  </div>
-                </div>
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  98% Battery Health
-                </span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3 pt-3 text-center">
-                <div className="bg-white/5 rounded-xl p-2 border border-white/5">
-                  <p className="text-[10px] text-white/50 uppercase font-semibold">Warranty</p>
-                  <p className="text-xs font-bold text-white mt-0.5">3 Years Active</p>
-                </div>
-                <div className="bg-white/5 rounded-xl p-2 border border-white/5">
-                  <p className="text-[10px] text-white/50 uppercase font-semibold">Diagnostics</p>
-                  <p className="text-xs font-bold text-emerald-400 mt-0.5">24/24 Passed</p>
-                </div>
-                <div className="bg-white/5 rounded-xl p-2 border border-white/5">
-                  <p className="text-[10px] text-white/50 uppercase font-semibold">ProPoints</p>
-                  <p className="text-xs font-bold text-amber-300 mt-0.5">450 Pts</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Social Proof Ticker */}
-          <div className="relative z-10 pt-6 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
-            <div className="flex items-center gap-3">
-              <div className="flex -space-x-2">
-                {["/assets/rider.jpg", "/assets/workshop.jpg", "/assets/scooter.jpg"].map((img, i) => (
-                  <img
-                    key={i}
-                    src={img}
-                    alt="Rider"
-                    className="h-7 w-7 rounded-full border-2 border-neutral-900 object-cover"
-                  />
-                ))}
-              </div>
-              <p className="text-white/80 font-medium">
-                <span className="font-bold text-white">18,400+</span> verified EV riders
+              <h2 className="text-3xl font-black tracking-tight leading-tight mb-3">
+                Batteries & Spares <br />
+                <span className="text-[#E31E24]">Guaranteed to Fit.</span>
+              </h2>
+              <p className="text-xs text-gray-300 leading-relaxed max-w-xs">
+                Log in to order verified components, unlock door-step battery swaps, and manage your vehicle garage.
               </p>
             </div>
 
-            <div className="flex items-center gap-1.5 text-amber-400 font-bold">
-              <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-              <span className="text-white">4.9 / 5</span>
-              <span className="text-white/50 font-normal">Rating</span>
-            </div>
-          </div>
-        </div>
-
-        {/* ─────────────────────────────────────────────────────────────
-            RIGHT PANE: ULTRA-PREMIUM AUTHENTICATION CONTAINER
-           ───────────────────────────────────────────────────────────── */}
-        <div className="lg:col-span-7 xl:col-span-6 flex flex-col justify-between p-5 sm:p-8 lg:p-12 xl:p-16 overflow-y-auto min-h-screen">
-          {/* Top Bar on Desktop */}
-          <div className="hidden lg:flex items-center justify-between pb-6">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-gray-200 bg-white hover:border-[#E31E24] hover:text-[#E31E24] text-xs font-semibold text-gray-700 transition active:scale-95 shadow-2xs group"
-            >
-              <ArrowLeft className="h-3.5 w-3.5 text-gray-400 group-hover:text-[#E31E24] transition-colors" />
-              <span>Back to Store</span>
-            </Link>
-
-            <div className="flex items-center gap-2 text-xs text-gray-500 font-medium">
-              <HelpCircle className="h-3.5 w-3.5 text-gray-400" />
-              <span>Need help?</span>
-              <a
-                href="mailto:support@riderzpro.com"
-                className="text-gray-900 font-semibold hover:text-[#E31E24] transition"
-              >
-                24/7 EV Support
-              </a>
-            </div>
-          </div>
-
-          {/* Form Shell */}
-          <div className="w-full max-w-md mx-auto my-auto py-4">
-            {/* Brand Logo on Mobile Hero */}
-            <div className="lg:hidden mb-6 text-center">
-              <div className="inline-block bg-white px-4 py-2.5 rounded-2xl shadow-md border border-gray-100">
-                <Logo imgClassName="h-10 sm:h-11 w-auto mx-auto" />
+            {/* Rotating Trust Slides */}
+            <div className="relative z-10 pt-6">
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+                {activeSlide === 0 && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 text-[#E31E24] text-xs font-bold">
+                      <Zap className="h-4 w-4" /> 100% Fitment Guarantee
+                    </div>
+                    <p className="text-[11px] text-gray-300">
+                      Every component is verified against battery chemistry, BMS specs, and OEM bike dimensions.
+                    </p>
+                  </div>
+                )}
+                {activeSlide === 1 && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-bold">
+                      <Award className="h-4 w-4" /> Manufacturer Warranty
+                    </div>
+                    <p className="text-[11px] text-gray-300">
+                      Up to 3-year official warranty with free doorstep diagnostics and instant replacement.
+                    </p>
+                  </div>
+                )}
+                {activeSlide === 2 && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 text-blue-400 text-xs font-bold">
+                      <Clock className="h-4 w-4" /> Lightning Doorstep Delivery
+                    </div>
+                    <p className="text-[11px] text-gray-300">
+                      Track your delivery rider live in real-time right to your home or office parking.
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-1.5 mt-3 justify-center">
+                {[0, 1, 2].map((i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveSlide(i)}
+                    className={`h-1.5 rounded-full transition-all ${activeSlide === i ? "w-6 bg-[#E31E24]" : "w-1.5 bg-white/30"}`}
+                  />
+                ))}
               </div>
             </div>
+          </div>
 
-            {/* Vendor / Seller Switcher Banner */}
-            <div className="mb-4 flex items-center justify-between p-2.5 rounded-xl bg-blue-50/70 border border-blue-200/80 text-xs">
-              <span className="flex items-center gap-2 text-blue-900 font-medium">
-                <Store className="h-4 w-4 text-[#0066cc]" />
-                <span>Want to sell EV parts or batteries?</span>
-              </span>
-              <Link
-                to="/vendor/signup"
-                className="font-bold text-[#0066cc] hover:underline shrink-0"
-              >
-                Vendor Sign-Up →
-              </Link>
-            </div>
+          {/* Right Column: Customer Auth Interface */}
+          <div className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-center">
+            <div className="max-w-md w-full mx-auto">
+              {/* Back button if past step 1 */}
+              {step !== "enter_email" && (
+                <button
+                  type="button"
+                  onClick={() => setStep("enter_email")}
+                  className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-black font-semibold mb-4 transition cursor-pointer"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  <span>Change email address</span>
+                </button>
+              )}
 
-            {/* Segmented Tab Pill */}
-            <div className="relative p-1 rounded-2xl bg-gray-100 border border-gray-200/80 mb-6 flex items-center shadow-inner">
-              <button
-                type="button"
-                onClick={() => setActiveTab("signin")}
-                className={cn(
-                  "flex-1 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer",
-                  activeTab === "signin"
-                    ? "bg-white text-gray-900 shadow-[0_2px_10px_rgba(0,0,0,0.08)] font-black"
-                    : "text-gray-500 hover:text-gray-900"
-                )}
-              >
-                <KeyRound className={cn("h-4 w-4", activeTab === "signin" ? "text-[#E31E24]" : "text-gray-400")} />
-                <span>Sign In</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab("signup")}
-                className={cn(
-                  "flex-1 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer relative",
-                  activeTab === "signup"
-                    ? "bg-white text-gray-900 shadow-[0_2px_10px_rgba(0,0,0,0.08)] font-black"
-                    : "text-gray-500 hover:text-gray-900"
-                )}
-              >
-                <User className={cn("h-4 w-4", activeTab === "signup" ? "text-[#E31E24]" : "text-gray-400")} />
-                <span>Create Account</span>
-                <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[#E31E24]/10 text-[#E31E24] border border-[#E31E24]/20">
-                  +100 Pts
-                </span>
-              </button>
-            </div>
-
-            {/* ─────────────────────────────────────────────────────────────
-                TAB 1: SIGN IN FLOW
-               ───────────────────────────────────────────────────────────── */}
-            {activeTab === "signin" ? (
-              <div className="space-y-5 animate-in fade-in duration-200">
+              {/* STAGE 1: ENTER EMAIL */}
+              {step === "enter_email" && (
                 <div>
-                  <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight font-display">
-                    Welcome back, Rider
-                  </h2>
-                  <p className="text-xs sm:text-sm text-gray-500 mt-1.5 leading-relaxed">
-                    Access your garage, verified spares orders, and doorstep service tracking.
-                  </p>
-                </div>
+                  <div className="mb-6">
+                    <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#111111]">
+                      Welcome to RiderzPro
+                    </h1>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Enter your email to sign in or create your customer account.
+                    </p>
+                  </div>
 
-                {/* Sub-toggle: Password vs Mobile OTP */}
-                <div className="flex items-center gap-4 border-b border-gray-200 pb-2 text-xs font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSignInMode("password");
-                      setOtpSent(false);
-                    }}
-                    className={cn(
-                      "pb-2 relative transition-colors cursor-pointer",
-                      signInMode === "password"
-                        ? "text-[#E31E24] font-bold"
-                        : "text-gray-500 hover:text-gray-800"
-                    )}
-                  >
-                    <span>Password Login</span>
-                    {signInMode === "password" && (
-                      <span className="absolute bottom-0 inset-x-0 h-0.5 bg-[#E31E24] rounded-full" />
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSignInMode("otp")}
-                    className={cn(
-                      "pb-2 relative transition-colors cursor-pointer",
-                      signInMode === "otp"
-                        ? "text-[#E31E24] font-bold"
-                        : "text-gray-500 hover:text-gray-800"
-                    )}
-                  >
-                    <span>Instant Mobile OTP</span>
-                    {signInMode === "otp" && (
-                      <span className="absolute bottom-0 inset-x-0 h-0.5 bg-[#E31E24] rounded-full" />
-                    )}
-                  </button>
-                </div>
-
-                {signInMode === "password" ? (
-                  /* Standard Password Form */
-                  <form action="javascript:void(0);" method="POST" onSubmit={handleSignIn} className="space-y-4">
+                  <form onSubmit={handleCheckEmail} className="space-y-4">
                     <div>
                       <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                        Mobile Number or Email
+                        Email Address
                       </label>
-                      <div className="relative flex items-center">
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
                         <input
-                          type="text"
-                          name="username"
-                          autoComplete="username"
-                          value={signInContact}
-                          onChange={(e) => setSignInContact(e.target.value)}
-                          placeholder="e.g. 9876543210 or rider@example.com"
-                          className="w-full h-12 rounded-2xl border border-gray-200 bg-white hover:border-gray-300 focus:bg-white px-4 pl-11 text-sm outline-none focus:border-[#E31E24] focus:ring-4 focus:ring-[#E31E24]/10 transition shadow-2xs font-medium text-gray-900"
+                          type="email"
                           required
+                          autoFocus
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="name@example.com"
+                          className="w-full rounded-xl border border-gray-300 px-4 py-3 pl-10 text-sm text-[#111111] placeholder-gray-400 focus:outline-none focus:border-[#E31E24] focus:ring-2 focus:ring-[#E31E24]/10 transition"
                         />
-                        <Phone className="h-4.5 w-4.5 text-gray-400 absolute left-3.5 pointer-events-none" />
                       </div>
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                          Password
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setIsForgotModalOpen(true)}
-                          className="text-xs text-[#E31E24] font-bold hover:underline cursor-pointer"
-                        >
-                          Forgot Password?
-                        </button>
-                      </div>
-                      <div className="relative flex items-center">
-                        <input
-                          type={showSignInPassword ? "text" : "password"}
-                          name="password"
-                          autoComplete="current-password"
-                          value={signInPassword}
-                          onChange={(e) => setSignInPassword(e.target.value)}
-                          placeholder="Enter your account password"
-                          className="w-full h-12 rounded-2xl border border-gray-200 bg-white hover:border-gray-300 focus:bg-white px-4 pl-11 pr-11 text-sm outline-none focus:border-[#E31E24] focus:ring-4 focus:ring-[#E31E24]/10 transition shadow-2xs font-medium text-gray-900"
-                          required
-                        />
-                        <Lock className="h-4.5 w-4.5 text-gray-400 absolute left-3.5 pointer-events-none" />
-                        <button
-                          type="button"
-                          onClick={() => setShowSignInPassword(!showSignInPassword)}
-                          className="absolute right-3.5 text-gray-400 hover:text-gray-700 p-1 cursor-pointer transition"
-                          aria-label={showSignInPassword ? "Hide password" : "Show password"}
-                        >
-                          {showSignInPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-1">
-                      <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={rememberMe}
-                          onChange={(e) => setRememberMe(e.target.checked)}
-                          className="h-4 w-4 rounded text-[#E31E24] focus:ring-[#E31E24] border-gray-300"
-                        />
-                        <span className="text-xs text-gray-600 font-medium">Keep me signed in for 30 days</span>
-                      </label>
                     </div>
 
                     <button
                       type="submit"
-                      disabled={isLoading}
-                      className="w-full h-12 rounded-2xl bg-gradient-to-r from-[#E31E24] via-[#ee252b] to-[#C1121F] text-white font-black text-sm shadow-[0_8px_25px_rgba(227,30,36,0.35)] hover:shadow-[0_10px_30px_rgba(227,30,36,0.45)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
+                      disabled={isLoading || !email}
+                      className="w-full rounded-xl bg-[#E31E24] hover:bg-[#c9181e] active:scale-[0.99] text-white py-3.5 px-4 font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#E31E24]/20 transition disabled:opacity-50 cursor-pointer"
                     >
                       {isLoading ? (
-                        <span className="flex items-center gap-2">
-                          <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Signing in...</span>
-                        </span>
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          <span>Checking Email...</span>
+                        </>
                       ) : (
                         <>
-                          <span>Sign In to Dashboard</span>
+                          <span>Continue</span>
                           <ArrowRight className="h-4 w-4" />
                         </>
                       )}
                     </button>
                   </form>
-                ) : (
-                  /* OTP Mobile Form */
-                  <form action="javascript:void(0);" method="POST" onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                        Mobile Number
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <div className="h-12 px-3 rounded-2xl border border-gray-200 bg-gray-50 flex items-center text-xs font-bold text-gray-700 shrink-0">
-                          🇮🇳 +91
+
+                  <div className="mt-6 pt-6 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                    <span>Are you an EV parts seller?</span>
+                    <Link to="/vendor/login" className="text-[#E31E24] font-bold hover:underline flex items-center gap-1">
+                      <span>Vendor Sign In</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 2A: EXISTING USER — CHOOSE METHOD */}
+              {step === "existing_choice" && (
+                <div className="space-y-5">
+                  <div>
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 mb-1">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Account Found
+                    </span>
+                    <h2 className="text-2xl font-black text-[#111111]">
+                      Welcome back{fullName ? `, ${fullName}` : ""}!
+                    </h2>
+                    <p className="text-xs text-gray-500 mt-1 font-mono">{email}</p>
+                  </div>
+
+                  <p className="text-xs font-medium text-gray-600">
+                    Choose how you would like to sign in:
+                  </p>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setStep("existing_otp");
+                        await triggerSendOtp(email.trim().toLowerCase(), "CUSTOMER_SIGNIN");
+                      }}
+                      className="p-4 rounded-2xl border-2 border-gray-200 hover:border-[#E31E24] bg-white hover:bg-red-50/20 text-left transition flex items-center justify-between group cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-red-100 text-[#E31E24] flex items-center justify-center font-bold">
+                          <Mail className="h-5 w-5" />
                         </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-[#111111]">Continue with Email OTP</h4>
+                          <p className="text-xs text-gray-500">We'll send a 6-digit one-time code to your email</p>
+                        </div>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-[#E31E24] transition-transform group-hover:translate-x-1" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setStep("existing_password")}
+                      className="p-4 rounded-2xl border-2 border-gray-200 hover:border-[#E31E24] bg-white hover:bg-red-50/20 text-left transition flex items-center justify-between group cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-gray-100 text-gray-700 flex items-center justify-center font-bold">
+                          <Lock className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-[#111111]">Continue with Password</h4>
+                          <p className="text-xs text-gray-500">Sign in with your established account password</p>
+                        </div>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-[#E31E24] transition-transform group-hover:translate-x-1" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 2B: EXISTING USER — PASSWORD */}
+              {step === "existing_password" && (
+                <div>
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-black text-[#111111]">Sign In with Password</h2>
+                    <p className="text-xs text-gray-500 mt-1 font-mono">{email}</p>
+                  </div>
+
+                  <form onSubmit={handlePasswordSignIn} className="space-y-4">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Account Password
+                        </label>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setStep("existing_otp");
+                            await triggerSendOtp(email.trim().toLowerCase(), "CUSTOMER_SIGNUP");
+                          }}
+                          className="text-xs text-[#E31E24] hover:underline font-semibold"
+                        >
+                          Use Email OTP instead
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
                         <input
-                          type="tel"
-                          disabled={otpSent}
-                          value={otpPhone}
-                          onChange={(e) => setOtpPhone(e.target.value)}
-                          placeholder="10-digit mobile number"
-                          className="flex-1 h-12 rounded-2xl border border-gray-200 bg-white hover:border-gray-300 focus:bg-white px-4 text-sm outline-none focus:border-[#E31E24] focus:ring-4 focus:ring-[#E31E24]/10 transition shadow-2xs font-medium text-gray-900 disabled:bg-gray-100 disabled:text-gray-500"
+                          type={showPassword ? "text" : "password"}
                           required
+                          autoFocus
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Enter your password"
+                          className="w-full rounded-xl border border-gray-300 px-4 py-3 pl-10 pr-10 text-sm text-[#111111] focus:outline-none focus:border-[#E31E24] focus:ring-2 focus:ring-[#E31E24]/10 transition"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3.5 top-3.5 text-gray-400 hover:text-gray-700"
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
                       </div>
                     </div>
 
-                    {otpSent && (
-                      <div className="animate-in fade-in zoom-in-95 duration-150">
-                        <div className="flex items-center justify-between mb-2">
-                          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                            Enter 4-Digit Security Code
-                          </label>
-                          <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
-                            <Check className="h-3 w-3" /> Auto-filled demo code
-                          </span>
-                        </div>
+                    <button
+                      type="submit"
+                      disabled={isLoading || !password}
+                      className="w-full rounded-xl bg-[#E31E24] hover:bg-[#c9181e] text-white py-3.5 px-4 font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#E31E24]/20 transition disabled:opacity-50 cursor-pointer"
+                    >
+                      {isLoading ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          <span>Signing In...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Sign In</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </div>
+              )}
 
-                        <div className="grid grid-cols-4 gap-2.5">
-                          {otpDigits.map((digit, idx) => (
-                            <input
-                              key={idx}
-                              id={`otp-box-${idx}`}
-                              type="text"
-                              maxLength={1}
-                              value={digit}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                const next = [...otpDigits];
-                                next[idx] = val;
-                                setOtpDigits(next);
-                                if (val && idx < 3) {
-                                  const nextInput = document.getElementById(`otp-box-${idx + 1}`);
-                                  nextInput?.focus();
-                                }
-                              }}
-                              className="h-13 rounded-2xl border-2 border-gray-200 text-center text-xl font-bold text-gray-900 focus:border-[#E31E24] focus:ring-4 focus:ring-[#E31E24]/10 outline-none transition bg-white"
-                            />
-                          ))}
-                        </div>
+              {/* STAGE 2C: EXISTING USER — OTP */}
+              {step === "existing_otp" && (
+                <div>
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-black text-[#111111]">Verify Email OTP</h2>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter the 6-digit verification code sent to <span className="font-mono font-bold text-black">{email}</span>
+                    </p>
+                  </div>
 
-                        <div className="flex items-center justify-between mt-3 text-xs">
-                          <span className="text-gray-500">
-                            {otpCountdown > 0 ? `Resend code in ${otpCountdown}s` : "Didn't receive code?"}
-                          </span>
-                          {otpCountdown === 0 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOtpCountdown(30);
-                                toast.success("New OTP sent to mobile!");
-                              }}
-                              className="text-[#E31E24] font-bold hover:underline cursor-pointer"
-                            >
-                              Resend OTP
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                  <form onSubmit={handleOtpSignIn} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                        6-Digit Verification Code
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={6}
+                        autoFocus
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                        placeholder="• • • • • •"
+                        className="w-full text-center tracking-[0.5em] font-mono text-2xl font-bold rounded-xl border border-gray-300 py-3 text-[#111111] focus:outline-none focus:border-[#E31E24] focus:ring-2 focus:ring-[#E31E24]/10 transition"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Didn't receive code?</span>
+                      <button
+                        type="button"
+                        disabled={isSendingOtp || otpCountdown > 0}
+                        onClick={() => triggerSendOtp(email.trim().toLowerCase(), "CUSTOMER_SIGNUP")}
+                        className="text-[#E31E24] font-bold hover:underline disabled:opacity-50 cursor-pointer"
+                      >
+                        {isSendingOtp ? "Sending..." : otpCountdown > 0 ? `Resend code in ${otpCountdown}s` : "Resend code"}
+                      </button>
+                    </div>
 
                     <button
                       type="submit"
-                      disabled={isLoading}
-                      className="w-full h-12 rounded-2xl bg-gradient-to-r from-[#E31E24] via-[#ee252b] to-[#C1121F] text-white font-black text-sm shadow-[0_8px_25px_rgba(227,30,36,0.35)] hover:shadow-[0_10px_30px_rgba(227,30,36,0.45)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
+                      disabled={isLoading || otpCode.length !== 6}
+                      className="w-full rounded-xl bg-[#E31E24] hover:bg-[#c9181e] text-white py-3.5 px-4 font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#E31E24]/20 transition disabled:opacity-50 cursor-pointer"
                     >
                       {isLoading ? (
-                        <span className="flex items-center gap-2">
-                          <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Processing...</span>
-                        </span>
-                      ) : otpSent ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          <span>Verifying OTP...</span>
+                        </>
+                      ) : (
                         <>
                           <span>Verify & Sign In</span>
                           <ArrowRight className="h-4 w-4" />
                         </>
+                      )}
+                    </button>
+
+                    <div className="pt-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setStep("existing_password")}
+                        className="text-xs text-gray-600 hover:text-black font-semibold underline cursor-pointer"
+                      >
+                        Sign in using password instead
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* STAGE 3: NEW CUSTOMER REGISTRATION */}
+              {step === "new_user_otp" && (
+                <div>
+                  <div className="mb-5">
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#E31E24] mb-1">
+                      <Sparkles className="h-3.5 w-3.5" /> New Customer
+                    </span>
+                    <h2 className="text-2xl font-black text-[#111111]">Verify & Activate Account</h2>
+                    <p className="text-xs text-gray-500 mt-1">
+                      We've dispatched a 6-digit activation code to <span className="font-mono font-bold text-black">{email}</span>. No long registration forms required!
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleNewCustomerSignup} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                        6-Digit Verification Code
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={6}
+                        autoFocus
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                        placeholder="• • • • • •"
+                        className="w-full text-center tracking-[0.5em] font-mono text-2xl font-bold rounded-xl border border-gray-300 py-3 text-[#111111] focus:outline-none focus:border-[#E31E24] focus:ring-2 focus:ring-[#E31E24]/10 transition"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Didn't receive code?</span>
+                      <button
+                        type="button"
+                        disabled={isSendingOtp || otpCountdown > 0}
+                        onClick={() => triggerSendOtp(email.trim().toLowerCase(), "CUSTOMER_SIGNUP")}
+                        className="text-[#E31E24] font-bold hover:underline disabled:opacity-50 cursor-pointer"
+                      >
+                        {isSendingOtp ? "Sending..." : otpCountdown > 0 ? `Resend in ${otpCountdown}s` : "Resend code"}
+                      </button>
+                    </div>
+
+                    {/* Optional Password creation for future fast password logins */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">
+                        Optional: Set account password for future logins
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-3 h-4 w-4 text-gray-400" />
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Create password (optional)"
+                          className="w-full rounded-xl border border-gray-300 px-4 py-2.5 pl-10 pr-10 text-xs text-[#111111] focus:outline-none focus:border-[#E31E24]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3.5 top-3 text-gray-400 hover:text-gray-700"
+                        >
+                          {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isLoading || otpCode.length !== 6}
+                      className="w-full rounded-xl bg-[#E31E24] hover:bg-[#c9181e] text-white py-3.5 px-4 font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#E31E24]/20 transition disabled:opacity-50 cursor-pointer"
+                    >
+                      {isLoading ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          <span>Activating Account...</span>
+                        </>
                       ) : (
                         <>
-                          <span>Send Verification OTP</span>
+                          <span>Activate & Continue</span>
                           <ArrowRight className="h-4 w-4" />
                         </>
                       )}
                     </button>
+
+                    <p className="text-[11px] text-gray-400 text-center leading-relaxed">
+                      By proceeding, you agree to Riderzpro's Terms of Service and Privacy Policy.
+                    </p>
                   </form>
-                )}
-
-                {/* Divider */}
-                <div className="relative py-2 flex items-center justify-center">
-                  <div className="absolute inset-x-0 h-px bg-gray-200" />
-                  <span className="relative z-10 px-3 bg-[#F8FAFC] text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                    Instant Demo Login
-                  </span>
                 </div>
-
-                {/* One-Click Demo Rider Access Button */}
-                <button
-                  type="button"
-                  onClick={handleQuickDemoLogin}
-                  disabled={isLoading}
-                  className="w-full py-3 px-4 rounded-2xl border border-emerald-500/30 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold text-xs flex items-center justify-between transition-all duration-200 active:scale-[0.98] shadow-2xs group cursor-pointer"
-                >
-                  <span className="flex items-center gap-2.5">
-                    <span className="h-7 w-7 rounded-xl bg-emerald-600 text-white grid place-items-center shadow-xs">
-                      <Zap className="h-4 w-4" />
-                    </span>
-                    <span className="text-left">
-                      <span className="block text-xs font-black">One-Click Demo Rider</span>
-                      <span className="block text-[10px] text-emerald-700 font-normal">
-                        Pre-fills verified session (Rahul Verma · Ather 450X)
-                      </span>
-                    </span>
-                  </span>
-                  <span className="text-emerald-700 font-bold text-xs group-hover:translate-x-1 transition-transform">
-                    Enter →
-                  </span>
-                </button>
-
-                {/* Switch to Sign Up */}
-                <div className="text-center pt-2 text-xs sm:text-sm text-gray-500">
-                  New to RiderzPro?{" "}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("signup")}
-                    className="font-bold text-[#E31E24] hover:underline cursor-pointer"
-                  >
-                    Create an account
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* ─────────────────────────────────────────────────────────────
-                  TAB 2: CREATE ACCOUNT (SIGN UP) FLOW
-                 ───────────────────────────────────────────────────────────── */
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <div>
-                  <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight font-display">
-                    Create Your EV Account
-                  </h2>
-                  <p className="text-xs sm:text-sm text-gray-500 mt-1.5 leading-relaxed">
-                    Set up your EV garage, unlock verified spares, and claim{" "}
-                    <span className="font-bold text-[#E31E24]">+100 ProPoints</span> loyalty bonus.
-                  </p>
-                </div>
-
-                <form action="javascript:void(0);" method="POST" onSubmit={handleSignUp} className="space-y-3.5 pt-1">
-                  {/* Full Name */}
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                      Full Name <span className="text-[#E31E24]">*</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <input
-                        type="text"
-                        name="name"
-                        autoComplete="name"
-                        value={signUpName}
-                        onChange={(e) => setSignUpName(e.target.value)}
-                        placeholder="e.g. Rahul Sharma"
-                        className="w-full h-11.5 rounded-2xl border border-gray-200 bg-white hover:border-gray-300 focus:bg-white px-4 pl-11 text-sm outline-none focus:border-[#E31E24] focus:ring-4 focus:ring-[#E31E24]/10 transition shadow-2xs font-medium text-gray-900"
-                        required
-                      />
-                      <User className="h-4.5 w-4.5 text-gray-400 absolute left-3.5 pointer-events-none" />
-                    </div>
-                  </div>
-
-                  {/* Mobile & Email 2-column on larger screens */}
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                        Mobile Number <span className="text-[#E31E24]">*</span>
-                      </label>
-                      <div className="relative flex items-center">
-                        <input
-                          type="tel"
-                          name="tel"
-                          autoComplete="tel"
-                          value={signUpPhone}
-                          onChange={(e) => setSignUpPhone(e.target.value)}
-                          placeholder="10-digit mobile"
-                          className="w-full h-11.5 rounded-2xl border border-gray-200 bg-white hover:border-gray-300 focus:bg-white px-4 pl-11 text-sm outline-none focus:border-[#E31E24] focus:ring-4 focus:ring-[#E31E24]/10 transition shadow-2xs font-medium text-gray-900"
-                          required
-                        />
-                        <Phone className="h-4.5 w-4.5 text-gray-400 absolute left-3.5 pointer-events-none" />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                        Email Address <span className="text-gray-400 font-normal">(Optional)</span>
-                      </label>
-                      <div className="relative flex items-center">
-                        <input
-                          type="email"
-                          name="email"
-                          autoComplete="email"
-                          value={signUpEmail}
-                          onChange={(e) => setSignUpEmail(e.target.value)}
-                          placeholder="name@mail.com"
-                          className="w-full h-11.5 rounded-2xl border border-gray-200 bg-white hover:border-gray-300 focus:bg-white px-4 pl-11 text-sm outline-none focus:border-[#E31E24] focus:ring-4 focus:ring-[#E31E24]/10 transition shadow-2xs font-medium text-gray-900"
-                        />
-                        <Mail className="h-4.5 w-4.5 text-gray-400 absolute left-3.5 pointer-events-none" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Select Vehicle Model */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        Primary Electric Vehicle <span className="text-gray-400 font-normal">(Optional)</span>
-                      </label>
-                      <span className="text-[11px] text-emerald-600 font-semibold">
-                        Auto-maps parts & maintenance
-                      </span>
-                    </div>
-                    <div className="relative flex items-center">
-                      <select
-                        value={signUpBikeId}
-                        onChange={(e) => setSignUpBikeId(e.target.value)}
-                        className="w-full h-11.5 rounded-2xl border border-gray-200 bg-white hover:border-gray-300 focus:bg-white px-4 pl-11 pr-10 text-sm outline-none focus:border-[#E31E24] focus:ring-4 focus:ring-[#E31E24]/10 transition text-gray-800 appearance-none cursor-pointer font-medium shadow-2xs"
-                      >
-                        <option value="">Select your EV model (e.g. Ather 450X, Ola S1...)</option>
-                        {bikes.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.make} {b.model} ({b.voltage}V)
-                          </option>
-                        ))}
-                        <option value="none">I don't own an EV yet</option>
-                      </select>
-                      <Bike className="h-4.5 w-4.5 text-gray-400 absolute left-3.5 pointer-events-none" />
-                      <ChevronRight className="h-4.5 w-4.5 text-gray-400 absolute right-3.5 rotate-90 pointer-events-none" />
-                    </div>
-                  </div>
-
-                  {/* Password + Dynamic Password Strength Meter */}
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                      Password <span className="text-[#E31E24]">*</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <input
-                        type={showSignUpPassword ? "text" : "password"}
-                        name="password"
-                        autoComplete="new-password"
-                        value={signUpPassword}
-                        onChange={(e) => setSignUpPassword(e.target.value)}
-                        placeholder="Create a strong password (min. 6 chars)"
-                        className="w-full h-11.5 rounded-2xl border border-gray-200 bg-white hover:border-gray-300 focus:bg-white px-4 pl-11 pr-11 text-sm outline-none focus:border-[#E31E24] focus:ring-4 focus:ring-[#E31E24]/10 transition shadow-2xs font-medium text-gray-900"
-                        required
-                      />
-                      <Lock className="h-4.5 w-4.5 text-gray-400 absolute left-3.5 pointer-events-none" />
-                      <button
-                        type="button"
-                        onClick={() => setShowSignUpPassword(!showSignUpPassword)}
-                        className="absolute right-3.5 text-gray-400 hover:text-gray-700 p-1 cursor-pointer transition"
-                        aria-label={showSignUpPassword ? "Hide password" : "Show password"}
-                      >
-                        {showSignUpPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
-                      </button>
-                    </div>
-
-                    {/* Real-time Strength Meter Bars */}
-                    {signUpPassword.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        <div className="flex items-center gap-1.5">
-                          {[1, 2, 3, 4].map((step) => (
-                            <div
-                              key={step}
-                              className={cn(
-                                "h-1.5 flex-1 rounded-full transition-all duration-300",
-                                passwordStrength.score >= step ? passwordStrength.color : "bg-gray-200"
-                              )}
-                            />
-                          ))}
-                        </div>
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className={cn("font-bold", passwordStrength.text)}>
-                            {passwordStrength.label}
-                          </span>
-                          <span className="text-gray-400">Use 8+ chars, numbers & symbols</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Terms & Conditions Agreement */}
-                  <div className="pt-1">
-                    <label className="flex items-start gap-2.5 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={agreedTerms}
-                        onChange={(e) => setAgreedTerms(e.target.checked)}
-                        className="h-4 w-4 mt-0.5 rounded text-[#E31E24] focus:ring-[#E31E24] border-gray-300 shrink-0"
-                      />
-                      <span className="text-xs text-gray-600 leading-snug">
-                        I agree to RiderzPro's{" "}
-                        <span className="text-gray-900 font-semibold underline">Terms of Service</span> and{" "}
-                        <span className="text-gray-900 font-semibold underline">Privacy Policy</span>.
-                      </span>
-                    </label>
-                  </div>
-
-                  {/* Submit Button */}
-                  <button
-                    type="submit"
-                    disabled={isLoading || !agreedTerms}
-                    className="w-full h-12 rounded-2xl bg-gradient-to-r from-[#E31E24] via-[#ee252b] to-[#C1121F] text-white font-black text-sm shadow-[0_8px_25px_rgba(227,30,36,0.35)] hover:shadow-[0_10px_30px_rgba(227,30,36,0.45)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center gap-2">
-                        <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        <span>Creating account...</span>
-                      </span>
-                    ) : (
-                      <>
-                        <span>Create Account & Claim +100 Pts</span>
-                        <ArrowRight className="h-4 w-4" />
-                      </>
-                    )}
-                  </button>
-                </form>
-
-                {/* Switch to Sign In */}
-                <div className="text-center pt-2 text-xs sm:text-sm text-gray-500">
-                  Already registered?{" "}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("signin")}
-                    className="font-bold text-[#E31E24] hover:underline cursor-pointer"
-                  >
-                    Sign in here
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Bottom Security Footer */}
-          <div className="pt-6 border-t border-gray-200/80 flex flex-wrap items-center justify-center gap-y-2 gap-x-6 text-xs text-gray-400">
-            <div className="flex items-center gap-1.5 text-gray-500 font-medium">
-              <ShieldCheck className="h-4 w-4 text-emerald-600" />
-              <span>256-Bit SSL Encrypted</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-gray-500 font-medium">
-              <Zap className="h-4 w-4 text-[#E31E24]" />
-              <span>100% Genuine OEM Spares</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-gray-500 font-medium">
-              <CheckCircle2 className="h-4 w-4 text-blue-600" />
-              <span>Zero-Spam Policy</span>
+              )}
             </div>
           </div>
         </div>
       </div>
-
-      {/* Email OTP Verification Modal (Mandatory during customer signup) */}
-      {isEmailOtpModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-gray-200 relative animate-in zoom-in-95 duration-150">
-            <button
-              onClick={() => setIsEmailOtpModalOpen(false)}
-              className="absolute right-4 top-4 p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
-              aria-label="Close modal"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            <div className="h-12 w-12 rounded-2xl bg-red-50 text-[#E31E24] grid place-items-center mb-4">
-              <Mail className="h-6 w-6" />
-            </div>
-
-            <h3 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight font-display">
-              Verify Your Email
-            </h3>
-            <p className="text-xs sm:text-sm text-gray-500 mt-1.5 leading-relaxed">
-              We've dispatched a 6-digit verification code to <span className="font-semibold text-gray-900">{signUpEmail}</span>. Code expires in <strong className="text-gray-800">5 minutes</strong>.
-            </p>
-
-            <form onSubmit={handleVerifyEmailOtpAndRegister} className="mt-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
-                  Enter 6-Digit Email OTP
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={emailOtpCode}
-                  onChange={(e) => setEmailOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="• • • • • •"
-                  className="w-full h-13 rounded-2xl border-2 border-gray-200 bg-gray-50/50 hover:border-gray-300 focus:bg-white px-4 text-center text-2xl font-mono tracking-[0.5em] font-bold text-gray-900 outline-none focus:border-[#E31E24] focus:ring-4 focus:ring-[#E31E24]/10 transition shadow-xs"
-                  autoFocus
-                  required
-                />
-              </div>
-
-              <div className="flex items-center justify-between text-xs pt-1">
-                {emailOtpCooldown > 0 ? (
-                  <span className="text-gray-400 font-medium">
-                    Resend code in <strong className="text-gray-700">{emailOtpCooldown}s</strong>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={isResendingOtp}
-                    onClick={handleResendSignupOtp}
-                    className="font-bold text-[#E31E24] hover:underline cursor-pointer disabled:opacity-50"
-                  >
-                    {isResendingOtp ? "Sending code..." : "Resend Email Code"}
-                  </button>
-                )}
-                <span className="text-emerald-600 font-semibold flex items-center gap-1">
-                  <ShieldCheck className="h-3.5 w-3.5" /> 256-Bit SSL
-                </span>
-              </div>
-
-              <div className="flex items-center gap-3 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setIsEmailOtpModalOpen(false)}
-                  className="flex-1 py-3.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isVerifyingOtp || emailOtpCode.trim().length !== 6}
-                  className="flex-1 py-3.5 rounded-xl bg-[#E31E24] hover:bg-red-700 text-xs font-bold text-white transition active:scale-95 shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  {isVerifyingOtp ? (
-                    <span className="flex items-center gap-1.5">
-                      <span className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Verifying...</span>
-                    </span>
-                  ) : (
-                    <span>Verify & Register</span>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Forgot Password Modal */}
-      {isForgotModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-gray-200 relative animate-in zoom-in-95 duration-150">
-            <button
-              onClick={() => setIsForgotModalOpen(false)}
-              className="absolute right-4 top-4 p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"
-              aria-label="Close modal"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            <div className="h-12 w-12 rounded-2xl bg-red-50 text-[#E31E24] grid place-items-center mb-4">
-              <Lock className="h-6 w-6" />
-            </div>
-
-            <h3 className="text-xl font-black text-gray-900 tracking-tight font-display">
-              Reset Your Password
-            </h3>
-            <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
-              Enter your registered mobile number or email address. We'll send you an instant secure verification link.
-            </p>
-
-            <form onSubmit={handleForgotSubmit} className="mt-5 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                  Mobile Number or Email
-                </label>
-                <input
-                  type="text"
-                  value={forgotInput}
-                  onChange={(e) => setForgotInput(e.target.value)}
-                  placeholder="e.g. 9876543210 or rider@example.com"
-                  className="w-full h-11.5 rounded-2xl border border-gray-200 bg-white px-4 text-sm outline-none focus:border-[#E31E24] focus:ring-4 focus:ring-[#E31E24]/10 transition shadow-2xs font-medium text-gray-900"
-                  required
-                />
-              </div>
-
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsForgotModalOpen(false)}
-                  className="flex-1 py-3 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isForgotSubmitting}
-                  className="flex-1 py-3 rounded-xl bg-[#E31E24] hover:bg-red-700 text-xs font-bold text-white transition active:scale-95 shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  {isForgotSubmitting ? "Sending..." : "Send Reset Code"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

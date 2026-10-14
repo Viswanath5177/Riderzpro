@@ -18,6 +18,7 @@ import {
 import { Logo } from "./bits";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/lib/auth";
+import { DashboardNotificationBell } from "@/components/common/DashboardNotificationBell";
 
 export const ROLE_LINKS = [
   { to: "/dashboard/customer", label: "Customer", Icon: Bike },
@@ -264,8 +265,9 @@ export function DashboardShell({
             <h1 className="font-display text-2xl lg:text-3xl leading-none truncate">{title}</h1>
             <p className="text-xs text-muted-foreground mt-0.5 truncate">{subtitle}</p>
           </div>
-          <div className="ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {actions}
+            <DashboardNotificationBell role="seller" />
             <Link
               to="/assistant"
               className="group flex items-center gap-1 sm:gap-1.5 rounded-full border border-primary bg-red-50 px-2.5 sm:px-3.5 py-1.5 text-xs font-semibold text-primary shadow-2xs transition-all hover:bg-primary hover:text-white active:scale-95"

@@ -74,7 +74,7 @@ export interface AdminProduct {
   discountPrice?: number;
   stock: number;
   minStockThreshold: number;
-  status: "Active" | "Low Stock" | "Pending Review" | "Out of Stock";
+  status: "Active" | "Low Stock" | "Pending Review" | "Out of Stock" | "Rejected";
   warrantyMonths: number;
   specs: Record<string, string>;
   compatibleBikes: string[];
@@ -82,6 +82,8 @@ export interface AdminProduct {
   rating: number;
   reviewsCount: number;
   salesCount: number;
+  verificationStatus?: "approved" | "pending_approval" | "rejected";
+  rejectionReason?: string;
 }
 
 export interface AdminOrderItem {

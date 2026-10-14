@@ -21,13 +21,11 @@ import { Route as OffersRouteImport } from './routes/offers'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SignupRouteImport } from './routes/signup'
-import { Route as VendorSignUpRouteImport } from './routes/vendor-sign-up'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAiAssistantRouteImport } from './routes/admin.ai-assistant'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
 import { Route as AdminFitmentRouteImport } from './routes/admin.fitment'
-import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminOffersRouteImport } from './routes/admin.offers'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
@@ -48,6 +46,8 @@ import { Route as DashboardWorkshopRouteImport } from './routes/dashboard.worksh
 import { Route as ProductIdRouteImport } from './routes/product.$id'
 import { Route as TrackIdRouteImport } from './routes/track.$id'
 import { Route as VendorIdRouteImport } from './routes/vendor.$id'
+import { Route as VendorLoginRouteImport } from './routes/vendor.login'
+import { Route as VendorSignUpRouteImport } from './routes/vendor.sign-up'
 import { Route as VendorSignupRouteImport } from './routes/vendor.signup'
 
 const IndexRoute = IndexRouteImport.update({
@@ -110,11 +110,6 @@ const SignupRoute = SignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VendorSignUpRoute = VendorSignUpRouteImport.update({
-  id: '/vendor-sign-up',
-  path: '/vendor-sign-up',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -138,11 +133,6 @@ const AdminCustomersRoute = AdminCustomersRouteImport.update({
 const AdminFitmentRoute = AdminFitmentRouteImport.update({
   id: '/fitment',
   path: '/fitment',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminLoginRoute = AdminLoginRouteImport.update({
-  id: '/login',
-  path: '/login',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
@@ -245,6 +235,16 @@ const VendorIdRoute = VendorIdRouteImport.update({
   path: '/vendor/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VendorLoginRoute = VendorLoginRouteImport.update({
+  id: '/vendor/login',
+  path: '/vendor/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VendorSignUpRoute = VendorSignUpRouteImport.update({
+  id: '/vendor/sign-up',
+  path: '/vendor/sign-up',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VendorSignupRoute = VendorSignupRouteImport.update({
   id: '/vendor/signup',
   path: '/vendor/signup',
@@ -264,12 +264,10 @@ export interface FileRoutesByFullPath {
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
-  '/vendor-sign-up': typeof VendorSignUpRoute
   '/admin/ai-assistant': typeof AdminAiAssistantRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/fitment': typeof AdminFitmentRoute
-  '/admin/login': typeof AdminLoginRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/offers': typeof AdminOffersRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -290,6 +288,8 @@ export interface FileRoutesByFullPath {
   '/product/$id': typeof ProductIdRoute
   '/track/$id': typeof TrackIdRoute
   '/vendor/$id': typeof VendorIdRoute
+  '/vendor/login': typeof VendorLoginRoute
+  '/vendor/sign-up': typeof VendorSignUpRoute
   '/vendor/signup': typeof VendorSignupRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -305,12 +305,10 @@ export interface FileRoutesByTo {
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
-  '/vendor-sign-up': typeof VendorSignUpRoute
   '/admin/ai-assistant': typeof AdminAiAssistantRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/fitment': typeof AdminFitmentRoute
-  '/admin/login': typeof AdminLoginRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/offers': typeof AdminOffersRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -331,6 +329,8 @@ export interface FileRoutesByTo {
   '/product/$id': typeof ProductIdRoute
   '/track/$id': typeof TrackIdRoute
   '/vendor/$id': typeof VendorIdRoute
+  '/vendor/login': typeof VendorLoginRoute
+  '/vendor/sign-up': typeof VendorSignUpRoute
   '/vendor/signup': typeof VendorSignupRoute
   '/admin': typeof AdminIndexRoute
 }
@@ -348,12 +348,10 @@ export interface FileRoutesById {
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
-  '/vendor-sign-up': typeof VendorSignUpRoute
   '/admin/ai-assistant': typeof AdminAiAssistantRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/fitment': typeof AdminFitmentRoute
-  '/admin/login': typeof AdminLoginRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/offers': typeof AdminOffersRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -374,6 +372,8 @@ export interface FileRoutesById {
   '/product/$id': typeof ProductIdRoute
   '/track/$id': typeof TrackIdRoute
   '/vendor/$id': typeof VendorIdRoute
+  '/vendor/login': typeof VendorLoginRoute
+  '/vendor/sign-up': typeof VendorSignUpRoute
   '/vendor/signup': typeof VendorSignupRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -392,12 +392,10 @@ export interface FileRouteTypes {
     | '/orders'
     | '/shop'
     | '/signup'
-    | '/vendor-sign-up'
     | '/admin/ai-assistant'
     | '/admin/analytics'
     | '/admin/customers'
     | '/admin/fitment'
-    | '/admin/login'
     | '/admin/notifications'
     | '/admin/offers'
     | '/admin/orders'
@@ -418,6 +416,8 @@ export interface FileRouteTypes {
     | '/product/$id'
     | '/track/$id'
     | '/vendor/$id'
+    | '/vendor/login'
+    | '/vendor/sign-up'
     | '/vendor/signup'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -433,12 +433,10 @@ export interface FileRouteTypes {
     | '/orders'
     | '/shop'
     | '/signup'
-    | '/vendor-sign-up'
     | '/admin/ai-assistant'
     | '/admin/analytics'
     | '/admin/customers'
     | '/admin/fitment'
-    | '/admin/login'
     | '/admin/notifications'
     | '/admin/offers'
     | '/admin/orders'
@@ -459,6 +457,8 @@ export interface FileRouteTypes {
     | '/product/$id'
     | '/track/$id'
     | '/vendor/$id'
+    | '/vendor/login'
+    | '/vendor/sign-up'
     | '/vendor/signup'
     | '/admin'
   id:
@@ -475,12 +475,10 @@ export interface FileRouteTypes {
     | '/orders'
     | '/shop'
     | '/signup'
-    | '/vendor-sign-up'
     | '/admin/ai-assistant'
     | '/admin/analytics'
     | '/admin/customers'
     | '/admin/fitment'
-    | '/admin/login'
     | '/admin/notifications'
     | '/admin/offers'
     | '/admin/orders'
@@ -501,6 +499,8 @@ export interface FileRouteTypes {
     | '/product/$id'
     | '/track/$id'
     | '/vendor/$id'
+    | '/vendor/login'
+    | '/vendor/sign-up'
     | '/vendor/signup'
     | '/admin/'
   fileRoutesById: FileRoutesById
@@ -518,7 +518,6 @@ export interface RootRouteChildren {
   OrdersRoute: typeof OrdersRoute
   ShopRoute: typeof ShopRoute
   SignupRoute: typeof SignupRoute
-  VendorSignUpRoute: typeof VendorSignUpRoute
   DashboardAdminRoute: typeof DashboardAdminRoute
   DashboardCustomerRoute: typeof DashboardCustomerRoute
   DashboardRiderRoute: typeof DashboardRiderRoute
@@ -527,6 +526,8 @@ export interface RootRouteChildren {
   ProductIdRoute: typeof ProductIdRoute
   TrackIdRoute: typeof TrackIdRoute
   VendorIdRoute: typeof VendorIdRoute
+  VendorLoginRoute: typeof VendorLoginRoute
+  VendorSignUpRoute: typeof VendorSignUpRoute
   VendorSignupRoute: typeof VendorSignupRoute
 }
 
@@ -616,13 +617,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/vendor-sign-up': {
-      id: '/vendor-sign-up'
-      path: '/vendor-sign-up'
-      fullPath: '/vendor-sign-up'
-      preLoaderRoute: typeof VendorSignUpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin/': {
       id: '/admin/'
       path: '/'
@@ -656,13 +650,6 @@ declare module '@tanstack/react-router' {
       path: '/fitment'
       fullPath: '/admin/fitment'
       preLoaderRoute: typeof AdminFitmentRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/login': {
-      id: '/admin/login'
-      path: '/login'
-      fullPath: '/admin/login'
-      preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/notifications': {
@@ -805,6 +792,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VendorIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vendor/login': {
+      id: '/vendor/login'
+      path: '/vendor/login'
+      fullPath: '/vendor/login'
+      preLoaderRoute: typeof VendorLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vendor/sign-up': {
+      id: '/vendor/sign-up'
+      path: '/vendor/sign-up'
+      fullPath: '/vendor/sign-up'
+      preLoaderRoute: typeof VendorSignUpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/vendor/signup': {
       id: '/vendor/signup'
       path: '/vendor/signup'
@@ -820,7 +821,6 @@ interface AdminRouteChildren {
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
   AdminFitmentRoute: typeof AdminFitmentRoute
-  AdminLoginRoute: typeof AdminLoginRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminOffersRoute: typeof AdminOffersRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
@@ -841,7 +841,6 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminCustomersRoute: AdminCustomersRoute,
   AdminFitmentRoute: AdminFitmentRoute,
-  AdminLoginRoute: AdminLoginRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
   AdminOffersRoute: AdminOffersRoute,
   AdminOrdersRoute: AdminOrdersRoute,
@@ -872,7 +871,6 @@ const rootRouteChildren: RootRouteChildren = {
   OrdersRoute: OrdersRoute,
   ShopRoute: ShopRoute,
   SignupRoute: SignupRoute,
-  VendorSignUpRoute: VendorSignUpRoute,
   DashboardAdminRoute: DashboardAdminRoute,
   DashboardCustomerRoute: DashboardCustomerRoute,
   DashboardRiderRoute: DashboardRiderRoute,
@@ -881,6 +879,8 @@ const rootRouteChildren: RootRouteChildren = {
   ProductIdRoute: ProductIdRoute,
   TrackIdRoute: TrackIdRoute,
   VendorIdRoute: VendorIdRoute,
+  VendorLoginRoute: VendorLoginRoute,
+  VendorSignUpRoute: VendorSignUpRoute,
   VendorSignupRoute: VendorSignupRoute,
 }
 export const routeTree = rootRouteImport

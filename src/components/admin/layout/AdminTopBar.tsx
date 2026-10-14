@@ -13,6 +13,7 @@ import {
 import { useAdminAuth } from "@/lib/adminAuth";
 import { useAdminStore } from "@/mocks/admin/adminStore";
 import { cn } from "@/lib/utils";
+import { DashboardNotificationBell } from "@/components/common/DashboardNotificationBell";
 
 export interface AdminTopBarProps {
   onOpenCommandPalette: () => void;
@@ -92,67 +93,8 @@ export function AdminTopBar({ onOpenCommandPalette, onOpenMobileMenu }: AdminTop
           <Search className="h-4 w-4" />
         </button>
 
-        {/* Notification Bell with Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            aria-label="Notifications"
-            className="relative flex h-9 w-9 items-center justify-center rounded-2xl border border-[#E5E7EB] bg-gray-50 text-[#4B5563] hover:text-[#111111] hover:bg-gray-100 transition cursor-pointer dark:border-white/15 dark:bg-white/10 dark:text-zinc-300 dark:hover:text-white"
-          >
-            <Bell className="h-4 w-4" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#E31E24] px-1 text-[9px] font-bold text-white shadow-xs">
-                {unreadCount}
-              </span>
-            )}
-          </button>
-
-          {showNotifications && (
-            <div className="admin-glass-card absolute right-0 top-12 z-50 w-84 rounded-3xl border border-[#E5E7EB] bg-white p-4 shadow-xl backdrop-blur-3xl animate-in fade-in duration-150 dark:border-white/20 dark:bg-zinc-950/95">
-              <div className="flex items-center justify-between border-b border-gray-100 pb-2 mb-3 dark:border-white/10">
-                <p className="text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-white">Seller & System Alerts</p>
-                <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-[#E31E24]">
-                  {unreadCount} Pending
-                </span>
-              </div>
-
-              <div className="space-y-2 text-xs max-h-72 overflow-y-auto">
-                {dbNotifications.length === 0 ? (
-                  <p className="py-6 text-center text-xs text-[#6B7280]">No registration alerts yet.</p>
-                ) : (
-                  dbNotifications.slice(0, 5).map((n) => (
-                    <Link
-                      key={n.id}
-                      to="/admin/sellers"
-                      onClick={() => setShowNotifications(false)}
-                      className="block rounded-2xl border border-gray-100 bg-gray-50/80 p-2.5 hover:bg-red-50/40 hover:border-red-200 transition dark:border-white/10 dark:bg-white/[0.04]"
-                    >
-                      <div className="flex items-center justify-between gap-1">
-                        <p className="font-bold text-[#111111] truncate dark:text-white">{n.title}</p>
-                        {n.isPending && (
-                          <span className="rounded-full bg-amber-100 text-amber-800 text-[9px] px-1.5 py-0.2 font-bold shrink-0">
-                            Review
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-1 text-[11px] text-[#6B7280] line-clamp-2 dark:text-zinc-400">{n.body}</p>
-                    </Link>
-                  ))
-                )}
-              </div>
-
-              <div className="mt-3 pt-2 border-t border-gray-100 text-center dark:border-white/10">
-                <Link
-                  to="/admin/sellers"
-                  onClick={() => setShowNotifications(false)}
-                  className="text-xs font-semibold text-[#E31E24] hover:underline"
-                >
-                  Go to Seller KYC Approval Queue →
-                </Link>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Universal Dashboard Notification Bell */}
+        <DashboardNotificationBell role={adminUser?.role || "admin"} />
 
         {/* User Menu Trigger */}
         <div className="relative">

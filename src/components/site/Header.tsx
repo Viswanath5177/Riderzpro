@@ -28,7 +28,7 @@ import {
 
 export function Header() {
   const { cart, userProfile } = useStore();
-  const { user, isAuthenticated, signOut } = useAuth();
+  const { user, isAuthenticated, signOut, openCustomerLoginModal } = useAuth();
   const navigate = useNavigate();
 
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
@@ -261,13 +261,14 @@ export function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link
-                to="/login"
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#e11d2a] hover:bg-[#c91823] px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-xs transition active:scale-95"
+              <button
+                type="button"
+                onClick={() => openCustomerLoginModal()}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#e11d2a] hover:bg-[#c91823] px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-xs transition active:scale-95 cursor-pointer"
               >
                 <User className="h-3.5 w-3.5" />
                 <span>Sign in</span>
-              </Link>
+              </button>
             )}
           </div>
         </div>
