@@ -9,6 +9,7 @@ import { useDeliveryTracking } from "@/components/map/useDeliveryTracking";
 import type { DeliveryTrackingData } from "@/components/map/types";
 import { getProduct, getVendor, inr, riders } from "@/lib/data";
 import { ORDER_STEPS, useStore } from "@/lib/store";
+import { DownloadInvoiceButton } from "@/components/common/DownloadInvoiceButton";
 
 export const Route = createFileRoute("/track/$id")({
   head: ({ params }) => ({
@@ -89,6 +90,7 @@ function Track() {
             </div>
 
             <div className="flex items-center gap-2">
+              <DownloadInvoiceButton order={targetOrder} orderId={id} variant="dark" size="sm" />
               <button
                 type="button"
                 onClick={refresh}
@@ -206,14 +208,17 @@ function Track() {
                 {demoOrder.status === 5 ? "Delivered!" : `Arriving in ${remaining} min`}
               </h1>
             </div>
-            {demoOrder.status < 5 && (
-              <button
-                onClick={() => advanceOrder(demoOrder.id)}
-                className="rounded-full border border-border px-4 py-2 text-sm hover:border-primary"
-              >
-                Simulate next step →
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              <DownloadInvoiceButton order={demoOrder} orderId={id} variant="dark" size="sm" />
+              {demoOrder.status < 5 && (
+                <button
+                  onClick={() => advanceOrder(demoOrder.id)}
+                  className="rounded-full border border-border px-4 py-2 text-sm hover:border-primary"
+                >
+                  Simulate next step →
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_380px]">
