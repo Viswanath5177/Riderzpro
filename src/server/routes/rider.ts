@@ -17,19 +17,94 @@ export async function handleRoute(
   cleanUrl: string,
   method: string | undefined,
 ): Promise<boolean> {
-  if (!cleanUrl.startsWith("/api/rider/deliveries")) return false;
-  if (!isPostgresAvailable) {
-    sendJson(res, 503, { success: false, error: "Rider deliveries require the PostgreSQL database." });
-    return true;
-  }
+  if (!cleanUrl.startsWith("/api/rider/")) return false;
 
   const user = await getSessionUser(req);
   if (!user) {
-    sendJson(res, 401, { success: false, error: "Sign in to access rider deliveries." });
+    sendJson(res, 401, { success: false, error: "Sign in to access rider services." });
     return true;
   }
   if (user.role !== "rider") {
     sendJson(res, 403, { success: false, error: "Rider access is required." });
+    return true;
+  }
+
+  // POST /api/rider/location — Live GPS stream forwarding to logistics
+  if (cleanUrl === "/api/rider/location") {
+    if (method !== "POST") {
+      sendJson(res, 405, { success: false, error: "Use POST /api/rider/location." });
+      return true;
+    }
+
+    let body: any;
+    try {
+      body = await parseBody(req);
+    } catch {
+      sendJson(res, 400, { success: false, error: "Invalid JSON body." });
+      return true;
+    }
+
+    const { deliveryId, latitude, longitude, speed, heading, timestamp } = body || {};
+    if (latitude === undefined || longitude === undefined) {
+      sendJson(res, 400, { success: false, error: "Both latitude and longitude are required." });
+      return true;
+    }
+
+    // Optional DB update if PostgreSQL is available
+    if (isPostgresAvailable && deliveryId) {
+      try {
+        await pool.query(
+          `UPDATE deliveries
+              SET current_lat = $1, current_lng = $2, updated_at = now()
+            WHERE id = $3 AND rider_id = $4`,
+          [latitude, longitude, deliveryId, user.id],
+        ).catch(() => undefined);
+      } catch {
+        // Ignored if table does not yet have current_lat/lng
+      }
+    }
+
+    // Forward coordinates to Viswanath's logistics FastAPI service
+    const logisticsUrl = process.env["LOGISTICS_URL"] || "http://127.0.0.1:8000";
+    let forwarded = false;
+    try {
+      const forwardResp = await fetch(`${logisticsUrl}/logistics/location`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          delivery_id: deliveryId,
+          rider_id: user.id,
+          latitude: Number(latitude),
+          longitude: Number(longitude),
+          speed: Number(speed || 0),
+          heading: Number(heading || 0),
+          timestamp: timestamp || new Date().toISOString(),
+        }),
+        signal: AbortSignal.timeout(2500),
+      });
+      forwarded = forwardResp.ok;
+    } catch {
+      // Graceful fallback when logistics service is offline or not yet merged
+      forwarded = false;
+    }
+
+    sendJson(res, 200, {
+      success: true,
+      data: {
+        deliveryId,
+        latitude,
+        longitude,
+        forwarded,
+        timestamp: timestamp || new Date().toISOString(),
+      },
+    });
+    return true;
+  }
+
+  if (!cleanUrl.startsWith("/api/rider/deliveries")) return false;
+
+  if (!isPostgresAvailable) {
+    sendJson(res, 503, { success: false, error: "Rider deliveries require the PostgreSQL database." });
     return true;
   }
 
