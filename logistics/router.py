@@ -218,6 +218,59 @@ def list_deliveries(
     }
 
 
+@router.delete("")
+@router.delete("/")
+def clear_all_deliveries(db: Session = Depends(get_db)):
+    """Clear all delivery tasks, routes, assignments, and reset rider workloads."""
+    from logistics.models import Delivery, DeliveryRoute, RiderAssignment, DeliveryStatusHistory, RiderLocation, Rider
+
+    deleted_count = db.query(Delivery).count()
+    db.query(RiderLocation).filter(RiderLocation.delivery_id.isnot(None)).delete(synchronize_session=False)
+    db.query(DeliveryRoute).delete(synchronize_session=False)
+    db.query(RiderAssignment).delete(synchronize_session=False)
+    db.query(DeliveryStatusHistory).delete(synchronize_session=False)
+    db.query(Delivery).delete(synchronize_session=False)
+
+    # Reset riders to available
+    db.query(Rider).update({
+        Rider.status: "available",
+        Rider.current_workload_count: 0
+    }, synchronize_session=False)
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Successfully cleared {deleted_count} deliveries.",
+        "deleted_count": deleted_count
+    }
+
+
+@router.delete("/{delivery_id}")
+def delete_delivery(delivery_id: str, db: Session = Depends(get_db)):
+    """Delete a specific delivery task by ID or order_id."""
+    from logistics.models import Delivery, RiderLocation, Rider
+    delivery = delivery_service.get_delivery(db, delivery_id)
+    if not delivery:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Delivery '{delivery_id}' not found.")
+
+    if delivery.assigned_rider_id:
+        rider = db.query(Rider).filter(Rider.id == delivery.assigned_rider_id).first()
+        if rider:
+            rider.current_workload_count = max(0, (rider.current_workload_count or 1) - 1)
+            if rider.current_workload_count == 0 and rider.status == "busy":
+                rider.status = "available"
+
+    db.query(RiderLocation).filter(RiderLocation.delivery_id == delivery.id).delete(synchronize_session=False)
+    db.delete(delivery)
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Delivery '{delivery_id}' deleted successfully.",
+        "delivery_id": delivery_id
+    }
+
+
 @router.get("/{delivery_id}", response_model=DeliveryResponse)
 def get_delivery_details(delivery_id: str, db: Session = Depends(get_db)):
     """Retrieve comprehensive delivery details, active route, and milestone history."""

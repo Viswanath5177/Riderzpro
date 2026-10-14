@@ -246,3 +246,40 @@ export async function updateDeliveryStatus(
 
   return res.json();
 }
+
+/**
+ * Clear all deliveries from backend logistics database.
+ */
+export async function clearAllDeliveries(): Promise<{ status: string; deleted_count: number }> {
+  const url = `${API_BASE_URL}/api/deliveries`;
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => null);
+    throw new Error(errorBody?.detail || `Clear deliveries failed with status ${res.status}`);
+  }
+
+  return res.json();
+}
+
+/**
+ * Delete a single delivery from backend logistics database.
+ */
+export async function deleteDelivery(deliveryId: string): Promise<{ status: string }> {
+  const url = `${API_BASE_URL}/api/deliveries/${encodeURIComponent(deliveryId)}`;
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => null);
+    throw new Error(errorBody?.detail || `Delete delivery failed with status ${res.status}`);
+  }
+
+  return res.json();
+}
+

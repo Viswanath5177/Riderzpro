@@ -15,10 +15,14 @@ import {
   ShieldCheck,
   ChevronRight,
   Eye,
+  Trash2,
+  Search,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useStore, ORDER_STEPS, type Order } from "@/lib/store";
 import {
   fetchDeliveries,
+  clearAllDeliveries,
   type BackendDelivery,
   ACTIVE_DELIVERY_STATUSES,
   COMPLETED_DELIVERY_STATUSES,
@@ -154,12 +158,14 @@ function getLastKnownStatus(status: string, riderName?: string): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function TrackingTab() {
-  const { orders, userProfile } = useStore();
+  const { orders, userProfile, clearOrders } = useStore();
   const navigate = useNavigate();
 
   const [backendDeliveries, setBackendDeliveries] = useState<BackendDelivery[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const [connectId, setConnectId] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "delivered">("all");
 
   // Load deliveries from Logistics backend
@@ -171,6 +177,8 @@ export function TrackingTab() {
       const res = await fetchDeliveries({ limit: 100 });
       if (res?.items && Array.isArray(res.items)) {
         setBackendDeliveries(res.items);
+      } else {
+        setBackendDeliveries([]);
       }
     } catch (err) {
       console.warn("Could not load backend logistics deliveries:", err);
@@ -310,6 +318,41 @@ export function TrackingTab() {
     navigate({ to: "/track/$id", params: { id: orderId } });
   };
 
+  // Connect user's custom delivery/order directly
+  const handleConnect = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = connectId.trim();
+    if (!trimmed) {
+      toast.error("Please enter a valid Delivery ID or Order ID.");
+      return;
+    }
+    navigate({ to: "/track/$id", params: { id: trimmed } });
+  };
+
+  // Clear all mock/existing delivery and order records
+  const handleClearAll = async () => {
+    setIsClearing(true);
+    try {
+      await clearAllDeliveries().catch((err) => console.warn("Backend clear failed:", err));
+      clearOrders();
+      setBackendDeliveries([]);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.removeItem("riderzpro-v8");
+          localStorage.removeItem("riderzpro-v7");
+          localStorage.removeItem("riderzpro-v6");
+          localStorage.removeItem("riderzpro_orders");
+          localStorage.removeItem("riderzpro_mock_orders");
+        } catch {}
+      }
+      toast.success("All deliveries and orders cleared! Hub is clean and ready to connect.");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to clear deliveries.");
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* ── Page Header ── */}
@@ -328,7 +371,7 @@ export function TrackingTab() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <button
             type="button"
             onClick={() => loadDeliveries(true)}
@@ -339,6 +382,18 @@ export function TrackingTab() {
             <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin text-[#E31E24]")} />
             <span>{isRefreshing ? "Refreshing..." : "Refresh Status"}</span>
           </button>
+
+          <button
+            type="button"
+            onClick={handleClearAll}
+            disabled={isClearing}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 text-xs font-semibold text-rose-700 hover:bg-rose-100 shadow-2xs transition cursor-pointer disabled:opacity-60"
+            title="Clear all stored values to connect a clean delivery"
+          >
+            <Trash2 className={cn("h-3.5 w-3.5", isClearing && "animate-spin")} />
+            <span>{isClearing ? "Clearing..." : "Clear All Values"}</span>
+          </button>
+
           <Link
             to="/dashboard/customer"
             search={{ tab: "orders" } as any}
@@ -349,6 +404,27 @@ export function TrackingTab() {
           </Link>
         </div>
       </div>
+
+      {/* ── Direct Live Delivery Connect Bar ── */}
+      <form onSubmit={handleConnect} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-3 bg-gray-50/90 rounded-2xl border border-gray-200">
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Connect and track by Delivery ID or Order ID (e.g. ord_..., del_...)"
+            value={connectId}
+            onChange={(e) => setConnectId(e.target.value)}
+            className="w-full rounded-xl border border-gray-300 bg-white pl-9 pr-4 py-2 text-xs font-medium text-gray-900 placeholder-gray-400 focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24] outline-none transition"
+          />
+        </div>
+        <button
+          type="submit"
+          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#E31E24] hover:bg-red-700 text-xs font-bold text-white shadow-xs transition cursor-pointer shrink-0"
+        >
+          <Navigation className="h-3.5 w-3.5" />
+          <span>Connect & Track</span>
+        </button>
+      </form>
 
       {/* ── Filter Pills: [ All (N) ] [ Active (X) ] [ Delivered (Y) ] ── */}
       <div className="flex flex-wrap items-center gap-2">

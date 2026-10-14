@@ -431,7 +431,7 @@ type Ctx = {
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
-const KEY = "riderzpro-v7";
+const KEY = "riderzpro-v8";
 
 const DEFAULT_PROFILE: UserProfile = {
   name: "Rider",
@@ -473,6 +473,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Hydrates auth state and purges legacy mock user profiles
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
+      // Purge obsolete mock store versions
+      ["riderzpro-v7", "riderzpro-v6", "riderzpro-v5", "riderzpro_mock_orders"].forEach((oldKey) => {
+        try { localStorage.removeItem(oldKey); } catch {}
+      });
       const auth = localStorage.getItem("riderzpro_auth");
       const user = localStorage.getItem(KEY);
       if (
@@ -495,6 +499,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
+      ["riderzpro-v7", "riderzpro-v6", "riderzpro-v5", "riderzpro_orders"].forEach((oldKey) => {
+        try { localStorage.removeItem(oldKey); } catch {}
+      });
       const raw = localStorage.getItem(KEY);
       if (raw) {
         const s = JSON.parse(raw);
