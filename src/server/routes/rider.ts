@@ -102,8 +102,6 @@ export async function handleRoute(
 
   const sessionUser = await getSessionUser(req);
   const riderId = sessionUser?.id || "rider_sathesh";
-
-  // GET /api/rider/deliveries
   if (cleanUrl === "/api/rider/deliveries" && method === "GET") {
     // 1. Try FastAPI Logistics backend first
     try {
