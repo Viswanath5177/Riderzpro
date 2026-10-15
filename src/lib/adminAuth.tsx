@@ -64,19 +64,11 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
             roleTitle:
               parsed.role === "SUPER_ADMIN"
                 ? "Super Administrator"
-                : parsed.role === "PRODUCT_ADMIN"
-                ? "Product Administrator"
-                : parsed.role === "SELLER_ADMIN"
-                ? "Seller Administrator"
-                : "Operations Admin",
+                : "Operations Administrator",
             department:
               parsed.role === "SUPER_ADMIN"
                 ? "Executive Platform Oversight"
-                : parsed.role === "PRODUCT_ADMIN"
-                ? "Product Catalog Moderation"
-                : parsed.role === "SELLER_ADMIN"
-                ? "Seller Compliance & KYC"
-                : "Operations & Governance",
+                : "Seller Compliance & Product Catalog Moderation",
           };
           setAdminUser(userObj);
         }
@@ -113,17 +105,13 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
             email: backendRes.email,
             role: "admin",
             roleTitle:
-              backendRes.role === "PRODUCT_ADMIN"
-                ? "Product Administrator"
-                : backendRes.role === "SELLER_ADMIN"
-                ? "Seller Administrator"
-                : "Operations Admin",
+              backendRes.role === "SUPER_ADMIN"
+                ? "Super Administrator"
+                : "Operations Administrator",
             department:
-              backendRes.role === "PRODUCT_ADMIN"
-                ? "Product Catalog & Inventory Review"
-                : backendRes.role === "SELLER_ADMIN"
-                ? "Seller Verification & Compliance"
-                : "Operations & Platform Oversight",
+              backendRes.role === "SUPER_ADMIN"
+                ? "Executive Platform Oversight"
+                : "Seller Compliance & Product Catalog Moderation",
           };
           setPendingUser(userObj);
           return { success: true, requireOtp: true };
@@ -213,7 +201,7 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/vendor/login" search={{ redirect: location.pathname }} replace />;
+    return <Navigate to="/admin/login" search={{ redirect: location.pathname }} replace />;
   }
 
   return <>{children}</>;

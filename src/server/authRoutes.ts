@@ -68,7 +68,7 @@ async function ensureAdminsTable(): Promise<void> {
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         full_name TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'PRODUCT_ADMIN',
+        role TEXT NOT NULL DEFAULT 'ADMIN',
         is_active INTEGER DEFAULT 1,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -76,12 +76,13 @@ async function ensureAdminsTable(): Promise<void> {
     `);
     const c = await query("SELECT count(*) as count FROM admins").catch(() => ({ rows: [{ count: 0 }] }));
     if (Number(c.rows[0]?.count ?? 0) === 0) {
-      await query(`
-        INSERT OR IGNORE INTO admins (id, email, password_hash, full_name, role, is_active) VALUES
-        ('adm_super_01', 'admin@riderzpro.com', '$2a$10$vI8aWBnW3fID.ZQ4/ZO1G.qHw9vB7eM2NfB5Tf0W8o1V1Z2Y3X4.', 'Platform Super Admin', 'SUPER_ADMIN', 1),
-        ('adm_product_01', 'product.admin@riderzpro.com', '$2a$10$vI8aWBnW3fID.ZQ4/ZO1G.qHw9vB7eM2NfB5Tf0W8o1V1Z2Y3X4.', 'Product Administrator', 'PRODUCT_ADMIN', 1),
-        ('adm_seller_01', 'seller.admin@riderzpro.com', '$2a$10$vI8aWBnW3fID.ZQ4/ZO1G.qHw9vB7eM2NfB5Tf0W8o1V1Z2Y3X4.', 'Seller Administrator', 'SELLER_ADMIN', 1)
-      `).catch(() => {});
+      const defaultHash = "$2b$10$.PDu5IuCYX1jYIaSpE2BbuJNxvnpWHD.TZfiQH3aI2X9hkYTwOAri";
+      await query(
+        `INSERT OR IGNORE INTO admins (id, email, password_hash, full_name, role, is_active) VALUES
+        ('adm_super_01', 'admin@riderzpro.com', $1, 'Super Administrator', 'SUPER_ADMIN', 1),
+        ('adm_unified_01', 'admin.operations@riderzpro.com', $2, 'Unified Operations Administrator', 'ADMIN', 1)`,
+        [defaultHash, defaultHash]
+      ).catch(() => {});
     }
   } catch (err: any) {
     console.warn("[ensureAdminsTable Error]:", err?.message);
@@ -398,10 +399,10 @@ export async function handleAuthRoute(
       );
       if (adminRes.rows.length > 0) {
         const admin = adminRes.rows[0];
-        if (body.portal !== "vendor") {
+        if (body.portal === "customer") {
           sendJson(res, 400, {
             success: false,
-            error: "Invalid email.",
+            error: "Administrator accounts must sign in via the Admin portal.",
           });
           return true;
         }
@@ -431,12 +432,10 @@ export async function handleAuthRoute(
         setSessionCookie(res, sessionToken);
 
         let redirectUrl = "/admin";
-        if (admin.role === "SUPER_ADMIN" || admin.role === "admin") {
+        if (admin.role === "SUPER_ADMIN" || admin.role === "super_admin") {
           redirectUrl = "/superadmin";
-        } else if (admin.role === "PRODUCT_ADMIN" || admin.role === "SELLER_ADMIN") {
+        } else {
           redirectUrl = "/admin";
-        } else if (admin.role === "SUPPORT_ADMIN") {
-          redirectUrl = "/admin/support";
         }
 
         sendJson(res, 200, {

@@ -103,19 +103,11 @@ function VendorLoginRouteComponent() {
             roleTitle:
               data.role === "SUPER_ADMIN"
                 ? "Super Administrator"
-                : data.role === "PRODUCT_ADMIN"
-                ? "Product Administrator"
-                : data.role === "SELLER_ADMIN"
-                ? "Seller Administrator"
-                : "Operations Admin",
+                : "Operations Administrator",
             department:
               data.role === "SUPER_ADMIN"
                 ? "Executive Platform Oversight"
-                : data.role === "PRODUCT_ADMIN"
-                ? "Product Catalog Moderation"
-                : data.role === "SELLER_ADMIN"
-                ? "Seller Verification & KYC"
-                : "Operations & Governance",
+                : "Seller Compliance & Product Catalog Moderation",
           },
           loginTime: Date.now(),
         };

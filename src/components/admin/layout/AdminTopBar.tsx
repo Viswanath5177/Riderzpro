@@ -104,20 +104,20 @@ export function AdminTopBar({ onOpenCommandPalette, onOpenMobileMenu }: AdminTop
             className="flex items-center gap-2 rounded-2xl border border-[#E5E7EB] bg-gray-50 p-1 pr-2.5 hover:border-gray-300 transition cursor-pointer dark:border-white/15 dark:bg-white/10"
           >
             <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#E31E24] text-xs font-bold text-white shadow-xs">
-              VM
+              {(adminUser?.name || "Admin").substring(0, 2).toUpperCase()}
             </div>
             <span className="hidden sm:inline text-xs font-bold text-[#111111] dark:text-white">
-              Vikram
+              {adminUser?.name?.split(" ")[0] || "Admin"}
             </span>
           </button>
 
           {showUserMenu && (
             <div className="admin-glass-card absolute right-0 top-12 z-50 w-56 rounded-3xl border border-[#E5E7EB] bg-white p-2 shadow-xl backdrop-blur-3xl animate-in fade-in duration-150 text-xs dark:border-white/20 dark:bg-zinc-950/95">
               <div className="p-3 border-b border-gray-100 dark:border-white/10">
-                <p className="font-bold text-[#111111] dark:text-white">{adminUser?.name || "Vikram Malhotra"}</p>
+                <p className="font-bold text-[#111111] dark:text-white">{adminUser?.name || "Administrator"}</p>
                 <p className="text-[11px] text-[#6B7280] dark:text-zinc-400">{adminUser?.email || "admin@riderzpro.com"}</p>
                 <span className="mt-1.5 inline-block rounded-md bg-red-50 border border-red-200 px-2 py-0.5 text-[10px] font-bold text-[#E31E24]">
-                  Super Admin
+                  {adminUser?.roleTitle || "Administrator"}
                 </span>
               </div>
 

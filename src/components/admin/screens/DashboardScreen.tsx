@@ -1,41 +1,36 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   IndianRupee,
-  Package,
-  Bike,
+  Users,
   Store,
-  Clock,
-  Star,
+  ShieldCheck,
   AlertTriangle,
   ArrowRight,
-  ShieldCheck,
-  Zap,
-  MapPin,
-  TrendingUp,
   RefreshCw,
   Eye,
-  Radio,
-  Sliders,
   CheckCircle2,
-  Activity,
+  ShieldAlert,
+  SlidersHorizontal,
+  ChevronRight,
+  TrendingUp,
+  Package,
   Layers,
   Sparkles,
-  Search,
   ExternalLink,
-  ChevronRight,
-  Truck,
-  Bike as BikeIcon,
-  Tag,
-  Wrench,
-  Fuel,
+  Plus,
+  Lock,
+  Unlock,
+  Building,
+  UserCheck,
+  UserX,
+  Clock,
+  RotateCcw,
 } from "lucide-react";
 import {
   ResponsiveContainer,
   AreaChart,
   Area,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
@@ -44,213 +39,613 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import { GlassCard } from "../glass/GlassCard";
-import { GlassButton } from "../glass/GlassButton";
-import { GlassDrawer } from "../glass/GlassDrawer";
-import { StatusBadge } from "../glass/StatusBadge";
-import { useAdminStore } from "@/mocks/admin/adminStore";
-import { AdminOrder } from "@/mocks/admin/types";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
-// 7-day revenue trend data
-const REVENUE_DATA_7D = [
-  { date: "08 Apr", revenue: 540000, orders: 182 },
-  { date: "09 Apr", revenue: 620000, orders: 204 },
-  { date: "10 Apr", revenue: 590000, orders: 195 },
-  { date: "11 Apr", revenue: 710000, orders: 238 },
-  { date: "12 Apr", revenue: 840000, orders: 280 },
-  { date: "13 Apr", revenue: 790000, orders: 265 },
-  { date: "14 Apr", revenue: 734500, orders: 244 },
-];
-
-const REVENUE_DATA_30D = [
-  { date: "Week 1", revenue: 2840000, orders: 940 },
-  { date: "Week 2", revenue: 3120000, orders: 1040 },
-  { date: "Week 3", revenue: 3890000, orders: 1280 },
-  { date: "Week 4", revenue: 4824500, orders: 1428 },
-];
-
-// Department demand breakdown
-const CATEGORY_SHARE = [
-  { name: "Electric Batteries", value: 42, color: "#E31E24" },
-  { name: "Smart Chargers", value: 24, color: "#EA580C" },
-  { name: "Brakes & Discs", value: 16, color: "#0284C7" },
-  { name: "Bike Accessories", value: 12, color: "#7C3AED" },
-  { name: "Riding Gear", value: 6, color: "#16A34A" },
-];
-
-// City volume and delivery velocity
-const CITY_PERFORMANCE = [
-  { city: "Bengaluru", orders: 620, revenue: 21.4, sla: "18m", color: "#E31E24" },
-  { city: "Hyderabad", orders: 340, revenue: 11.8, sla: "26m", color: "#EA580C" },
-  { city: "Chennai", orders: 240, revenue: 8.2, sla: "31m", color: "#0284C7" },
-  { city: "Pune", orders: 180, revenue: 6.1, sla: "35m", color: "#7C3AED" },
-  { city: "Mumbai", orders: 150, revenue: 5.2, sla: "38m", color: "#16A34A" },
-];
+interface AnalyticsData {
+  summaryCards: {
+    totalCustomers: number;
+    totalAdmins: number;
+    totalVendors: number;
+    pendingVendors: number;
+    approvedVendors: number;
+    frozenVendors: number;
+    totalProducts: number;
+    pendingProducts: number;
+    approvedProducts: number;
+    totalOrders: number;
+    completedOrders: number;
+    pendingOrders: number;
+    cancelledOrders: number;
+    grossSales: number;
+    refunds: number;
+    netRevenue: number;
+  };
+  selectedVendor: any | null;
+  vendors: any[];
+  revenueTrend: { date: string; revenue: number; orders: number }[];
+  bestSellingProducts: {
+    id: string;
+    name: string;
+    price: number;
+    sellerId: string;
+    storeName: string;
+    unitsSold: number;
+    totalSales: number;
+  }[];
+  recentOrders: {
+    id: string;
+    orderNumber: string;
+    customerId: string;
+    customerName: string;
+    customerEmail: string;
+    sellerId: string;
+    storeName: string;
+    status: string;
+    paymentStatus: string;
+    paymentMethod: string;
+    totalAmount: number;
+    refundAmount: number;
+    deliveryAddress: string;
+    createdAt: string;
+  }[];
+  categoryShare: { name: string; value: number; color: string }[];
+  recentActivity: any[];
+  meta: {
+    isFiltered: boolean;
+    vendorId: string | null;
+    timeRange: string;
+    timestamp: string;
+  };
+}
 
 export function DashboardScreen() {
-  const { orders, products, riders, bikes } = useAdminStore();
-  const [selectedCity, setSelectedCity] = useState<string>("Bengaluru");
-  const [timeRange, setTimeRange] = useState<"7d" | "30d">("7d");
-  const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
+  const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
+  const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
+  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Quick bike diagnostic selector state (matching landing page selector)
-  const [selectedBikeId, setSelectedBikeId] = useState(bikes[0]?.id || "ather-450x");
+  // Modals
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [adminsList, setAdminsList] = useState<any[]>([]);
+  const [isProvisioningAdmin, setIsProvisioningAdmin] = useState(false);
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [newAdminName, setNewAdminName] = useState("");
+  const [newAdminPassword, setNewAdminPassword] = useState("");
 
-  const revenueData = timeRange === "7d" ? REVENUE_DATA_7D : REVENUE_DATA_30D;
+  const [isFreezeModalOpen, setIsFreezeModalOpen] = useState(false);
+  const [vendorToFreeze, setVendorToFreeze] = useState<any>(null);
+  const [freezeReason, setFreezeReason] = useState("");
+  const [freezeActionType, setFreezeActionType] = useState<"freeze" | "unfreeze">("freeze");
 
-  const filteredOrders =
-    selectedCity === "All"
-      ? orders
-      : orders.filter((o) => o.customerCity.toLowerCase() === selectedCity.toLowerCase());
+  const fetchAnalytics = async (vendorId = selectedVendorId, range = timeRange) => {
+    try {
+      setIsRefreshing(true);
+      setError(null);
+      const res = await fetch(
+        `/api/superadmin/analytics?vendor_id=${encodeURIComponent(vendorId)}&time_range=${encodeURIComponent(range)}`,
+        { credentials: "include" }
+      );
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Failed to load platform analytics from database.");
+      }
+      setData(json.data);
+    } catch (err: any) {
+      console.error("[DashboardScreen fetch error]:", err);
+      setError(err?.message || "Failed to fetch analytics");
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
 
-  const recentOrders = filteredOrders.slice(0, 5);
+  useEffect(() => {
+    fetchAnalytics(selectedVendorId, timeRange);
+  }, [selectedVendorId, timeRange]);
+
+  const handleVendorChange = (newVendorId: string) => {
+    setSelectedVendorId(newVendorId);
+  };
+
+  const handleOpenAdminModal = async () => {
+    setIsAdminModalOpen(true);
+    try {
+      const res = await fetch("/api/superadmin/admins", { credentials: "include" });
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setAdminsList(json.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch admins list:", err);
+    }
+  };
+
+  const handleCreateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAdminEmail || !newAdminName || !newAdminPassword) {
+      toast.error("Please fill in all fields.");
+      return;
+    }
+    setIsProvisioningAdmin(true);
+    try {
+      const res = await fetch("/api/superadmin/admins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email: newAdminEmail.trim().toLowerCase(),
+          fullName: newAdminName.trim(),
+          password: newAdminPassword,
+          role: "ADMIN",
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Failed to provision admin");
+      }
+      toast.success(json.message || "Unified Admin provisioned successfully.");
+      setNewAdminEmail("");
+      setNewAdminName("");
+      setNewAdminPassword("");
+      handleOpenAdminModal();
+      fetchAnalytics();
+    } catch (err: any) {
+      toast.error(err.message || "Error provisioning admin.");
+    } finally {
+      setIsProvisioningAdmin(false);
+    }
+  };
+
+  const handleToggleAdminStatus = async (adminId: string) => {
+    try {
+      const res = await fetch(`/api/superadmin/admins/${adminId}/toggle`, {
+        method: "PUT",
+        credentials: "include",
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || "Failed to toggle status");
+      toast.success(json.message);
+      handleOpenAdminModal();
+      fetchAnalytics();
+    } catch (err: any) {
+      toast.error(err.message || "Error updating admin status.");
+    }
+  };
+
+  const handleExecuteFreezeAction = async () => {
+    if (!freezeReason.trim()) {
+      toast.error("A detailed reason is mandatory for account status modifications.");
+      return;
+    }
+    try {
+      const targetId = vendorToFreeze?.id;
+      const res = await fetch(`/api/superadmin/vendors/${targetId}/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          action: freezeActionType,
+          reason: freezeReason.trim(),
+        }),
+      });
+      // Fallback route check
+      let json = await res.json();
+      if (!res.ok || !json.success) {
+        // Try specific subaction endpoint
+        const res2 = await fetch(`/api/superadmin/vendors/${targetId}/${freezeActionType}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ reason: freezeReason.trim() }),
+        });
+        json = await res2.json();
+        if (!res2.ok || !json.success) {
+          throw new Error(json.error || "Failed to execute vendor account action.");
+        }
+      }
+
+      toast.success(json.message || `Vendor account ${freezeActionType} action recorded.`);
+      setIsFreezeModalOpen(false);
+      setFreezeReason("");
+      fetchAnalytics();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update vendor account.");
+    }
+  };
+
+  const summary = data?.summaryCards || {
+    totalCustomers: 0,
+    totalAdmins: 0,
+    totalVendors: 0,
+    pendingVendors: 0,
+    approvedVendors: 0,
+    frozenVendors: 0,
+    totalProducts: 0,
+    pendingProducts: 0,
+    approvedProducts: 0,
+    totalOrders: 0,
+    completedOrders: 0,
+    pendingOrders: 0,
+    cancelledOrders: 0,
+    grossSales: 0,
+    refunds: 0,
+    netRevenue: 0,
+  };
 
   return (
     <div className="space-y-6">
       {/* ─────────────────────────────────────────────────────────────
-          1. HERO BANNER — STYLED IDENTICALLY TO RIDERZPRO LANDING PAGE
+          1. HEADER CONTROLS BAR: VENDOR DROPDOWN & TIME FILTER
          ───────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white p-6 sm:p-8 shadow-xs">
-        {/* Subtle red ambient light refraction */}
-        <div className="pointer-events-none absolute -top-24 left-1/4 h-80 w-80 rounded-full bg-[#E31E24]/[0.05] blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 right-10 h-80 w-80 rounded-full bg-amber-500/[0.04] blur-3xl" />
-
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-8 items-center">
-          {/* Left Column: Headline and Diagnostic Search */}
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                100% Fitment Guaranteed
+      <div className="relative overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white p-5 sm:p-6 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#E31E24] px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white shadow-xs shadow-red-500/20">
+                <ShieldAlert className="h-3.5 w-3.5" /> SUPER ADMIN OVERSIGHT
+              </span>
+              <span className="rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold">
+                Live Database Connected
               </span>
             </div>
-
-            <h1 className="font-display text-3xl sm:text-5xl font-extrabold tracking-tight leading-[1.1] text-[#111111]">
-              Power your fleet. <br />
-              <span className="bg-gradient-to-r from-[#E31E24] via-emerald-600 to-emerald-700 bg-clip-text text-transparent">
-                Parts that fit.
-              </span>
+            <h1 className="text-xl sm:text-2xl font-black text-[#111111] tracking-tight">
+              Marketplace Analytics & Operational Governance
             </h1>
-
-            <p className="text-sm sm:text-base text-[#6B7280] max-w-xl leading-relaxed">
-              Operations command center for EV batteries, smart chargers and verified replacement spares — matched to VIN, synchronized across sellers, delivered live.
+            <p className="text-xs sm:text-sm text-[#6B7280]">
+              Audited live database records across customers, verified vendors, product catalog, and completed sales.
             </p>
-
-            {/* Quick Diagnostic Bar (Mirrors the Landing Page Hero Card) */}
-            <div className="pt-2 max-w-xl">
-              <div className="rounded-2xl border border-[#E5E7EB] bg-gray-50/80 p-2 sm:p-2.5 flex flex-col sm:flex-row gap-2">
-                <div className="flex flex-1 items-center gap-2.5 rounded-xl border border-[#E5E7EB] bg-white px-3 py-2">
-                  <BikeIcon className="h-4 w-4 text-[#E31E24]" />
-                  <select
-                    value={selectedBikeId}
-                    onChange={(e) => setSelectedBikeId(e.target.value)}
-                    className="w-full bg-transparent text-xs font-semibold text-[#111111] outline-none"
-                  >
-                    {bikes.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.brand} {b.model} · {b.voltage}V Diagnostic
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <Link to="/admin/fitment">
-                  <button className="flex h-10 w-full sm:w-auto items-center justify-center gap-1.5 rounded-xl bg-[#E31E24] hover:bg-[#CC181E] px-4 text-xs font-semibold text-white shadow-xs transition active:scale-95 cursor-pointer whitespace-nowrap">
-                    <span>Fitment Matrix</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
-                </Link>
-              </div>
-            </div>
           </div>
 
-          {/* Right Column: Exact Replica of Landing Page Floating Cards */}
-          <div className="relative space-y-4">
-            {/* 1. Live Order Card (#RZ48213 - Arriving in 18 min) */}
-            <div className="rounded-3xl border border-[#E5E7EB] bg-white p-5 shadow-sm transition hover:shadow-md">
-              <div className="flex items-center justify-between text-xs text-[#6B7280] font-medium">
-                <span>Order #RZ48213</span>
-                <span className="flex items-center gap-1.5 text-[#E31E24] font-semibold">
-                  <span className="h-2 w-2 rounded-full bg-[#E31E24] animate-pulse" /> Live
-                </span>
+          {/* Controls: Vendor Selector + Date Filter + Refresh + Manage Admins */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Vendor Filter Dropdown */}
+            <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50/80 px-3 py-2">
+              <Store className="h-4 w-4 text-[#E31E24] shrink-0" />
+              <select
+                aria-label="Filter analytics by vendor"
+                value={selectedVendorId}
+                onChange={(e) => handleVendorChange(e.target.value)}
+                className="bg-transparent text-xs font-bold text-[#111111] outline-none cursor-pointer max-w-[200px] truncate"
+              >
+                <option value="all">★ All Vendors (Platform-wide)</option>
+                {(data?.vendors || []).map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.store_name} ({v.city || "India"}) — {v.account_status || v.status}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Date Range Selector */}
+            <div className="flex items-center gap-1 rounded-2xl border border-gray-200 bg-gray-50/80 p-1">
+              {(["7d", "30d", "90d", "all"] as const).map((range) => (
+                <button
+                  key={range}
+                  onClick={() => setTimeRange(range)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-xl text-xs font-bold transition",
+                    timeRange === range
+                      ? "bg-[#E31E24] text-white shadow-xs"
+                      : "text-gray-600 hover:text-black"
+                  )}
+                >
+                  {range === "all" ? "All Time" : range.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            {/* Refresh Button */}
+            <button
+              onClick={() => fetchAnalytics()}
+              disabled={isRefreshing}
+              aria-label="Refresh database analytics"
+              className="flex h-9 w-9 items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-100 transition shadow-2xs cursor-pointer disabled:opacity-50"
+              title="Refresh Live Data"
+            >
+              <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin text-[#E31E24]")} />
+            </button>
+
+            {/* Manage Admins Button */}
+            <button
+              onClick={handleOpenAdminModal}
+              className="inline-flex items-center gap-1.5 rounded-2xl bg-[#111827] hover:bg-black px-4 py-2 text-xs font-bold text-white transition shadow-xs cursor-pointer"
+            >
+              <Users className="h-3.5 w-3.5 text-red-400" />
+              <span>Admin Accounts</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Selected Vendor Inspection Banner (if filtering by a vendor) */}
+        {data?.selectedVendor && (
+          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50/60 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-white border border-red-200 flex items-center justify-center text-[#E31E24] font-black text-sm shadow-xs">
+                {data.selectedVendor.storeName.substring(0, 2).toUpperCase()}
               </div>
-              <p className="mt-1.5 font-display text-2xl font-bold tracking-tight text-[#111111]">
-                Arriving in 18 min
-              </p>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-gray-100">
-                <div className="h-full w-2/3 rounded-full bg-[#E31E24]" />
-              </div>
-              <div className="mt-3.5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="grid h-9 w-9 place-items-center rounded-full bg-[#E31E24] font-bold text-white text-xs shadow-xs">
-                    RK
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-black text-[#111111]">
+                    {data.selectedVendor.storeName}
+                  </h3>
+                  <span
+                    className={cn(
+                      "rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase",
+                      data.selectedVendor.accountStatus === "FROZEN"
+                        ? "bg-red-600 text-white"
+                        : "bg-emerald-600 text-white"
+                    )}
+                  >
+                    {data.selectedVendor.accountStatus}
                   </span>
-                  <div className="text-xs">
-                    <p className="font-semibold text-[#111111]">Ravi Kumar</p>
-                    <p className="text-[11px] text-[#6B7280]">2 pickups · Ather Rizta · 92% Battery</p>
-                  </div>
+                  <span className="rounded-md bg-gray-200/80 px-2 py-0.5 text-[10px] font-semibold text-gray-700">
+                    ID: {data.selectedVendor.id}
+                  </span>
                 </div>
-                <span className="rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold">
-                  On Route
-                </span>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Owner: {data.selectedVendor.ownerName} · {data.selectedVendor.city},{" "}
+                  {data.selectedVendor.state} · Email: {data.selectedVendor.email}
+                  {data.selectedVendor.freezeReason && (
+                    <span className="block text-red-700 font-semibold mt-0.5">
+                      Freeze Reason: {data.selectedVendor.freezeReason}
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
 
-            {/* 2. Fitment Verified Card */}
-            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-[#E31E24]">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#E31E24]">
-                    <span>Fitment verified</span>
-                    <span className="text-gray-300">·</span>
-                    <span className="text-[#6B7280] font-normal">Chassis Validated</span>
-                  </div>
-                  <p className="text-xs text-[#111111] mt-0.5 font-medium">
-                    VoltRide 60V 30Ah fits your <b>Ola S1 Pro 2023</b>
-                  </p>
-                </div>
-              </div>
-              <Link to="/admin/products" className="text-xs font-semibold text-[#E31E24] hover:underline">
-                View SKU →
-              </Link>
+            <div className="flex items-center gap-2 shrink-0">
+              {data.selectedVendor.accountStatus === "FROZEN" ? (
+                <button
+                  onClick={() => {
+                    setVendorToFreeze(data.selectedVendor);
+                    setFreezeActionType("unfreeze");
+                    setIsFreezeModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white transition shadow-xs cursor-pointer"
+                >
+                  <Unlock className="h-3.5 w-3.5" />
+                  <span>Unfreeze Vendor</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setVendorToFreeze(data.selectedVendor);
+                    setFreezeActionType("freeze");
+                    setIsFreezeModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 px-3 py-1.5 text-xs font-bold text-white transition shadow-xs cursor-pointer"
+                >
+                  <Lock className="h-3.5 w-3.5" />
+                  <span>Freeze Account</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => setSelectedVendorId("all")}
+                className="inline-flex items-center gap-1 rounded-xl bg-white border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
+              >
+                <span>Reset to All</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          2. ALL 12 SUMMARY CARDS (QUERY-DRIVEN, CLICKABLE TO FILTERED RECORDS)
+         ───────────────────────────────────────────────────────────── */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+            Platform-Wide Audit Summary Cards (Live Database)
+          </h2>
+          <span className="text-[11px] text-gray-400">
+            Click any metric to drill down into corresponding records
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
+          {/* 1. Total Customers */}
+          <Link
+            to="/admin/customers"
+            className="group rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-2xs hover:border-red-300 hover:shadow-xs transition"
+          >
+            <div className="flex items-center justify-between text-gray-500 text-xs font-medium">
+              <span>Customers</span>
+              <Users className="h-3.5 w-3.5 text-gray-400 group-hover:text-[#E31E24]" />
+            </div>
+            <p className="mt-1 font-display text-2xl font-bold tracking-tight text-[#111111] tabular-nums">
+              {summary.totalCustomers.toLocaleString()}
+            </p>
+            <p className="mt-1 text-[11px] text-emerald-600 font-semibold">Registered active</p>
+          </Link>
+
+          {/* 2. Total Admins */}
+          <button
+            onClick={handleOpenAdminModal}
+            className="text-left group rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-2xs hover:border-red-300 hover:shadow-xs transition cursor-pointer"
+          >
+            <div className="flex items-center justify-between text-gray-500 text-xs font-medium">
+              <span>Admins</span>
+              <ShieldAlert className="h-3.5 w-3.5 text-gray-400 group-hover:text-[#E31E24]" />
+            </div>
+            <p className="mt-1 font-display text-2xl font-bold tracking-tight text-[#111111] tabular-nums">
+              {summary.totalAdmins}
+            </p>
+            <p className="mt-1 text-[11px] text-purple-600 font-semibold">Governing accounts</p>
+          </button>
+
+          {/* 3. Total Vendors */}
+          <Link
+            to="/admin/sellers"
+            className="group rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-2xs hover:border-red-300 hover:shadow-xs transition"
+          >
+            <div className="flex items-center justify-between text-gray-500 text-xs font-medium">
+              <span>Vendors</span>
+              <Store className="h-3.5 w-3.5 text-gray-400 group-hover:text-[#E31E24]" />
+            </div>
+            <p className="mt-1 font-display text-2xl font-bold tracking-tight text-[#111111] tabular-nums">
+              {summary.totalVendors}
+            </p>
+            <p className="mt-1 text-[11px] text-gray-500 font-medium">All store profiles</p>
+          </Link>
+
+          {/* 4. Pending Vendor Approvals */}
+          <Link
+            to="/admin/sellers"
+            search={{ status: "PENDING_REVIEW" }}
+            className="group rounded-2xl border border-amber-200 bg-amber-50/50 p-4 shadow-2xs hover:border-amber-400 hover:shadow-xs transition"
+          >
+            <div className="flex items-center justify-between text-amber-800 text-xs font-semibold">
+              <span>Pending Vendors</span>
+              <Clock className="h-3.5 w-3.5 text-amber-600" />
+            </div>
+            <p className="mt-1 font-display text-2xl font-bold tracking-tight text-amber-900 tabular-nums">
+              {summary.pendingVendors}
+            </p>
+            <p className="mt-1 text-[11px] text-amber-700 font-medium">Awaiting KYC verification</p>
+          </Link>
+
+          {/* 5. Approved Vendors */}
+          <Link
+            to="/admin/sellers"
+            search={{ status: "APPROVED" }}
+            className="group rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-2xs hover:border-emerald-300 hover:shadow-xs transition"
+          >
+            <div className="flex items-center justify-between text-gray-500 text-xs font-medium">
+              <span>Approved Vendors</span>
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+            </div>
+            <p className="mt-1 font-display text-2xl font-bold tracking-tight text-emerald-700 tabular-nums">
+              {summary.approvedVendors}
+            </p>
+            <p className="mt-1 text-[11px] text-emerald-600 font-medium">Verified active partners</p>
+          </Link>
+
+          {/* 6. Frozen Vendors */}
+          <Link
+            to="/admin/sellers"
+            search={{ status: "FROZEN" }}
+            className={cn(
+              "group rounded-2xl border p-4 shadow-2xs transition",
+              summary.frozenVendors > 0
+                ? "border-red-300 bg-red-50/40 text-red-900"
+                : "border-[#E5E7EB] bg-white text-gray-900"
+            )}
+          >
+            <div className="flex items-center justify-between text-xs font-medium text-gray-500">
+              <span>Frozen Vendors</span>
+              <Lock className="h-3.5 w-3.5 text-red-600" />
+            </div>
+            <p className="mt-1 font-display text-2xl font-bold tracking-tight tabular-nums text-red-600">
+              {summary.frozenVendors}
+            </p>
+            <p className="mt-1 text-[11px] text-red-500 font-medium">Compliance locked</p>
+          </Link>
+
+          {/* 7. Total Products */}
+          <Link
+            to="/admin/products"
+            className="group rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-2xs hover:border-red-300 hover:shadow-xs transition"
+          >
+            <div className="flex items-center justify-between text-gray-500 text-xs font-medium">
+              <span>Total Products</span>
+              <Package className="h-3.5 w-3.5 text-gray-400 group-hover:text-[#E31E24]" />
+            </div>
+            <p className="mt-1 font-display text-2xl font-bold tracking-tight text-[#111111] tabular-nums">
+              {summary.totalProducts.toLocaleString()}
+            </p>
+            <p className="mt-1 text-[11px] text-gray-500 font-medium">Catalog parts</p>
+          </Link>
+
+          {/* 8. Pending Product Approvals */}
+          <Link
+            to="/admin/products"
+            search={{ status: "pending_approval" }}
+            className="group rounded-2xl border border-amber-200 bg-amber-50/50 p-4 shadow-2xs hover:border-amber-400 hover:shadow-xs transition"
+          >
+            <div className="flex items-center justify-between text-amber-800 text-xs font-semibold">
+              <span>Pending Products</span>
+              <Clock className="h-3.5 w-3.5 text-amber-600" />
+            </div>
+            <p className="mt-1 font-display text-2xl font-bold tracking-tight text-amber-900 tabular-nums">
+              {summary.pendingProducts}
+            </p>
+            <p className="mt-1 text-[11px] text-amber-700 font-medium">Catalog certification queue</p>
+          </Link>
+
+          {/* 9. Approved Products */}
+          <Link
+            to="/admin/products"
+            search={{ status: "approved" }}
+            className="group rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-2xs hover:border-emerald-300 hover:shadow-xs transition"
+          >
+            <div className="flex items-center justify-between text-gray-500 text-xs font-medium">
+              <span>Approved Products</span>
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+            </div>
+            <p className="mt-1 font-display text-2xl font-bold tracking-tight text-emerald-700 tabular-nums">
+              {summary.approvedProducts}
+            </p>
+            <p className="mt-1 text-[11px] text-emerald-600 font-medium">Storefront eligible</p>
+          </Link>
+
+          {/* 10. Total Orders */}
+          <Link
+            to="/admin/orders"
+            className="group rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-2xs hover:border-red-300 hover:shadow-xs transition"
+          >
+            <div className="flex items-center justify-between text-gray-500 text-xs font-medium">
+              <span>Total Orders</span>
+              <Layers className="h-3.5 w-3.5 text-gray-400 group-hover:text-[#E31E24]" />
+            </div>
+            <p className="mt-1 font-display text-2xl font-bold tracking-tight text-[#111111] tabular-nums">
+              {summary.totalOrders}
+            </p>
+            <p className="mt-1 text-[11px] text-gray-500 font-medium">
+              {summary.pendingOrders} in fulfillment
+            </p>
+          </Link>
+
+          {/* 11. Completed Orders */}
+          <Link
+            to="/admin/orders"
+            search={{ status: "completed" }}
+            className="group rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-2xs hover:border-emerald-300 hover:shadow-xs transition"
+          >
+            <div className="flex items-center justify-between text-gray-500 text-xs font-medium">
+              <span>Completed Orders</span>
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+            </div>
+            <p className="mt-1 font-display text-2xl font-bold tracking-tight text-emerald-700 tabular-nums">
+              {summary.completedOrders}
+            </p>
+            <p className="mt-1 text-[11px] text-emerald-600 font-medium">Successfully delivered</p>
+          </Link>
+
+          {/* 12. Total Realized Net Revenue */}
+          <div className="group rounded-2xl border-2 border-red-200 bg-red-50/70 p-4 shadow-xs">
+            <div className="flex items-center justify-between text-xs font-bold text-[#E31E24]">
+              <span>Realized Net Revenue</span>
+              <IndianRupee className="h-3.5 w-3.5" />
+            </div>
+            <p className="mt-1 font-display text-2xl font-black tracking-tight text-[#E31E24] tabular-nums">
+              ₹{summary.netRevenue.toLocaleString("en-IN")}
+            </p>
+            <div className="mt-1 flex items-center justify-between text-[10px] text-gray-600">
+              <span>Gross: ₹{summary.grossSales.toLocaleString()}</span>
+              {summary.refunds > 0 && <span className="text-red-700 font-semibold">-₹{summary.refunds.toLocaleString()}</span>}
             </div>
           </div>
         </div>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          2. KEY METRICS STAT CARDS (EXACT STYLE OF LANDING PAGE STAT PILLS)
-         ───────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
-        {[
-          { label: "Total GMV (Apr)", value: "₹48.2L", trend: "+18.4%", positive: true },
-          { label: "Orders Fulfilled", value: "1,428", trend: "+12.1%", positive: true },
-          { label: "Active Riders", value: "142", trend: "118 on road", positive: true },
-          { label: "Verified Sellers", value: "68", trend: "+4 this month", positive: true },
-          { label: "Avg Delivery", value: "18m", trend: "-4m faster SLA", positive: true },
-          { label: "Customer Rating", value: "4.82★", trend: "9.4k reviews", positive: true },
-        ].map((stat, idx) => (
-          <div
-            key={stat.label}
-            className="rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-2xs hover:shadow-xs transition"
-          >
-            <p className="font-display text-2xl font-bold tracking-tight text-[#E31E24] tabular-nums">
-              {stat.value}
-            </p>
-            <p className="mt-0.5 text-xs text-[#6B7280] font-medium">{stat.label}</p>
-            <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px]">
-              <span className="text-emerald-700 font-semibold">{stat.trend}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* ─────────────────────────────────────────────────────────────
-          3. REVENUE TRENDS & CATEGORY BREAKDOWN
+          3. REVENUE TREND CHART & CATEGORY DEMAND BREAKDOWN
          ───────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Revenue Velocity Area Chart */}
@@ -259,439 +654,440 @@ export function DashboardScreen() {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-[#111111]">
-                  Revenue & Order Velocity
+                  Verified Revenue & Order Flow
                 </h3>
                 <span className="rounded-full bg-red-50 text-[#E31E24] border border-red-200 px-2 py-0.5 text-[10px] font-bold">
-                  ₹ Lakhs
+                  {selectedVendorId === "all" ? "Platform-wide" : "Vendor Filtered"}
                 </span>
               </div>
               <p className="text-xs text-[#6B7280] mt-0.5">
-                Gross merchandise value across verified spare vendors
+                Authentic collected revenue minus recorded refunds over time.
               </p>
             </div>
 
-            <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1">
-              <button
-                onClick={() => setTimeRange("7d")}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
-                  timeRange === "7d"
-                    ? "bg-[#E31E24] text-white shadow-2xs"
-                    : "text-[#6B7280] hover:text-[#111111]"
-                }`}
-              >
-                7 Days
-              </button>
-              <button
-                onClick={() => setTimeRange("30d")}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
-                  timeRange === "30d"
-                    ? "bg-[#E31E24] text-white shadow-2xs"
-                    : "text-[#6B7280] hover:text-[#111111]"
-                }`}
-              >
-                30 Days
-              </button>
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Selected Range Net</p>
+              <p className="text-base font-black text-[#E31E24]">
+                ₹{summary.netRevenue.toLocaleString("en-IN")}
+              </p>
             </div>
           </div>
 
           <div className="h-64 w-full min-w-0 overflow-hidden">
-            <ResponsiveContainer width="100%" height={256} minWidth={0} minHeight={0}>
-              <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="riderzproRedGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#E31E24" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#E31E24" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                <XAxis dataKey="date" stroke="#9CA3AF" fontSize={11} tickLine={false} />
-                <YAxis
-                  stroke="#9CA3AF"
-                  fontSize={11}
-                  tickLine={false}
-                  tickFormatter={(val) => `₹${val / 100000}L`}
-                />
-                <Tooltip
-                  content={({ active, payload, label }) => {
-                    if (active && payload && payload.length) {
-                      const val = payload[0].value as number;
-                      return (
-                        <div className="rounded-xl border border-red-200 bg-white p-3 shadow-lg text-xs">
-                          <p className="font-semibold text-gray-500">{label}</p>
-                          <p className="font-bold text-[#E31E24] text-sm mt-0.5">
-                            ₹{val.toLocaleString("en-IN")}
-                          </p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#E31E24"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#riderzproRedGradient)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {data?.revenueTrend && data.revenueTrend.length > 0 ? (
+              <ResponsiveContainer width="100%" height={256} minWidth={0} minHeight={0}>
+                <AreaChart
+                  data={data.revenueTrend}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="riderzproRedGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#E31E24" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#E31E24" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                  <XAxis dataKey="date" stroke="#9CA3AF" fontSize={11} tickLine={false} />
+                  <YAxis
+                    stroke="#9CA3AF"
+                    fontSize={11}
+                    tickLine={false}
+                    tickFormatter={(val) => `₹${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`}
+                  />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        const val = payload[0].value as number;
+                        const ordersCount = payload[0].payload?.orders || 0;
+                        return (
+                          <div className="rounded-xl border border-red-200 bg-white p-3 shadow-lg text-xs">
+                            <p className="font-semibold text-gray-500">{label}</p>
+                            <p className="mt-1 font-bold text-[#E31E24]">
+                              Revenue: ₹{val.toLocaleString()}
+                            </p>
+                            <p className="text-gray-600">Orders: {ordersCount}</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#E31E24"
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#riderzproRedGradient)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400">
+                <Layers className="h-8 w-8 text-gray-300 mb-2" />
+                <p className="text-xs font-semibold text-gray-600">No transactions recorded for this period.</p>
+                <p className="text-[11px] text-gray-400">Transactions will render live as orders are placed.</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Category Share Donut */}
-        <div className="rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-xs space-y-4 min-w-0 overflow-hidden">
+        {/* Category Share Distribution */}
+        <div className="rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-xs space-y-4">
           <div className="border-b border-gray-100 pb-4">
-            <h3 className="text-base font-bold text-[#111111]">Shop Departments</h3>
-            <p className="text-xs text-[#6B7280] mt-0.5">
-              Category contribution to total dispatch volume
-            </p>
+            <h3 className="text-base font-bold text-[#111111]">Category Distribution</h3>
+            <p className="text-xs text-[#6B7280] mt-0.5">Catalog breakdown by EV spare department</p>
           </div>
 
-          <div className="h-44 w-full min-w-0 overflow-hidden">
-            <ResponsiveContainer width="100%" height={176} minWidth={0} minHeight={0}>
-              <PieChart>
-                <Pie
-                  data={CATEGORY_SHARE}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={70}
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                  {CATEGORY_SHARE.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} stroke="#ffffff" strokeWidth={2} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0].payload;
-                      return (
-                        <div className="rounded-xl border border-gray-200 bg-white p-2 shadow-md text-xs">
-                          <p className="font-bold text-[#111111]">{data.name}</p>
-                          <p className="text-[#E31E24] font-semibold">{data.value}% of orders</p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="space-y-2 border-t border-gray-100 pt-3 text-xs">
-            {CATEGORY_SHARE.map((cat) => (
-              <div key={cat.name} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: cat.color }} />
-                  <span className="text-[#4B5563]">{cat.name}</span>
-                </div>
-                <span className="font-bold text-[#111111]">{cat.value}%</span>
+          {data?.categoryShare && data.categoryShare.length > 0 ? (
+            <div className="space-y-4">
+              <div className="h-44 w-full">
+                <ResponsiveContainer width="100%" height={176}>
+                  <PieChart>
+                    <Pie
+                      data={data.categoryShare}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={45}
+                      outerRadius={75}
+                      paddingAngle={3}
+                    >
+                      {data.categoryShare.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: any, name: any) => [`${value} parts`, name]}
+                      contentStyle={{
+                        borderRadius: "12px",
+                        border: "1px solid #E5E7EB",
+                        fontSize: "12px",
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
-            ))}
-          </div>
+
+              <div className="space-y-2 pt-2 border-t border-gray-100">
+                {data.categoryShare.slice(0, 4).map((cat) => (
+                  <div key={cat.name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
+                      <span className="text-[#111111] font-medium truncate max-w-[150px]">{cat.name}</span>
+                    </div>
+                    <span className="font-bold text-[#6B7280] tabular-nums">{cat.value} parts</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="h-48 flex items-center justify-center text-xs text-gray-400">
+              No categories mapped
+            </div>
+          )}
         </div>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          4. CITY FULFILLMENT HUBS & LIVE BENGALURU MAP
+          4. BEST SELLING PRODUCTS & RECENT ORDERS TABLES
          ───────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Operational Cities Performance */}
-        <div className="rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-xs space-y-4 min-w-0 overflow-hidden">
-          <div className="border-b border-gray-100 pb-4">
-            <h3 className="text-base font-bold text-[#111111]">Operational Hubs</h3>
-            <p className="text-xs text-[#6B7280] mt-0.5">
-              5 metro corridors with express 3-hour doorstep delivery
-            </p>
-          </div>
-
-          <div className="space-y-3 pt-1">
-            {CITY_PERFORMANCE.map((city) => (
-              <div
-                key={city.city}
-                onClick={() => setSelectedCity(city.city)}
-                className={`p-3 rounded-2xl border transition cursor-pointer ${
-                  selectedCity === city.city
-                    ? "border-[#E31E24] bg-red-50/40"
-                    : "border-gray-100 bg-gray-50/60 hover:border-gray-200"
-                }`}
-              >
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-[#E31E24]" />
-                    <span className="text-[#111111]">{city.city}</span>
-                    <span className="text-[#6B7280] font-normal">({city.orders} orders)</span>
-                  </div>
-                  <span className="text-[#E31E24] font-bold">₹{city.revenue}L</span>
-                </div>
-                <div className="mt-2 flex items-center justify-between text-[11px] text-[#6B7280]">
-                  <span>Avg Doorstep SLA</span>
-                  <span className="font-bold text-emerald-700">{city.sla} SLA</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Live Bengaluru Fleet Radar Card */}
-        <div className="lg:col-span-2 rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-xs space-y-4 min-w-0 overflow-hidden">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Best Selling Products */}
+        <div className="rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse" />
-                <h3 className="text-base font-bold text-[#111111]">
-                  Live Bengaluru EV Radar
-                </h3>
-              </div>
-              <p className="text-xs text-[#6B7280] mt-0.5">
-                142 riders connected across Whitefield, Indiranagar, HSR, Koramangala & Bellandur
-              </p>
+              <h3 className="text-base font-bold text-[#111111]">Best-Selling EV Spares</h3>
+              <p className="text-xs text-[#6B7280]">Top performing components by realized revenue</p>
             </div>
-
-            <Link to="/admin/riders">
-              <button className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-[#111111] hover:bg-gray-100 transition cursor-pointer">
-                <span>View All Fleet</span>
-                <ArrowRight className="h-3 w-3" />
-              </button>
+            <Link to="/admin/products" className="text-xs font-bold text-[#E31E24] hover:underline">
+              View Catalog →
             </Link>
           </div>
 
-          {/* Clean Light Tactical Map Canvas */}
-          <div className="relative h-68 w-full rounded-2xl border border-gray-200 bg-[#F9FAFB] overflow-hidden flex items-center justify-center select-none">
-            {/* Soft grid background */}
-            <div
-              className="absolute inset-0 opacity-40"
-              style={{
-                backgroundImage:
-                  "linear-gradient(to right, #E5E7EB 1px, transparent 1px), linear-gradient(to bottom, #E5E7EB 1px, transparent 1px)",
-                backgroundSize: "32px 32px",
-              }}
-            />
-
-            {/* Radar circles */}
-            <div className="absolute h-56 w-56 rounded-full border border-red-200/60" />
-            <div className="absolute h-36 w-36 rounded-full border border-red-300/60" />
-            <div className="absolute h-18 w-18 rounded-full border border-red-400/60" />
-
-            {/* Center Indiranagar Transit Hub */}
-            <div className="relative z-10 flex flex-col items-center">
-              <div className="h-8 w-8 rounded-full bg-[#E31E24] text-white flex items-center justify-center shadow-md ring-4 ring-red-100">
-                <Store className="h-4 w-4" />
+          <div className="overflow-x-auto">
+            {data?.bestSellingProducts && data.bestSellingProducts.length > 0 ? (
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-gray-100 text-gray-400 font-semibold">
+                    <th className="pb-2">Product Name</th>
+                    <th className="pb-2">Vendor</th>
+                    <th className="pb-2 text-right">Price</th>
+                    <th className="pb-2 text-right">Units</th>
+                    <th className="pb-2 text-right">Total Sales</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {data.bestSellingProducts.map((p) => (
+                    <tr key={p.id} className="hover:bg-gray-50/80 transition">
+                      <td className="py-2.5 pr-2">
+                        <p className="font-bold text-[#111111] truncate max-w-[180px]">{p.name}</p>
+                        <p className="text-[10px] text-gray-400">SKU: {p.id}</p>
+                      </td>
+                      <td className="py-2.5 text-gray-600 truncate max-w-[120px]">{p.storeName}</td>
+                      <td className="py-2.5 text-right font-medium text-gray-700">₹{p.price.toLocaleString()}</td>
+                      <td className="py-2.5 text-right font-bold text-[#111111]">{p.unitsSold}</td>
+                      <td className="py-2.5 text-right font-black text-[#E31E24]">₹{p.totalSales.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="py-8 text-center text-xs text-gray-400">
+                No product sales recorded yet.
               </div>
-              <span className="mt-1 rounded-md bg-white border border-gray-200 px-2 py-0.5 text-[10px] font-bold text-[#111111] shadow-2xs">
-                Indiranagar HQ Hub
-              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Recent Orders and Real Transactions */}
+        <div className="rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+            <div>
+              <h3 className="text-base font-bold text-[#111111]">Recent Orders & Dispatches</h3>
+              <p className="text-xs text-[#6B7280]">Live verified customer purchases</p>
             </div>
+            <Link to="/admin/orders" className="text-xs font-bold text-[#E31E24] hover:underline">
+              All Orders →
+            </Link>
+          </div>
 
-            {/* Live Delivery Riders Plotted */}
-            {riders.slice(0, 6).map((rider, i) => {
-              const offsets = [
-                { top: "25%", left: "28%" },
-                { top: "68%", left: "72%" },
-                { top: "35%", left: "75%" },
-                { top: "72%", left: "25%" },
-                { top: "22%", left: "64%" },
-                { top: "54%", left: "20%" },
-              ];
-              const pos = offsets[i % offsets.length];
-
-              return (
-                <div
-                  key={rider.id}
-                  className="absolute z-20 group cursor-pointer"
-                  style={{ top: pos.top, left: pos.left }}
-                  onClick={() =>
-                    toast.info(`Rider: ${rider.name}`, {
-                      description: `Bike: ${rider.vehicle} · Battery: ${rider.batteryPct}% · Status: ${rider.status}`,
-                    })
-                  }
-                >
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm transition-transform hover:scale-125">
-                    <BikeIcon className="h-3.5 w-3.5" />
-                  </div>
-                  <div className="hidden group-hover:block absolute bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-2 py-1 text-[10px] font-semibold text-[#111111] shadow-md z-30">
-                    {rider.name} ({rider.batteryPct}%)
-                  </div>
-                </div>
-              );
-            })}
+          <div className="overflow-x-auto">
+            {data?.recentOrders && data.recentOrders.length > 0 ? (
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-gray-100 text-gray-400 font-semibold">
+                    <th className="pb-2">Order #</th>
+                    <th className="pb-2">Customer</th>
+                    <th className="pb-2">Vendor</th>
+                    <th className="pb-2">Status</th>
+                    <th className="pb-2 text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {data.recentOrders.map((o) => (
+                    <tr key={o.id} className="hover:bg-gray-50/80 transition">
+                      <td className="py-2.5 pr-2">
+                        <p className="font-bold text-[#111111]">{o.orderNumber}</p>
+                        <p className="text-[10px] text-gray-400">{o.createdAt?.substring(0, 10)}</p>
+                      </td>
+                      <td className="py-2.5 text-gray-700 truncate max-w-[120px]">{o.customerName}</td>
+                      <td className="py-2.5 text-gray-600 truncate max-w-[110px]">{o.storeName}</td>
+                      <td className="py-2.5">
+                        <span
+                          className={cn(
+                            "rounded-md px-2 py-0.5 text-[10px] font-bold",
+                            o.status === "completed" || o.status === "delivered"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : o.status === "refunded"
+                              ? "bg-purple-50 text-purple-700 border border-purple-200"
+                              : o.status === "cancelled"
+                              ? "bg-red-50 text-red-700 border border-red-200"
+                              : "bg-amber-50 text-amber-700 border border-amber-200"
+                          )}
+                        >
+                          {o.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="py-2.5 text-right font-black text-[#111111]">₹{o.totalAmount.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="py-8 text-center text-xs text-gray-400">
+                No orders placed in this period.
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          5. LIVE ORDERS STREAM & OPERATIONS ACTIONS
+          5. ADMIN MANAGEMENT MODAL
          ───────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Orders Table */}
-        <div className="lg:col-span-2 rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-xs space-y-4 min-w-0 overflow-hidden">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[#E31E24] animate-pulse" />
-              <h3 className="text-base font-bold text-[#111111]">
-                Live Orders Stream
+      {isAdminModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-2xl rounded-3xl border border-gray-200 bg-white p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-xl bg-red-50 text-[#E31E24] flex items-center justify-center font-bold">
+                  <ShieldAlert className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Administrator Accounts & Roles</h3>
+                  <p className="text-xs text-gray-500">Super Admin governance & Unified Admin management</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsAdminModalOpen(false)}
+                className="h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Existing Admins List */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                Registered Administrative Accounts ({adminsList.length})
+              </h4>
+              <div className="max-h-56 overflow-y-auto space-y-2 border border-gray-100 rounded-2xl p-2 bg-gray-50/50">
+                {adminsList.map((a) => (
+                  <div
+                    key={a.id}
+                    className="flex items-center justify-between p-3 rounded-xl bg-white border border-gray-200/80 shadow-2xs"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs text-gray-900">{a.full_name}</span>
+                        <span
+                          className={cn(
+                            "rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase",
+                            a.role === "SUPER_ADMIN"
+                              ? "bg-red-100 text-[#E31E24] border border-red-200"
+                              : "bg-blue-100 text-blue-800 border border-blue-200"
+                          )}
+                        >
+                          {a.role === "SUPER_ADMIN" ? "Super Admin" : "Unified Admin"}
+                        </span>
+                        {!a.is_active && (
+                          <span className="rounded-md bg-gray-200 text-gray-600 px-1.5 py-0.5 text-[9px] font-bold">
+                            Deactivated
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">{a.email}</p>
+                    </div>
+
+                    {a.role !== "SUPER_ADMIN" && (
+                      <button
+                        onClick={() => handleToggleAdminStatus(a.id)}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer",
+                          a.is_active
+                            ? "bg-red-50 text-red-700 hover:bg-red-100"
+                            : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                        )}
+                      >
+                        {a.is_active ? "Deactivate" : "Activate"}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Provision New Unified Admin Form */}
+            <form onSubmit={handleCreateAdmin} className="border-t border-gray-100 pt-4 space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                Provision New Unified Admin
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <input
+                  type="text"
+                  placeholder="Full Name"
+                  value={newAdminName}
+                  onChange={(e) => setNewAdminName(e.target.value)}
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs outline-none focus:border-[#E31E24]"
+                  required
+                />
+                <input
+                  type="email"
+                  placeholder="admin.name@riderzpro.com"
+                  value={newAdminEmail}
+                  onChange={(e) => setNewAdminEmail(e.target.value)}
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs outline-none focus:border-[#E31E24]"
+                  required
+                />
+                <input
+                  type="password"
+                  placeholder="Secure Password"
+                  value={newAdminPassword}
+                  onChange={(e) => setNewAdminPassword(e.target.value)}
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs outline-none focus:border-[#E31E24]"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAdminModalOpen(false)}
+                  className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  disabled={isProvisioningAdmin}
+                  className="rounded-xl bg-[#E31E24] hover:bg-[#CC181E] px-4 py-2 text-xs font-bold text-white shadow-xs transition disabled:opacity-50 cursor-pointer"
+                >
+                  {isProvisioningAdmin ? "Provisioning..." : "Create Unified Admin"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          6. FREEZE / UNFREEZE VENDOR MODAL
+         ───────────────────────────────────────────────────────────── */}
+      {isFreezeModalOpen && vendorToFreeze && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+              <h3 className="text-base font-bold text-gray-900">
+                {freezeActionType === "freeze" ? "Freeze Vendor Account" : "Unfreeze Vendor Account"}
               </h3>
             </div>
-            <Link
-              to="/admin/orders"
-              className="text-xs font-semibold text-[#E31E24] hover:underline flex items-center gap-1"
-            >
-              <span>View all {orders.length} orders</span>
-              <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
 
-          <div className="overflow-x-auto text-xs">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="text-[#6B7280] font-semibold border-b border-gray-100">
-                  <th className="pb-3">Order #</th>
-                  <th className="pb-3">Customer</th>
-                  <th className="pb-3">City</th>
-                  <th className="pb-3">Amount</th>
-                  <th className="pb-3">Status</th>
-                  <th className="pb-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {recentOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50/80 transition">
-                    <td className="py-3 font-mono font-bold text-[#111111]">
-                      {order.orderNumber}
-                    </td>
-                    <td className="py-3 font-semibold text-[#111111]">
-                      {order.customerName}
-                    </td>
-                    <td className="py-3 text-[#6B7280]">{order.customerCity}</td>
-                    <td className="py-3 font-bold text-[#111111] tabular-nums">
-                      ₹{order.totalAmount.toLocaleString("en-IN")}
-                    </td>
-                    <td className="py-3">
-                      <StatusBadge status={order.status} size="sm" />
-                    </td>
-                    <td className="py-3 text-right">
-                      <button
-                        onClick={() => setSelectedOrder(order)}
-                        className="rounded-lg bg-gray-100 hover:bg-red-50 hover:text-[#E31E24] px-2.5 py-1 text-[11px] font-semibold text-[#111111] transition cursor-pointer inline-flex items-center gap-1"
-                      >
-                        <Eye className="h-3 w-3" />
-                        <span>Inspect</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+            <p className="text-xs text-gray-600">
+              You are about to {freezeActionType}{" "}
+              <span className="font-bold text-gray-900">{vendorToFreeze.storeName || vendorToFreeze.store_name}</span>.
+              {freezeActionType === "freeze"
+                ? " This will immediately block product uploads, catalog additions, and storefront sales."
+                : " This will restore normal selling and product publishing privileges."}
+            </p>
 
-        {/* Priority Action Center */}
-        <div className="rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-xs space-y-4 min-w-0 overflow-hidden">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
-              <h3 className="text-base font-bold text-[#111111]">Priority Actions</h3>
-            </div>
-            <span className="rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 text-[10px] font-bold">
-              Action Required
-            </span>
-          </div>
-
-          <div className="space-y-3 text-xs">
-            {/* Low Inventory Alert */}
-            <div className="rounded-2xl border border-red-200 bg-red-50/50 p-3.5 space-y-2">
-              <div className="flex items-center justify-between font-bold text-[#E31E24]">
-                <span className="flex items-center gap-1.5">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  Low Inventory Warning
-                </span>
-                <span className="font-mono text-[11px]">8 SKUs</span>
-              </div>
-              <p className="text-[#6B7280] text-[11px] leading-relaxed">
-                VoltRide 60V NMC battery packs are below the safe buffer threshold in Bengaluru.
-              </p>
-              <Link to="/admin/products">
-                <button className="w-full mt-1 rounded-xl bg-[#E31E24] hover:bg-[#CC181E] text-white font-semibold py-1.5 text-[11px] transition cursor-pointer">
-                  Initiate Restock →
-                </button>
-              </Link>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-gray-700">
+                Mandatory Reason / Compliance Note <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={freezeReason}
+                onChange={(e) => setFreezeReason(e.target.value)}
+                placeholder="Specify the reason for this action (e.g., GSTIN verification failed, document updated and verified)..."
+                rows={3}
+                className="w-full rounded-xl border border-gray-200 p-2.5 text-xs outline-none focus:border-[#E31E24]"
+                required
+              />
             </div>
 
-            {/* KYC Approvals */}
-            <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-3.5 space-y-2">
-              <div className="flex items-center justify-between font-bold text-amber-800">
-                <span className="flex items-center gap-1.5">
-                  <Store className="h-3.5 w-3.5" />
-                  Seller KYC Verification
-                </span>
-                <span className="font-mono text-[11px]">2 Pending</span>
-              </div>
-              <p className="text-[#6B7280] text-[11px] leading-relaxed">
-                Telangana Smart Telematics & NeoRide EV spares await verification.
-              </p>
-              <Link to="/admin/sellers">
-                <button className="w-full mt-1 rounded-xl border border-amber-300 bg-white hover:bg-amber-100 text-amber-900 font-semibold py-1.5 text-[11px] transition cursor-pointer">
-                  Review Seller Applications →
-                </button>
-              </Link>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsFreezeModalOpen(false)}
+                className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteFreezeAction}
+                className={cn(
+                  "rounded-xl px-4 py-2 text-xs font-bold text-white shadow-xs transition cursor-pointer",
+                  freezeActionType === "freeze" ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"
+                )}
+              >
+                Confirm {freezeActionType === "freeze" ? "Freeze" : "Unfreeze"}
+              </button>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* ─────────────────────────────────────────────────────────────
-          6. ORDER INSPECTION SLIDE-OVER DRAWER
-         ───────────────────────────────────────────────────────────── */}
-      {selectedOrder && (
-        <GlassDrawer
-          isOpen={Boolean(selectedOrder)}
-          onClose={() => setSelectedOrder(null)}
-          title={`Order #${selectedOrder.orderNumber}`}
-          description={`Customer: ${selectedOrder.customerName} · ${selectedOrder.customerCity}`}
-        >
-          <div className="space-y-4 text-xs">
-            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] uppercase font-bold text-[#6B7280]">Status</span>
-                <p className="text-sm font-bold text-[#111111]">{selectedOrder.status}</p>
-              </div>
-              <StatusBadge status={selectedOrder.status} />
-            </div>
-
-            <div className="rounded-2xl border border-gray-100 bg-white p-4 space-y-1.5">
-              <h4 className="font-bold text-[#111111]">Delivery Address</h4>
-              <p className="text-[#4B5563]">{selectedOrder.shippingAddress}</p>
-              <p className="text-[#6B7280]">Phone: {selectedOrder.customerPhone}</p>
-            </div>
-
-            <div className="rounded-2xl border border-gray-100 bg-white p-4 space-y-2">
-              <h4 className="font-bold text-[#111111]">Line Items</h4>
-              {selectedOrder.items.map((item, i) => (
-                <div key={i} className="flex items-center justify-between py-1 border-b border-gray-100 last:border-none">
-                  <div>
-                    <p className="font-medium text-[#111111]">{item.productName}</p>
-                    <p className="text-[11px] text-[#6B7280]">Qty: {item.quantity}</p>
-                  </div>
-                  <span className="font-mono font-bold text-[#111111]">
-                    ₹{item.unitPrice.toLocaleString("en-IN")}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="rounded-2xl border border-red-100 bg-red-50/50 p-4 flex items-center justify-between text-sm">
-              <span className="font-bold text-[#111111]">Total Amount</span>
-              <span className="font-mono font-extrabold text-[#E31E24] text-base">
-                ₹{selectedOrder.totalAmount.toLocaleString("en-IN")}
-              </span>
-            </div>
-          </div>
-        </GlassDrawer>
       )}
     </div>
   );

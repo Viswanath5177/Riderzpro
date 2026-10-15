@@ -21,12 +21,15 @@ import { Route as OffersRouteImport } from './routes/offers'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SuperAdminRouteImport } from './routes/super-admin'
 import { Route as SuperadminRouteImport } from './routes/superadmin'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAiAssistantRouteImport } from './routes/admin.ai-assistant'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
+import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as AdminFitmentRouteImport } from './routes/admin.fitment'
+import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminOffersRouteImport } from './routes/admin.offers'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
@@ -45,6 +48,8 @@ import { Route as DashboardRiderRouteImport } from './routes/dashboard.rider'
 import { Route as DashboardVendorRouteImport } from './routes/dashboard.vendor'
 import { Route as DashboardWorkshopRouteImport } from './routes/dashboard.workshop'
 import { Route as ProductIdRouteImport } from './routes/product.$id'
+import { Route as SuperAdminDashboardRouteImport } from './routes/super-admin.dashboard'
+import { Route as SuperAdminLoginRouteImport } from './routes/super-admin.login'
 import { Route as TrackIdRouteImport } from './routes/track.$id'
 import { Route as VendorIdRouteImport } from './routes/vendor.$id'
 import { Route as VendorLoginRouteImport } from './routes/vendor.login'
@@ -111,6 +116,11 @@ const SignupRoute = SignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SuperAdminRoute = SuperAdminRouteImport.update({
+  id: '/super-admin',
+  path: '/super-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SuperadminRoute = SuperadminRouteImport.update({
   id: '/superadmin',
   path: '/superadmin',
@@ -136,9 +146,19 @@ const AdminCustomersRoute = AdminCustomersRouteImport.update({
   path: '/customers',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminDashboardRoute = AdminDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminFitmentRoute = AdminFitmentRouteImport.update({
   id: '/fitment',
   path: '/fitment',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
@@ -231,6 +251,16 @@ const ProductIdRoute = ProductIdRouteImport.update({
   path: '/product/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SuperAdminDashboardRoute = SuperAdminDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => SuperAdminRoute,
+} as any)
+const SuperAdminLoginRoute = SuperAdminLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => SuperAdminRoute,
+} as any)
 const TrackIdRoute = TrackIdRouteImport.update({
   id: '/track/$id',
   path: '/track/$id',
@@ -270,11 +300,14 @@ export interface FileRoutesByFullPath {
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
+  '/super-admin': typeof SuperAdminRouteWithChildren
   '/superadmin': typeof SuperadminRoute
   '/admin/ai-assistant': typeof AdminAiAssistantRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/fitment': typeof AdminFitmentRoute
+  '/admin/login': typeof AdminLoginRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/offers': typeof AdminOffersRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -293,6 +326,8 @@ export interface FileRoutesByFullPath {
   '/dashboard/vendor': typeof DashboardVendorRoute
   '/dashboard/workshop': typeof DashboardWorkshopRoute
   '/product/$id': typeof ProductIdRoute
+  '/super-admin/dashboard': typeof SuperAdminDashboardRoute
+  '/super-admin/login': typeof SuperAdminLoginRoute
   '/track/$id': typeof TrackIdRoute
   '/vendor/$id': typeof VendorIdRoute
   '/vendor/login': typeof VendorLoginRoute
@@ -312,11 +347,14 @@ export interface FileRoutesByTo {
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
+  '/super-admin': typeof SuperAdminRouteWithChildren
   '/superadmin': typeof SuperadminRoute
   '/admin/ai-assistant': typeof AdminAiAssistantRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/fitment': typeof AdminFitmentRoute
+  '/admin/login': typeof AdminLoginRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/offers': typeof AdminOffersRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -335,6 +373,8 @@ export interface FileRoutesByTo {
   '/dashboard/vendor': typeof DashboardVendorRoute
   '/dashboard/workshop': typeof DashboardWorkshopRoute
   '/product/$id': typeof ProductIdRoute
+  '/super-admin/dashboard': typeof SuperAdminDashboardRoute
+  '/super-admin/login': typeof SuperAdminLoginRoute
   '/track/$id': typeof TrackIdRoute
   '/vendor/$id': typeof VendorIdRoute
   '/vendor/login': typeof VendorLoginRoute
@@ -356,11 +396,14 @@ export interface FileRoutesById {
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
+  '/super-admin': typeof SuperAdminRouteWithChildren
   '/superadmin': typeof SuperadminRoute
   '/admin/ai-assistant': typeof AdminAiAssistantRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/fitment': typeof AdminFitmentRoute
+  '/admin/login': typeof AdminLoginRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/offers': typeof AdminOffersRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -379,6 +422,8 @@ export interface FileRoutesById {
   '/dashboard/vendor': typeof DashboardVendorRoute
   '/dashboard/workshop': typeof DashboardWorkshopRoute
   '/product/$id': typeof ProductIdRoute
+  '/super-admin/dashboard': typeof SuperAdminDashboardRoute
+  '/super-admin/login': typeof SuperAdminLoginRoute
   '/track/$id': typeof TrackIdRoute
   '/vendor/$id': typeof VendorIdRoute
   '/vendor/login': typeof VendorLoginRoute
@@ -401,11 +446,14 @@ export interface FileRouteTypes {
     | '/orders'
     | '/shop'
     | '/signup'
+    | '/super-admin'
     | '/superadmin'
     | '/admin/ai-assistant'
     | '/admin/analytics'
     | '/admin/customers'
+    | '/admin/dashboard'
     | '/admin/fitment'
+    | '/admin/login'
     | '/admin/notifications'
     | '/admin/offers'
     | '/admin/orders'
@@ -424,6 +472,8 @@ export interface FileRouteTypes {
     | '/dashboard/vendor'
     | '/dashboard/workshop'
     | '/product/$id'
+    | '/super-admin/dashboard'
+    | '/super-admin/login'
     | '/track/$id'
     | '/vendor/$id'
     | '/vendor/login'
@@ -443,11 +493,14 @@ export interface FileRouteTypes {
     | '/orders'
     | '/shop'
     | '/signup'
+    | '/super-admin'
     | '/superadmin'
     | '/admin/ai-assistant'
     | '/admin/analytics'
     | '/admin/customers'
+    | '/admin/dashboard'
     | '/admin/fitment'
+    | '/admin/login'
     | '/admin/notifications'
     | '/admin/offers'
     | '/admin/orders'
@@ -466,6 +519,8 @@ export interface FileRouteTypes {
     | '/dashboard/vendor'
     | '/dashboard/workshop'
     | '/product/$id'
+    | '/super-admin/dashboard'
+    | '/super-admin/login'
     | '/track/$id'
     | '/vendor/$id'
     | '/vendor/login'
@@ -486,11 +541,14 @@ export interface FileRouteTypes {
     | '/orders'
     | '/shop'
     | '/signup'
+    | '/super-admin'
     | '/superadmin'
     | '/admin/ai-assistant'
     | '/admin/analytics'
     | '/admin/customers'
+    | '/admin/dashboard'
     | '/admin/fitment'
+    | '/admin/login'
     | '/admin/notifications'
     | '/admin/offers'
     | '/admin/orders'
@@ -509,6 +567,8 @@ export interface FileRouteTypes {
     | '/dashboard/vendor'
     | '/dashboard/workshop'
     | '/product/$id'
+    | '/super-admin/dashboard'
+    | '/super-admin/login'
     | '/track/$id'
     | '/vendor/$id'
     | '/vendor/login'
@@ -530,6 +590,7 @@ export interface RootRouteChildren {
   OrdersRoute: typeof OrdersRoute
   ShopRoute: typeof ShopRoute
   SignupRoute: typeof SignupRoute
+  SuperAdminRoute: typeof SuperAdminRouteWithChildren
   SuperadminRoute: typeof SuperadminRoute
   DashboardAdminRoute: typeof DashboardAdminRoute
   DashboardCustomerRoute: typeof DashboardCustomerRoute
@@ -630,6 +691,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/super-admin': {
+      id: '/super-admin'
+      path: '/super-admin'
+      fullPath: '/super-admin'
+      preLoaderRoute: typeof SuperAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/superadmin': {
       id: '/superadmin'
       path: '/superadmin'
@@ -665,11 +733,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCustomersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/dashboard': {
+      id: '/admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/fitment': {
       id: '/admin/fitment'
       path: '/fitment'
       fullPath: '/admin/fitment'
       preLoaderRoute: typeof AdminFitmentRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/notifications': {
@@ -798,6 +880,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProductIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/super-admin/dashboard': {
+      id: '/super-admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/super-admin/dashboard'
+      preLoaderRoute: typeof SuperAdminDashboardRouteImport
+      parentRoute: typeof SuperAdminRoute
+    }
+    '/super-admin/login': {
+      id: '/super-admin/login'
+      path: '/login'
+      fullPath: '/super-admin/login'
+      preLoaderRoute: typeof SuperAdminLoginRouteImport
+      parentRoute: typeof SuperAdminRoute
+    }
     '/track/$id': {
       id: '/track/$id'
       path: '/track/$id'
@@ -840,7 +936,9 @@ interface AdminRouteChildren {
   AdminAiAssistantRoute: typeof AdminAiAssistantRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
+  AdminDashboardRoute: typeof AdminDashboardRoute
   AdminFitmentRoute: typeof AdminFitmentRoute
+  AdminLoginRoute: typeof AdminLoginRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminOffersRoute: typeof AdminOffersRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
@@ -860,7 +958,9 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAiAssistantRoute: AdminAiAssistantRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminCustomersRoute: AdminCustomersRoute,
+  AdminDashboardRoute: AdminDashboardRoute,
   AdminFitmentRoute: AdminFitmentRoute,
+  AdminLoginRoute: AdminLoginRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
   AdminOffersRoute: AdminOffersRoute,
   AdminOrdersRoute: AdminOrdersRoute,
@@ -878,6 +978,20 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface SuperAdminRouteChildren {
+  SuperAdminDashboardRoute: typeof SuperAdminDashboardRoute
+  SuperAdminLoginRoute: typeof SuperAdminLoginRoute
+}
+
+const SuperAdminRouteChildren: SuperAdminRouteChildren = {
+  SuperAdminDashboardRoute: SuperAdminDashboardRoute,
+  SuperAdminLoginRoute: SuperAdminLoginRoute,
+}
+
+const SuperAdminRouteWithChildren = SuperAdminRoute._addFileChildren(
+  SuperAdminRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
@@ -891,6 +1005,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrdersRoute: OrdersRoute,
   ShopRoute: ShopRoute,
   SignupRoute: SignupRoute,
+  SuperAdminRoute: SuperAdminRouteWithChildren,
   SuperadminRoute: SuperadminRoute,
   DashboardAdminRoute: DashboardAdminRoute,
   DashboardCustomerRoute: DashboardCustomerRoute,

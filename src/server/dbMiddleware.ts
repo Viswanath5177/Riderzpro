@@ -9,6 +9,7 @@ import {
   sendProductApprovalEmail,
 } from "../lib/email.server";
 import { handleAuthRoute } from "./authRoutes";
+import { handleSuperAdminRoute } from "./superAdminRoutes";
 import { createNotification, notifyAdminRole } from "./notifications";
 
 async function parseBody(req: IncomingMessage): Promise<any> {
@@ -100,6 +101,14 @@ export function pgApiMiddleware() {
           cleanUrl.startsWith("/api/customer")
         ) {
           const handled = await handleAuthRoute(req, res, cleanUrl, method || "GET");
+          if (handled) return;
+        }
+
+        // ====================================================================
+        // 0.05 SUPER ADMIN PLATFORM API: /api/superadmin/*
+        // ====================================================================
+        if (cleanUrl.startsWith("/api/superadmin")) {
+          const handled = await handleSuperAdminRoute(req, res, cleanUrl, method || "GET", queryParams);
           if (handled) return;
         }
 

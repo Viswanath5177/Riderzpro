@@ -20,16 +20,16 @@ export const Route = createFileRoute("/superadmin")({
     }
     const role = await getCurrentRole();
     if (!role) {
-      throw redirect({ to: "/login", search: { redirect: "/superadmin" } });
+      throw redirect({ to: "/admin/login", search: { redirect: "/superadmin" } });
     }
-    if (role === "PRODUCT_ADMIN" || role === "SELLER_ADMIN") {
+    if (role === "ADMIN" || role === "PRODUCT_ADMIN" || role === "SELLER_ADMIN") {
       throw redirect({ to: "/admin" });
     }
     if (role === "seller") {
       throw redirect({ to: "/dashboard/vendor" });
     }
-    if (role !== "admin" && role !== "SUPER_ADMIN" && role !== "SUPPORT_ADMIN") {
-      throw redirect({ to: "/dashboard/customer" });
+    if (role !== "SUPER_ADMIN" && role !== "super_admin" && role !== "admin") {
+      throw redirect({ to: "/admin/login", search: { redirect: "/superadmin" } });
     }
   },
   head: () => ({

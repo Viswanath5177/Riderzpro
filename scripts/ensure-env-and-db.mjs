@@ -186,13 +186,14 @@ export async function ensureEnvironmentAndDatabase() {
     // Verify baseline admins exist
     const adminCheck = await db.execute("SELECT count(*) as count FROM admins");
     if (Number(adminCheck.rows[0]?.count ?? 0) === 0) {
-      await db.executeMultiple(`
-        INSERT OR IGNORE INTO admins (id, email, password_hash, full_name, role, is_active) VALUES
-        ('adm_super_01', 'admin@riderzpro.com', '$2a$10$vI8aWBnW3fID.ZQ4/ZO1G.qHw9vB7eM2NfB5Tf0W8o1V1Z2Y3X4.', 'Platform Super Admin', 'SUPER_ADMIN', 1),
-        ('adm_product_01', 'product.admin@riderzpro.com', '$2a$10$vI8aWBnW3fID.ZQ4/ZO1G.qHw9vB7eM2NfB5Tf0W8o1V1Z2Y3X4.', 'Product Administrator', 'PRODUCT_ADMIN', 1),
-        ('adm_seller_01', 'seller.admin@riderzpro.com', '$2a$10$vI8aWBnW3fID.ZQ4/ZO1G.qHw9vB7eM2NfB5Tf0W8o1V1Z2Y3X4.', 'Seller Administrator', 'SELLER_ADMIN', 1);
-      `);
-      console.log("  ✓ Seeded baseline administrative accounts");
+      const defaultHash = "$2b$10$.PDu5IuCYX1jYIaSpE2BbuJNxvnpWHD.TZfiQH3aI2X9hkYTwOAri";
+      await db.execute({
+        sql: `INSERT OR IGNORE INTO admins (id, email, password_hash, full_name, role, is_active) VALUES
+        ('adm_super_01', 'admin@riderzpro.com', ?, 'Super Administrator', 'SUPER_ADMIN', 1),
+        ('adm_unified_01', 'admin.operations@riderzpro.com', ?, 'Unified Operations Administrator', 'ADMIN', 1);`,
+        args: [defaultHash, defaultHash],
+      });
+      console.log("  ✓ Seeded baseline administrative accounts (Super Admin & Unified Admin)");
     }
 
     const tableCheck = await db.execute(
