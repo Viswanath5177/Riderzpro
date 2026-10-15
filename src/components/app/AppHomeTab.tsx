@@ -11,6 +11,7 @@ import {
   Check,
   Star,
   MapPin,
+  ChevronRight,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { products, bikes, getBike } from "@/lib/data";
