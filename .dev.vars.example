@@ -1,12 +1,23 @@
-DATABASE_URL=file:./database/riderzpro-dev.db
+# ==============================================================================
+# Riderzpro - Cloudflare / Local Dev Variables (.dev.vars)
+# Automatically generated when running `npm run dev` or `npm run setup`
+# ==============================================================================
+
+# SQLite Local Database (dev.db)
+DATABASE_URL=file:./dev.db
+
+# OTP & Auth Configuration
+EMAIL_OTP_EXPIRY_MINUTES=5
+EMAIL_OTP_RESEND_COOLDOWN_SECONDS=60
+EMAIL_OTP_MAX_ATTEMPTS=5
+OTP_HASH_SECRET=7cd8990ebd204589e4747557dd11a73ea9881dd510466ebe83662b4d98846eb0
 APP_ENV=development
-OTP_HASH_SECRET=replace-with-a-random-secret-at-least-32-characters
 
-# Email option: configure a Resend API key and an allowed sender.
-RESEND_API_KEY=
-RESEND_FROM="Riderzpro <login@example.com>"
+# Resend API Configuration
+RESEND_API_KEY=your_resend_api_key_here
+RESEND_FROM=support@riderzpro.com
 
-# SMS option instead: configure Twilio credentials and a sender number.
-TWILIO_ACCOUNT_SID=
-TWILIO_AUTH_TOKEN=
+# Twilio SMS Configuration
+TWILIO_ACCOUNT_SID=your_twilio_account_sid_here
+TWILIO_AUTH_TOKEN=your_twilio_auth_token_here
 TWILIO_FROM=
