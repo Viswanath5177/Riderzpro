@@ -73,7 +73,7 @@ export function AdminOrdersBoard() {
         const q = searchQuery.toLowerCase().trim();
         const matchesNumber = o.orderNumber.toLowerCase().includes(q);
         const matchesCustomer = o.customerName.toLowerCase().includes(q);
-        const matchesPhone = o.customerPhone.includes(q);
+        const matchesPhone = Boolean(o.customerPhone?.includes(q));
         if (!matchesNumber && !matchesCustomer && !matchesPhone) return false;
       }
       return true;
