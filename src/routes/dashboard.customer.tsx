@@ -21,6 +21,9 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 export const Route = createFileRoute("/dashboard/customer")({
   beforeLoad: async () => {
+    if (typeof window === "undefined") {
+      return;
+    }
     const role = await getCurrentRole();
     if (!role) throw redirect({ to: "/", search: { openLogin: "customer", redirect: "/dashboard/customer" } });
     if (role === "SUPER_ADMIN" || role === "admin") throw redirect({ to: "/superadmin" });

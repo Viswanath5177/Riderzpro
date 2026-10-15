@@ -15,6 +15,9 @@ const DashboardScreen = lazy(() =>
 
 export const Route = createFileRoute("/superadmin")({
   beforeLoad: async () => {
+    if (typeof window === "undefined") {
+      return;
+    }
     const role = await getCurrentRole();
     if (!role) {
       throw redirect({ to: "/login", search: { redirect: "/superadmin" } });

@@ -8,6 +8,9 @@ import { getCurrentRole } from "@/lib/auth";
 
 export const Route = createFileRoute("/orders")({
   beforeLoad: async () => {
+    if (typeof window === "undefined") {
+      return;
+    }
     const role = await getCurrentRole();
     if (!role) {
       throw redirect({ to: "/", search: { openLogin: "customer", redirect: "/orders" } });

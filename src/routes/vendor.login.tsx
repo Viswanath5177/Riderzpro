@@ -135,17 +135,27 @@ function VendorLoginRouteComponent() {
 
       toast.success(`Welcome back, ${sessionUser.name}!`);
 
-      // Determine authoritative destination based on backend response
-      const destination = data.redirectUrl || (
-        data.role === "seller" ? "/dashboard/vendor" :
-        data.role === "SUPER_ADMIN" ? "/superadmin" :
-        data.role === "PRODUCT_ADMIN" || data.role === "SELLER_ADMIN" ? "/admin" :
-        "/admin"
-      );
+      // Determine authoritative destination based on query param or backend response
+      const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+      const queryRedirect = searchParams?.get("redirect");
 
-      setTimeout(() => {
+      const destination = (queryRedirect && !queryRedirect.includes("/vendor/login")) 
+        ? queryRedirect 
+        : (data.redirectUrl || (
+            data.role === "seller" ? "/dashboard/vendor" :
+            data.role === "SUPER_ADMIN" ? "/superadmin" :
+            data.role === "PRODUCT_ADMIN" || data.role === "SELLER_ADMIN" ? "/admin" :
+            "/admin"
+          ));
+
+      navigate({ to: destination as any }).catch(() => {
         window.location.href = destination;
-      }, 350);
+      });
+      setTimeout(() => {
+        if (window.location.pathname !== destination.split("?")[0]) {
+          window.location.href = destination;
+        }
+      }, 250);
     } catch (err: any) {
       setErrorMessage(err?.message || "Login failed. Please check credentials.");
       toast.error(err?.message || "Login failed.");

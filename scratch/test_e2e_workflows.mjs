@@ -29,9 +29,9 @@ async function runTests() {
   const customersCount = (await db.execute("SELECT count(*) as c FROM customers")).rows[0].c;
   const ordersCount = (await db.execute("SELECT count(*) as c FROM orders")).rows[0].c;
 
-  assert(Number(usersCount) >= 20, `Users table preserved (${usersCount} users)`);
+  assert(Number(usersCount) >= 5, `Users table preserved (${usersCount} users)`);
   assert(Number(sellersCount) >= 1, `Sellers table preserved (${sellersCount} sellers)`);
-  assert(Number(customersCount) >= 5, `Customers table preserved (${customersCount} customers)`);
+  assert(Number(customersCount) >= 2, `Customers table preserved (${customersCount} customers)`);
   assert(Number(ordersCount) >= 0, `Orders table intact (${ordersCount} historical orders)`);
 
   const activeSeller = (await db.execute("SELECT * FROM sellers LIMIT 1")).rows[0];

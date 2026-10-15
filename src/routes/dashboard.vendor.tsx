@@ -61,6 +61,9 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard/vendor")({
   beforeLoad: async () => {
+    if (typeof window === "undefined") {
+      return;
+    }
     const role = await getCurrentRole();
     if (!role || role === "customer") {
       throw redirect({ to: "/vendor/login", search: { redirect: "/dashboard/vendor" } });
