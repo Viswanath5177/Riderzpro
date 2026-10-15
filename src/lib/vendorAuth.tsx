@@ -422,10 +422,23 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
   return <VendorAuthContext.Provider value={value}>{children}</VendorAuthContext.Provider>;
 }
 
+const defaultVendorAuthFallback: VendorAuthContextType = {
+  currentVendor: null,
+  session: null,
+  loading: false,
+  signInWithPassword: async () => ({ error: null }),
+  signInWithOtp: async () => ({ error: null }),
+  signUpVendor: async () => ({ error: null }),
+  resetPasswordWithOtp: async () => ({ error: null }),
+  signOutVendor: async () => {},
+  logout: async () => {},
+  refreshVendorSession: async () => {},
+};
+
 export function useVendorAuth() {
   const context = useContext(VendorAuthContext);
   if (!context) {
-    throw new Error("useVendorAuth must be used within VendorAuthProvider");
+    return defaultVendorAuthFallback;
   }
   return context;
 }

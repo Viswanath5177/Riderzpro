@@ -17,12 +17,17 @@ const cloudflareWorkersDevShim = {
 
 export default defineConfig({
   plugins: [cloudflareWorkersDevShim, pgApiMiddleware()],
+  optimizeDeps: {
+    exclude: ["cloudflare:workers"],
+    include: ["use-sync-external-store/shim/with-selector.js"],
+  },
   vite: {
     plugins: [pgApiMiddleware()],
     // This runtime-only import is supplied by Nitro's Cloudflare dev shim;
     // Vite's dependency scanner cannot resolve it as a regular package.
     optimizeDeps: {
       exclude: ["cloudflare:workers"],
+      include: ["use-sync-external-store/shim/with-selector.js"],
     },
     // Nitro's Cloudflare preset provides this built-in module at runtime.
     // Keep it external during Vite's intermediate SSR bundle as well.

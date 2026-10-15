@@ -20,8 +20,11 @@ export const Route = createFileRoute("/shop")({
 
 const CATS = [
   "All",
-  "Electric Bikes",
+  "EV Spares",
   "EV Batteries",
+  "Chargers",
+  "Riding Gear & Helmets",
+  "Brakes & Spares",
   "Car Accessories",
   "Bike Accessories",
 ] as const;
@@ -136,11 +139,9 @@ function Shop() {
       const params = new URLSearchParams({ status: "approved" });
       const serverCategory = subcat !== "All"
         ? subcat
-        : cat === "EV Batteries"
-          ? "Battery"
-          : cat !== "All"
-            ? cat
-            : "";
+        : cat !== "All"
+          ? cat
+          : "";
       if (serverCategory) params.set("category", serverCategory);
       if (q.trim()) params.set("q", q.trim());
       if (onlyFit && activeBikeId) params.set("fit_vehicle", activeBikeId);
@@ -182,10 +183,24 @@ function Shop() {
     let l = catalogueProducts.filter((p) => {
       const matchesCat =
         cat === "All" ||
-        (cat === "Electric Bikes" && p.category === "Electric Bikes") ||
-        (cat === "EV Batteries" && (p.category === "Battery" || (p.category as string) === "EV Batteries")) ||
-        (cat === "Car Accessories" && (p.vehicleType === "car" || p.vehicleType === "both" || p.category === "Car Accessories")) ||
-        (cat === "Bike Accessories" && (p.vehicleType === "bike" || p.vehicleType === "both" || p.category === "Bike Accessories")) ||
+        (cat === "EV Spares" && (
+          p.department === "EV Spares" ||
+          ["EV Batteries", "Chargers", "Brakes & Suspension", "BMS & Electronics", "Motors & Transmission"].includes(p.category) ||
+          p.category.toLowerCase().includes("battery") ||
+          p.category.toLowerCase().includes("charger")
+        )) ||
+        (cat === "EV Batteries" && (p.category.toLowerCase().includes("batter") || p.name.toLowerCase().includes("battery"))) ||
+        (cat === "Chargers" && (p.category.toLowerCase().includes("charg") || p.name.toLowerCase().includes("charger") || p.name.toLowerCase().includes("dock"))) ||
+        (cat === "Riding Gear & Helmets" && (p.category.toLowerCase().includes("helmet") || p.category.toLowerCase().includes("riding") || p.department === "Riding Gear")) ||
+        (cat === "Brakes & Spares" && (
+          ["Brakes & Suspension", "BMS & Electronics", "Motors & Transmission", "Tyre Care & Utilities"].includes(p.category) ||
+          p.name.toLowerCase().includes("brake") ||
+          p.name.toLowerCase().includes("rotor") ||
+          p.name.toLowerCase().includes("belt") ||
+          p.name.toLowerCase().includes("bms")
+        )) ||
+        (cat === "Car Accessories" && (p.vehicleType === "car" || p.vehicleType === "both" || ["Multimedia", "Interior", "Exterior", "Utilities"].includes(p.department as string) || p.category === "Car Accessories")) ||
+        (cat === "Bike Accessories" && (p.vehicleType === "bike" || p.vehicleType === "both" || ["Riding Gear", "EV Spares"].includes(p.department as string) || p.category === "Bike Accessories")) ||
         p.category === cat;
 
       const matchesSubcat =
@@ -205,6 +220,7 @@ function Shop() {
     });
     if (sort === "low") l = [...l].sort((a, b) => (a.offers[0]?.price ?? Infinity) - (b.offers[0]?.price ?? Infinity));
     if (sort === "high") l = [...l].sort((a, b) => (b.offers[0]?.price ?? -Infinity) - (a.offers[0]?.price ?? -Infinity));
+    if (sort === "name") l = [...l].sort((a, b) => a.name.localeCompare(b.name));
     return l;
   }, [catalogueProducts, cat, subcat, volt, onlyFit, activeBikeId, sort]);
 
@@ -346,6 +362,7 @@ function Shop() {
                 <option value="relevance">Relevance</option>
                 <option value="low">Price: Low → High</option>
                 <option value="high">Price: High → Low</option>
+                <option value="name">Name (A → Z)</option>
               </select>
             </div>
           </div>

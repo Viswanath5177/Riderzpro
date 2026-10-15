@@ -5,34 +5,75 @@ import { toast } from "sonner";
 import { products, bestOffer, inr, type Product } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
-type ProductTab = "batteries" | "chargers" | "spares" | "accessories";
+type ProductTab = "all" | "ev" | "batteries" | "chargers" | "spares" | "accessories";
 
 export function FeaturedProducts() {
-  const [activeTab, setActiveTab] = useState<ProductTab>("batteries");
-  const { addToCart, cart, activeBikeId } = useStore();
+  const [activeTab, setActiveTab] = useState<ProductTab>("all");
+  const { addToCart, cart } = useStore();
 
   const getFilteredProducts = (): Product[] => {
     switch (activeTab) {
+      case "all":
+        return products;
+      case "ev":
+        return products.filter(
+          (p) =>
+            p.department === "EV Spares" ||
+            p.category.toLowerCase().includes("batter") ||
+            p.category.toLowerCase().includes("charg") ||
+            p.category.toLowerCase().includes("brake") ||
+            p.category.toLowerCase().includes("bms") ||
+            p.category.toLowerCase().includes("motor") ||
+            p.category.toLowerCase().includes("transmiss")
+        );
       case "batteries":
-        return products.filter((p) => p.category === "Battery").slice(0, 8);
+        return products.filter(
+          (p) =>
+            p.category.toLowerCase().includes("batter") ||
+            p.name.toLowerCase().includes("battery")
+        );
       case "chargers":
-        return products.filter((p) => p.category === "Charger").slice(0, 8);
+        return products.filter(
+          (p) =>
+            p.category.toLowerCase().includes("charg") ||
+            p.name.toLowerCase().includes("charger") ||
+            p.name.toLowerCase().includes("dock")
+        );
       case "spares":
-        return products
-          .filter((p) =>
-            ["Spare Parts", "Brakes", "Motor", "Controller", "BMS"].includes(p.category)
-          )
-          .slice(0, 8);
+        return products.filter(
+          (p) =>
+            [
+              "Brakes & Suspension",
+              "BMS & Electronics",
+              "Motors & Transmission",
+              "Tyre Care & Utilities",
+              "Wiring & Installation",
+            ].includes(p.category) ||
+            p.name.toLowerCase().includes("brake") ||
+            p.name.toLowerCase().includes("rotor") ||
+            p.name.toLowerCase().includes("bms") ||
+            p.name.toLowerCase().includes("belt") ||
+            p.name.toLowerCase().includes("compressor")
+        );
       case "accessories":
-        return products
-          .filter((p) =>
-            ["Bike Accessories", "Car Accessories", "Riding Gear & Helmets"].includes(
-              p.category
-            )
-          )
-          .slice(0, 8);
+        return products.filter(
+          (p) =>
+            [
+              "Amplifiers",
+              "Speakers",
+              "Subwoofers",
+              "Displays & Head Units",
+              "Cameras & Security",
+              "Seat Covers",
+              "Exterior Accessories",
+              "Riding Gear & Helmets",
+              "Accessories",
+            ].includes(p.category) ||
+            p.vehicleType === "car" ||
+            p.name.toLowerCase().includes("helmet")
+        );
       default:
-        return products.slice(0, 8);
+        return products;
     }
   };
 
@@ -52,11 +93,17 @@ export function FeaturedProducts() {
         {/* Section Header: H2 + Filter Tabs */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 lg:mb-12">
           <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[11px] font-bold tracking-wider uppercase text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
+                Real Live Catalog · 27 Genuine Products
+              </span>
+            </div>
             <h2 className="text-2xl sm:text-3xl lg:text-[36px] font-bold tracking-tight text-[#111111]">
               Popular for your ride
             </h2>
             <p className="text-sm text-[#6b7280] mt-1">
-              Top-rated components with verified compatibility
+              Top-rated components with verified compatibility & Noida warehouse dispatch
             </p>
           </div>
 
@@ -64,6 +111,8 @@ export function FeaturedProducts() {
           <div className="flex rounded-xl bg-white border border-[#ececec] p-1 self-start sm:self-auto overflow-x-auto max-w-full">
             {(
               [
+                { id: "all", label: `All (${products.length})` },
+                { id: "ev", label: "EV Spares" },
                 { id: "batteries", label: "Batteries" },
                 { id: "chargers", label: "Chargers" },
                 { id: "spares", label: "Spares" },
@@ -160,6 +209,17 @@ export function FeaturedProducts() {
               </div>
             );
           })}
+        </div>
+
+        {/* Footer Link to Full Catalog */}
+        <div className="mt-10 text-center">
+          <Link
+            to="/shop"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#111111] hover:bg-black text-white px-6 py-3 text-xs sm:text-sm font-bold shadow-sm transition hover:shadow-md cursor-pointer"
+          >
+            <span>Explore All 27 Live Products in Store Catalog</span>
+            <span>→</span>
+          </Link>
         </div>
       </div>
     </section>

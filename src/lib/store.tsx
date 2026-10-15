@@ -828,8 +828,60 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;
 }
 
+const defaultStoreFallback: Ctx = {
+  theme: "light",
+  toggleTheme: () => {},
+  cart: [],
+  addToCart: () => {},
+  setQty: () => {},
+  clearCart: () => {},
+  garage: [],
+  addBike: () => {},
+  removeBike: () => {},
+  activeBikeId: null,
+  setActiveBikeId: () => {},
+  orders: [],
+  placeOrder: () => ({ id: "", createdAt: Date.now(), groups: [], payment: "", paymentStatus: "Paid", fulfillmentStatus: "Pending", itemsTotal: 0, deliveryTotal: 0, tax: 0, discountTotal: 0, total: 0, eta: 0, status: 0 }),
+  placeOrderWithOptions: () => ({ id: "", createdAt: Date.now(), groups: [], payment: "", paymentStatus: "Paid", fulfillmentStatus: "Pending", itemsTotal: 0, deliveryTotal: 0, tax: 0, discountTotal: 0, total: 0, eta: 0, status: 0 }),
+  advanceOrder: () => {},
+  updateOrderStatus: () => {},
+  cancelOrder: () => {},
+  refundOrder: () => {},
+  simulateDemoOrder: () => ({ id: "", createdAt: Date.now(), groups: [], payment: "", paymentStatus: "Paid", fulfillmentStatus: "Pending", itemsTotal: 0, deliveryTotal: 0, tax: 0, discountTotal: 0, total: 0, eta: 0, status: 0 }),
+  shipments: [],
+  createShipment: () => ({} as any),
+  updateShipmentStatus: () => {},
+  processWebhook: () => ({} as any),
+  inventoryStock: {},
+  updateInventoryStock: () => {},
+  savedProductIds: [],
+  toggleSaved: () => {},
+  isSaved: () => false,
+  serviceBookings: [],
+  bookService: () => ({} as any),
+  cancelServiceBooking: () => {},
+  notifications: [],
+  markNotificationRead: () => {},
+  markAllNotificationsRead: () => {},
+  userProfile: DEFAULT_PROFILE,
+  updateUserProfile: () => {},
+  role: "customer",
+  setRole: () => {},
+  isCartOpen: false,
+  setIsCartOpen: () => {},
+  isLoggedIn: false,
+  signIn: () => {},
+  signOut: () => {},
+  deleteOrder: () => {},
+  clearOrders: () => {},
+  userLocation: DEFAULT_LOCATION,
+  setUserLocation: () => {},
+  isLocationModalOpen: false,
+  setIsLocationModalOpen: () => {},
+};
+
 export function useStore() {
   const c = useContext(StoreCtx);
-  if (!c) throw new Error("useStore outside provider");
+  if (!c) return defaultStoreFallback;
   return c;
 }

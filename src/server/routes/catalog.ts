@@ -74,8 +74,14 @@ export async function handleRoute(req: IncomingMessage, res: ServerResponse, cle
                         (p.category && p.category.toLowerCase().includes(c)) ||
                         (p.category_id && p.category_id.toLowerCase() === c) ||
                         (p.category_name && p.category_name.toLowerCase().includes(c)) ||
-                        (c === "car accessories" && (p.vehicle_type === "car" || p.category_name?.toLowerCase().includes("car") || p.category?.toLowerCase().includes("car") || p.department?.toLowerCase() === "multimedia" || p.department?.toLowerCase() === "comfort" || p.department?.toLowerCase() === "car care")) ||
-                        (c === "bike accessories" && (p.vehicle_type === "bike" || p.category_name?.toLowerCase().includes("bike")));
+                        (p.department && p.department.toLowerCase().includes(c)) ||
+                        (c === "ev spares" && (p.department?.toLowerCase() === "ev spares" || p.category?.toLowerCase().includes("ev") || p.category?.toLowerCase().includes("batter") || p.category?.toLowerCase().includes("charg") || p.category?.toLowerCase().includes("brake") || p.category?.toLowerCase().includes("bms"))) ||
+                        (c === "ev batteries" && (p.category?.toLowerCase().includes("batter") || p.name?.toLowerCase().includes("battery"))) ||
+                        (c === "chargers" && (p.category?.toLowerCase().includes("charg") || p.name?.toLowerCase().includes("charger") || p.name?.toLowerCase().includes("dock"))) ||
+                        (c === "riding gear & helmets" && (p.category?.toLowerCase().includes("helmet") || p.category?.toLowerCase().includes("riding") || p.department?.toLowerCase() === "riding gear")) ||
+                        (c === "brakes & spares" && (["brakes & suspension", "bms & electronics", "motors & transmission", "tyre care & utilities"].includes(p.category?.toLowerCase()) || p.name?.toLowerCase().includes("brake") || p.name?.toLowerCase().includes("rotor") || p.name?.toLowerCase().includes("belt") || p.name?.toLowerCase().includes("bms"))) ||
+                        (c === "car accessories" && (p.vehicle_type === "car" || p.vehicle_type === "both" || p.category_name?.toLowerCase().includes("car") || p.category?.toLowerCase().includes("car") || ["multimedia", "interior", "exterior", "utilities", "comfort", "car care"].includes(p.department?.toLowerCase()))) ||
+                        (c === "bike accessories" && (p.vehicle_type === "bike" || p.vehicle_type === "both" || p.category_name?.toLowerCase().includes("bike") || ["riding gear", "ev spares"].includes(p.department?.toLowerCase())));
                       if (!matchCat) return false;
                     }
                     if (search) {

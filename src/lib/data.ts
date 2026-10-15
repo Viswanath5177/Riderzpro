@@ -456,15 +456,41 @@ export const demoCatalogProducts: Product[] = ((demoProductsJson as any[]) || []
   const sellerId = p.seller_id || "usr_seller_qbit";
   const stock = Number(p.stock) || 0;
 
+  // Extract voltage if available
+  let voltage: number | undefined = undefined;
+  if (p.voltage != null) {
+    voltage = Number(p.voltage);
+  } else {
+    const vMatch = (p.name + " " + (p.description || "")).match(/(\d{2,3})\s*V(?:olt)?\b/i);
+    if (vMatch) voltage = parseInt(vMatch[1], 10);
+  }
+
+  // Extract capacity if available
+  let capacityAh: number | undefined = undefined;
+  if (p.capacity_ah != null) {
+    capacityAh = Number(p.capacity_ah);
+  } else {
+    const ahMatch = (p.name + " " + (p.description || "")).match(/(\d{1,3})\s*Ah\b/i);
+    if (ahMatch) capacityAh = parseInt(ahMatch[1], 10);
+  }
+
+  const chemistry = p.chemistry || (p.name.includes("LiFePO4") ? "LiFePO4" : p.name.includes("NMC") ? "Lithium NMC" : undefined);
+
   return {
     id: p.id,
     name: p.name,
     brand: p.brand || "Riderzpro",
     category: p.category || p.category_name || "Car Accessories",
+    isAccessoryProduct: true,
+    department: p.department || "Accessories",
     subcategory: p.department || p.category || "Accessories",
-    subcategories: [p.category, p.department, ...(p.features || [])].filter(Boolean),
+    subcategories: [p.category, p.department, ...(p.features || [])].filter(Boolean) as string[],
     vehicleType: (p.vehicle_type as any) || "car",
     image: primaryImage,
+    voltage,
+    capacityAh,
+    chemistry,
+    batterySpec: voltage && capacityAh ? `${voltage}V · ${capacityAh}Ah${chemistry ? ` · ${chemistry}` : ""}` : undefined,
     warrantyMonths: typeof p.warranty === "string" ? (parseInt(p.warranty) || 12) : 12,
     weightKg: Number(p.weight_kg) || 1,
     fits: Array.isArray(p.compatible_vehicles) ? p.compatible_vehicles : ["universal"],
@@ -489,7 +515,11 @@ export const demoCatalogProducts: Product[] = ((demoProductsJson as any[]) || []
   };
 });
 
-export const products: Product[] = [...demoCatalogProducts, ...coreProducts, ...uploadedBrandProducts, ...catalogProducts];
+// Preserve all 509 static legacy records aside safely without data loss
+export const legacyStaticProducts: Product[] = [...coreProducts, ...uploadedBrandProducts, ...catalogProducts];
+
+// Active storefront products: strictly the 27 real products
+export const products: Product[] = [...demoCatalogProducts];
 
 export const riders: Rider[] = [
   { id: "r1", name: "Ravi Kumar", phone: "+91 98450 12345", vehicle: "Ather Rizta", plate: "KA 01 EV 4521", rating: 4.9, avatar: "RK" },
@@ -636,7 +666,8 @@ export const getProduct = (id: string): Product | undefined => {
   return (
     demoCatalogProducts.find((p) => p.id === id) ||
     getCatalogueProduct(id) ||
-    products.find((p) => p.id === id)
+    products.find((p) => p.id === id) ||
+    legacyStaticProducts.find((p) => p.id === id)
   );
 };
 

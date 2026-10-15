@@ -7,14 +7,17 @@ import {
   Bike,
 } from "lucide-react";
 import { ProductCard } from "@/components/site/bits";
-import { bestOffer, bikes, getBike, products } from "@/lib/data";
+import { bestOffer, bikes, getBike, getVendor, products } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 const SHOP_CATEGORIES = [
   "All",
-  "Electric Bikes",
+  "EV Spares",
   "EV Batteries",
+  "Chargers",
+  "Riding Gear & Helmets",
+  "Brakes & Spares",
   "Car Accessories",
   "Bike Accessories",
 ] as const;
@@ -22,10 +25,47 @@ const SHOP_CATEGORIES = [
 const PAGE_SIZE = 40;
 function matchesShopCategory(product: (typeof products)[number], category: (typeof SHOP_CATEGORIES)[number]) {
   if (category === "All") return true;
-  if (category === "Electric Bikes") return product.category === "Electric Bikes";
-  if (category === "EV Batteries") return product.category === "Battery" || product.category === "EV Batteries";
-  if (category === "Car Accessories") return product.isAccessoryProduct && (product.vehicleType === "car" || product.vehicleType === "both");
-  return product.isAccessoryProduct && (product.vehicleType === "bike" || product.vehicleType === "both");
+  if (category === "EV Spares") {
+    return (
+      product.department === "EV Spares" ||
+      ["EV Batteries", "Chargers", "Brakes & Suspension", "BMS & Electronics", "Motors & Transmission"].includes(product.category) ||
+      product.category.toLowerCase().includes("battery") ||
+      product.category.toLowerCase().includes("charger")
+    );
+  }
+  if (category === "EV Batteries") {
+    return product.category.toLowerCase().includes("batter") || product.name.toLowerCase().includes("battery");
+  }
+  if (category === "Chargers") {
+    return product.category.toLowerCase().includes("charg") || product.name.toLowerCase().includes("charger") || product.name.toLowerCase().includes("dock");
+  }
+  if (category === "Riding Gear & Helmets") {
+    return product.category.toLowerCase().includes("helmet") || product.category.toLowerCase().includes("riding") || product.department === "Riding Gear";
+  }
+  if (category === "Brakes & Spares") {
+    return (
+      ["Brakes & Suspension", "BMS & Electronics", "Motors & Transmission", "Tyre Care & Utilities"].includes(product.category) ||
+      product.name.toLowerCase().includes("brake") ||
+      product.name.toLowerCase().includes("rotor") ||
+      product.name.toLowerCase().includes("belt") ||
+      product.name.toLowerCase().includes("bms")
+    );
+  }
+  if (category === "Car Accessories") {
+    return (
+      product.vehicleType === "car" ||
+      product.vehicleType === "both" ||
+      ["Multimedia", "Interior", "Exterior", "Utilities"].includes(product.department as string)
+    );
+  }
+  if (category === "Bike Accessories") {
+    return (
+      product.vehicleType === "bike" ||
+      product.vehicleType === "both" ||
+      ["Riding Gear", "EV Spares"].includes(product.department as string)
+    );
+  }
+  return true;
 }
 
 export function ShopTab() {
@@ -90,6 +130,10 @@ export function ShopTab() {
       list = [...list].sort((a, b) => bestOffer(a).price - bestOffer(b).price);
     } else if (sort === "high") {
       list = [...list].sort((a, b) => bestOffer(b).price - bestOffer(a).price);
+    } else if (sort === "rating") {
+      list = [...list].sort((a, b) => (getVendor(bestOffer(b).vendorId).rating || 0) - (getVendor(bestOffer(a).vendorId).rating || 0));
+    } else if (sort === "name") {
+      list = [...list].sort((a, b) => a.name.localeCompare(b.name));
     }
     return list;
   }, [q, cat, brand, accessoryVehicleType, subcat, volt, onlyFit, activeBikeId, sort]);
@@ -216,6 +260,8 @@ export function ShopTab() {
               <option value="relevance">Featured & Relevant</option>
               <option value="low">Price: Low to High</option>
               <option value="high">Price: High to Low</option>
+              <option value="rating">Highest Rated</option>
+              <option value="name">Name (A–Z)</option>
             </select>
           </div>
         </div>

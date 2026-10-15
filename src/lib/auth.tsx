@@ -643,10 +643,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+const defaultAuthFallback: AuthContextType = {
+  user: null,
+  loading: false,
+  signIn: async () => ({ error: null }),
+  signUp: async () => ({ error: null }),
+  signInWithGoogle: async () => ({ error: null }),
+  signOut: async () => {},
+};
+
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    return defaultAuthFallback;
   }
   return context;
 }

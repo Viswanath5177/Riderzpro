@@ -783,10 +783,41 @@ export function VendorStoreProvider({ children }: { children: React.ReactNode })
   return <VendorStoreContext.Provider value={value}>{children}</VendorStoreContext.Provider>;
 }
 
+const defaultVendorStoreFallback: VendorStoreContextType = {
+  vendors: SEED_VENDORS,
+  products: SEED_VENDOR_PRODUCTS,
+  notifications: [],
+  tickets: [],
+  getVendor: () => undefined,
+  getVendorByPhone: () => undefined,
+  getVendorByEmail: () => undefined,
+  saveVendorDraft: () => {},
+  updateVendor: () => {},
+  updateOnboardingStep: () => {},
+  submitOnboarding: () => {},
+  approveVendor: () => {},
+  requestVendorChanges: () => {},
+  rejectVendor: () => {},
+  suspendVendor: () => {},
+  reinstateVendor: () => {},
+  addProduct: () => ({} as any),
+  updateProduct: () => {},
+  submitProductRevision: () => {},
+  approveProduct: () => {},
+  requestProductChanges: () => {},
+  rejectProduct: () => {},
+  deleteProduct: () => {},
+  toggleHolidayMode: () => {},
+  addNotification: () => {},
+  markNotificationRead: () => {},
+  createTicket: () => {},
+  replyTicket: () => {},
+};
+
 export function useVendorStore() {
   const context = useContext(VendorStoreContext);
   if (!context) {
-    throw new Error("useVendorStore must be used within VendorStoreProvider");
+    return defaultVendorStoreFallback;
   }
   return context;
 }

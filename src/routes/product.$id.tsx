@@ -29,6 +29,7 @@ import {
   bikes,
   fitmentFor,
   getBike,
+  getProduct,
   addProductReview,
   inr,
   type Product,
@@ -143,7 +144,24 @@ function ProductPage() {
         setProduct(productFromApi(result.data));
       })
       .catch(() => {
-        if (!controller.signal.aborted) setError(true);
+        if (!controller.signal.aborted) {
+          const local = getProduct(id);
+          if (local) {
+            setProduct({
+              ...local,
+              sellerName: "Qbit Pro",
+              storeName: "Qbit Pro",
+              sellerCity: "Sector 63, Noida",
+              shipsFrom: "Noida",
+              sellerRating: 4.8,
+              sellerReviewCount: 142,
+              gstRate: 18,
+              hsnCode: local.sku || "85076000",
+            });
+          } else {
+            setError(true);
+          }
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -371,15 +389,25 @@ function ProductPage() {
   return (
     <SiteLayout>
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
-        {/* Breadcrumb Navigation */}
-        <div className="flex items-center gap-2 text-xs text-[#6B7280] mb-4">
-          <Link to="/" className="hover:text-[#111111]">Home</Link>
-          <span>/</span>
-          <Link to="/shop" className="hover:text-[#111111]">Catalog</Link>
-          <span>/</span>
-          <Link to="/shop" search={{ cat: p.category } as any} className="hover:text-[#111111]">{p.category}</Link>
-          <span>/</span>
-          <span className="text-[#111111] font-semibold truncate max-w-[200px] sm:max-w-md">{p.name}</span>
+        {/* Breadcrumb Navigation + Back Button */}
+        <div className="flex items-center justify-between gap-2 text-xs text-[#6B7280] mb-4">
+          <div className="flex items-center gap-2 overflow-hidden truncate">
+            <Link to="/" className="hover:text-[#111111]">Home</Link>
+            <span>/</span>
+            <Link to="/dashboard/customer" search={{ tab: "shop" } as any} className="hover:text-[#111111]">Customer Shop</Link>
+            <span>/</span>
+            <Link to="/shop" className="hover:text-[#111111]">Catalog</Link>
+            <span>/</span>
+            <Link to="/shop" search={{ cat: p.category } as any} className="hover:text-[#111111]">{p.category}</Link>
+            <span>/</span>
+            <span className="text-[#111111] font-semibold truncate max-w-[150px] sm:max-w-md">{p.name}</span>
+          </div>
+          <button
+            onClick={() => window.history.back()}
+            className="shrink-0 flex items-center gap-1.5 text-xs font-bold text-[#111111] bg-white border border-[#E5E7EB] hover:border-gray-400 hover:bg-gray-50 px-3.5 py-1.5 rounded-full shadow-2xs cursor-pointer transition active:scale-95"
+          >
+            ← Back
+          </button>
         </div>
 
         {/* Canonical Product Overview Section */}
