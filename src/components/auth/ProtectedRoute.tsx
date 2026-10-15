@@ -9,11 +9,6 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     select: (s) => s.location.pathname + (s.location.searchStr ? `?${s.location.searchStr}` : ""),
   });
 
-  // Check if active local session is present
-  const hasLocalSession = typeof window !== "undefined" && Boolean(
-    localStorage.getItem("riderzpro_auth_user") || localStorage.getItem("riderzpro_admin_session")
-  );
-
   // Sync user from local storage if auth context is still synchronizing
   React.useEffect(() => {
     if (!isAuthenticated && typeof window !== "undefined") {
@@ -27,7 +22,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, setUser]);
 
-  if (loading && !hasLocalSession) {
+  if (loading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
         <div className="flex flex-col items-center gap-4">
@@ -35,13 +30,13 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
             <Zap className="h-6 w-6 text-primary" fill="currentColor" />
           </div>
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <p className="text-xs font-medium text-muted-foreground">Loading dashboard...</p>
+          <p className="text-xs font-medium text-muted-foreground">Checking authentication...</p>
         </div>
       </div>
     );
   }
 
-  if (!isAuthenticated && !hasLocalSession) {
+  if (!isAuthenticated) {
     return <Navigate to="/" search={{ openLogin: "customer", redirect: currentPath }} replace />;
   }
 

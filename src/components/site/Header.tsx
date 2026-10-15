@@ -63,6 +63,14 @@ export function Header() {
     navigate({ to: "/" });
   };
 
+  const handleProtectedNav = (e: React.MouseEvent, path: "/garage" | "/orders", label: string) => {
+    if (!isAuthenticated) {
+      e.preventDefault();
+      openCustomerLoginModal({ redirectTo: path });
+      toast.info(`Please sign in to access ${label}.`);
+    }
+  };
+
   const activeName = user?.name || userProfile?.name || "Customer";
   const initials = activeName
     .split(" ")
@@ -128,8 +136,10 @@ export function Header() {
 
             {/* 2. My Garage */}
             <Link
-              to="/garage"
-              className="px-3.5 py-2 text-sm font-semibold text-[#111111] hover:text-[#e11d2a] hover:bg-[#f7f7f8] rounded-xl transition"
+              to={isAuthenticated ? "/garage" : "/"}
+              search={!isAuthenticated ? { openLogin: "customer", redirect: "/garage" } : undefined}
+              onClick={(e) => handleProtectedNav(e, "/garage", "My Garage")}
+              className="px-3.5 py-2 text-sm font-semibold text-[#111111] hover:text-[#e11d2a] hover:bg-[#f7f7f8] rounded-xl transition cursor-pointer"
               activeProps={{ className: "!text-[#e11d2a] !bg-red-50/50" }}
             >
               My Garage
@@ -137,8 +147,10 @@ export function Header() {
 
             {/* 3. Orders */}
             <Link
-              to="/orders"
-              className="px-3.5 py-2 text-sm font-semibold text-[#111111] hover:text-[#e11d2a] hover:bg-[#f7f7f8] rounded-xl transition"
+              to={isAuthenticated ? "/orders" : "/"}
+              search={!isAuthenticated ? { openLogin: "customer", redirect: "/orders" } : undefined}
+              onClick={(e) => handleProtectedNav(e, "/orders", "your Orders")}
+              className="px-3.5 py-2 text-sm font-semibold text-[#111111] hover:text-[#e11d2a] hover:bg-[#f7f7f8] rounded-xl transition cursor-pointer"
               activeProps={{ className: "!text-[#e11d2a] !bg-red-50/50" }}
             >
               Orders

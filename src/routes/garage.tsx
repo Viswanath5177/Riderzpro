@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import { 
   Bike, Check, ScanLine, Trash2, ShoppingBag, ShieldCheck, 
@@ -12,6 +12,7 @@ import { SiteLayout } from "@/components/site/SiteLayout";
 import { bikes, cars, decodeVin, getBike, inr, type Product } from "@/lib/data";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useStore } from "@/lib/store";
+import { getCurrentRole } from "@/lib/auth";
 
 interface GarageVehicle {
   id: string;
@@ -28,6 +29,12 @@ interface GarageVehicle {
 }
 
 export const Route = createFileRoute("/garage")({
+  beforeLoad: async () => {
+    const role = await getCurrentRole();
+    if (!role) {
+      throw redirect({ to: "/", search: { openLogin: "customer", redirect: "/garage" } });
+    }
+  },
   head: () => ({
     meta: [
       { title: "My Garage & Compatible Parts — Riderzpro" },
