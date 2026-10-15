@@ -54,7 +54,18 @@ export async function checkPhoneExists(phone: string): Promise<{ exists: boolean
   return { exists: false };
 }
 
-export async function checkEmailExists(email: string): Promise<{ isRegistered: boolean; error?: string; role?: string; fullName?: string }> {
+export async function checkEmailExists(
+  email: string,
+  portal: "customer" | "vendor" = "customer"
+): Promise<{
+  isRegistered: boolean;
+  hasPassword?: boolean;
+  isAdmin?: boolean;
+  error?: string;
+  role?: string;
+  fullName?: string;
+  redirectUrl?: string;
+}> {
   if (typeof window === "undefined") {
     return { isRegistered: false };
   }
@@ -66,11 +77,27 @@ export async function checkEmailExists(email: string): Promise<{ isRegistered: b
     const res = await fetch("/api/auth/check-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: cleanEmail }),
+      body: JSON.stringify({ email: cleanEmail, portal }),
     });
     const data = await res.json();
+    if (data.isAdmin || data.role?.includes("ADMIN") || data.role === "admin") {
+      return {
+        isRegistered: false,
+        isAdmin: true,
+        role: data.role,
+        fullName: data.fullName,
+        error: "Invalid email.",
+        redirectUrl: "/vendor/login",
+      };
+    }
     if (res.ok && data.success) {
-      return { isRegistered: !!data.isRegistered, role: data.role, fullName: data.fullName };
+      return {
+        isRegistered: !!data.isRegistered,
+        hasPassword: !!data.hasPassword,
+        role: data.role,
+        fullName: data.fullName,
+        error: data.error,
+      };
     }
   } catch (e) {
     console.warn("[checkEmailExists failed]", e);
@@ -140,7 +167,7 @@ export async function customerSignIn(email: string, password: string) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+    body: JSON.stringify({ email: email.trim(), password: password.trim(), portal: "customer" }),
   });
   const data = await res.json();
   if (!res.ok || !data.success) throw new Error(data.error || "Invalid email or password.");
@@ -155,7 +182,7 @@ export async function sellerSignIn(email: string, password: string) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+    body: JSON.stringify({ email: email.trim(), password: password.trim(), portal: "vendor" }),
   });
   const data = await res.json();
   if (!res.ok || !data.success) throw new Error(data.error || "Invalid vendor credentials.");
@@ -300,7 +327,8 @@ export type User = {
   name: string;
   email: string;
   phone: string;
-  role: "customer";
+  role: "customer" | "seller" | "admin" | "SUPER_ADMIN" | "PRODUCT_ADMIN" | "SELLER_ADMIN" | string;
+  storeName?: string;
   avatarUrl?: string;
 };
 
@@ -384,7 +412,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 name: meData.user.fullName || meData.user.storeName || "Rider",
                 email: meData.user.email,
                 phone: meData.user.phone || "",
-                role: "customer",
+                role: (meData.role || meData.user.role || "customer") as any,
+                storeName: meData.user.storeName,
               };
               setUser(u);
               localStorage.setItem(AUTH_USER_KEY, JSON.stringify(u));
@@ -431,7 +460,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         name: dbUser.fullName || dbUser.storeName || "Rider",
         email: dbUser.email,
         phone: dbUser.phone || "",
-        role: "customer",
+        role: (data.role || dbUser.role || "customer") as any,
+        storeName: dbUser.storeName,
       };
 
       const token = `tok_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -495,9 +525,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const googleUser: User = {
         id: "usr_google_aakash",
-        name: "Aakash Sharma",
+        name: "User",
         email: "aakash.sharma@gmail.com",
-        phone: "9876543210",
+        phone: "",
         role: "customer",
       };
 

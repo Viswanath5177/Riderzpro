@@ -36,6 +36,10 @@ import {
   Percent,
   Bell,
   Lock,
+  Tag,
+  UploadCloud,
+  Ticket,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardShell, Panel, Stat, StatusPill, type Section } from "@/components/site/DashboardShell";
@@ -50,6 +54,7 @@ import {
   mapDbProductToProduct,
 } from "@/lib/data";
 import { ProductFormPage } from "@/components/vendor/ProductFormPage";
+import { JsonProductImportModal } from "@/components/vendor/JsonProductImportModal";
 import { getCurrentRole, getCurrentUser } from "@/lib/auth";
 import { useStore, type Order } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -57,8 +62,9 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/dashboard/vendor")({
   beforeLoad: async () => {
     const role = await getCurrentRole();
-    if (!role) throw redirect({ to: "/login", search: { redirect: "/dashboard/vendor" } });
-    if (role === "customer") throw redirect({ to: "/dashboard/customer" });
+    if (!role || role === "customer") {
+      throw redirect({ to: "/vendor/login", search: { redirect: "/dashboard/vendor" } });
+    }
   },
   head: () => ({
     meta: [
@@ -76,6 +82,7 @@ const vendorSections: Section[] = [
   { id: "shop", label: "My Shop", Icon: Store },
   { id: "listings", label: "Product Listings", Icon: Boxes },
   { id: "inventory", label: "Inventory", Icon: Package },
+  { id: "coupons", label: "Store Coupons", Icon: Tag },
   { id: "orders", label: "Incoming Orders", Icon: ShoppingBag },
   { id: "shipments", label: "Shipments & Tracking", Icon: Truck },
   { id: "reviews", label: "Customer Reviews", Icon: MessageSquare },
@@ -172,7 +179,7 @@ export function VendorDashboard() {
   // Vendor Business Details Freeze & Change Request Policy State
   const [changeRequests, setChangeRequests] = useState<any[]>([]);
   const [isChangeModalOpen, setIsChangeModalOpen] = useState(false);
-  const [crField, setCrField] = useState<"owner_name" | "business_type" | "gstin" | "business_address">("owner_name");
+  const [crField, setCrField] = useState<string>("store_name");
   const [crNewValue, setCrNewValue] = useState("");
   const [crReason, setCrReason] = useState("");
   const [crDocUrl, setCrDocUrl] = useState("");
@@ -198,16 +205,24 @@ export function VendorDashboard() {
     setIsSubmittingCr(true);
     try {
       const fieldLabels: Record<string, string> = {
+        store_name: "Store / Trading Name",
         owner_name: "Legal Business / Owner Name",
+        phone: "Business Contact Phone",
         business_type: "Business Type",
         gstin: "GSTIN Tax Registration",
         business_address: "Registered Business Address",
+        city_state_pincode: "Operational Location (City / State / Pincode)",
+        bank_account: "Payout Bank Account & IFSC Code",
       };
       const oldValues: Record<string, string> = {
+        store_name: dbVendor?.storeName || profileForm.storeName,
         owner_name: dbVendor?.ownerName || profileForm.ownerName,
+        phone: dbVendor?.phone || profileForm.phone,
         business_type: dbVendor?.businessType || "Proprietorship",
         gstin: dbVendor?.gstin || profileForm.gstin,
         business_address: `${profileForm.address}, ${profileForm.city}`,
+        city_state_pincode: `${profileForm.city}, ${profileForm.state} - ${profileForm.pincode}`,
+        bank_account: `${profileForm.bankName} - A/C: ${profileForm.accountNumber} (IFSC: ${profileForm.ifscCode})`,
       };
 
       const res = await fetch("/api/vendor/change-request", {
@@ -529,6 +544,155 @@ export function VendorDashboard() {
     );
   }, [allProducts, currentVendor, vendorOffersMap]);
 
+  // JSON Product Bulk Import Modal State
+  const [isJsonImportOpen, setIsJsonImportOpen] = useState(false);
+
+  // Vendor Coupons State & Management
+  interface VendorCoupon {
+    id: string;
+    vendor_id: string;
+    code: string;
+    description: string;
+    discount_type: "percentage" | "fixed";
+    discount_value: number;
+    minimum_order_value: number;
+    maximum_discount: number;
+    starts_at: string;
+    expires_at: string;
+    usage_limit: number;
+    per_customer_limit: number;
+    status: "active" | "inactive";
+    created_at: string;
+    product_ids: string[];
+  }
+  const [vendorCoupons, setVendorCoupons] = useState<VendorCoupon[]>([]);
+  const [isCreateCouponOpen, setIsCreateCouponOpen] = useState(false);
+  const [couponCodeInput, setCouponCodeInput] = useState("");
+  const [couponDescInput, setCouponDescInput] = useState("");
+  const [couponTypeInput, setCouponTypeInput] = useState<"percentage" | "fixed">("percentage");
+  const [couponValueInput, setCouponValueInput] = useState<number | "">(15);
+  const [couponMinOrderInput, setCouponMinOrderInput] = useState<number | "">(1000);
+  const [couponMaxDiscInput, setCouponMaxDiscInput] = useState<number | "">(500);
+  const [couponExpiryInput, setCouponExpiryInput] = useState<string>("2027-12-31");
+  const [couponUsageLimitInput, setCouponUsageLimitInput] = useState<number | "">(100);
+  const [selectedCouponProductIds, setSelectedCouponProductIds] = useState<string[]>([]);
+  const [isSubmittingCoupon, setIsSubmittingCoupon] = useState(false);
+
+  const fetchVendorCoupons = (sellerId: string) => {
+    fetch(`/api/vendor/coupons?seller_id=${sellerId}`)
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.coupons)) {
+          setVendorCoupons(res.coupons);
+        }
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    if (dbVendor?.id || currentUser?.id) {
+      fetchVendorCoupons(dbVendor?.id || currentUser?.id || "sel_2571cac9469b8dce");
+    }
+  }, [dbVendor?.id, currentUser?.id]);
+
+  const productCouponsMap = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    vendorCoupons.forEach((c) => {
+      if (c.status === "active" && Array.isArray(c.product_ids)) {
+        c.product_ids.forEach((pId) => {
+          if (!map[pId]) map[pId] = [];
+          map[pId].push(c.code);
+        });
+      }
+    });
+    return map;
+  }, [vendorCoupons]);
+
+  const handleCreateCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = couponCodeInput.trim().toUpperCase();
+    if (!code) {
+      toast.error("Coupon code is required");
+      return;
+    }
+    if (!couponValueInput || Number(couponValueInput) <= 0) {
+      toast.error("Valid discount value is required");
+      return;
+    }
+    if (selectedCouponProductIds.length === 0) {
+      toast.error("Please select at least one product for this coupon");
+      return;
+    }
+
+    setIsSubmittingCoupon(true);
+    try {
+      const res = await fetch("/api/vendor/coupons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          seller_id: currentVendor.id,
+          code,
+          description: couponDescInput,
+          discount_type: couponTypeInput,
+          discount_value: Number(couponValueInput),
+          minimum_order_value: Number(couponMinOrderInput) || 0,
+          maximum_discount: Number(couponMaxDiscInput) || 0,
+          expires_at: couponExpiryInput,
+          usage_limit: Number(couponUsageLimitInput) || 100,
+          product_ids: selectedCouponProductIds,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to create coupon");
+      }
+      toast.success(`Coupon ${code} created successfully and linked to ${selectedCouponProductIds.length} products!`);
+      setIsCreateCouponOpen(false);
+      setCouponCodeInput("");
+      setCouponDescInput("");
+      setSelectedCouponProductIds([]);
+      fetchVendorCoupons(currentVendor.id);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create coupon");
+    } finally {
+      setIsSubmittingCoupon(false);
+    }
+  };
+
+  const handleToggleCoupon = async (couponId: string, currentStatus: string) => {
+    const nextStatus = currentStatus === "active" ? "inactive" : "active";
+    try {
+      const res = await fetch(`/api/vendor/coupons/${couponId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Coupon status updated to ${nextStatus}`);
+        fetchVendorCoupons(currentVendor.id);
+      }
+    } catch {
+      toast.error("Failed to update coupon status");
+    }
+  };
+
+  const handleDeleteCoupon = async (couponId: string) => {
+    if (!confirm("Are you sure you want to delete this coupon?")) return;
+    try {
+      const res = await fetch(`/api/vendor/coupons/${couponId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Coupon deleted");
+        fetchVendorCoupons(currentVendor.id);
+      }
+    } catch {
+      toast.error("Failed to delete coupon");
+    }
+  };
+
   // Order status progression
   const updateOrderState = (orderId: string, nextStatus: VendorOrderItem["status"]) => {
     setVendorOrders((prev) =>
@@ -707,22 +871,8 @@ export function VendorDashboard() {
     }
 
     if (isApproved) {
-      return (
-        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 flex items-center justify-between mb-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-emerald-500/20 p-2 text-emerald-600 dark:text-emerald-400">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-emerald-950 dark:text-emerald-200">Verified Marketplace Vendor</h3>
-              <p className="text-xs text-emerald-700 dark:text-emerald-400">KYC documents and bank account approved. You can add and publish parts catalog.</p>
-            </div>
-          </div>
-          <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-extrabold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
-            Approved
-          </span>
-        </div>
-      );
+      // Clean display: Verified status is prominently rendered on the store profile name card and sidebar profile widget
+      return null;
     }
 
     if (sellerStatus === "REJECTED") {
@@ -815,24 +965,10 @@ export function VendorDashboard() {
       userProfile={{
         name: currentVendor.ownerName || currentVendor.name,
         email: currentVendor.email,
+        isVerified: isApproved,
       }}
       actions={
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Aside Product Notifications Header Symbol */}
-          {rejectedNotifications.length > 0 && (
-            <button
-              onClick={() => setIsProductNotifModalOpen(true)}
-              title={`${rejectedNotifications.length} Product Alert(s)`}
-              className="relative flex items-center gap-1.5 rounded-full border border-red-500/40 bg-red-50/90 dark:bg-red-950/40 px-2.5 sm:px-3 py-1.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 transition cursor-pointer"
-            >
-              <Bell className="h-3.5 w-3.5 text-red-600 dark:text-red-400 animate-bounce" />
-              <span className="hidden sm:inline">Product Alerts</span>
-              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-black text-white">
-                {rejectedNotifications.length}
-              </span>
-            </button>
-          )}
-
           {/* Aside Store Action Required Header Symbol */}
           {needsStoreAction && (
             <button
@@ -850,28 +986,9 @@ export function VendorDashboard() {
       {/* ─────────────────────────────────────────────────────────────
           FLOATING ALERTS & NOTIFICATIONS DOCK (ASIDE)
          ───────────────────────────────────────────────────────────── */}
-      <div className="fixed right-3 top-20 sm:right-6 sm:top-24 z-40 flex flex-col items-end gap-2.5 pointer-events-auto">
-        {/* Floating Product Details Notification Symbol */}
-        {rejectedNotifications.length > 0 && (
-          <button
-            onClick={() => setIsProductNotifModalOpen(true)}
-            title="Product Review Notifications"
-            className="group flex items-center gap-2 rounded-full border-2 border-red-500 bg-white dark:bg-[#121620] px-3.5 py-2 text-xs font-bold text-red-600 dark:text-red-400 shadow-xl hover:bg-red-50 dark:hover:bg-red-950/50 hover:scale-105 active:scale-95 transition-all cursor-pointer backdrop-blur-md"
-          >
-            <div className="relative">
-              <Bell className="h-4 w-4 animate-bounce text-red-600 dark:text-red-400" />
-              <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-black text-white shadow-xs">
-                {rejectedNotifications.length}
-              </span>
-            </div>
-            <span className="hidden sm:inline font-extrabold">
-              {rejectedNotifications.length} Product Alert{rejectedNotifications.length > 1 ? "s" : ""}
-            </span>
-          </button>
-        )}
-
-        {/* Floating Store & Payment Action Required Symbol */}
-        {needsStoreAction && (
+      {needsStoreAction && (
+        <div className="fixed right-3 top-20 sm:right-6 sm:top-24 z-40 flex flex-col items-end gap-2.5 pointer-events-auto">
+          {/* Floating Store & Payment Action Required Symbol */}
           <button
             onClick={() => setIsStoreActionModalOpen(true)}
             title="Store Details Action Required"
@@ -884,8 +1001,8 @@ export function VendorDashboard() {
             <AlertTriangle className="h-4 w-4 text-amber-500" />
             <span className="hidden sm:inline font-extrabold">Store Action Needed</span>
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ─────────────────────────────────────────────────────────────
           POP-UP MODAL 1: PRODUCT REVIEW & NOTIFICATIONS MODAL
@@ -1112,21 +1229,46 @@ export function VendorDashboard() {
       {tab === "overview" && (
         <div className="space-y-6">
           {/* Vendor verified partner status banner */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+          <div className={cn(
+            "flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4 transition-all shadow-2xs",
+            isApproved
+              ? "border border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-950/20"
+              : "border border-primary/20 bg-primary/5"
+          )}>
             <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground font-bold shadow-2xs">
-                <ShieldCheck className="h-5 w-5" />
+              <div className={cn(
+                "grid h-11 w-11 place-items-center rounded-xl font-bold shadow-2xs shrink-0",
+                isApproved
+                  ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40"
+                  : "bg-primary text-primary-foreground"
+              )}>
+                <ShieldCheck className="h-6 w-6" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-foreground">{currentVendor.name}</h3>
-                  <span className="rounded-full bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-[11px] font-bold">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-base font-bold text-foreground">{currentVendor.name}</h3>
+                  {isApproved && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 px-2.5 py-0.5 text-xs font-bold shadow-2xs">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      Verified Seller
+                    </span>
+                  )}
+                  <span className={cn(
+                    "rounded-full px-2 py-0.5 text-[11px] font-bold",
+                    isApproved
+                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                      : "bg-primary/10 text-primary border border-primary/20"
+                  )}>
                     {currentVendor.verificationBadge}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  GSTIN: {currentVendor.gstin} · Commission Rate: {Math.round((currentVendor.commissionRate || 0.1) * 100)}% · Service Coverage: {currentVendor.deliveryCoverage}
-                </p>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>GSTIN: <span className="font-mono font-semibold text-foreground">{currentVendor.gstin}</span></span>
+                  <span>•</span>
+                  <span>Commission Rate: <span className="font-semibold text-foreground">{Math.round((currentVendor.commissionRate || 0.1) * 100)}%</span></span>
+                  <span>•</span>
+                  <span>Service Coverage: <span className="font-medium text-foreground">{currentVendor.deliveryCoverage}</span></span>
+                </div>
               </div>
             </div>
             <button
@@ -1516,6 +1658,7 @@ export function VendorDashboard() {
           <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-sm">
             <ProductFormPage
               product={editingProduct}
+              sellerId={currentVendor.id}
               onCancel={() => setInventoryViewMode("list")}
               onSuccess={() => {
                 fetchProductsFromDb();
@@ -1528,7 +1671,28 @@ export function VendorDashboard() {
           <Panel
             title={`Active Product Offers (${vendorProducts.length})`}
             action={
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (dbVendor?.accountStatus === "FROZEN") {
+                      toast.error("Account Frozen by Administration", {
+                        description: `Your vendor account has been temporarily frozen. Bulk imports are blocked. Reason: ${dbVendor.freezeReason || "Compliance review"}.`,
+                      });
+                      return;
+                    }
+                    if (!isApproved) {
+                      toast.error("Product Listing Locked", {
+                        description: "Your seller KYC verification is currently under review. Bulk import unlocks once approved.",
+                      });
+                      return;
+                    }
+                    setIsJsonImportOpen(true);
+                  }}
+                  className="rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary px-3.5 py-2 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <UploadCloud className="h-3.5 w-3.5" />
+                  Import Products from JSON
+                </button>
                 <button
                   onClick={() => setInventoryViewMode("add_offer")}
                   className="rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-2xs hover:opacity-90 transition cursor-pointer"
@@ -1584,6 +1748,7 @@ export function VendorDashboard() {
                       warrantyTerms: `${p.warrantyMonths || 12} Months Warranty`,
                     };
                     const isPaused = off.status === "paused";
+                    const linkedCoupons = productCouponsMap[p.id] || [];
 
                     return (
                       <tr key={p.id} className="hover:bg-muted/30 transition-colors">
@@ -1596,6 +1761,15 @@ export function VendorDashboard() {
                           <div>
                             <span className="font-semibold block leading-tight">{p.name}</span>
                             <span className="text-xs text-muted-foreground">{p.brand} {p.sku ? `· ${p.sku}` : ""}</span>
+                            {linkedCoupons.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {linkedCoupons.map((code) => (
+                                  <span key={code} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-red-50 text-[#E31E24] border border-red-200">
+                                    <Tag className="h-2.5 w-2.5" /> {code}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                             {p.verificationStatus === "rejected" && p.rejectionReason && (
                               <p className="text-[11px] text-red-600 font-semibold mt-1 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded border border-red-200 dark:border-red-800">
                                 Rejection reason: {p.rejectionReason}
@@ -1615,9 +1789,13 @@ export function VendorDashboard() {
                         </td>
 
                         <td>
-                          {off.stock < 5 ? (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                              Low · {off.stock} left
+                          {off.stock <= 5 && off.stock > 0 ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                              Hurry! Limited stock ({off.stock})
+                            </span>
+                          ) : off.stock === 0 ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                              Out of Stock
                             </span>
                           ) : (
                             <span className="text-muted-foreground text-xs">{off.stock} units</span>
@@ -1733,7 +1911,7 @@ export function VendorDashboard() {
                       const fallbackPrice = p.offers.length > 0 ? p.offers[0].price : (p.mrp || 0);
                       const fallbackStock = p.offers.length > 0 ? p.offers[0].stock : 0;
                       const off = vendorOffersMap[p.id] || p.offers[0] || { stock: fallbackStock, price: fallbackPrice };
-                      const isLow = off.stock < 5 && off.stock > 0;
+                      const isLow = off.stock <= 5 && off.stock > 0;
                       const isOut = off.stock === 0;
 
                       return (
@@ -1753,9 +1931,9 @@ export function VendorDashboard() {
 
                           <td>
                             {isOut ? (
-                              <span className="rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-xs font-bold">Out of stock</span>
+                              <span className="rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-xs font-bold">Out of Stock</span>
                             ) : isLow ? (
-                              <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-bold">Low stock (&lt; 5)</span>
+                              <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-bold">Hurry! Limited stock ({off.stock})</span>
                             ) : (
                               <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-xs font-bold">Healthy</span>
                             )}
@@ -1786,6 +1964,165 @@ export function VendorDashboard() {
 
                           <td className="text-right font-bold">
                             {inr(off.price)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          STORE COUPONS TAB
+         ───────────────────────────────────────────────────────────── */}
+      {tab === "coupons" && (
+        <div className="space-y-6">
+          <Panel
+            title={`Store Coupons & Promotions (${vendorCoupons.length})`}
+            action={
+              <button
+                onClick={() => {
+                  if (dbVendor?.accountStatus === "FROZEN") {
+                    toast.error("Account Frozen by Administration", {
+                      description: `Your vendor account has been temporarily frozen. Coupon creation is blocked.`,
+                    });
+                    return;
+                  }
+                  if (!isApproved) {
+                    toast.error("Coupon Management Locked", {
+                      description: "Your seller KYC verification is currently under review. Coupon creation unlocks once approved.",
+                    });
+                    return;
+                  }
+                  setIsCreateCouponOpen(true);
+                }}
+                className="rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-2xs hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Create Product Coupon
+              </button>
+            }
+          >
+            {vendorCoupons.length === 0 ? (
+              <div className="py-12 text-center text-xs text-muted-foreground space-y-3">
+                <Ticket className="h-10 w-10 mx-auto text-muted-foreground/40" />
+                <div>
+                  <h4 className="text-sm font-bold text-foreground">No Store Coupons Created Yet</h4>
+                  <p className="max-w-sm mx-auto mt-1">
+                    Create discount coupons for your specific store products to drive sales and attract customers.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsCreateCouponOpen(true)}
+                  className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:opacity-90 transition"
+                >
+                  Create Your First Coupon
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-sm">
+                  <thead className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border pb-2">
+                    <tr>
+                      <th className="py-2.5">Coupon Code</th>
+                      <th>Description</th>
+                      <th>Discount Value</th>
+                      <th>Min Spend</th>
+                      <th>Valid Till</th>
+                      <th>Linked Products</th>
+                      <th>Status</th>
+                      <th className="text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {vendorCoupons.map((c) => {
+                      const isActive = c.status === "active";
+                      const isExpired = c.expires_at && new Date(c.expires_at) < new Date();
+                      const linkedProducts = vendorProducts.filter((p) => c.product_ids?.includes(p.id));
+
+                      return (
+                        <tr key={c.id} className="hover:bg-muted/30 transition-colors">
+                          <td className="py-3.5">
+                            <span className="font-mono font-bold text-sm text-[#E31E24] bg-red-50 dark:bg-red-950/40 px-2.5 py-1 rounded-lg border border-red-200 dark:border-red-800">
+                              {c.code}
+                            </span>
+                          </td>
+
+                          <td className="text-xs text-muted-foreground max-w-[200px] truncate">
+                            {c.description || "Store discount promotion"}
+                          </td>
+
+                          <td>
+                            <span className="font-bold text-foreground">
+                              {c.discount_type === "percentage" ? `${c.discount_value}% OFF` : `₹${c.discount_value} FLAT`}
+                            </span>
+                            {c.maximum_discount > 0 && c.discount_type === "percentage" && (
+                              <span className="block text-[10px] text-muted-foreground">Up to ₹{c.maximum_discount}</span>
+                            )}
+                          </td>
+
+                          <td className="text-xs font-medium text-foreground">
+                            {c.minimum_order_value > 0 ? inr(c.minimum_order_value) : "No minimum"}
+                          </td>
+
+                          <td className="text-xs text-muted-foreground">
+                            {c.expires_at ? new Date(c.expires_at).toLocaleDateString() : "No expiry"}
+                            {isExpired && (
+                              <span className="block text-[10px] text-red-600 font-bold">Expired</span>
+                            )}
+                          </td>
+
+                          <td>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-semibold text-xs text-foreground">
+                                {c.product_ids?.length || 0} Products
+                              </span>
+                              {linkedProducts.length > 0 && (
+                                <span className="text-[10px] text-muted-foreground truncate max-w-[160px]">
+                                  {linkedProducts.map((p) => p.name).join(", ")}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          <td>
+                            <span
+                              className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                                isActive && !isExpired
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : "bg-gray-100 text-gray-600 border-gray-200"
+                              }`}
+                            >
+                              {isActive && !isExpired ? (
+                                <>
+                                  <CheckCircle2 className="h-3 w-3" /> Active
+                                </>
+                              ) : (
+                                "Inactive"
+                              )}
+                            </span>
+                          </td>
+
+                          <td className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleToggleCoupon(c.id, c.status)}
+                                className="rounded-lg border border-border px-2.5 py-1 text-xs font-semibold hover:bg-muted transition"
+                              >
+                                {isActive ? "Deactivate" : "Activate"}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteCoupon(c.id)}
+                                title="Delete Coupon"
+                                className="rounded-lg p-1.5 text-muted-foreground hover:bg-rose-50 hover:text-rose-600 transition"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -2107,40 +2444,48 @@ export function VendorDashboard() {
         return (
           <div className="space-y-6">
             <Panel title="Marketplace Store Configuration & Profile">
-              <form onSubmit={handleSaveProfile} className="space-y-6 max-w-3xl">
+              <form onSubmit={(e) => { e.preventDefault(); setIsChangeModalOpen(true); }} className="space-y-6 max-w-3xl">
                 {/* Save, Freeze & Update Policy Notice */}
-                {isApproved ? (
-                  <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 text-xs">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div>
-                        <p className="font-bold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
-                          <Lock className="h-4 w-4 text-blue-600 shrink-0" />
-                          Verified Business Details Locked (Compliance Policy)
-                        </p>
-                        <p className="text-blue-800/90 dark:text-blue-300 mt-1 leading-relaxed">
-                          Your legal business name, GSTIN, business type, and registered address have been verified and frozen after approval. To request modifications, submit an administrator change request. Non-sensitive store details remain editable below.
-                        </p>
-                      </div>
+                <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 sm:p-5 text-xs shadow-xs">
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                    <div className="space-y-1.5">
+                      <p className="font-bold text-blue-900 dark:text-blue-200 flex items-center gap-2 text-sm">
+                        <Lock className="h-4 w-4 text-blue-600 shrink-0" />
+                        Default Registration Details are Frozen (Compliance Standard)
+                      </p>
+                      <p className="text-blue-800/90 dark:text-blue-300 leading-relaxed">
+                        The default details you entered during account registration (Trading Store Name, Legal Owner Name, Phone, GSTIN, Registered Address, and Payout Bank Account) are verified and permanently frozen to ensure marketplace security and tax compliance.
+                      </p>
+                      <p className="text-blue-900 dark:text-blue-200 font-semibold pt-1">
+                        Need to update any of these details? Send an official email to{" "}
+                        <a
+                          href={`mailto:support@riderzpro.com?subject=Business%20Detail%20Change%20Request%20-%20Store:%20${encodeURIComponent(currentVendor.name)}`}
+                          className="font-bold underline text-blue-950 dark:text-blue-100 hover:text-black font-mono"
+                        >
+                          support@riderzpro.com
+                        </a>{" "}
+                        or submit the formal Business Detail Change Request form below.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 pt-1 md:pt-0">
+                      <a
+                        href={`mailto:support@riderzpro.com?subject=Business%20Detail%20Change%20Request%20-%20Store:%20${encodeURIComponent(currentVendor.name)}`}
+                        className="px-3.5 py-2 rounded-xl border border-blue-600 bg-white dark:bg-[#121620] text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/40 font-bold text-xs shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Mail className="h-3.5 w-3.5" />
+                        Email Support
+                      </a>
                       <button
                         type="button"
                         onClick={() => setIsChangeModalOpen(true)}
-                        className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shrink-0 text-xs shadow-xs transition cursor-pointer"
+                        className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
                       >
-                        Request Business Detail Change
+                        <FileText className="h-3.5 w-3.5" />
+                        Request Detail Change
                       </button>
                     </div>
                   </div>
-                ) : (
-                  <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs">
-                    <p className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                      <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-                      Onboarding Status: KYC Review Pending
-                    </p>
-                    <p className="text-amber-800/90 dark:text-amber-300 mt-1 leading-relaxed">
-                      You may freely adjust your store, contact, and business registration details during onboarding before your store is verified and approved.
-                    </p>
-                  </div>
-                )}
+                </div>
 
                 {/* 1. Store & Owner Identity */}
                 <div className="space-y-4">
@@ -2148,90 +2493,84 @@ export function VendorDashboard() {
                     <h4 className="text-sm font-bold text-foreground">
                       1. Business Identity & Legal Verification
                     </h4>
-                    {isApproved && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                        <CheckCircle2 className="h-3 w-3" /> KYC Verified & Frozen
-                      </span>
-                    )}
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-300 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                      <CheckCircle2 className="h-3 w-3" /> KYC Verified & Frozen
+                    </span>
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2 text-xs">
-                    {/* Editable: Trading Store Name */}
+                    {/* Frozen: Trading Store Name */}
                     <div>
                       <label className="text-muted-foreground block mb-1 font-semibold flex items-center justify-between">
                         <span>Store / Trading Name *</span>
-                        <span className="text-[10px] text-emerald-600 font-normal">Editable</span>
+                        <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                          <Lock className="h-2.5 w-2.5" /> Frozen
+                        </span>
                       </label>
                       <input
                         type="text"
                         required
+                        disabled
                         value={profileForm.storeName}
                         onChange={(e) => setProfileForm({ ...profileForm, storeName: e.target.value })}
                         placeholder="e.g. Vamsi Auto Spares"
-                        className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                        className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-muted/50 text-muted-foreground cursor-not-allowed"
                       />
                     </div>
 
-                    {/* Frozen after approval: Legal Business Name */}
+                    {/* Frozen: Legal Business Name */}
                     <div>
                       <label className="text-muted-foreground block mb-1 font-semibold flex items-center justify-between">
                         <span>Legal Business / Owner Name *</span>
-                        {isApproved && (
-                          <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
-                            <Lock className="h-2.5 w-2.5" /> Frozen
-                          </span>
-                        )}
+                        <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                          <Lock className="h-2.5 w-2.5" /> Frozen
+                        </span>
                       </label>
                       <input
                         type="text"
                         required
-                        disabled={isApproved}
+                        disabled
                         value={profileForm.ownerName}
                         onChange={(e) => setProfileForm({ ...profileForm, ownerName: e.target.value })}
                         placeholder="e.g. G Naga Vamsi"
-                        className={cn(
-                          "w-full h-9 rounded-xl border border-border px-3 font-semibold",
-                          isApproved ? "bg-muted/50 text-muted-foreground cursor-not-allowed" : "bg-background"
-                        )}
+                        className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-muted/50 text-muted-foreground cursor-not-allowed"
                       />
                     </div>
 
-                    {/* Editable: Contact Phone */}
+                    {/* Frozen: Contact Phone */}
                     <div>
                       <label className="text-muted-foreground block mb-1 font-semibold flex items-center justify-between">
                         <span>Business Contact Phone *</span>
-                        <span className="text-[10px] text-emerald-600 font-normal">Editable</span>
+                        <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                          <Lock className="h-2.5 w-2.5" /> Frozen
+                        </span>
                       </label>
                       <input
                         type="text"
                         required
+                        disabled
                         value={profileForm.phone}
                         onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                         placeholder="e.g. 9876543210"
-                        className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                        className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-muted/50 text-muted-foreground cursor-not-allowed"
                       />
                     </div>
 
-                    {/* Frozen after approval: GSTIN */}
+                    {/* Frozen: GSTIN */}
                     <div>
                       <label className="text-muted-foreground block mb-1 font-semibold flex items-center justify-between">
                         <span>GSTIN Tax Identification</span>
-                        {isApproved && (
-                          <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
-                            <Lock className="h-2.5 w-2.5" /> Frozen
-                          </span>
-                        )}
+                        <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                          <Lock className="h-2.5 w-2.5" /> Frozen
+                        </span>
                       </label>
                       <input
                         type="text"
-                        disabled={isApproved}
+                        disabled
                         value={profileForm.gstin}
                         onChange={(e) => setProfileForm({ ...profileForm, gstin: e.target.value })}
                         placeholder="e.g. 37AAAAA0000A1Z5 or Unregistered"
-                        className={cn(
-                          "w-full h-9 rounded-xl border border-border px-3 font-mono font-semibold",
-                          isApproved ? "bg-muted/50 text-muted-foreground cursor-not-allowed" : "bg-background"
-                        )}
+                        className="w-full h-9 rounded-xl border border-border px-3 font-mono font-semibold bg-muted/50 text-muted-foreground cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -2239,76 +2578,83 @@ export function VendorDashboard() {
 
                 {/* 2. Store Location & Address */}
                 <div className="space-y-4">
-                  <h4 className="text-sm font-bold text-foreground pb-2 border-b border-border">
-                    2. Operational Location & Street Address
-                  </h4>
+                  <div className="flex items-center justify-between pb-2 border-b border-border">
+                    <h4 className="text-sm font-bold text-foreground">
+                      2. Operational Location & Street Address
+                    </h4>
+                    <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                      <Lock className="h-2.5 w-2.5" /> Frozen
+                    </span>
+                  </div>
                   <div className="space-y-4 text-xs">
                     <div>
                       <label className="text-muted-foreground block mb-1 font-semibold flex items-center justify-between">
                         <span>Registered Street Address *</span>
-                        {isApproved && (
-                          <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
-                            <Lock className="h-2.5 w-2.5" /> Frozen
-                          </span>
-                        )}
+                        <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                          <Lock className="h-2.5 w-2.5" /> Frozen
+                        </span>
                       </label>
                       <input
                         type="text"
                         required
-                        disabled={isApproved}
+                        disabled
                         value={profileForm.address}
                         onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
                         placeholder="e.g. 3-24/2, Near Vinayaka Temple"
-                        className={cn(
-                          "w-full h-9 rounded-xl border border-border px-3 font-semibold",
-                          isApproved ? "bg-muted/50 text-muted-foreground cursor-not-allowed" : "bg-background"
-                        )}
+                        className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-muted/50 text-muted-foreground cursor-not-allowed"
                       />
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-3">
                       <div>
-                        <label className="text-muted-foreground block mb-1 font-semibold">City / Town *</label>
+                        <label className="text-muted-foreground block mb-1 font-semibold flex items-center justify-between">
+                          <span>City / Town *</span>
+                          <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                            <Lock className="h-2.5 w-2.5" /> Frozen
+                          </span>
+                        </label>
                         <input
                           type="text"
                           required
+                          disabled
                           value={profileForm.city}
                           onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
                           placeholder="e.g. Bhimavaram"
-                          className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                          className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-muted/50 text-muted-foreground cursor-not-allowed"
                         />
                       </div>
                       <div>
-                        <label className="text-muted-foreground block mb-1 font-semibold">State *</label>
+                        <label className="text-muted-foreground block mb-1 font-semibold flex items-center justify-between">
+                          <span>State *</span>
+                          <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                            <Lock className="h-2.5 w-2.5" /> Frozen
+                          </span>
+                        </label>
                         <input
                           type="text"
                           required
+                          disabled
                           value={profileForm.state}
                           onChange={(e) => setProfileForm({ ...profileForm, state: e.target.value })}
                           placeholder="e.g. Andhra Pradesh"
-                          className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                          className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-muted/50 text-muted-foreground cursor-not-allowed"
                         />
                       </div>
                       <div>
                         <label className="text-muted-foreground block mb-1 font-semibold flex items-center justify-between">
                           <span>Pincode *</span>
-                          {isApproved && (
-                            <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
-                              <Lock className="h-2.5 w-2.5" /> Frozen
-                            </span>
-                          )}
+                          <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                            <Lock className="h-2.5 w-2.5" /> Frozen
+                          </span>
                         </label>
                         <input
                           type="text"
                           required
-                          disabled={isApproved}
+                          disabled
                           value={profileForm.pincode}
                           onChange={(e) => setProfileForm({ ...profileForm, pincode: e.target.value })}
                           placeholder="e.g. 534201"
-                          className={cn(
-                            "w-full h-9 rounded-xl border border-border px-3 font-semibold",
-                            isApproved ? "bg-muted/50 text-muted-foreground cursor-not-allowed" : "bg-background"
-                          )}
+                          className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-muted/50 text-muted-foreground cursor-not-allowed"
                         />
                       </div>
                     </div>
@@ -2317,69 +2663,105 @@ export function VendorDashboard() {
 
                 {/* 3. Bank Account & Settlements */}
                 <div className="space-y-4">
-                  <h4 className="text-sm font-bold text-foreground pb-2 border-b border-border">
-                    3. Bank Account for NEFT/RTGS Order Payouts
-                  </h4>
+                  <div className="flex items-center justify-between pb-2 border-b border-border">
+                    <h4 className="text-sm font-bold text-foreground">
+                      3. Bank Account for NEFT/RTGS Order Payouts
+                    </h4>
+                    <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                      <Lock className="h-2.5 w-2.5" /> Frozen
+                    </span>
+                  </div>
                   <div className="grid gap-4 sm:grid-cols-2 text-xs">
                     <div>
-                      <label className="text-muted-foreground block mb-1 font-semibold">Account Holder Name *</label>
+                      <label className="text-muted-foreground block mb-1 font-semibold flex items-center justify-between">
+                        <span>Account Holder Name *</span>
+                        <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                          <Lock className="h-2.5 w-2.5" /> Frozen
+                        </span>
+                      </label>
                       <input
                         type="text"
+                        disabled
                         value={profileForm.accountHolderName}
                         onChange={(e) => setProfileForm({ ...profileForm, accountHolderName: e.target.value })}
                         placeholder="Name as printed on bank passbook"
-                        className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                        className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-muted/50 text-muted-foreground cursor-not-allowed"
                       />
                     </div>
                     <div>
-                      <label className="text-muted-foreground block mb-1 font-semibold">Bank Name *</label>
+                      <label className="text-muted-foreground block mb-1 font-semibold flex items-center justify-between">
+                        <span>Bank Name *</span>
+                        <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                          <Lock className="h-2.5 w-2.5" /> Frozen
+                        </span>
+                      </label>
                       <input
                         type="text"
+                        disabled
                         value={profileForm.bankName}
                         onChange={(e) => setProfileForm({ ...profileForm, bankName: e.target.value })}
                         placeholder="e.g. HDFC / SBI"
-                        className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-background"
+                        className="w-full h-9 rounded-xl border border-border px-3 font-semibold bg-muted/50 text-muted-foreground cursor-not-allowed"
                       />
                     </div>
                     <div>
-                      <label className="text-muted-foreground block mb-1 font-semibold">Bank Account Number *</label>
+                      <label className="text-muted-foreground block mb-1 font-semibold flex items-center justify-between">
+                        <span>Bank Account Number *</span>
+                        <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                          <Lock className="h-2.5 w-2.5" /> Frozen
+                        </span>
+                      </label>
                       <input
                         type="text"
+                        disabled
                         value={profileForm.accountNumber}
                         onChange={(e) => setProfileForm({ ...profileForm, accountNumber: e.target.value })}
                         placeholder="e.g. 7738293690"
-                        className="w-full h-9 rounded-xl border border-border px-3 font-mono font-semibold bg-background"
+                        className="w-full h-9 rounded-xl border border-border px-3 font-mono font-semibold bg-muted/50 text-muted-foreground cursor-not-allowed"
                       />
                     </div>
                     <div>
-                      <label className="text-muted-foreground block mb-1 font-semibold">IFSC Code *</label>
+                      <label className="text-muted-foreground block mb-1 font-semibold flex items-center justify-between">
+                        <span>IFSC Code *</span>
+                        <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                          <Lock className="h-2.5 w-2.5" /> Frozen
+                        </span>
+                      </label>
                       <input
                         type="text"
+                        disabled
                         value={profileForm.ifscCode}
                         onChange={(e) => setProfileForm({ ...profileForm, ifscCode: e.target.value.toUpperCase() })}
                         placeholder="e.g. HDFC0001234"
-                        className="w-full h-9 rounded-xl border border-border px-3 font-mono font-bold bg-background"
+                        className="w-full h-9 rounded-xl border border-border px-3 font-mono font-bold bg-muted/50 text-muted-foreground cursor-not-allowed"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Submit Button */}
-                <div className="pt-4 border-t border-border flex items-center justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setTab("shop")}
-                    className="rounded-xl border border-border px-4 py-2 text-xs font-semibold hover:bg-muted transition cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSavingProfile}
-                    className="rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-2xs hover:opacity-95 transition disabled:opacity-50 cursor-pointer"
-                  >
-                    {isSavingProfile ? "Saving..." : "Save Editable Store Details"}
-                  </button>
+                {/* Action Footer */}
+                <div className="pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Lock className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                    <span>Default registration details are frozen. To modify details, email support or submit a change request.</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <a
+                      href={`mailto:support@riderzpro.com?subject=Business%20Detail%20Change%20Request%20-%20Store:%20${encodeURIComponent(currentVendor.name)}`}
+                      className="px-3.5 py-2 rounded-xl border border-border hover:bg-muted font-bold text-xs transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                      Email Support
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setIsChangeModalOpen(true)}
+                      className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      Request Detail Change
+                    </button>
+                  </div>
                 </div>
               </form>
             </Panel>
@@ -2457,13 +2839,17 @@ export function VendorDashboard() {
                       <label className="block font-semibold mb-1">Select Field to Modify *</label>
                       <select
                         value={crField}
-                        onChange={(e) => setCrField(e.target.value as any)}
+                        onChange={(e) => setCrField(e.target.value)}
                         className="w-full h-9 rounded-xl border border-border px-3 bg-background"
                       >
+                        <option value="store_name">Store / Trading Name</option>
                         <option value="owner_name">Verified Legal Owner / Business Name</option>
+                        <option value="phone">Registered Business Contact Phone</option>
                         <option value="business_type">Verified Business Type (Proprietorship / Partnership / Company)</option>
                         <option value="gstin">Verified GSTIN Tax Identification</option>
-                        <option value="business_address">Registered Business Address</option>
+                        <option value="business_address">Registered Street Address</option>
+                        <option value="city_state_pincode">Operational City, State or Pincode</option>
+                        <option value="bank_account">Bank Account & Settlement Details (Account / IFSC / Bank Name)</option>
                       </select>
                     </div>
 
@@ -2516,6 +2902,231 @@ export function VendorDashboard() {
                         className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold disabled:opacity-50"
                       >
                         {isSubmittingCr ? "Submitting Request..." : "Submit for Admin Review"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* JSON Product Bulk Import Modal */}
+            <JsonProductImportModal
+              isOpen={isJsonImportOpen}
+              onClose={() => setIsJsonImportOpen(false)}
+              sellerId={currentVendor.id}
+              onImportSuccess={() => {
+                fetchProductsFromDb();
+              }}
+            />
+
+            {/* Create Coupon Modal with Product Selection */}
+            {isCreateCouponOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
+                <div className="relative w-full max-w-2xl rounded-2xl bg-card border border-border shadow-2xl p-6 sm:p-8 space-y-6 my-8 max-h-[90vh] flex flex-col">
+                  <div className="flex items-center justify-between border-b border-border pb-4 shrink-0">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <Tag className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold font-display text-foreground">Create Store Coupon</h3>
+                        <p className="text-xs text-muted-foreground">Select products from your inventory that this coupon applies to.</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsCreateCouponOpen(false)}
+                      className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleCreateCoupon} className="space-y-4 overflow-y-auto flex-1 pr-1">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-foreground mb-1">Coupon Code *</label>
+                        <input
+                          type="text"
+                          required
+                          value={couponCodeInput}
+                          onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
+                          placeholder="e.g. SPEED15"
+                          className="w-full h-10 rounded-xl border border-border bg-background px-3 font-mono font-bold text-sm uppercase focus:border-primary focus:outline-none"
+                        />
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Uppercase letters & numbers only</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-foreground mb-1">Discount Type *</label>
+                        <select
+                          value={couponTypeInput}
+                          onChange={(e) => setCouponTypeInput(e.target.value as any)}
+                          className="w-full h-10 rounded-xl border border-border bg-background px-3 text-xs font-semibold focus:border-primary focus:outline-none"
+                        >
+                          <option value="percentage">Percentage Discount (%)</option>
+                          <option value="fixed">Fixed Cash Discount (₹)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase text-foreground mb-1">Description</label>
+                      <input
+                        type="text"
+                        value={couponDescInput}
+                        onChange={(e) => setCouponDescInput(e.target.value)}
+                        placeholder="e.g. 15% discount on high-performance brake rotors"
+                        className="w-full h-10 rounded-xl border border-border bg-background px-3 text-xs focus:border-primary focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-foreground mb-1">
+                          {couponTypeInput === "percentage" ? "Discount Percent (%) *" : "Discount Amount (₹) *"}
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          min={1}
+                          max={couponTypeInput === "percentage" ? 90 : 50000}
+                          value={couponValueInput}
+                          onChange={(e) => setCouponValueInput(e.target.value === "" ? "" : Number(e.target.value))}
+                          className="w-full h-10 rounded-xl border border-border bg-background px-3 text-xs font-bold focus:border-primary focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-foreground mb-1">Min. Order Value (₹)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={couponMinOrderInput}
+                          onChange={(e) => setCouponMinOrderInput(e.target.value === "" ? "" : Number(e.target.value))}
+                          className="w-full h-10 rounded-xl border border-border bg-background px-3 text-xs focus:border-primary focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-foreground mb-1">Max Discount Cap (₹)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={couponMaxDiscInput}
+                          onChange={(e) => setCouponMaxDiscInput(e.target.value === "" ? "" : Number(e.target.value))}
+                          className="w-full h-10 rounded-xl border border-border bg-background px-3 text-xs focus:border-primary focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-foreground mb-1">Expiration Date</label>
+                        <input
+                          type="date"
+                          value={couponExpiryInput}
+                          onChange={(e) => setCouponExpiryInput(e.target.value)}
+                          className="w-full h-10 rounded-xl border border-border bg-background px-3 text-xs focus:border-primary focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-foreground mb-1">Usage Limit</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={couponUsageLimitInput}
+                          onChange={(e) => setCouponUsageLimitInput(e.target.value === "" ? "" : Number(e.target.value))}
+                          className="w-full h-10 rounded-xl border border-border bg-background px-3 text-xs focus:border-primary focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Product Selection Multi-Select */}
+                    <div className="space-y-2 pt-2 border-t border-border">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold uppercase text-foreground">
+                          Eligible Products ({selectedCouponProductIds.length} of {vendorProducts.length} selected) *
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCouponProductIds(vendorProducts.map((p) => p.id))}
+                            className="text-[11px] font-bold text-primary hover:underline"
+                          >
+                            Select All
+                          </button>
+                          <span className="text-muted-foreground text-xs">·</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCouponProductIds([])}
+                            className="text-[11px] font-bold text-muted-foreground hover:underline"
+                          >
+                            Deselect All
+                          </button>
+                        </div>
+                      </div>
+
+                      {vendorProducts.length === 0 ? (
+                        <p className="text-xs text-muted-foreground italic py-3">No products available in your store inventory yet.</p>
+                      ) : (
+                        <div className="border border-border rounded-xl max-h-48 overflow-y-auto divide-y divide-border bg-background p-1">
+                          {vendorProducts.map((p) => {
+                            const isChecked = selectedCouponProductIds.includes(p.id);
+                            return (
+                              <label
+                                key={p.id}
+                                className="flex items-center gap-3 p-2.5 hover:bg-muted/40 rounded-lg cursor-pointer transition"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedCouponProductIds((prev) => [...prev, p.id]);
+                                    } else {
+                                      setSelectedCouponProductIds((prev) => prev.filter((id) => id !== p.id));
+                                    }
+                                  }}
+                                  className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                                />
+                                <img
+                                  src={p.image}
+                                  alt=""
+                                  className="h-8 w-8 rounded-lg object-cover border border-border shrink-0"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLImageElement).src = "/src/assets/parts.jpg";
+                                  }}
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-semibold text-foreground truncate">{p.name}</p>
+                                  <p className="text-[10px] text-muted-foreground font-mono">{p.sku || p.id} · {p.category}</p>
+                                </div>
+                                <span className="text-xs font-bold text-foreground shrink-0">
+                                  {inr(p.offers[0]?.price || p.mrp || 0)}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-4 border-t border-border flex items-center justify-end gap-3 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setIsCreateCouponOpen(false)}
+                        className="rounded-xl border border-border px-4 py-2 text-xs font-semibold hover:bg-muted transition"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSubmittingCoupon || selectedCouponProductIds.length === 0}
+                        className="rounded-xl bg-primary px-5 py-2 text-xs font-bold text-primary-foreground hover:opacity-90 transition disabled:opacity-50"
+                      >
+                        {isSubmittingCoupon ? "Saving Coupon..." : "Publish Coupon"}
                       </button>
                     </div>
                   </form>

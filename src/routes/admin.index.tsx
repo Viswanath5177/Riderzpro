@@ -2,9 +2,9 @@ import { lazy, Suspense } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Skeleton } from "@/components/admin/glass/Skeleton";
 
-const DashboardScreen = lazy(() =>
-  import("@/components/admin/screens/DashboardScreen").then((m) => ({
-    default: m.DashboardScreen,
+const CombinedOperationsScreen = lazy(() =>
+  import("@/components/admin/screens/CombinedOperationsScreen").then((m) => ({
+    default: m.CombinedOperationsScreen,
   }))
 );
 
@@ -12,7 +12,7 @@ export const Route = createFileRoute("/admin/")({
   head: () => ({
     meta: [
       { title: "Operations Console — RiderzPro Admin" },
-      { name: "description", content: "Executive real-time operations console for RiderzPro." },
+      { name: "description", content: "Unified Seller KYC Verification and Product Catalog Moderation Console." },
     ],
   }),
   component: AdminIndexPage,
@@ -24,16 +24,19 @@ function AdminIndexPage() {
       fallback={
         <div className="space-y-6">
           <Skeleton className="h-32 w-full rounded-3xl" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="h-36 rounded-2xl" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-32 rounded-3xl" />
             ))}
           </div>
-          <Skeleton className="h-80 w-full rounded-3xl" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Skeleton className="h-80 w-full rounded-3xl" />
+            <Skeleton className="h-80 w-full rounded-3xl" />
+          </div>
         </div>
       }
     >
-      <DashboardScreen />
+      <CombinedOperationsScreen />
     </Suspense>
   );
 }

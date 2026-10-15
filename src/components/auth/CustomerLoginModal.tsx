@@ -2,7 +2,9 @@ import React, { useState, useEffect } from "react";
 import {
   X,
   Mail,
-  Phone,
+  Lock,
+  Eye,
+  EyeOff,
   ArrowRight,
   ArrowLeft,
   RefreshCw,
@@ -10,6 +12,7 @@ import {
   AlertCircle,
   ShieldCheck,
   Sparkles,
+  KeyRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/site/bits";
@@ -19,19 +22,23 @@ import { useStore } from "@/lib/store";
 export function CustomerLoginModal() {
   const {
     isCustomerLoginModalOpen,
+    openCustomerLoginModal,
     closeCustomerLoginModal,
     customerLoginModalOptions,
     setUser: setAuthUser,
   } = useAuth();
   const { setRole } = useStore();
 
-  // Stages: "identifier" | "otp"
-  const [stage, setStage] = useState<"identifier" | "otp">("identifier");
+  // Stages: "identifier" | "password_or_otp" | "otp"
+  const [stage, setStage] = useState<"identifier" | "password_or_otp" | "otp">("identifier");
 
   // Form states
   const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [isRegistered, setIsRegistered] = useState(false);
+  const [hasPassword, setHasPassword] = useState(false);
   const [userFullName, setUserFullName] = useState("");
   const [userRole, setUserRole] = useState<string | null>(null);
 
@@ -41,6 +48,21 @@ export function CustomerLoginModal() {
   const [otpCountdown, setOtpCountdown] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Auto-open listener if URL contains ?openLogin=customer or ?login=customer
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("openLogin") === "customer" || sp.get("login") === "customer") {
+        const redirectTo = sp.get("redirect") || "/dashboard/customer";
+        openCustomerLoginModal({ redirectTo });
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete("openLogin");
+        newUrl.searchParams.delete("login");
+        window.history.replaceState({}, "", newUrl.toString());
+      }
+    }
+  }, [openCustomerLoginModal]);
+
   // Initialize with initialIdentifier if supplied
   useEffect(() => {
     if (isCustomerLoginModalOpen) {
@@ -48,6 +70,8 @@ export function CustomerLoginModal() {
         setIdentifier(customerLoginModalOptions.initialIdentifier);
       }
       setStage("identifier");
+      setPassword("");
+      setShowPassword(false);
       setOtpCode("");
       setErrorMessage(null);
       setIsLoading(false);
@@ -127,23 +151,90 @@ export function CustomerLoginModal() {
     setIsLoading(true);
 
     try {
-      // 1. Check account existence
-      const checkRes = await checkEmailExists(cleanEmail);
+      // 1. Check account existence & password status
+      const checkRes = await checkEmailExists(cleanEmail, "customer");
+
+      // Administrators MUST NOT sign in via customer portal
+      if (checkRes.isAdmin || checkRes.role?.includes("ADMIN") || checkRes.role === "admin") {
+        setIsLoading(false);
+        setErrorMessage("Invalid email.");
+        return;
+      }
+
       setIsRegistered(checkRes.isRegistered);
-      if (checkRes.fullName) setUserFullName(checkRes.fullName);
-      if (checkRes.role) setUserRole(checkRes.role);
+      setHasPassword(Boolean(checkRes.hasPassword));
+      setUserFullName(checkRes.fullName || "User");
+      setUserRole(checkRes.role || "customer");
 
-      // 2. Dispatch OTP to email
-      // Existing user -> CUSTOMER_SIGNIN, New user -> CUSTOMER_SIGNUP
-      const purpose = checkRes.isRegistered ? "CUSTOMER_SIGNIN" : "CUSTOMER_SIGNUP";
+      if (checkRes.hasPassword) {
+        // User has a password configured -> provide password entry or OTP option
+        setStage("password_or_otp");
+      } else {
+        // User has NO password set yet -> immediately send OTP verification
+        const purpose = checkRes.isRegistered ? "CUSTOMER_SIGNIN" : "CUSTOMER_SIGNUP";
+        await sendEmailOtp(cleanEmail, purpose);
+        setOtpCountdown(60);
+        setStage("otp");
+        toast.success(`6-digit verification code sent to ${cleanEmail}`);
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || "Failed to process identifier. Please try again.");
+      toast.error(err?.message || "Verification code dispatch failed.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Switch to OTP flow from password stage
+  const handleSwitchToOtp = async () => {
+    setErrorMessage(null);
+    setIsSendingOtp(true);
+    const cleanEmail = identifier.trim().toLowerCase();
+    try {
+      const purpose = isRegistered ? "CUSTOMER_SIGNIN" : "CUSTOMER_SIGNUP";
       await sendEmailOtp(cleanEmail, purpose);
-
       setOtpCountdown(60);
       setStage("otp");
       toast.success(`6-digit verification code sent to ${cleanEmail}`);
     } catch (err: any) {
-      setErrorMessage(err?.message || "Failed to process identifier. Please try again.");
-      toast.error(err?.message || "Verification code dispatch failed.");
+      setErrorMessage(err?.message || "Failed to send code.");
+      toast.error(err?.message || "Failed to send code.");
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  // Login via Password
+  const handlePasswordSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    if (!password) {
+      setErrorMessage("Please enter your account password.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/auth/signin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email: identifier.trim().toLowerCase(),
+          password,
+          authType: "password",
+          portal: "customer",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Incorrect password.");
+      }
+
+      completeSession(data);
+    } catch (err: any) {
+      setErrorMessage(err?.message || "Incorrect password. Try again or sign in with OTP.");
+      toast.error(err?.message || "Sign in failed.");
     } finally {
       setIsLoading(false);
     }
@@ -205,7 +296,7 @@ export function CustomerLoginModal() {
         }
         sessionData = data;
       } else {
-        // Sign Up New Customer via OTP
+        // Sign Up New Customer via OTP (name defaults to "User")
         const res = await fetch("/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -213,7 +304,7 @@ export function CustomerLoginModal() {
           body: JSON.stringify({
             email: cleanEmail,
             otpCode: cleanOtp,
-            fullName: cleanEmail.split("@")[0] || "Customer",
+            fullName: "User",
           }),
         });
         const data = await res.json();
@@ -223,39 +314,62 @@ export function CustomerLoginModal() {
         sessionData = data;
       }
 
-      // Establish authenticated session
-      const userObj = sessionData.user || sessionData.customer;
-      const sessionUser = {
-        id: userObj.id,
-        name: userObj.fullName || userObj.email.split("@")[0],
-        email: userObj.email,
-        phone: userObj.phone || "",
-        role: "customer" as const,
-      };
-
-      localStorage.setItem("riderzpro_auth_user", JSON.stringify(sessionUser));
-      localStorage.setItem("riderzpro_auth_token", "session_active");
-      localStorage.setItem("riderzpro_token", "session_active");
-      setAuthUser(sessionUser);
-      setRole("customer");
-
-      toast.success(`Welcome to RiderzPro, ${sessionUser.name}!`);
-
-      // Close modal
-      closeCustomerLoginModal();
-
-      // Trigger post-login callback or navigation
-      if (customerLoginModalOptions?.onAuthenticated) {
-        customerLoginModalOptions.onAuthenticated();
-      } else if (customerLoginModalOptions?.redirectTo) {
-        window.location.href = customerLoginModalOptions.redirectTo;
-      }
+      completeSession(sessionData);
     } catch (err: any) {
       setErrorMessage(err?.message || "Verification failed. Please check code.");
       toast.error(err?.message || "Verification failed.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Final Session Establishment & Dashboard Navigation
+  const completeSession = (sessionData: any) => {
+    const userObj = sessionData.user || sessionData.customer;
+    const sessionUser = {
+      id: userObj.id,
+      name: userObj.fullName || "User",
+      email: userObj.email,
+      phone: userObj.phone || "",
+      role: "customer" as const,
+    };
+
+    localStorage.setItem("riderzpro_auth_user", JSON.stringify(sessionUser));
+    localStorage.setItem("riderzpro_auth_token", "session_active");
+    localStorage.setItem("riderzpro_token", "session_active");
+    localStorage.removeItem("riderzpro_admin_session");
+
+    try {
+      const rawStore = localStorage.getItem("riderzpro-v7");
+      if (rawStore) {
+        const parsed = JSON.parse(rawStore);
+        parsed.role = "customer";
+        parsed.userProfile = {
+          ...(parsed.userProfile || {}),
+          name: sessionUser.name,
+          email: sessionUser.email,
+          phone: sessionUser.phone,
+        };
+        localStorage.setItem("riderzpro-v7", JSON.stringify(parsed));
+      }
+    } catch {}
+
+    setAuthUser(sessionUser);
+    setRole("customer");
+
+    toast.success(`Welcome to RiderzPro, ${sessionUser.name}!`);
+
+    // Close modal
+    closeCustomerLoginModal();
+
+    // Trigger post-login callback or navigation directly to customer dashboard
+    const targetUrl = customerLoginModalOptions?.redirectTo || "/dashboard/customer";
+    if (customerLoginModalOptions?.onAuthenticated) {
+      customerLoginModalOptions.onAuthenticated();
+    }
+    setTimeout(() => {
+      window.location.href = targetUrl;
+    }, 150);
   };
 
   return (
@@ -282,12 +396,18 @@ export function CustomerLoginModal() {
         <div className="flex flex-col items-center text-center mb-6">
           <Logo className="flex items-center mb-3" imgClassName="h-9 w-auto" />
           <h2 className="text-2xl font-black text-[#111111] tracking-tight">
-            {stage === "identifier" ? "Welcome Back" : "Enter Verification Code"}
+            {stage === "identifier"
+              ? "Welcome to RiderzPro"
+              : stage === "password_or_otp"
+              ? "Sign In with Password"
+              : "Verify Email Code"}
           </h2>
           <p className="text-xs text-gray-500 mt-1 max-w-xs">
             {stage === "identifier"
-              ? "Sign in or create an account to continue shopping."
-              : `We sent a 6-digit code to ${maskedDestination}`}
+              ? "Sign in or create your customer account to continue."
+              : stage === "password_or_otp"
+              ? `Signing in as ${identifier}`
+              : `Enter the 6-digit verification code sent to ${maskedDestination}`}
           </p>
         </div>
 
@@ -295,7 +415,7 @@ export function CustomerLoginModal() {
         {errorMessage && (
           <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-start gap-2.5 animate-in fade-in duration-150">
             <AlertCircle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
-            <div className="flex-1 text-left">{errorMessage}</div>
+            <div className="flex-1 text-left font-medium">{errorMessage}</div>
           </div>
         )}
 
@@ -304,12 +424,12 @@ export function CustomerLoginModal() {
           <form onSubmit={handleIdentifierSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5 text-left">
-                Email or Mobile Number
+                Email Address
               </label>
               <div className="relative flex items-center rounded-xl border border-gray-300 bg-white px-3.5 py-3 transition focus-within:border-[#E31E24] focus-within:ring-2 focus-within:ring-[#E31E24]/10">
                 <Mail className="h-4 w-4 text-gray-400 mr-2.5 shrink-0" />
                 <input
-                  type="text"
+                  type="email"
                   autoFocus
                   required
                   value={identifier}
@@ -317,7 +437,7 @@ export function CustomerLoginModal() {
                     setIdentifier(e.target.value);
                     if (errorMessage) setErrorMessage(null);
                   }}
-                  placeholder="Enter your email or mobile number"
+                  placeholder="Enter your email address"
                   className="w-full text-sm text-gray-900 placeholder:text-gray-400 outline-hidden bg-transparent"
                 />
               </div>
@@ -331,7 +451,7 @@ export function CustomerLoginModal() {
               {isLoading ? (
                 <>
                   <RefreshCw className="h-4 w-4 animate-spin" />
-                  <span>Verifying Identifier...</span>
+                  <span>Checking Email...</span>
                 </>
               ) : (
                 <>
@@ -343,12 +463,88 @@ export function CustomerLoginModal() {
 
             <div className="pt-2 text-center text-[11px] text-gray-400 flex items-center justify-center gap-1.5">
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-              <span>Direct encrypted email OTP verification</span>
+              <span>Password & Instant Email OTP verification</span>
             </div>
           </form>
         )}
 
-        {/* STAGE 2: 6-DIGIT OTP INPUT */}
+        {/* STAGE 2A: PASSWORD ENTRY (If user has password) */}
+        {stage === "password_or_otp" && (
+          <form onSubmit={handlePasswordSignIn} className="space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider text-left">
+                  Account Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStage("identifier");
+                    setPassword("");
+                    setErrorMessage(null);
+                  }}
+                  className="text-xs text-[#0066cc] hover:underline font-semibold cursor-pointer"
+                >
+                  Change Email
+                </button>
+              </div>
+
+              <div className="relative flex items-center rounded-xl border border-gray-300 bg-white px-3.5 py-3 transition focus-within:border-[#E31E24] focus-within:ring-2 focus-within:ring-[#E31E24]/10">
+                <Lock className="h-4 w-4 text-gray-400 mr-2.5 shrink-0" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  autoFocus
+                  required
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
+                  placeholder="Enter your account password"
+                  className="w-full text-sm text-gray-900 placeholder:text-gray-400 outline-hidden bg-transparent pr-8"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 text-gray-400 hover:text-gray-700 cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading || !password}
+              className="w-full h-12 rounded-xl bg-[#E31E24] hover:bg-[#c9181e] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#E31E24]/20 transition disabled:opacity-50 cursor-pointer"
+            >
+              {isLoading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span>Signing In...</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign In</span>
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </button>
+
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                disabled={isSendingOtp}
+                onClick={handleSwitchToOtp}
+                className="text-xs font-semibold text-[#E31E24] hover:underline cursor-pointer disabled:opacity-50"
+              >
+                {isSendingOtp ? "Dispatching OTP..." : "Sign In with 6-Digit Email OTP instead"}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* STAGE 2B: 6-DIGIT OTP INPUT (If user has no password or chooses OTP) */}
         {stage === "otp" && (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
             <div>
@@ -395,11 +591,26 @@ export function CustomerLoginModal() {
                 </>
               ) : (
                 <>
-                  <span>Verify OTP</span>
+                  <span>Verify OTP & Continue</span>
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
             </button>
+
+            {hasPassword && (
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStage("password_or_otp");
+                    setOtpCode("");
+                  }}
+                  className="text-xs text-gray-600 hover:text-black font-semibold underline cursor-pointer"
+                >
+                  Sign in using account password instead
+                </button>
+              </div>
+            )}
 
             {/* Resend OTP with 60s countdown */}
             <div className="pt-2 flex items-center justify-between text-xs text-gray-500">

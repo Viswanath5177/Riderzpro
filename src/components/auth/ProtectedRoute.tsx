@@ -42,7 +42,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated && !hasLocalSession) {
-    return <Navigate to="/login" search={{ redirect: currentPath }} replace />;
+    return <Navigate to="/" search={{ openLogin: "customer", redirect: currentPath }} replace />;
   }
 
   return <>{children}</>;

@@ -13,6 +13,8 @@ import {
   MessageSquare,
   Settings,
   ChevronUp,
+  CheckCircle2,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "./bits";
@@ -43,7 +45,7 @@ export function DashboardShell({
   onSelect: (id: string) => void;
   children: ReactNode;
   actions?: ReactNode;
-  userProfile?: { name?: string; email?: string; role?: string; avatar?: string };
+  userProfile?: { name?: string; email?: string; role?: string; avatar?: string; isVerified?: boolean; badge?: string };
 }) {
   const navigate = useNavigate();
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
@@ -51,7 +53,7 @@ export function DashboardShell({
 
   async function handleSignOut() {
     await signOut();
-    await navigate({ to: "/login" });
+    await navigate({ to: "/" });
   }
 
   const showMoreButton = sections.length > 5;
@@ -82,19 +84,38 @@ export function DashboardShell({
             <ArrowLeft className="h-3.5 w-3.5" />Back to store
           </Link>
 
-          {/* User Profile Footer Widget */}
+          {/* User Profile Footer Widget - Profile name left below with verified badge */}
           <div className="relative pt-2 border-t border-sidebar-border/40">
             <button
               type="button"
               onClick={() => setShowProfileMenu(!showProfileMenu)}
               className="flex w-full items-center gap-2.5 rounded-xl p-2 text-left hover:bg-muted/80 transition cursor-pointer"
             >
-              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground font-bold text-xs shadow-xs">
-                {(userProfile?.name || title || "S").charAt(0).toUpperCase()}
+              <div className="relative shrink-0">
+                <div className={cn(
+                  "grid h-8 w-8 place-items-center rounded-lg font-bold text-xs shadow-xs",
+                  userProfile?.isVerified ? "bg-emerald-600 text-white" : "bg-primary text-primary-foreground"
+                )}>
+                  {(userProfile?.name || title || "S").charAt(0).toUpperCase()}
+                </div>
+                {userProfile?.isVerified && (
+                  <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-white ring-2 ring-sidebar" title="Verified Marketplace Seller">
+                    <CheckCircle2 className="h-2.5 w-2.5 stroke-[3]" />
+                  </span>
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-bold text-foreground truncate">{userProfile?.name || title}</p>
-                <p className="text-[10px] text-muted-foreground truncate">{userProfile?.email || "Authorized Seller"}</p>
+                {userProfile?.isVerified ? (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 text-[10px] font-bold">
+                      <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400" />
+                      Verified Seller
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-muted-foreground truncate">{userProfile?.email || "Authorized Seller"}</p>
+                )}
               </div>
               <ChevronUp className={cn("h-4 w-4 text-muted-foreground transition-transform shrink-0", showProfileMenu ? "rotate-180" : "")} />
             </button>
@@ -195,12 +216,31 @@ export function DashboardShell({
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
                   className="flex w-full items-center gap-2.5 rounded-xl p-2 text-left hover:bg-muted/80 transition cursor-pointer"
                 >
-                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground font-bold text-xs shadow-xs">
-                    {(userProfile?.name || title || "S").charAt(0).toUpperCase()}
+                  <div className="relative shrink-0">
+                    <div className={cn(
+                      "grid h-8 w-8 place-items-center rounded-lg font-bold text-xs shadow-xs",
+                      userProfile?.isVerified ? "bg-emerald-600 text-white" : "bg-primary text-primary-foreground"
+                    )}>
+                      {(userProfile?.name || title || "S").charAt(0).toUpperCase()}
+                    </div>
+                    {userProfile?.isVerified && (
+                      <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-white ring-2 ring-sidebar" title="Verified Marketplace Seller">
+                        <CheckCircle2 className="h-2.5 w-2.5 stroke-[3]" />
+                      </span>
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-foreground truncate">{userProfile?.name || title}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{userProfile?.email || "Authorized Seller"}</p>
+                    {userProfile?.isVerified ? (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 text-[10px] font-bold">
+                          <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400" />
+                          Verified Seller
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-muted-foreground truncate">{userProfile?.email || "Authorized Seller"}</p>
+                    )}
                   </div>
                   <ChevronUp className={cn("h-4 w-4 text-muted-foreground transition-transform shrink-0", showProfileMenu ? "rotate-180" : "")} />
                 </button>
@@ -262,7 +302,15 @@ export function DashboardShell({
             <Logo className="flex items-center" imgClassName="h-10 sm:h-11 md:h-12 w-auto" />
           </div>
           <div className="hidden md:block min-w-0">
-            <h1 className="font-display text-2xl lg:text-3xl leading-none truncate">{title}</h1>
+            <div className="flex items-center gap-2.5">
+              <h1 className="font-display text-2xl lg:text-3xl leading-none truncate">{title}</h1>
+              {userProfile?.isVerified && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 px-2 py-0.5 text-xs font-bold shrink-0">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  Verified Seller
+                </span>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground mt-0.5 truncate">{subtitle}</p>
           </div>
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5 shrink-0">

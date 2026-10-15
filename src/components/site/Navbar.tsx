@@ -41,9 +41,9 @@ export const STORE_CATEGORIES: NavCategory[] = [
  * Contains no hardcoded or mock default details.
  */
 export function Navbar() {
-  const { cart, userProfile, isLoggedIn, signOut, signIn, setRole } = useStore();
+  const { cart, userProfile, isLoggedIn, signOut, signIn, setRole, role } = useStore();
   const navigate = useNavigate();
-  const { openCustomerLoginModal } = useAuth();
+  const { user, openCustomerLoginModal } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
@@ -206,12 +206,12 @@ export function Navbar() {
                   </div>
                   <div className="py-1 space-y-0.5">
                     <Link
-                      to="/dashboard/customer"
+                      to={user?.role === "seller" || role === "seller" || userProfile?.role === "seller" ? "/dashboard/vendor" : "/dashboard/customer"}
                       onClick={() => setIsAccountMenuOpen(false)}
                       className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition"
                     >
                       <LayoutDashboard className="h-3.5 w-3.5 text-gray-500" />
-                      <span>Customer Dashboard</span>
+                      <span>{user?.role === "seller" || role === "seller" || userProfile?.role === "seller" ? "Vendor Dashboard" : "Customer Dashboard"}</span>
                     </Link>
                     <button
                       onClick={(e) => {

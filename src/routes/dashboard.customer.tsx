@@ -22,11 +22,11 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 export const Route = createFileRoute("/dashboard/customer")({
   beforeLoad: async () => {
     const role = await getCurrentRole();
-    if (!role) throw redirect({ to: "/login", search: { redirect: "/dashboard/customer" } });
-    if (role === "PRODUCT_ADMIN") throw redirect({ to: "/admin/products" });
-    if (role === "SELLER_ADMIN") throw redirect({ to: "/admin/sellers" });
+    if (!role) throw redirect({ to: "/", search: { openLogin: "customer", redirect: "/dashboard/customer" } });
+    if (role === "SUPER_ADMIN" || role === "admin") throw redirect({ to: "/superadmin" });
+    if (role === "PRODUCT_ADMIN" || role === "SELLER_ADMIN") throw redirect({ to: "/admin" });
     if (role === "seller") throw redirect({ to: "/dashboard/vendor" });
-    if (role !== "customer") throw redirect({ to: "/dashboard/admin" });
+    if (role !== "customer") throw redirect({ to: "/superadmin" });
   },
   head: () => ({
     meta: [
@@ -102,7 +102,7 @@ function CustomerDashboard() {
         {tab === "service" && (
           <ServiceTab onOpenBookingModal={() => setIsBookingOpen(true)} />
         )}
-        {tab === "addresses" && <SettingsTab />}
+        {tab === "addresses" && <AddressesTab />}
         {tab === "offers" && <OffersTab />}
         {tab === "invoices" && <InvoicesTab />}
         {tab === "notifications" && <NotificationsTab />}

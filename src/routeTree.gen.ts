@@ -21,6 +21,7 @@ import { Route as OffersRouteImport } from './routes/offers'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SuperadminRouteImport } from './routes/superadmin'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAiAssistantRouteImport } from './routes/admin.ai-assistant'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
@@ -108,6 +109,11 @@ const ShopRoute = ShopRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuperadminRoute = SuperadminRouteImport.update({
+  id: '/superadmin',
+  path: '/superadmin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -264,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
+  '/superadmin': typeof SuperadminRoute
   '/admin/ai-assistant': typeof AdminAiAssistantRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/customers': typeof AdminCustomersRoute
@@ -305,6 +312,7 @@ export interface FileRoutesByTo {
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
+  '/superadmin': typeof SuperadminRoute
   '/admin/ai-assistant': typeof AdminAiAssistantRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/customers': typeof AdminCustomersRoute
@@ -348,6 +356,7 @@ export interface FileRoutesById {
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
+  '/superadmin': typeof SuperadminRoute
   '/admin/ai-assistant': typeof AdminAiAssistantRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/customers': typeof AdminCustomersRoute
@@ -392,6 +401,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/shop'
     | '/signup'
+    | '/superadmin'
     | '/admin/ai-assistant'
     | '/admin/analytics'
     | '/admin/customers'
@@ -433,6 +443,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/shop'
     | '/signup'
+    | '/superadmin'
     | '/admin/ai-assistant'
     | '/admin/analytics'
     | '/admin/customers'
@@ -475,6 +486,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/shop'
     | '/signup'
+    | '/superadmin'
     | '/admin/ai-assistant'
     | '/admin/analytics'
     | '/admin/customers'
@@ -518,6 +530,7 @@ export interface RootRouteChildren {
   OrdersRoute: typeof OrdersRoute
   ShopRoute: typeof ShopRoute
   SignupRoute: typeof SignupRoute
+  SuperadminRoute: typeof SuperadminRoute
   DashboardAdminRoute: typeof DashboardAdminRoute
   DashboardCustomerRoute: typeof DashboardCustomerRoute
   DashboardRiderRoute: typeof DashboardRiderRoute
@@ -615,6 +628,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/superadmin': {
+      id: '/superadmin'
+      path: '/superadmin'
+      fullPath: '/superadmin'
+      preLoaderRoute: typeof SuperadminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -871,6 +891,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrdersRoute: OrdersRoute,
   ShopRoute: ShopRoute,
   SignupRoute: SignupRoute,
+  SuperadminRoute: SuperadminRoute,
   DashboardAdminRoute: DashboardAdminRoute,
   DashboardCustomerRoute: DashboardCustomerRoute,
   DashboardRiderRoute: DashboardRiderRoute,

@@ -16,7 +16,7 @@ export function BookingModal({ isOpen, onClose }: BookingModalProps) {
   const [serviceType, setServiceType] = useState("24-Point EV Health & BMS Diagnostic");
   const [slot, setSlot] = useState("Tomorrow, 10:30 AM");
   const [locationType, setLocationType] = useState<"doorstep" | "workshop">("doorstep");
-  const [address, setAddress] = useState(userProfile.address || "Bellandur, Bengaluru");
+  const [address, setAddress] = useState(userProfile.address || "");
   const [notes, setNotes] = useState("");
 
   if (!isOpen) return null;
@@ -39,15 +39,33 @@ export function BookingModal({ isOpen, onClose }: BookingModalProps) {
   ];
 
   const handleConfirm = () => {
+    const loc = locationType === "doorstep" ? `Doorstep (${address.slice(0, 24)}...)` : "VoltHub Workshop, Indiranagar";
+    
+    // 1. Save to database
+    fetch("/api/service-bookings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        vehicle_id: bikeId,
+        service_type: serviceType,
+        scheduled_slot: slot,
+        address: loc,
+        total_amount: currentService.price,
+        status: "Confirmed",
+      }),
+    }).catch((err) => console.log("DB booking notice:", err));
+
+    // 2. Save to store
     bookService({
       bikeId,
       serviceType,
       slot,
-      location: locationType === "doorstep" ? `Doorstep (${address.slice(0, 24)}...)` : "VoltHub Workshop, Indiranagar",
+      location: loc,
       status: "Confirmed",
       technician: "Assigned EV Specialist",
       cost: currentService.price,
     });
+
     toast.success("Service technician booked!", {
       description: `${serviceType} scheduled for ${slot}.`,
     });

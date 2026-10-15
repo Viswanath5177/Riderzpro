@@ -52,9 +52,33 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const raw = localStorage.getItem(ADMIN_SESSION_KEY);
       if (raw) {
-        const session = JSON.parse(raw) as AdminSession;
-        if (session.role === "admin" && session.token) {
-          setAdminUser(session.user);
+        const parsed = JSON.parse(raw);
+        if (parsed.user && parsed.user.email) {
+          setAdminUser(parsed.user);
+        } else if (parsed.email && (parsed.role?.includes("ADMIN") || parsed.role === "admin")) {
+          const userObj: AdminUser = {
+            id: parsed.id || "adm_session",
+            name: parsed.fullName || parsed.name || "Administrator",
+            email: parsed.email,
+            role: "admin",
+            roleTitle:
+              parsed.role === "SUPER_ADMIN"
+                ? "Super Administrator"
+                : parsed.role === "PRODUCT_ADMIN"
+                ? "Product Administrator"
+                : parsed.role === "SELLER_ADMIN"
+                ? "Seller Administrator"
+                : "Operations Admin",
+            department:
+              parsed.role === "SUPER_ADMIN"
+                ? "Executive Platform Oversight"
+                : parsed.role === "PRODUCT_ADMIN"
+                ? "Product Catalog Moderation"
+                : parsed.role === "SELLER_ADMIN"
+                ? "Seller Compliance & KYC"
+                : "Operations & Governance",
+          };
+          setAdminUser(userObj);
         }
       }
     } catch (e) {
@@ -189,7 +213,7 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" search={{ redirect: location.pathname }} replace />;
+    return <Navigate to="/vendor/login" search={{ redirect: location.pathname }} replace />;
   }
 
   return <>{children}</>;

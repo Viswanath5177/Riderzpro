@@ -28,6 +28,24 @@ export function AddBikeModal({ isOpen, onClose }: AddBikeModalProps) {
     if (!r.ok || !r.bike) {
       return toast.error(r.error || "Invalid VIN");
     }
+
+    // 1. Save to backend database
+    fetch("/api/garage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        vehicle_id: r.bike.id,
+        make: r.bike.make,
+        model: r.bike.model,
+        year: r.year || 2024,
+        vin: vin.toUpperCase(),
+        vehicle_type: "bike",
+        voltage: r.bike.voltage || 60,
+        battery_kwh: r.bike.batteryKwh || 3.7,
+      }),
+    }).catch((err) => console.log("DB garage notice:", err));
+
+    // 2. Save to store
     addBike({
       bikeId: r.bike.id,
       year: r.year,
@@ -43,6 +61,22 @@ export function AddBikeModal({ isOpen, onClose }: AddBikeModalProps) {
   };
 
   const handleManualAdd = () => {
+    // 1. Save to backend database
+    fetch("/api/garage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        vehicle_id: bikeId,
+        make: sel.make,
+        model: sel.model,
+        year: year || 2024,
+        vehicle_type: "bike",
+        voltage: sel.voltage || 60,
+        battery_kwh: sel.batteryKwh || 3.7,
+      }),
+    }).catch((err) => console.log("DB garage notice:", err));
+
+    // 2. Save to store
     addBike({
       bikeId,
       year,

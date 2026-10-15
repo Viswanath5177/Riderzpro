@@ -92,16 +92,54 @@ function VendorLoginRouteComponent() {
 
       // If administrator, store admin session
       if (data.role && data.role !== "customer" && data.role !== "seller") {
-        localStorage.setItem("riderzpro_admin_session", JSON.stringify({ ...userObj, role: data.role }));
+        const adminSession = {
+          token: "session_active",
+          role: "admin",
+          user: {
+            id: userObj.id,
+            name: userObj.fullName || userObj.storeName || "Administrator",
+            email: userObj.email,
+            role: "admin",
+            roleTitle:
+              data.role === "SUPER_ADMIN"
+                ? "Super Administrator"
+                : data.role === "PRODUCT_ADMIN"
+                ? "Product Administrator"
+                : data.role === "SELLER_ADMIN"
+                ? "Seller Administrator"
+                : "Operations Admin",
+            department:
+              data.role === "SUPER_ADMIN"
+                ? "Executive Platform Oversight"
+                : data.role === "PRODUCT_ADMIN"
+                ? "Product Catalog Moderation"
+                : data.role === "SELLER_ADMIN"
+                ? "Seller Verification & KYC"
+                : "Operations & Governance",
+          },
+          loginTime: Date.now(),
+        };
+        localStorage.setItem("riderzpro_admin_session", JSON.stringify(adminSession));
+      } else {
+        localStorage.removeItem("riderzpro_admin_session");
       }
+
+      try {
+        const rawStore = localStorage.getItem("riderzpro-v7");
+        if (rawStore) {
+          const parsed = JSON.parse(rawStore);
+          parsed.role = data.role === "seller" ? "seller" : "admin";
+          localStorage.setItem("riderzpro-v7", JSON.stringify(parsed));
+        }
+      } catch {}
 
       toast.success(`Welcome back, ${sessionUser.name}!`);
 
       // Determine authoritative destination based on backend response
       const destination = data.redirectUrl || (
         data.role === "seller" ? "/dashboard/vendor" :
-        data.role === "PRODUCT_ADMIN" ? "/admin/products" :
-        data.role === "SELLER_ADMIN" ? "/admin/sellers" :
+        data.role === "SUPER_ADMIN" ? "/superadmin" :
+        data.role === "PRODUCT_ADMIN" || data.role === "SELLER_ADMIN" ? "/admin" :
         "/admin"
       );
 
@@ -207,9 +245,21 @@ function VendorLoginRouteComponent() {
 
               {/* Error feedback banner */}
               {errorMessage && (
-                <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-start gap-2.5 animate-in fade-in duration-150">
-                  <AlertCircle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
-                  <div className="flex-1">{errorMessage}</div>
+                <div className="mb-4 p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 flex items-start gap-2.5 animate-in fade-in duration-150">
+                  <AlertCircle className="h-4.5 w-4.5 shrink-0 text-red-600 mt-0.5" />
+                  <div className="flex-1 space-y-1">
+                    <p className="font-semibold">{errorMessage}</p>
+                    {(errorMessage.toLowerCase().includes("vendor account") || errorMessage.toLowerCase().includes("create a vendor")) && (
+                      <div className="pt-0.5">
+                        <Link
+                          to="/vendor/sign-up"
+                          className="inline-flex items-center gap-1 font-bold text-[#E31E24] hover:underline"
+                        >
+                          Create a Vendor Account →
+                        </Link>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

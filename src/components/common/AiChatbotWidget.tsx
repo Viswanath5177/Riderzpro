@@ -51,8 +51,8 @@ export function AiChatbotWidget() {
     {
       id: "m-1",
       sender: "ai",
-      text: `Hello ${userProfile.name ? userProfile.name.split(" ")[0] : "Aakash"}! 👋 I'm your RiderzPro AI Fitment & Support Copilot.\n\nI can verify parts compatibility for your ${
-        activeBike?.nickname || "Ather 450X"
+      text: `Hello ${userProfile.name ? userProfile.name.split(" ")[0] : "User"}! 👋 I'm your RiderzPro AI Fitment & Support Copilot.\n\nI can verify parts compatibility for your ${
+        activeBike?.nickname || "EV"
       }, track real-time courier dispatches, or recommend certified fast chargers. How can I help you today?`,
       time: "Just now",
     },

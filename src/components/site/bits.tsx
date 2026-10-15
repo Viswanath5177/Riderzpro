@@ -94,7 +94,8 @@ export function ProductCard({ p }: { p: Product }) {
   const deliveryEta = vendorDist !== null ? etaMinutes(vendorDist, vendor.prepMins) : null;
 
   const currentStock = inventoryStock?.[p.id] ?? offer?.stock ?? p.offers?.[0]?.stock ?? 0;
-  const isLowStock = currentStock < 5;
+  const isLowStock = currentStock <= 5 && currentStock > 0;
+  const isOutOfStock = currentStock === 0;
 
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-2xs transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-gray-300">
@@ -128,7 +129,12 @@ export function ProductCard({ p }: { p: Product }) {
           )}
           {isLowStock && (
             <span className="rounded-md bg-amber-600 text-white px-2 py-0.5 text-[10px] font-bold shadow-xs">
-              Hurry limited Stock
+              Hurry! Limited stock
+            </span>
+          )}
+          {isOutOfStock && (
+            <span className="rounded-md bg-rose-600 text-white px-2 py-0.5 text-[10px] font-bold shadow-xs">
+              Out of Stock
             </span>
           )}
           {activeBikeId && (
@@ -186,10 +192,13 @@ export function ProductCard({ p }: { p: Product }) {
           {isLowStock ? (
             <>
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
-              <span className="text-amber-700 font-bold truncate">Hurry limited Stock</span>
-              {currentStock > 0 && (
-                <span className="text-amber-600 font-semibold shrink-0">({currentStock})</span>
-              )}
+              <span className="text-amber-700 font-bold truncate">Hurry! Limited stock</span>
+              <span className="text-amber-600 font-semibold shrink-0">({currentStock})</span>
+            </>
+          ) : isOutOfStock ? (
+            <>
+              <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
+              <span className="text-rose-700 font-bold truncate">Out of Stock</span>
             </>
           ) : (
             <>
@@ -232,17 +241,26 @@ export function ProductCard({ p }: { p: Product }) {
           </div>
 
           <button
+            disabled={isOutOfStock}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              if (isOutOfStock) {
+                toast.error("This item is currently out of stock.");
+                return;
+              }
               addToCart(p.id, offer.vendorId);
               toast.success(`Added ${p.name} to cart`);
             }}
             aria-label={`Add ${p.name} to cart`}
-            className="flex items-center gap-1 sm:gap-1.5 rounded-lg bg-[#E31E24] px-2 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-white transition hover:bg-red-700 active:scale-95 shadow-2xs cursor-pointer shrink-0"
+            className={`flex items-center gap-1 sm:gap-1.5 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-white transition shadow-2xs shrink-0 ${
+              isOutOfStock
+                ? "bg-gray-400 cursor-not-allowed opacity-60"
+                : "bg-[#E31E24] hover:bg-red-700 active:scale-95 cursor-pointer"
+            }`}
           >
             <ShoppingCart className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
-            <span>Add</span>
+            <span>{isOutOfStock ? "Sold Out" : "Add"}</span>
           </button>
         </div>
 
@@ -251,13 +269,11 @@ export function ProductCard({ p }: { p: Product }) {
           <div className="mt-2.5 sm:mt-3 -mx-2.5 -mb-2.5 sm:-mx-4 sm:-mb-4 bg-amber-50 border-t border-amber-200/90 px-2.5 sm:px-3.5 py-1 sm:py-1.5 flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-amber-800">
             <span className="flex items-center gap-1 sm:gap-1.5 truncate">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping shrink-0" />
-              <span className="tracking-tight truncate">Limited Stock</span>
+              <span className="tracking-tight truncate">Hurry! Limited stock</span>
             </span>
-            {currentStock > 0 && (
-              <span className="text-[9.5px] sm:text-[10px] font-bold text-amber-700 bg-amber-200/70 px-1.5 py-0.5 rounded shrink-0">
-                {currentStock} left
-              </span>
-            )}
+            <span className="text-[9.5px] sm:text-[10px] font-bold text-amber-700 bg-amber-200/70 px-1.5 py-0.5 rounded shrink-0">
+              {currentStock} left
+            </span>
           </div>
         )}
       </div>

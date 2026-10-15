@@ -41,14 +41,15 @@ export const ADMIN_NAV_GROUPS: NavGroup[] = [
   {
     title: "Core Operations",
     items: [
-      { title: "Dashboard", to: "/admin", icon: <LayoutDashboard className="h-4 w-4" /> },
+      { title: "Operations Console", to: "/admin", icon: <LayoutDashboard className="h-4 w-4" /> },
       { title: "Sellers & KYC", to: "/admin/sellers", icon: <Store className="h-4 w-4" /> },
+      { title: "Product Approvals", to: "/admin/products", icon: <ShieldCheck className="h-4 w-4" /> },
     ],
   },
   {
     title: "Performance & Growth",
     items: [
-      { title: "Analytics & Top Sellers", to: "/admin/analytics", icon: <BarChart3 className="h-4 w-4" /> },
+      { title: "Analytics & Metrics", to: "/admin/analytics", icon: <BarChart3 className="h-4 w-4" /> },
     ],
   },
   {
@@ -93,81 +94,75 @@ export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: Adm
       .catch(() => {});
   }, [pathname]);
 
+  const isSuperAdmin =
+    adminUser?.role === ("SUPER_ADMIN" as any) ||
+    adminUser?.roleTitle?.toLowerCase().includes("super") ||
+    adminUser?.email === "admin@riderzpro.com" ||
+    pathname.startsWith("/superadmin");
+
   const navGroups = React.useMemo(() => {
-    const isProductAdmin =
-      adminUser?.roleTitle?.includes("Product") ||
-      adminUser?.department?.includes("Product") ||
-      adminUser?.email?.includes("product") ||
-      adminUser?.role === ("PRODUCT_ADMIN" as any);
+    const groups: NavGroup[] = [];
 
-    if (isProductAdmin) {
-      return [
-        {
-          title: "Product Operations",
-          items: [
-            {
-              title: "Sellers List",
-              to: "/admin/sellers",
-              icon: <Store className="h-4 w-4" />,
-            },
-            {
-              title: "Approval",
-              to: "/admin/products",
-              icon: <ShieldCheck className="h-4 w-4" />,
-              badge: pendingProductsCount > 0 ? String(pendingProductsCount) : undefined,
-            },
-          ],
-        },
-        {
-          title: "Performance & Growth",
-          items: [
-            {
-              title: "Analytics & Top Products",
-              to: "/admin/analytics",
-              icon: <BarChart3 className="h-4 w-4" />,
-            },
-          ],
-        },
-        {
-          title: "Platform Administration",
-          items: [
-            {
-              title: "Settings",
-              to: "/admin/settings",
-              icon: <Settings className="h-4 w-4" />,
-            },
-          ],
-        },
-      ];
-    }
-
-    return [
-      {
-        title: "Core Operations",
+    if (isSuperAdmin) {
+      groups.push({
+        title: "Executive Platform",
         items: [
-          { title: "Dashboard", to: "/admin", icon: <LayoutDashboard className="h-4 w-4" /> },
           {
-            title: "Sellers & KYC",
-            to: "/admin/sellers",
-            icon: <Store className="h-4 w-4" />,
-            badge: pendingKycCount > 0 ? String(pendingKycCount) : undefined,
+            title: "Super Admin Console",
+            to: "/superadmin",
+            icon: <ShieldAlert className="h-4 w-4 text-[#E31E24]" />,
           },
         ],
-      },
-      {
-        title: "Performance & Growth",
-        items: [
-          { title: "Analytics & Top Sellers", to: "/admin/analytics", icon: <BarChart3 className="h-4 w-4" /> },
-        ],
-      },
-      {
-        title: "Platform Administration",
-        items: [
-          { title: "Settings", to: "/admin/settings", icon: <Settings className="h-4 w-4" /> },
-        ],
-      },
-    ];
-  }, [adminUser, pendingKycCount, pendingProductsCount]);
+      });
+    }
+
+    groups.push({
+      title: "Core Operations",
+      items: [
+        {
+          title: "Operations Console",
+          to: "/admin",
+          icon: <LayoutDashboard className="h-4 w-4" />,
+        },
+        {
+          title: "Sellers & KYC",
+          to: "/admin/sellers",
+          icon: <Store className="h-4 w-4" />,
+          badge: pendingKycCount > 0 ? String(pendingKycCount) : undefined,
+        },
+        {
+          title: "Product Approvals",
+          to: "/admin/products",
+          icon: <ShieldCheck className="h-4 w-4" />,
+          badge: pendingProductsCount > 0 ? String(pendingProductsCount) : undefined,
+        },
+      ],
+    });
+
+    groups.push({
+      title: "Performance & Growth",
+      items: [
+        {
+          title: "Analytics & Metrics",
+          to: "/admin/analytics",
+          icon: <BarChart3 className="h-4 w-4" />,
+        },
+      ],
+    });
+
+    groups.push({
+      title: "Platform Administration",
+      items: [
+        {
+          title: "Settings",
+          to: "/admin/settings",
+          icon: <Settings className="h-4 w-4" />,
+        },
+      ],
+    });
+
+    return groups;
+  }, [isSuperAdmin, pendingKycCount, pendingProductsCount]);
 
   return (
     <aside
@@ -183,12 +178,12 @@ export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: Adm
             <div className="flex items-center gap-2">
               <Logo className="flex items-center" imgClassName="h-10 sm:h-11 w-auto" />
               <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[9px] font-extrabold uppercase text-[#E31E24] border border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30">
-                ADMIN
+                {pathname.startsWith("/superadmin") ? "SUPER ADMIN" : "OPERATIONS"}
               </span>
             </div>
           ) : (
             <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-2xl bg-[#E31E24] font-display font-extrabold text-white text-base shadow-sm">
-              R
+              {pathname.startsWith("/superadmin") ? "SA" : "OP"}
             </div>
           )}
 
@@ -268,11 +263,13 @@ export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: Adm
           <div className="flex items-center justify-between rounded-2xl bg-gray-50 p-2.5 border border-[#E5E7EB] dark:bg-white/[0.04] dark:border-white/10">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#E31E24] font-bold text-white text-xs shadow-sm">
-                VM
+                {adminUser?.name ? adminUser.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() : "OP"}
               </div>
               <div className="min-w-0">
-                <p className="truncate text-xs font-bold text-[#111111] dark:text-white">{adminUser?.name || "Vikram Malhotra"}</p>
-                <p className="truncate text-[10px] text-[#6B7280] dark:text-zinc-400">{adminUser?.roleTitle || "Super Admin"}</p>
+                <p className="truncate text-xs font-bold text-[#111111] dark:text-white">{adminUser?.name || "Operations Admin"}</p>
+                <p className="truncate text-[10px] text-[#6B7280] dark:text-zinc-400">
+                  {pathname.startsWith("/superadmin") ? "Super Administrator" : adminUser?.roleTitle || "Operations Administrator"}
+                </p>
               </div>
             </div>
 
