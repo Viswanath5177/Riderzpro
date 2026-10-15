@@ -341,7 +341,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
         description: fullDescription,
         offers: [
           {
-            vendorId: sellerId || "v1",
+            vendorId: sellerId || "",
             price: numSellingPrice,
             stock: typeof stock === "number" ? stock : 0,
           },

@@ -40,7 +40,7 @@ export function ProductsScreen() {
   const [title, setTitle] = useState("");
   const [sku, setSku] = useState("");
   const [category, setCategory] = useState<AdminProduct["category"]>("Batteries");
-  const [sellerId, setSellerId] = useState(sellers[0]?.id || "seller_01");
+  const [sellerId, setSellerId] = useState(sellers[0]?.id || "");
   const [price, setPrice] = useState(2500);
   const [discountPrice, setDiscountPrice] = useState(1999);
   const [stock, setStock] = useState(20);
@@ -97,7 +97,7 @@ export function ProductsScreen() {
               title: row.name,
               sku: row.sku || `RZP-${row.id.slice(0, 6).toUpperCase()}`,
               category: (row.category_name || "Accessories") as any,
-              sellerId: row.seller_id || "seller_01",
+              sellerId: row.seller_id || sellers[0]?.id || "",
               sellerName: row.seller_name || row.store_name || "Riderzpro Vendor",
               price: Number(row.mrp) || Number(row.price),
               discountPrice: Number(row.price),
