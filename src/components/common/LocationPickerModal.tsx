@@ -8,22 +8,18 @@ import {
   Building,
   Home,
   Wrench,
-  Sparkles,
   ArrowRight,
   ShieldCheck,
-  Zap,
   Plus,
   Loader2,
+  Trash2,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
-import {
-  POPULAR_LOCATIONS,
-  vendors,
-  distanceKm,
-  type LocationArea,
-} from "@/lib/data";
+import type { LocationArea } from "@/lib/data";
 import { reverseGeocodeCoords } from "@/lib/location";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +33,9 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
   const { userProfile, userLocation, setUserLocation } = useStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [isDetectingGps, setIsDetectingGps] = useState(false);
+  const [detectedGpsLocation, setDetectedGpsLocation] = useState<LocationArea | null>(null);
+  const [gpsError, setGpsError] = useState<string | null>(null);
+
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
   const [isAddingAddress, setIsAddingAddress] = useState(false);
@@ -50,12 +49,11 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
     streetLocality: "",
     city: "Bengaluru",
     state: "Karnataka",
-    pincode: "560001",
+    pincode: "",
   });
 
   // Fetch customer-specific saved addresses from database
-  useEffect(() => {
-    if (!isOpen) return;
+  const loadAddresses = () => {
     setIsLoadingAddresses(true);
     const qCustId = user?.id || "";
     const qEmail = user?.email || userProfile?.email || "";
@@ -67,41 +65,32 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
       .then((d) => {
         if (d.success && Array.isArray(d.data)) {
           setSavedAddresses(d.data);
+        } else {
+          setSavedAddresses([]);
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        setSavedAddresses([]);
+      })
       .finally(() => setIsLoadingAddresses(false));
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadAddresses();
+      setDetectedGpsLocation(null);
+      setGpsError(null);
+    }
   }, [isOpen, user?.id, user?.email, userProfile?.email]);
 
-  // Filter locations by search query
-  const filteredLocations = useMemo(() => {
-    if (!searchQuery.trim()) return POPULAR_LOCATIONS;
-    const q = searchQuery.toLowerCase().trim();
-    return POPULAR_LOCATIONS.filter(
-      (l) =>
-        l.name.toLowerCase().includes(q) ||
-        l.city.toLowerCase().includes(q) ||
-        (l.pincode && l.pincode.includes(q)) ||
-        (l.tag && l.tag.toLowerCase().includes(q))
-    );
-  }, [searchQuery]);
-
   if (!isOpen) return null;
-
-  const handleSelect = (loc: LocationArea) => {
-    setUserLocation(loc);
-    toast.success(`Delivery location updated to ${loc.name}`, {
-      description: "Nearby stores, delivery times and fees have been adjusted for this area.",
-    });
-    onClose();
-  };
 
   const handleSelectSavedAddress = (addr: any) => {
     const loc: LocationArea = {
       id: addr.id,
       name: `${addr.label || "Saved"}: ${addr.street_address || addr.city}`,
       city: addr.city || "Bengaluru",
-      pincode: addr.pincode || "560001",
+      pincode: addr.pincode || "",
       lat: 12.9716,
       lng: 77.5946,
       tag: addr.label || "Saved Address",
@@ -111,10 +100,29 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
     onClose();
   };
 
+  const handleDeleteAddress = async (e: React.MouseEvent, addrId: string) => {
+    e.stopPropagation();
+    try {
+      const res = await fetch(`/api/customer/addresses?id=${encodeURIComponent(addrId)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSavedAddresses((prev) => prev.filter((a) => a.id !== addrId));
+        toast.success("Address removed");
+      } else {
+        toast.error(data.error || "Failed to delete address");
+      }
+    } catch {
+      toast.error("Failed to delete address");
+    }
+  };
+
   const handleSaveNewAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAddr.streetLocality.trim() || !newAddr.pincode.trim()) {
-      toast.error("Please enter street address and pincode.");
+      toast.error("Please enter street address and PIN code.");
       return;
     }
 
@@ -140,7 +148,7 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
       });
       const data = await res.json();
       if (data.success && data.data) {
-        setSavedAddresses((prev) => [data.data, ...prev]);
+        setSavedAddresses((prev) => [data.data, ...prev.filter((a) => a.id !== data.data.id)]);
         handleSelectSavedAddress(data.data);
         setIsAddingAddress(false);
         setNewAddr({
@@ -151,7 +159,7 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
           streetLocality: "",
           city: "Bengaluru",
           state: "Karnataka",
-          pincode: "560001",
+          pincode: "",
         });
       } else {
         toast.error(data.error || "Failed to save address");
@@ -165,69 +173,62 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
 
   const handleDetectGps = () => {
     setIsDetectingGps(true);
-    if ("geolocation" in navigator) {
+    setGpsError(null);
+    setDetectedGpsLocation(null);
+
+    if (typeof window !== "undefined" && "geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
-          let closest = POPULAR_LOCATIONS[0];
-          let minDistance = Infinity;
-          POPULAR_LOCATIONS.forEach((loc) => {
-            const d = distanceKm({ lat: latitude, lng: longitude }, loc);
-            if (d < minDistance) {
-              minDistance = d;
-              closest = loc;
-            }
-          });
 
-          let geocoded;
           try {
-            geocoded = await reverseGeocodeCoords(latitude, longitude);
-          } catch {
-            geocoded = { name: closest.name, city: closest.city, pincode: closest.pincode };
+            const geocoded = await reverseGeocodeCoords(latitude, longitude);
+            setIsDetectingGps(false);
+
+            const detectedLoc: LocationArea = {
+              id: `gps-${Date.now()}`,
+              name: geocoded.name || geocoded.city || "Current Location",
+              city: geocoded.city || "India",
+              lat: latitude,
+              lng: longitude,
+              pincode: geocoded.pincode || "",
+              tag: `GPS: ${geocoded.city || "Current Location"}`,
+            };
+
+            setDetectedGpsLocation(detectedLoc);
+          } catch (err: any) {
+            setIsDetectingGps(false);
+            setGpsError("Unable to reverse geocode device location. Please search manually.");
           }
+        },
+        (error) => {
           setIsDetectingGps(false);
-
-          const isNearbyHub = minDistance <= 30;
-          const detectedLoc: LocationArea = {
-            id: `gps-${Date.now()}`,
-            name: isNearbyHub ? (geocoded.name || closest.name) : (geocoded.name || geocoded.city || "Current Location"),
-            city: isNearbyHub ? closest.city : (geocoded.city || "India"),
-            lat: latitude,
-            lng: longitude,
-            pincode: geocoded.pincode || (isNearbyHub ? closest.pincode : ""),
-            tag: isNearbyHub ? "GPS Device Location" : `GPS: ${geocoded.city || "Current Location"}`,
-          };
-
-          setUserLocation(detectedLoc);
-          if (isNearbyHub) {
-            toast.success(`GPS detected: ${detectedLoc.name}`, {
-              description: `Found nearby auto stores within ${Math.round(minDistance * 10) / 10} km.`,
-            });
+          if (error.code === error.PERMISSION_DENIED) {
+            setGpsError("Location permission denied. Please allow location access or search your address manually.");
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            setGpsError("GPS position unavailable from your device. Please search your address manually.");
           } else {
-            toast.success(`GPS detected: ${detectedLoc.name}, ${detectedLoc.city}`, {
-              description: `Doorstep courier shipping and verified auto parts available to ${detectedLoc.city}.`,
-            });
+            setGpsError("Location detection timed out. Please search your address manually.");
           }
-          onClose();
         },
-        () => {
-          setIsDetectingGps(false);
-          const fallback = POPULAR_LOCATIONS[0];
-          setUserLocation(fallback);
-          toast.info(`Using standard location: ${fallback.name}`, {
-            description: "Location permission not granted. Set to Indiranagar default hub.",
-          });
-          onClose();
-        },
-        { enableHighAccuracy: true, timeout: 8000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
       );
     } else {
       setIsDetectingGps(false);
-      toast.error("Geolocation is not supported by your browser");
+      setGpsError("Geolocation is not supported by your browser. Please search manually.");
     }
   };
 
-  const handleCustomLocation = () => {
+  const handleConfirmGpsLocation = () => {
+    if (!detectedGpsLocation) return;
+    setUserLocation(detectedGpsLocation);
+    toast.success(`Delivery location updated to ${detectedGpsLocation.name}, ${detectedGpsLocation.city}`, {
+      description: "Browsing catalog and shipping estimates have been adjusted for this location.",
+    });
+    onClose();
+  };
+
+  const handleConfirmCustomSearch = () => {
     if (!searchQuery.trim()) return;
     const trimmed = searchQuery.trim();
     const parts = trimmed.split(",").map((p) => p.trim());
@@ -240,12 +241,30 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
       pincode: "",
       tag: "Custom Pin",
     };
-    handleSelect(customLoc);
+    setUserLocation(customLoc);
+    toast.success(`Delivery location set to ${customLoc.name}`, {
+      description: "Browsing catalog and shipping estimates adjusted.",
+    });
+    onClose();
   };
+
+  // Filtered saved addresses when searching
+  const filteredSavedAddresses = useMemo(() => {
+    if (!searchQuery.trim()) return savedAddresses;
+    const q = searchQuery.toLowerCase().trim();
+    return savedAddresses.filter(
+      (a) =>
+        (a.label && a.label.toLowerCase().includes(q)) ||
+        (a.street_address && a.street_address.toLowerCase().includes(q)) ||
+        (a.city && a.city.toLowerCase().includes(q)) ||
+        (a.pincode && a.pincode.includes(q)) ||
+        (a.recipient_name && a.recipient_name.toLowerCase().includes(q))
+    );
+  }, [searchQuery, savedAddresses]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-2xl max-h-[92vh] bg-white rounded-3xl shadow-2xl border border-gray-100 flex flex-col overflow-hidden">
+      <div className="w-full max-w-xl max-h-[88vh] bg-white rounded-3xl shadow-2xl border border-gray-100 flex flex-col overflow-hidden">
         {/* Modal Header */}
         <div className="p-5 sm:p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
           <div className="flex items-center gap-3">
@@ -253,18 +272,13 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
               <MapPin className="h-5 w-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg sm:text-xl font-extrabold text-[#111111] font-display">
-                  Select Delivery Location
-                </h3>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 flex items-center gap-1">
-                  <Zap className="h-3 w-3 fill-emerald-600 text-emerald-600" />
-                  Hyperlocal
-                </span>
-              </div>
+              <h3 className="text-lg sm:text-xl font-extrabold text-[#111111] font-display">
+                Select Delivery Location
+              </h3>
               <p className="text-xs text-[#6B7280] mt-0.5">
                 Currently delivering to:{" "}
                 <span className="font-bold text-[#111111]">{userLocation?.name || "Select location"}</span>
+                {userLocation?.city ? ` (${userLocation.city})` : ""}
               </p>
             </div>
           </div>
@@ -277,7 +291,7 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
           </button>
         </div>
 
-        {/* Search Input Bar & GPS button */}
+        {/* Search Input Bar & GPS Action */}
         <div className="p-4 sm:p-5 border-b border-gray-100 bg-white space-y-3">
           <div className="relative flex items-center bg-gray-50 rounded-2xl border border-gray-200 px-4 py-3 focus-within:bg-white focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-[#E31E24]/20 transition shadow-xs">
             <Search className="h-4.5 w-4.5 text-gray-400 shrink-0 mr-3" />
@@ -286,11 +300,11 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && filteredLocations.length === 0 && searchQuery.trim()) {
-                  handleCustomLocation();
+                if (e.key === "Enter" && searchQuery.trim()) {
+                  handleConfirmCustomSearch();
                 }
               }}
-              placeholder="Search area, landmark, street name, or pincode..."
+              placeholder="Search area, landmark, street name, or PIN code..."
               className="w-full bg-transparent text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 outline-none"
               autoFocus
             />
@@ -307,9 +321,10 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
 
           {/* Detect Live GPS Location Button */}
           <button
+            type="button"
             onClick={handleDetectGps}
             disabled={isDetectingGps}
-            className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-red-50/70 hover:bg-red-50 text-[#E31E24] border border-red-100/90 hover:border-red-200 transition cursor-pointer group active:scale-[0.99]"
+            className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-red-50/70 hover:bg-red-50 text-[#E31E24] border border-red-100/90 hover:border-red-200 transition cursor-pointer group active:scale-[0.99] disabled:opacity-60"
           >
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-xl bg-[#E31E24] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition shrink-0">
@@ -319,180 +334,263 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
               </div>
               <div className="text-left">
                 <p className="text-xs sm:text-sm font-bold text-[#E31E24] flex items-center gap-1.5">
-                  <span>{isDetectingGps ? "Detecting device coordinates..." : "Use Current Location"}</span>
+                  <span>{isDetectingGps ? "Detecting actual device coordinates..." : "Use Current Location"}</span>
                   <span className="text-[10px] font-semibold bg-white/80 px-1.5 py-0.5 rounded text-red-700 border border-red-200">
                     GPS
                   </span>
                 </p>
                 <p className="text-[11px] text-red-600/80">
-                  Using device GPS to find auto parts stores nearest to you
+                  Request device coordinates and reverse-geocode your real locality
                 </p>
               </div>
             </div>
             <ArrowRight className="h-4 w-4 text-[#E31E24] group-hover:translate-x-1 transition-transform" />
           </button>
-        </div>
 
-        {/* Scrollable Content Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-          {/* Saved Addresses Section (Customer Isolated from DB) */}
-          {!searchQuery && (
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <ShieldCheck className="h-3.5 w-3.5 text-gray-400" />
-                  Saved Delivery Addresses ({savedAddresses.length})
-                </span>
+          {/* GPS Inline Error */}
+          {gpsError && (
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-start gap-2 animate-in fade-in">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>{gpsError}</span>
+            </div>
+          )}
+
+          {/* GPS Detected Confirmation Card */}
+          {detectedGpsLocation && (
+            <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-3 animate-in fade-in">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
+                    <CheckCircle2 className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
+                      Location Detected via Device GPS
+                    </span>
+                    <p className="text-sm font-bold text-gray-900 mt-0.5">
+                      {detectedGpsLocation.name}, {detectedGpsLocation.city}
+                    </p>
+                  </div>
+                </div>
+                {detectedGpsLocation.pincode && (
+                  <span className="text-xs font-semibold bg-white px-2 py-0.5 rounded border border-emerald-200 text-emerald-800">
+                    PIN {detectedGpsLocation.pincode}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => setIsAddingAddress(!isAddingAddress)}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-[#E31E24] hover:text-red-700 cursor-pointer"
+                  onClick={handleConfirmGpsLocation}
+                  className="flex-1 py-2 px-4 rounded-xl bg-[#E31E24] hover:bg-red-700 text-white text-xs font-bold shadow-xs transition cursor-pointer text-center"
                 >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>{isAddingAddress ? "Cancel" : "Add New Address"}</span>
+                  Confirm & Use This Location
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDetectedGpsLocation(null)}
+                  className="py-2 px-3 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
                 </button>
               </div>
+            </div>
+          )}
 
-              {/* Add New Address Form Modal/Panel */}
-              {isAddingAddress && (
-                <form
-                  onSubmit={handleSaveNewAddress}
-                  className="mb-4 p-4 rounded-2xl bg-red-50/30 border border-red-200/80 space-y-3"
-                >
-                  <p className="text-xs font-bold text-gray-900">Add New Delivery Address</p>
+          {/* Custom Search Confirmation Card */}
+          {searchQuery.trim() && (
+            <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between animate-in fade-in">
+              <div className="flex items-center gap-2 min-w-0 mr-2">
+                <MapPin className="h-4 w-4 text-[#E31E24] shrink-0" />
+                <span className="text-xs font-semibold text-gray-800 truncate">
+                  Deliver to: <strong className="text-gray-900 font-bold">"{searchQuery.trim()}"</strong>
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleConfirmCustomSearch}
+                className="py-1.5 px-3.5 rounded-xl bg-[#E31E24] hover:bg-red-700 text-white text-xs font-bold shadow-xs transition shrink-0 cursor-pointer"
+              >
+                Set Location
+              </button>
+            </div>
+          )}
+        </div>
 
-                  <div className="flex items-center gap-2">
-                    {["Home", "Work", "Garage", "Other"].map((lbl) => (
-                      <button
-                        key={lbl}
-                        type="button"
-                        onClick={() => setNewAddr((prev) => ({ ...prev, label: lbl }))}
-                        className={cn(
-                          "px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition",
-                          newAddr.label === lbl
-                            ? "bg-[#E31E24] text-white"
-                            : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
-                        )}
-                      >
-                        {lbl}
-                      </button>
-                    ))}
-                  </div>
+        {/* Scrollable Content Body: ONLY Saved Addresses & Add Form */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+              <ShieldCheck className="h-3.5 w-3.5 text-gray-400" />
+              Saved Delivery Addresses ({savedAddresses.length})
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsAddingAddress(!isAddingAddress)}
+              className="inline-flex items-center gap-1 text-xs font-bold text-[#E31E24] hover:text-red-700 cursor-pointer"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>{isAddingAddress ? "Cancel" : "Add New Address"}</span>
+            </button>
+          </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      placeholder="Recipient Full Name"
-                      value={newAddr.recipientName}
-                      onChange={(e) => setNewAddr((prev) => ({ ...prev, recipientName: e.target.value }))}
-                      className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-white"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Phone Number"
-                      value={newAddr.phone}
-                      onChange={(e) => setNewAddr((prev) => ({ ...prev, phone: e.target.value }))}
-                      className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-white"
-                    />
-                  </div>
+          {/* Add New Address Form */}
+          {isAddingAddress && (
+            <form
+              onSubmit={handleSaveNewAddress}
+              className="p-4 rounded-2xl bg-red-50/30 border border-red-200/80 space-y-3 animate-in fade-in duration-150"
+            >
+              <p className="text-xs font-bold text-gray-900">Add New Delivery Address</p>
 
-                  <input
-                    type="text"
-                    placeholder="House / Flat / Building No."
-                    value={newAddr.houseFlat}
-                    onChange={(e) => setNewAddr((prev) => ({ ...prev, houseFlat: e.target.value }))}
-                    className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-white"
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="Street, Area, Landmark *"
-                    required
-                    value={newAddr.streetLocality}
-                    onChange={(e) => setNewAddr((prev) => ({ ...prev, streetLocality: e.target.value }))}
-                    className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-white"
-                  />
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      placeholder="City (e.g. Bengaluru)"
-                      value={newAddr.city}
-                      onChange={(e) => setNewAddr((prev) => ({ ...prev, city: e.target.value }))}
-                      className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-white"
-                    />
-                    <input
-                      type="text"
-                      placeholder="PIN Code *"
-                      required
-                      value={newAddr.pincode}
-                      onChange={(e) => setNewAddr((prev) => ({ ...prev, pincode: e.target.value }))}
-                      className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-white"
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setIsAddingAddress(false)}
-                      className="px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSavingAddress}
-                      className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-[#E31E24] hover:bg-red-700 cursor-pointer shadow-xs disabled:opacity-60"
-                    >
-                      {isSavingAddress ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                      <span>Save & Deliver Here</span>
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {isLoadingAddresses ? (
-                <div className="py-6 text-center text-xs text-gray-400">Loading saved addresses...</div>
-              ) : savedAddresses.length === 0 && !isAddingAddress ? (
-                <div className="p-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50/70 text-center space-y-2">
-                  <p className="text-xs text-gray-600">No saved addresses found for your account.</p>
+              <div className="flex items-center gap-2">
+                {["Home", "Work", "Garage", "Other"].map((lbl) => (
                   <button
+                    key={lbl}
                     type="button"
-                    onClick={() => setIsAddingAddress(true)}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#E31E24] text-white text-xs font-semibold hover:bg-red-700 cursor-pointer"
+                    onClick={() => setNewAddr((prev) => ({ ...prev, label: lbl }))}
+                    className={cn(
+                      "px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition",
+                      newAddr.label === lbl
+                        ? "bg-[#E31E24] text-white"
+                        : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                    )}
                   >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span>Add Delivery Address</span>
+                    {lbl}
                   </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  {savedAddresses.map((addr) => {
-                    const isSelected = userLocation?.id === addr.id;
-                    const Icon =
-                      addr.label?.toLowerCase() === "work"
-                        ? Building
-                        : addr.label?.toLowerCase() === "garage"
-                        ? Wrench
-                        : Home;
+                ))}
+              </div>
 
-                    return (
-                      <button
-                        key={addr.id}
-                        onClick={() => handleSelectSavedAddress(addr)}
-                        className={cn(
-                          "flex flex-col text-left p-3 rounded-2xl border transition relative group cursor-pointer",
-                          isSelected
-                            ? "bg-red-50/60 border-[#E31E24] shadow-xs"
-                            : "bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50/60 shadow-2xs"
-                        )}
-                      >
-                        {isSelected && (
-                          <span className="absolute top-2.5 right-2.5 h-4 w-4 rounded-full bg-[#E31E24] text-white flex items-center justify-center">
-                            <Check className="h-2.5 w-2.5 stroke-[3]" />
-                          </span>
-                        )}
-                        <div className="flex items-center gap-2 mb-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <input
+                  type="text"
+                  placeholder="Recipient Name"
+                  value={newAddr.recipientName}
+                  onChange={(e) => setNewAddr({ ...newAddr, recipientName: e.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white border border-gray-200 text-gray-900 outline-none focus:border-[#E31E24]"
+                />
+                <input
+                  type="text"
+                  placeholder="Mobile Phone"
+                  value={newAddr.phone}
+                  onChange={(e) => setNewAddr({ ...newAddr, phone: e.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white border border-gray-200 text-gray-900 outline-none focus:border-[#E31E24]"
+                />
+              </div>
+
+              <input
+                type="text"
+                placeholder="House / Flat / Block / Floor (Optional)"
+                value={newAddr.houseFlat}
+                onChange={(e) => setNewAddr({ ...newAddr, houseFlat: e.target.value })}
+                className="w-full text-xs px-3 py-2 rounded-xl bg-white border border-gray-200 text-gray-900 outline-none focus:border-[#E31E24]"
+              />
+
+              <input
+                type="text"
+                required
+                placeholder="Street Address, Area, Landmark *"
+                value={newAddr.streetLocality}
+                onChange={(e) => setNewAddr({ ...newAddr, streetLocality: e.target.value })}
+                className="w-full text-xs px-3 py-2 rounded-xl bg-white border border-gray-200 text-gray-900 outline-none focus:border-[#E31E24]"
+              />
+
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <input
+                  type="text"
+                  required
+                  placeholder="City *"
+                  value={newAddr.city}
+                  onChange={(e) => setNewAddr({ ...newAddr, city: e.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white border border-gray-200 text-gray-900 outline-none focus:border-[#E31E24]"
+                />
+                <input
+                  type="text"
+                  required
+                  placeholder="State *"
+                  value={newAddr.state}
+                  onChange={(e) => setNewAddr({ ...newAddr, state: e.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white border border-gray-200 text-gray-900 outline-none focus:border-[#E31E24]"
+                />
+                <input
+                  type="text"
+                  required
+                  placeholder="PIN Code *"
+                  value={newAddr.pincode}
+                  onChange={(e) => setNewAddr({ ...newAddr, pincode: e.target.value })}
+                  className="px-3 py-2 rounded-xl bg-white border border-gray-200 text-gray-900 outline-none focus:border-[#E31E24]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsAddingAddress(false)}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingAddress}
+                  className="px-4 py-1.5 rounded-xl bg-[#E31E24] text-white text-xs font-semibold hover:bg-red-700 transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                >
+                  {isSavingAddress ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                  <span>Save Address</span>
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Loading state for addresses */}
+          {isLoadingAddresses && (
+            <div className="py-8 text-center text-xs text-gray-400 flex items-center justify-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-[#E31E24]" />
+              <span>Loading saved addresses...</span>
+            </div>
+          )}
+
+          {/* Empty state: EXACTLY AS SPECIFIED IN REQUIREMENT */}
+          {!isLoadingAddresses && savedAddresses.length === 0 && !isAddingAddress && (
+            <div className="p-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200 space-y-2">
+              <p className="text-sm font-bold text-gray-900">No saved delivery addresses yet</p>
+              <p className="text-xs text-gray-500">Add a delivery address to make checkout faster.</p>
+              <button
+                type="button"
+                onClick={() => setIsAddingAddress(true)}
+                className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#E31E24] text-white text-xs font-semibold hover:bg-red-700 cursor-pointer transition shadow-xs"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Add New Address</span>
+              </button>
+            </div>
+          )}
+
+          {/* Populated Saved Addresses List */}
+          {!isLoadingAddresses && filteredSavedAddresses.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {filteredSavedAddresses.map((addr) => {
+                const isSelected = userLocation?.id === addr.id;
+                const Icon =
+                  addr.label?.toLowerCase() === "work"
+                    ? Building
+                    : addr.label?.toLowerCase() === "garage"
+                    ? Wrench
+                    : Home;
+
+                return (
+                  <div
+                    key={addr.id}
+                    onClick={() => handleSelectSavedAddress(addr)}
+                    className={cn(
+                      "flex flex-col justify-between p-3.5 rounded-2xl border transition relative group cursor-pointer text-left",
+                      isSelected
+                        ? "bg-red-50/60 border-[#E31E24] shadow-xs"
+                        : "bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50/60 shadow-2xs"
+                    )}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
                           <div
                             className={cn(
                               "h-6 w-6 rounded-lg flex items-center justify-center text-xs",
@@ -502,119 +600,49 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
                             <Icon className="h-3.5 w-3.5" />
                           </div>
                           <span className="font-bold text-xs text-gray-900">{addr.label || "Saved Address"}</span>
-                        </div>
-                        <p className="text-[11px] text-gray-600 font-medium truncate">
-                          {addr.recipient_name} {addr.phone ? `(${addr.phone})` : ""}
-                        </p>
-                        <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed mt-0.5">
-                          {addr.street_address}, {addr.city} {addr.pincode}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Popular Areas / Filtered List */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                {searchQuery ? `Search Results (${filteredLocations.length})` : "Popular Delivery Hubs & Localities"}
-              </span>
-              <span className="text-[11px] text-gray-400">Bengaluru & Surrounds</span>
-            </div>
-
-            {filteredLocations.length === 0 ? (
-              <div className="p-8 text-center bg-gray-50 rounded-2xl border border-gray-200 space-y-3">
-                <MapPin className="h-8 w-8 text-gray-400 mx-auto" />
-                <div>
-                  <p className="text-sm font-bold text-gray-900">No exact area match for "{searchQuery}"</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    You can still set this custom area as your delivery location.
-                  </p>
-                </div>
-                <button
-                  onClick={handleCustomLocation}
-                  className="rounded-full bg-[#E31E24] text-white px-5 py-2 text-xs font-semibold hover:bg-red-700 transition cursor-pointer shadow-xs"
-                >
-                  Deliver to "{searchQuery}"
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {filteredLocations.map((loc) => {
-                  const isSelected = userLocation?.id === loc.id;
-                  const nearestVendor = vendors
-                    .map((v) => ({
-                      vendor: v,
-                      dist: Math.round(distanceKm(v, loc) * 10) / 10,
-                    }))
-                    .sort((a, b) => a.dist - b.dist)[0];
-
-                  return (
-                    <button
-                      key={loc.id}
-                      onClick={() => handleSelect(loc)}
-                      className={cn(
-                        "flex items-center justify-between p-3 rounded-2xl border transition text-left cursor-pointer group",
-                        isSelected
-                          ? "bg-red-50/50 border-[#E31E24] ring-1 ring-[#E31E24]/30 shadow-2xs"
-                          : "bg-white border-gray-100 hover:border-gray-300 hover:bg-gray-50/80 shadow-2xs"
-                      )}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div
-                          className={cn(
-                            "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 transition",
-                            isSelected
-                              ? "bg-[#E31E24] text-white"
-                              : "bg-gray-100 text-gray-500 group-hover:bg-gray-200 group-hover:text-gray-900"
+                          {addr.is_default && (
+                            <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                              Default
+                            </span>
                           )}
-                        >
-                          <MapPin className="h-4 w-4" />
                         </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-xs sm:text-sm font-bold text-gray-900 truncate">
-                              {loc.name}
-                            </p>
-                            {loc.tag && (
-                              <span className="text-[9.5px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.2 rounded shrink-0">
-                                {loc.tag}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-gray-500 truncate mt-0.5">
-                            {nearestVendor ? (
-                              <>
-                                Nearest store:{" "}
-                                <span className="font-semibold text-gray-700">
-                                  {nearestVendor.vendor.name} ({nearestVendor.dist} km)
-                                </span>
-                              </>
-                            ) : (
-                              `${loc.city} ${loc.pincode ? `· ${loc.pincode}` : ""}`
-                            )}
-                          </p>
+
+                        <div className="flex items-center gap-1">
+                          {isSelected && (
+                            <span className="h-5 w-5 rounded-full bg-[#E31E24] text-white flex items-center justify-center">
+                              <Check className="h-3 w-3 stroke-[3]" />
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteAddress(e, addr.id)}
+                            className="h-6 w-6 rounded-lg text-gray-300 hover:text-rose-600 hover:bg-rose-50 grid place-items-center transition cursor-pointer"
+                            title="Delete address"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
                         </div>
                       </div>
 
-                      {isSelected ? (
-                        <span className="h-6 w-6 rounded-full bg-[#E31E24] text-white flex items-center justify-center shrink-0 ml-2">
-                          <Check className="h-3.5 w-3.5 stroke-[3]" />
-                        </span>
-                      ) : (
-                        <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-gray-600 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                      <p className="text-[11px] text-gray-700 font-medium truncate">
+                        {addr.recipient_name} {addr.phone ? `(${addr.phone})` : ""}
+                      </p>
+                      <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed mt-0.5">
+                        {addr.street_address}, {addr.city} {addr.pincode}
+                      </p>
+                    </div>
+
+                    <div className="pt-2 mt-2 border-t border-gray-100 flex items-center justify-between">
+                      <span className="text-[10px] text-gray-400">
+                        {isSelected ? "Current Selection" : "Click to select"}
+                      </span>
+                      <ArrowRight className="h-3.5 w-3.5 text-gray-400 group-hover:text-[#E31E24] group-hover:translate-x-0.5 transition" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Modal Footer Info */}
@@ -624,6 +652,7 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
             <span>Hyperlocal delivery powered by RiderzPro Fleet</span>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="font-bold text-gray-700 hover:text-black cursor-pointer"
           >

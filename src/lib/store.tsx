@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import {
   CUSTOMER_LOCATION,
   DEFAULT_LOCATION,
@@ -165,7 +166,11 @@ type Ctx = {
   inventoryStock: Record<string, number>;
   updateInventoryStock: (productId: string, delta: number) => void;
   savedProductIds: string[];
-  toggleSaved: (id: string) => void;
+  wishlistItems: any[];
+  isLoadingWishlist: boolean;
+  wishlistError: string | null;
+  fetchWishlist: () => Promise<void>;
+  toggleSaved: (id: string, productData?: any) => Promise<boolean>;
   isSaved: (id: string) => boolean;
   serviceBookings: ServiceBooking[];
   bookService: (b: Omit<ServiceBooking, "id" | "createdAt">) => ServiceBooking;
@@ -262,6 +267,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [shipments, setShipments] = useState<NormalizedShipment[]>([]);
   const [inventoryStock, setInventoryStock] = useState<Record<string, number>>({});
   const [savedProductIds, setSavedProductIds] = useState<string[]>([]);
+  const [wishlistItems, setWishlistItems] = useState<any[]>([]);
+  const [isLoadingWishlist, setIsLoadingWishlist] = useState<boolean>(false);
+  const [wishlistError, setWishlistError] = useState<string | null>(null);
   const [serviceBookings, setServiceBookings] = useState<ServiceBooking[]>([]);
   const [notifications, setNotifications] = useState<CustomerNotification[]>(DEFAULT_NOTIFICATIONS);
   const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
@@ -348,18 +356,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })
         .catch(() => {});
 
-      // Hydrate wishlist from database
+      // Hydrate wishlist from database (authoritative source of truth)
+      setIsLoadingWishlist(true);
       fetch("/api/wishlist", { credentials: "include" })
         .then((r) => r.json())
         .then((d) => {
           if (d.success && Array.isArray(d.items)) {
-            const ids = d.items.map((it: any) => it.product_id || it.productId || it.id);
-            if (ids.length > 0) {
-              setSavedProductIds((prev) => Array.from(new Set([...prev, ...ids])));
-            }
+            const ids = Array.from(new Set(d.items.map((it: any) => it.product_id || it.id))) as string[];
+            setSavedProductIds(ids);
+            setWishlistItems(d.items);
+          } else {
+            setSavedProductIds([]);
+            setWishlistItems([]);
           }
         })
-        .catch(() => {});
+        .catch((err) => {
+          setWishlistError(err?.message || "Failed to load wishlist");
+        })
+        .finally(() => {
+          setIsLoadingWishlist(false);
+        });
 
       // Hydrate delivery location: default saved address from DB or device GPS
       fetch("/api/customer/addresses", { credentials: "include" })
@@ -677,22 +693,83 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const toggleSaved = useCallback((id: string) => {
-    setSavedProductIds((prev) => {
-      const alreadySaved = prev.includes(id);
-      const next = alreadySaved ? prev.filter((x) => x !== id) : [...prev, id];
-
-      // Persist to backend database
-      fetch("/api/wishlist", {
-        method: alreadySaved ? "DELETE" : "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ product_id: id }),
-      }).catch(() => {});
-
-      return next;
-    });
+  const fetchWishlist = useCallback(async () => {
+    setIsLoadingWishlist(true);
+    setWishlistError(null);
+    try {
+      const res = await fetch("/api/wishlist", { credentials: "include" });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.items)) {
+        const ids = Array.from(new Set(data.items.map((it: any) => it.product_id || it.id))) as string[];
+        setSavedProductIds(ids);
+        setWishlistItems(data.items);
+      } else {
+        setSavedProductIds([]);
+        setWishlistItems([]);
+      }
+    } catch (err: any) {
+      console.error("[fetchWishlist Error]:", err);
+      setWishlistError(err?.message || "Failed to load wishlist");
+    } finally {
+      setIsLoadingWishlist(false);
+    }
   }, []);
+
+  const toggleSaved = useCallback(
+    async (id: string, productData?: any): Promise<boolean> => {
+      const alreadySaved = savedProductIds.includes(id);
+      const prevIds = [...savedProductIds];
+      const prevItems = [...wishlistItems];
+
+      // Optimistic state update
+      if (alreadySaved) {
+        setSavedProductIds((prev) => prev.filter((x) => x !== id));
+        setWishlistItems((prev) => prev.filter((it) => (it.product_id || it.id) !== id));
+      } else {
+        setSavedProductIds((prev) => Array.from(new Set([...prev, id])));
+        if (productData) {
+          setWishlistItems((prev) => [
+            {
+              id: productData.id || id,
+              product_id: id,
+              name: productData.name,
+              price: productData.price,
+              mrp: productData.mrp,
+              discount_percent: productData.discountPercent || productData.discount_percent,
+              image_url: productData.image || productData.image_url,
+              stock: productData.stock ?? 10,
+              is_active: true,
+              brand: productData.brand,
+              category: productData.category,
+              description: productData.description,
+            },
+            ...prev.filter((it) => (it.product_id || it.id) !== id),
+          ]);
+        }
+      }
+
+      try {
+        const res = await fetch("/api/wishlist", {
+          method: alreadySaved ? "DELETE" : "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ product_id: id, action: alreadySaved ? "remove" : "add" }),
+        });
+        const data = await res.json();
+        if (!res.ok || (!data.success && !data.guest)) {
+          throw new Error(data.error || "Failed to update wishlist");
+        }
+        return true;
+      } catch (err: any) {
+        // Rollback optimistic update
+        setSavedProductIds(prevIds);
+        setWishlistItems(prevItems);
+        toast.error("Wishlist operation failed. State restored.");
+        return false;
+      }
+    },
+    [savedProductIds, wishlistItems]
+  );
 
   const isSaved = useCallback((id: string) => savedProductIds.includes(id), [savedProductIds]);
 
@@ -856,6 +933,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       inventoryStock,
       updateInventoryStock,
       savedProductIds,
+      wishlistItems,
+      isLoadingWishlist,
+      wishlistError,
+      fetchWishlist,
       toggleSaved,
       isSaved,
       serviceBookings,
@@ -899,6 +980,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       inventoryStock,
       updateInventoryStock,
       savedProductIds,
+      wishlistItems,
+      isLoadingWishlist,
+      wishlistError,
+      fetchWishlist,
       toggleSaved,
       isSaved,
       serviceBookings,

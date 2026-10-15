@@ -1869,41 +1869,66 @@ export async function handleAuthRoute(
       const cookies = parseCookies(req);
       const token = cookies["auth_session"];
       const urlObj = new URL(req.url || "", "http://localhost");
-      const paramCustomerId = urlObj.searchParams.get("customer_id");
-      const paramEmail = (urlObj.searchParams.get("email") || "").trim().toLowerCase();
-      let customerId = paramCustomerId || "cst_demo_01";
+      let customerId: string | null = null;
 
       if (token) {
         const tokenHash = sha256(token);
-        const s = await query("SELECT user_id FROM auth_sessions WHERE token_hash = $1 AND expires_at > now() LIMIT 1", [tokenHash]);
-        if (s.rows[0]) customerId = s.rows[0].user_id;
+        const s = await query(
+          "SELECT user_id, user_role FROM auth_sessions WHERE token_hash = $1 AND expires_at > now() LIMIT 1",
+          [tokenHash]
+        );
+        if (s.rows[0]) {
+          const rawUid = s.rows[0].user_id;
+          const custCheck = await query(
+            "SELECT id FROM customers WHERE id = $1 OR user_id = $1 OR email = $1 LIMIT 1",
+            [rawUid]
+          );
+          customerId = custCheck.rows[0]?.id || rawUid;
+        }
+      }
+
+      // Fallback for customer_id or email query only if provided and matches customer
+      if (!customerId) {
+        const paramCustomerId = urlObj.searchParams.get("customer_id");
+        const paramEmail = (urlObj.searchParams.get("email") || "").trim().toLowerCase();
+        if (paramCustomerId && paramCustomerId !== "usr_customer_demo" && paramCustomerId !== "cst_demo_01") {
+          const cRes = await query("SELECT id FROM customers WHERE id = $1 LIMIT 1", [paramCustomerId]);
+          customerId = cRes.rows[0]?.id || paramCustomerId;
+        } else if (paramEmail) {
+          const cRes = await query("SELECT id FROM customers WHERE LOWER(email) = LOWER($1) LIMIT 1", [paramEmail]);
+          if (cRes.rows[0]) customerId = cRes.rows[0].id;
+        }
       }
 
       if (method === "GET") {
-        let addrRes;
-        if (paramEmail) {
-          addrRes = await query(
-            "SELECT * FROM customer_addresses WHERE LOWER(email) = LOWER($1) OR customer_id = $2 ORDER BY is_default DESC, created_at DESC",
-            [paramEmail, customerId]
-          );
-        } else {
-          addrRes = await query(
-            "SELECT * FROM customer_addresses WHERE customer_id = $1 ORDER BY is_default DESC, created_at DESC",
-            [customerId]
-          );
+        if (!customerId) {
+          sendJson(res, 200, { success: true, data: [] });
+          return true;
         }
+        const addrRes = await query(
+          "SELECT * FROM customer_addresses WHERE customer_id = $1 ORDER BY is_default DESC, created_at DESC",
+          [customerId]
+        );
         sendJson(res, 200, { success: true, data: addrRes.rows });
         return true;
       }
 
       if (method === "POST") {
         const body = await parseBody(req);
-        if (body.customerId) customerId = body.customerId;
-        if (!body.customerId && body.email) {
+        if (!customerId && body.customerId) {
+          const cRes = await query("SELECT id FROM customers WHERE id = $1 LIMIT 1", [body.customerId]);
+          customerId = cRes.rows[0]?.id || body.customerId;
+        }
+        if (!customerId && body.email) {
           const cRes = await query("SELECT id FROM customers WHERE LOWER(email) = LOWER($1) LIMIT 1", [body.email]);
           if (cRes.rows[0]) customerId = cRes.rows[0].id;
         }
-        const addrId = `addr_${crypto.randomBytes(8).toString("hex")}`;
+
+        if (!customerId) {
+          sendJson(res, 401, { success: false, error: "Please log in to save a delivery address." });
+          return true;
+        }
+
         const recipientName = (body.fullName || body.recipientName || "Customer").trim();
         const phone = (body.phone || body.mobileNumber || "").trim();
         const street = (body.streetLocality || body.streetAddress || body.street || "").trim();
@@ -1913,6 +1938,40 @@ export async function handleAuthRoute(
         const state = (body.state || "Karnataka").trim();
         const pincode = (body.pincode || "560001").trim();
         const instructions = (body.deliveryInstructions || "").trim();
+        const label = body.label || "Home";
+
+        if (!street || !pincode) {
+          sendJson(res, 400, { success: false, error: "Street address and PIN code are required." });
+          return true;
+        }
+
+        // Check for existing duplicate address for this customer to prevent duplicated records
+        const dupCheck = await query(
+          `SELECT id FROM customer_addresses 
+           WHERE customer_id = $1 
+             AND LOWER(street_address) = LOWER($2) 
+             AND LOWER(city) = LOWER($3) 
+             AND pincode = $4 
+           LIMIT 1`,
+          [customerId, fullStreet, city, pincode]
+        );
+
+        if (dupCheck.rows[0]) {
+          const existingId = dupCheck.rows[0].id;
+          if (body.isDefault) {
+            await query("UPDATE customer_addresses SET is_default = 0 WHERE customer_id = $1", [customerId]);
+            await query("UPDATE customer_addresses SET is_default = 1 WHERE id = $1", [existingId]);
+          }
+          const updated = await query("SELECT * FROM customer_addresses WHERE id = $1", [existingId]);
+          sendJson(res, 200, {
+            success: true,
+            message: "Address updated successfully.",
+            data: updated.rows[0],
+          });
+          return true;
+        }
+
+        const addrId = `addr_${crypto.randomBytes(8).toString("hex")}`;
 
         // If setting as default, unmark other defaults
         if (body.isDefault) {
@@ -1927,7 +1986,7 @@ export async function handleAuthRoute(
           [
             addrId,
             customerId,
-            body.label || "Home",
+            label,
             recipientName,
             phone,
             fullStreet,
@@ -1958,6 +2017,26 @@ export async function handleAuthRoute(
         });
         return true;
       }
+
+      if (method === "DELETE") {
+        if (!customerId) {
+          sendJson(res, 401, { success: false, error: "Authentication required to delete addresses" });
+          return true;
+        }
+        const body = await parseBody(req).catch(() => ({}));
+        const targetId = urlObj.searchParams.get("id") || body.id;
+        if (!targetId) {
+          sendJson(res, 400, { success: false, error: "Address ID required" });
+          return true;
+        }
+
+        await query("DELETE FROM customer_addresses WHERE id = $1 AND customer_id = $2", [targetId, customerId]);
+        sendJson(res, 200, { success: true, message: "Address deleted successfully" });
+        return true;
+      }
+
+      sendJson(res, 405, { success: false, error: `Method ${method} not allowed` });
+      return true;
     } catch (err: any) {
       console.error("[Customer Addresses Error]:", err);
       sendJson(res, 500, { success: false, error: err.message });

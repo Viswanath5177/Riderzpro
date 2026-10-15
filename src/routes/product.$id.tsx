@@ -18,6 +18,7 @@ import {
   Tag,
   ChevronRight,
   ExternalLink,
+  Heart,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/site/SiteLayout";
@@ -56,7 +57,7 @@ type OfferSortOption = "value" | "price_asc" | "rating_desc" | "delivery_fast";
 
 function ProductPage() {
   const { id } = Route.useParams();
-  const { activeBikeId, addToCart } = useStore();
+  const { activeBikeId, addToCart, isSaved, toggleSaved } = useStore();
 
   const [product, setProduct] = useState<Product | null>(() => getProduct(id) || null);
   const [loading, setLoading] = useState(!product);
@@ -74,6 +75,7 @@ function ProductPage() {
   const [newComment, setNewComment] = useState("");
   const [newUserName, setNewUserName] = useState("");
   const [newVehicle, setNewVehicle] = useState("");
+  const [applicableCoupons, setApplicableCoupons] = useState<any[]>([]);
 
   useEffect(() => {
     if (!product) {
@@ -92,7 +94,21 @@ function ProductPage() {
     }
   }, [id, product]);
 
+  useEffect(() => {
+    if (id) {
+      fetch(`/api/coupons/applicable?product_id=${encodeURIComponent(id)}`)
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && Array.isArray(res.coupons)) {
+            setApplicableCoupons(res.coupons);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [id]);
+
   const p = product;
+  const saved = p ? isSaved(p.id) : false;
   const fit = p ? fitmentFor(p, activeBikeId) : "unknown";
   const bike = activeBikeId ? getBike(activeBikeId) : null;
 
@@ -222,7 +238,25 @@ function ProductPage() {
         <div className="grid gap-10 lg:grid-cols-2">
           {/* Product Media Gallery */}
           <div className="space-y-4">
-            <div className="overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white p-4 shadow-2xs">
+            <div className="relative overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white p-4 shadow-2xs">
+              <button
+                type="button"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const ok = await toggleSaved(p.id, p);
+                  if (ok) {
+                    toast.success(saved ? "Removed from wishlist" : "Saved to wishlist");
+                  }
+                }}
+                aria-label={saved ? "Remove from wishlist" : "Add to wishlist"}
+                className={`absolute top-4 right-4 z-10 p-2.5 rounded-full bg-white/95 backdrop-blur-xs border border-gray-200 shadow-sm transition hover:scale-110 cursor-pointer ${
+                  saved ? "text-[#E31E24]" : "text-gray-400 hover:text-[#E31E24]"
+                }`}
+                title={saved ? "Remove from wishlist" : "Save to wishlist"}
+              >
+                <Heart className={`h-5 w-5 ${saved ? "fill-current text-[#E31E24]" : ""}`} />
+              </button>
               <img
                 src={p.image}
                 alt={p.name}
@@ -312,6 +346,48 @@ function ProductPage() {
                 <span className="font-bold text-[#111111]">{p.weightKg} kg</span>
               </div>
             </div>
+
+            {/* Applicable Vendor Coupons & Offers */}
+            {applicableCoupons.length > 0 && (
+              <div className="mt-6 rounded-2xl border border-red-200 bg-red-50/60 p-4 space-y-2.5">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#E31E24] uppercase tracking-wider">
+                  <Tag className="h-4 w-4" />
+                  <span>Available Store Coupons ({applicableCoupons.length})</span>
+                </div>
+                <div className="space-y-2">
+                  {applicableCoupons.map((cpn: any) => (
+                    <div
+                      key={cpn.id}
+                      className="flex items-center justify-between rounded-xl bg-white border border-red-100 p-2.5 shadow-2xs"
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-red-50 text-[#E31E24] border border-red-200">
+                            {cpn.code}
+                          </span>
+                          <span className="text-xs font-semibold text-gray-900 truncate">
+                            {cpn.discount_type === "percentage" ? `${cpn.discount_value}% OFF` : `₹${cpn.discount_value} FLAT OFF`}
+                          </span>
+                        </div>
+                        {cpn.description && (
+                          <p className="text-[11px] text-gray-500 mt-0.5 truncate">{cpn.description}</p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(cpn.code);
+                          toast.success(`Coupon code ${cpn.code} copied! Apply at checkout.`);
+                        }}
+                        className="shrink-0 text-xs font-bold text-[#E31E24] hover:underline px-2 py-1"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -402,7 +478,8 @@ function ProductPage() {
             <div className="space-y-4">
               {enrichedOffers.map((o, index) => {
                 const isBestValue = index === 0 && offerSort === "value";
-                const isLowStock = o.stock > 0 && o.stock < 5;
+                const isLowStock = o.stock > 0 && o.stock <= 5;
+                const isOutOfStock = o.stock === 0;
 
                 return (
                   <div
@@ -488,7 +565,11 @@ function ProductPage() {
                           {isLowStock ? (
                             <span className="text-[10px] text-amber-700 font-bold flex items-center gap-1">
                               <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                              Hurry only {o.stock} left in stock
+                              Hurry! Limited stock ({o.stock} left)
+                            </span>
+                          ) : isOutOfStock ? (
+                            <span className="text-[10px] text-rose-600 font-bold">
+                              Out of Stock
                             </span>
                           ) : (
                             <span className="text-[10px] text-emerald-600 font-semibold">
@@ -579,9 +660,19 @@ function ProductPage() {
                       </td>
 
                       <td className="py-4 px-3">
-                        <span className={o.stock >= 5 ? "text-emerald-700 font-semibold" : "text-amber-700 font-bold"}>
-                          {o.stock > 0 ? `${o.stock} units` : "Out of stock"}
-                        </span>
+                        {o.stock <= 5 && o.stock > 0 ? (
+                          <span className="text-amber-700 font-bold">
+                            Hurry! Limited stock ({o.stock})
+                          </span>
+                        ) : o.stock === 0 ? (
+                          <span className="text-rose-700 font-bold">
+                            Out of Stock
+                          </span>
+                        ) : (
+                          <span className="text-emerald-700 font-semibold">
+                            In Stock ({o.stock})
+                          </span>
+                        )}
                       </td>
 
                       <td className="py-4 px-4 text-right">

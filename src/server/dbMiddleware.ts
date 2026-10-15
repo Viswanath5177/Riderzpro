@@ -1583,46 +1583,92 @@ export function pgApiMiddleware() {
         // ====================================================================
         if (cleanUrl.startsWith("/api/wishlist")) {
           const authUser = await getAuthenticatedUser(req);
-          const rawId = queryParams.get("customer_id") || authUser?.id || authUser?.email || "usr_customer_demo";
+          let customerId: string | null = null;
+
+          if (authUser?.id) {
+            const custRow = await query(
+              "SELECT id FROM customers WHERE id = $1 OR user_id = $1 OR email = $1 LIMIT 1",
+              [authUser.id]
+            );
+            customerId = custRow.rows[0]?.id || authUser.id;
+          }
+
+          if (!customerId) {
+            const paramCust = queryParams.get("customer_id");
+            const paramEmail = (queryParams.get("email") || "").trim().toLowerCase();
+            if (paramCust && paramCust !== "usr_customer_demo" && paramCust !== "cst_demo_01") {
+              const custRow = await query("SELECT id FROM customers WHERE id = $1 OR email = $1 LIMIT 1", [paramCust]);
+              customerId = custRow.rows[0]?.id || paramCust;
+            } else if (paramEmail) {
+              const custRow = await query("SELECT id FROM customers WHERE LOWER(email) = LOWER($1) LIMIT 1", [paramEmail]);
+              if (custRow.rows[0]) customerId = custRow.rows[0].id;
+            }
+          }
 
           try {
-            const custRow = await query("SELECT id FROM customers WHERE id = $1 OR email = $1 LIMIT 1", [rawId]);
-            const customerId = custRow.rows[0]?.id || rawId;
-
             if (method === "GET") {
-              if (!customerId || customerId === "usr_customer_demo") {
-                return sendJson(res, 200, { success: true, data: [], items: [] });
+              if (!customerId) {
+                return sendJson(res, 200, { success: true, data: [], items: [], count: 0 });
               }
 
               const wishRes = await query("SELECT id FROM wishlists WHERE customer_id = $1 LIMIT 1", [customerId]);
               if (!wishRes.rows[0]) {
-                return sendJson(res, 200, { success: true, data: [], items: [] });
+                return sendJson(res, 200, { success: true, data: [], items: [], count: 0 });
               }
+
               const itemsRes = await query(
-                `SELECT wi.product_id, p.name, p.price, p.image_url, p.stock, p.is_active
+                `SELECT 
+                   wi.id as item_id, 
+                   wi.product_id,
+                   wi.created_at as saved_at,
+                   p.id, 
+                   p.name, 
+                   p.price, 
+                   p.mrp, 
+                   p.discount_percent, 
+                   p.image_url, 
+                   p.stock, 
+                   p.is_active, 
+                   p.brand, 
+                   p.category_id as category, 
+                   p.description, 
+                   p.seller_id,
+                   p.warranty,
+                   p.compatible_vehicles,
+                   p.fitment_type
                  FROM wishlist_items wi
-                 LEFT JOIN products p ON wi.product_id = p.id
-                 WHERE wi.wishlist_id = $1`,
+                 JOIN products p ON wi.product_id = p.id
+                 WHERE wi.wishlist_id = $1 AND p.is_active = 1
+                 ORDER BY wi.created_at DESC`,
                 [wishRes.rows[0].id]
               );
+
+              const uniqueIds = Array.from(new Set(itemsRes.rows.map((r: any) => r.product_id || r.id)));
               return sendJson(res, 200, {
                 success: true,
-                data: itemsRes.rows.map((r: any) => r.product_id),
+                data: uniqueIds,
                 items: itemsRes.rows,
+                count: uniqueIds.length,
               });
             }
 
             if (method === "POST") {
-              if (!customerId || customerId === "usr_customer_demo") {
-                return sendJson(res, 200, { success: true, message: "Guest session - local storage used" });
-              }
-
               const body = await parseBody(req);
               const productId = body.productId || body.product_id;
               const action = body.action || "add"; // "add" | "remove"
 
               if (!productId) {
                 return sendJson(res, 400, { success: false, error: "Product ID required" });
+              }
+
+              // Verify product exists in catalog
+              const prodCheck = await query("SELECT id FROM products WHERE id = $1 LIMIT 1", [productId]);
+              if (!prodCheck.rows[0]) {
+                return sendJson(res, 404, { success: false, error: "Product not found in catalog" });
+              }
+
+              if (!customerId) {
+                return sendJson(res, 200, { success: true, guest: true, message: "Guest session - local storage used" });
               }
 
               let wishRes = await query("SELECT id FROM wishlists WHERE customer_id = $1 LIMIT 1", [customerId]);
@@ -1659,10 +1705,15 @@ export function pgApiMiddleware() {
             if (method === "DELETE") {
               const body = await parseBody(req).catch(() => ({}));
               const productId = body.productId || body.product_id || queryParams.get("product_id");
-              const wishRes = await query("SELECT id FROM wishlists WHERE customer_id = $1 LIMIT 1", [customerId]);
-              const wishId = wishRes.rows[0]?.id;
-              if (wishId && productId) {
-                await query("DELETE FROM wishlist_items WHERE wishlist_id = $1 AND product_id = $2", [wishId, productId]);
+              if (!productId) {
+                return sendJson(res, 400, { success: false, error: "Product ID required" });
+              }
+              if (customerId) {
+                const wishRes = await query("SELECT id FROM wishlists WHERE customer_id = $1 LIMIT 1", [customerId]);
+                const wishId = wishRes.rows[0]?.id;
+                if (wishId) {
+                  await query("DELETE FROM wishlist_items WHERE wishlist_id = $1 AND product_id = $2", [wishId, productId]);
+                }
               }
               return sendJson(res, 200, { success: true, message: "Product removed from wishlist" });
             }
