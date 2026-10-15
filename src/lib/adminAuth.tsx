@@ -24,6 +24,7 @@ export interface AdminAuthContextType {
   isAuthenticated: boolean;
   loading: boolean;
   adminUser: AdminUser | null;
+  serverRole: string | null;
   login: (
     email: string,
     pass: string,
@@ -49,35 +50,33 @@ const AdminAuthContext = createContext<AdminAuthContextType | null>(null);
 
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+  const [serverRole, setServerRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [pendingUser, setPendingUser] = useState<AdminUser | null>(null);
 
   const saveSession = useCallback((user: AdminUser) => {
     const session: AdminSession = {
-      token: `mock_jwt_adm_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      token: `adm_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       role: "admin",
       user,
       loginTime: Date.now(),
     };
     localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
     setAdminUser(user);
+    setServerRole("admin");
     setPendingUser(null);
   }, []);
 
-  // Restore session on mount: check /api/auth/me first, fallback to localStorage
+  // Restore session on mount: server (/api/auth/me) is the primary source of truth
   useEffect(() => {
     async function restoreSession() {
       try {
-        // 1. Verify backend session if active
-        try {
-          const res = await fetch("/api/auth/me", { credentials: "include" });
-          if (res.ok) {
-            const data = await res.json();
-            if (
-              data.authenticated &&
-              data.role &&
-              (data.role === "admin" || String(data.role).includes("ADMIN"))
-            ) {
+        const res = await fetch("/api/auth/me", { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated) {
+            const roleStr = String(data.role || "").toLowerCase();
+            if (roleStr === "admin" || roleStr.includes("admin")) {
               const u: AdminUser = {
                 id: data.user?.id || "adm_verified_01",
                 name: data.user?.fullName || "Administrator",
@@ -92,23 +91,25 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
                 department: "Operations & Platform Oversight",
               };
               saveSession(u);
+              setServerRole("admin");
+              return;
+            } else {
+              // Authenticated on server, but not an administrator (e.g. customer, seller, rider)
+              localStorage.removeItem(ADMIN_SESSION_KEY);
+              setAdminUser(null);
+              setServerRole(roleStr || "customer");
               return;
             }
-          }
-        } catch {
-          // Server offline or SQLite dev mode, proceed to localStorage check
-        }
-
-        // 2. Check localStorage
-        const raw = localStorage.getItem(ADMIN_SESSION_KEY);
-        if (raw) {
-          const session = JSON.parse(raw) as AdminSession;
-          if (session.role === "admin" && session.token) {
-            setAdminUser(session.user);
+          } else {
+            // Server explicitly reports unauthenticated
+            localStorage.removeItem(ADMIN_SESSION_KEY);
+            setAdminUser(null);
+            setServerRole(null);
+            return;
           }
         }
       } catch (e) {
-        console.error("Failed to restore admin session:", e);
+        console.warn("Failed to check /api/auth/me for admin session:", e);
       } finally {
         setLoading(false);
       }
@@ -156,24 +157,8 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
           return { success: true, requireOtp: true };
         }
       } catch (err: unknown) {
-        // Fallback for default local test account and seed passwords
-        if (
-          (trimmedEmail === "admin@riderzpro.com" || trimmedEmail.includes("admin")) &&
-          (pass === "Admin@123" || pass === "admin123" || pass === "AdminPass123!" || pass === "productadmin123")
-        ) {
-          setPendingUser(DEFAULT_SUPER_ADMIN);
-          return { success: true, requireOtp: false };
-        }
         const msg = err instanceof Error ? err.message : "Invalid admin credentials";
         return { success: false, error: msg };
-      }
-
-      if (
-        (trimmedEmail === "admin@riderzpro.com" || trimmedEmail.includes("admin")) &&
-        (pass === "Admin@123" || pass === "admin123" || pass === "AdminPass123!" || pass === "productadmin123")
-      ) {
-        setPendingUser(DEFAULT_SUPER_ADMIN);
-        return { success: true, requireOtp: false };
       }
 
       return { success: false, error: "Invalid admin credentials" };
@@ -205,6 +190,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     }
     localStorage.removeItem(ADMIN_SESSION_KEY);
     setAdminUser(null);
+    setServerRole(null);
     setPendingUser(null);
     if (typeof window !== "undefined") {
       window.location.href = "/login";
@@ -216,13 +202,14 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: Boolean(adminUser),
       loading,
       adminUser,
+      serverRole,
       login,
       verifyOtp,
       loginWithDevBypass,
       logout,
       setAdminSession,
     }),
-    [adminUser, loading, login, verifyOtp, loginWithDevBypass, logout, setAdminSession],
+    [adminUser, loading, serverRole, login, verifyOtp, loginWithDevBypass, logout, setAdminSession],
   );
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;
@@ -314,7 +301,7 @@ export function AdminAccessDenied({
  * - Unauthenticated -> Redirects to /login with return URL.
  */
 export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading } = useAdminAuth();
+  const { isAuthenticated, loading, serverRole } = useAdminAuth();
   const location = useLocation();
   const currentPath = location.pathname + (location.searchStr ? `?${location.searchStr}` : "");
 
@@ -339,17 +326,21 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  // 2. Check if logged in as a non-admin role
+  // 2. Check if logged in as a non-admin role (Server is primary source of truth)
   const isSeller =
-    typeof window !== "undefined" &&
-    Boolean(
-      (localStorage.getItem("riderzpro_vendor_session") ||
-        sessionStorage.getItem("riderzpro_vendor_session")) &&
-      localStorage.getItem("vendor_signed_out") !== "true",
-    );
+    serverRole === "seller" ||
+    (typeof window !== "undefined" &&
+      Boolean(
+        (localStorage.getItem("riderzpro_vendor_session") ||
+          sessionStorage.getItem("riderzpro_vendor_session")) &&
+          localStorage.getItem("vendor_signed_out") !== "true",
+      ));
+
+  const isRider = serverRole === "rider";
 
   const isCustomer =
-    typeof window !== "undefined" && Boolean(localStorage.getItem("riderzpro_auth_user"));
+    serverRole === "customer" ||
+    (typeof window !== "undefined" && Boolean(localStorage.getItem("riderzpro_auth_user")));
 
   if (isSeller) {
     return (
@@ -361,10 +352,21 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (isCustomer) {
+  if (isRider) {
     return (
       <AdminAccessDenied
-        role="Customer"
+        role="Rider"
+        dashboardUrl="/rider/dashboard"
+        currentPath={currentPath}
+      />
+    );
+  }
+
+  if (isCustomer || (serverRole && serverRole !== "admin")) {
+    const roleName = serverRole ? serverRole.charAt(0).toUpperCase() + serverRole.slice(1) : "Customer";
+    return (
+      <AdminAccessDenied
+        role={roleName}
         dashboardUrl="/dashboard/customer"
         currentPath={currentPath}
       />
@@ -374,3 +376,4 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   // 3. Not logged in at all -> redirect to /login with return URL
   return <Navigate to="/login" search={{ redirect: currentPath }} replace />;
 }
+

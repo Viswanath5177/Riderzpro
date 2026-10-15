@@ -212,10 +212,7 @@ export async function handleAuthRoute(
           return true;
         }
 
-        let valid = await bcrypt.compare(password, customer.password_hash);
-        if (!valid && (password === "vamsi123" || password === "riderzpro@vendor1")) {
-          valid = true;
-        }
+        const valid = await bcrypt.compare(password, customer.password_hash);
         if (!valid) {
           sendJson(res, 401, { success: false, error: "Incorrect password for customer account. Please verify your password." });
           return true;
@@ -265,10 +262,7 @@ export async function handleAuthRoute(
           return true;
         }
 
-        let valid = await bcrypt.compare(password, user.password_hash);
-        if (!valid && (password === "vamsi123" || password === "riderzpro@vendor1")) {
-          valid = true;
-        }
+        const valid = await bcrypt.compare(password, user.password_hash);
         if (!valid) {
           sendJson(res, 401, { success: false, error: "Incorrect password. Please verify your password." });
           return true;
@@ -305,27 +299,6 @@ export async function handleAuthRoute(
         return true;
       }
 
-      // Fallback for Rider demo login if not present in DB
-      if (
-        (emailOrContact.includes("rider") || emailOrContact.includes("sathesh") || phone10 === "9845077889") &&
-        (password === "rider123" || password === "vamsi123" || password === "riderzpro@vendor1")
-      ) {
-        const demoToken = `demo_rider_token_${crypto.randomBytes(16).toString("hex")}`;
-        setSessionCookie(res, demoToken);
-        sendJson(res, 200, {
-          success: true,
-          role: "rider",
-          user: {
-            id: "rider_sathesh",
-            email: "sathesh.ittraju@riderzpro.demo",
-            fullName: "Sathesh Ittraju",
-            phone: "+91 98450 77889",
-            role: "rider",
-          },
-          redirectUrl: "/rider/dashboard",
-        });
-        return true;
-      }
 
       // If credentials do not match any DB record
       sendJson(res, 401, {
@@ -352,20 +325,6 @@ export async function handleAuthRoute(
         return true;
       }
 
-      if (token.startsWith("demo_rider_token_")) {
-        sendJson(res, 200, {
-          authenticated: true,
-          role: "rider",
-          user: {
-            id: "rider_sathesh",
-            email: "sathesh.ittraju@riderzpro.demo",
-            fullName: "Sathesh Ittraju",
-            phone: "+91 98450 77889",
-            role: "rider",
-          },
-        });
-        return true;
-      }
 
       const tokenHash = sha256(token);
       const sessRes = await query(
@@ -690,10 +649,10 @@ export async function handleAuthRoute(
       const fullName = (body.fullName || "").trim();
       const storeName = (body.storeName || "").trim();
       const phone = (body.phone || "").trim();
-      const password = (body.password || "Vendor@Riderzpro2026").trim();
+      const password = (body.password || "").trim();
 
-      if (!email || !fullName || !storeName) {
-        sendJson(res, 400, { success: false, error: "Owner name, email, and store name are required." });
+      if (!email || !fullName || !storeName || !password) {
+        sendJson(res, 400, { success: false, error: "Owner name, email, store name, and password are required." });
         return true;
       }
 
