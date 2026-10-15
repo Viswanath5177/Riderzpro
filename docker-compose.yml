@@ -1,0 +1,44 @@
+# =============================================================================
+# Riderzpro Deployment & Testing PostgreSQL Service
+# =============================================================================
+# Modern Docker Compose specification for running PostgreSQL in deployment
+# preparation and testing environments.
+#
+# Environment variables interpolate values from .env (see .env.example)
+# with safe local fallbacks. Do not hardcode production credentials here.
+# =============================================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: riderzpro-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PGDATABASE:-${POSTGRES_DB:-riderzpro}}
+      POSTGRES_USER: ${PGUSER:-${POSTGRES_USER:-postgres}}
+      POSTGRES_PASSWORD: ${PGPASSWORD:?PGPASSWORD must be set}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      # Bind to localhost (127.0.0.1) only to prevent public exposure
+      - "127.0.0.1:${PGPORT:-5432}:5432"
+    volumes:
+      # Named volume for persistent database storage across container lifecycles
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "pg_isready -U ${PGUSER:-${POSTGRES_USER:-postgres}} -d ${PGDATABASE:-${POSTGRES_DB:-riderzpro}}"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - riderzpro_network
+
+volumes:
+  postgres_data:
+    name: riderzpro_postgres_data
+
+networks:
+  riderzpro_network:
+    name: riderzpro_network
