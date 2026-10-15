@@ -171,6 +171,8 @@ export type LocationArea = {
   id: string;
   name: string;
   city: string;
+  state?: string;
+  description?: string;
   lat: number;
   lng: number;
   pincode?: string;

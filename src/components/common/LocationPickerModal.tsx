@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
 import type { LocationArea } from "@/lib/data";
-import { reverseGeocodeCoords } from "@/lib/location";
+import { reverseGeocodeCoords, searchPlaces, type PlaceSuggestion } from "@/lib/location";
 import { cn } from "@/lib/utils";
 
 interface LocationPickerModalProps {
@@ -32,6 +32,8 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
   const { user } = useAuth();
   const { userProfile, userLocation, setUserLocation } = useStore();
   const [searchQuery, setSearchQuery] = useState("");
+  const [placeSuggestions, setPlaceSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
   const [isDetectingGps, setIsDetectingGps] = useState(false);
   const [detectedGpsLocation, setDetectedGpsLocation] = useState<LocationArea | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
@@ -80,8 +82,53 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
       loadAddresses();
       setDetectedGpsLocation(null);
       setGpsError(null);
+      setSearchQuery("");
+      setPlaceSuggestions([]);
     }
   }, [isOpen, user?.id, user?.email, userProfile?.email]);
+
+  // Live Google Maps / Geocoder place autocomplete debounced search
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (trimmed.length < 2) {
+      setPlaceSuggestions([]);
+      setIsSearchingPlaces(false);
+      return;
+    }
+
+    setIsSearchingPlaces(true);
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchPlaces(trimmed);
+        setPlaceSuggestions(results);
+      } catch {
+        setPlaceSuggestions([]);
+      } finally {
+        setIsSearchingPlaces(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleSelectPlaceSuggestion = (place: PlaceSuggestion) => {
+    const loc: LocationArea = {
+      id: place.id,
+      name: place.name,
+      city: place.city || "India",
+      state: place.state,
+      description: place.description,
+      pincode: place.pincode || "",
+      lat: place.lat || 12.9716,
+      lng: place.lng || 77.5946,
+      tag: `Maps: ${place.name}`,
+    };
+    setUserLocation(loc);
+    toast.success(`Delivery location set to ${place.name}`, {
+      description: place.city ? `${place.city}${place.state ? ", " + place.state : ""}` : undefined,
+    });
+    onClose();
+  };
 
   const handleSelectSavedAddress = (addr: any) => {
     const loc: LocationArea = {
@@ -308,9 +355,15 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
               className="w-full bg-transparent text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 outline-none"
               autoFocus
             />
+            {isSearchingPlaces && (
+              <Loader2 className="h-4 w-4 text-[#E31E24] animate-spin shrink-0 mr-2" />
+            )}
             {searchQuery && (
               <button
-                onClick={() => setSearchQuery("")}
+                onClick={() => {
+                  setSearchQuery("");
+                  setPlaceSuggestions([]);
+                }}
                 className="text-gray-400 hover:text-gray-700 p-1 cursor-pointer"
                 aria-label="Clear search"
               >
@@ -417,12 +470,82 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
           )}
         </div>
 
-        {/* Scrollable Content Body: ONLY Saved Addresses & Add Form */}
+        {/* Scrollable Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+          {/* Live Google & Maps Location Suggestions when searching */}
+          {searchQuery.trim().length >= 2 && (
+            <div className="space-y-3 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-[#E31E24]" />
+                  Matching Locations ({placeSuggestions.length})
+                </span>
+                <span className="text-[10px] text-gray-400 font-medium">
+                  {isSearchingPlaces ? "Searching maps..." : "Google & Maps Directory"}
+                </span>
+              </div>
+
+              {isSearchingPlaces && placeSuggestions.length === 0 && (
+                <div className="p-6 rounded-2xl bg-gray-50 border border-gray-100 flex flex-col items-center justify-center gap-2 text-center text-xs text-gray-500">
+                  <Loader2 className="h-5 w-5 text-[#E31E24] animate-spin" />
+                  <span>Searching Google & Maps locations for "{searchQuery}"...</span>
+                </div>
+              )}
+
+              {placeSuggestions.length > 0 && (
+                <div className="space-y-2">
+                  {placeSuggestions.map((place) => (
+                    <button
+                      key={place.id}
+                      type="button"
+                      onClick={() => handleSelectPlaceSuggestion(place)}
+                      className="w-full text-left p-3.5 rounded-2xl bg-white hover:bg-red-50/70 border border-gray-200/80 hover:border-red-300 transition flex items-start gap-3 group cursor-pointer shadow-xs active:scale-[0.99]"
+                    >
+                      <div className="h-9 w-9 rounded-xl bg-gray-100 group-hover:bg-[#E31E24] text-gray-500 group-hover:text-white flex items-center justify-center shrink-0 transition shadow-xs mt-0.5">
+                        <MapPin className="h-4.5 w-4.5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs sm:text-sm font-bold text-gray-900 group-hover:text-[#E31E24] truncate">
+                            {place.name}
+                          </p>
+                          {place.pincode && (
+                            <span className="text-[10px] font-semibold bg-gray-100 group-hover:bg-red-100 text-gray-700 group-hover:text-red-700 px-1.5 py-0.5 rounded shrink-0">
+                              PIN {place.pincode}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-gray-500 group-hover:text-gray-700 line-clamp-1 mt-0.5">
+                          {place.description}
+                        </p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-[#E31E24] group-hover:translate-x-0.5 transition shrink-0 mt-2.5" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {!isSearchingPlaces && placeSuggestions.length === 0 && (
+                <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs text-amber-800 flex items-start gap-2.5">
+                  <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-amber-900">No exact map landmark found for "{searchQuery}"</p>
+                    <p className="text-amber-700 mt-0.5">You can still click "Set Location" above to deliver to "{searchQuery}".</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Section Divider if searching */}
+          {searchQuery.trim().length >= 2 && filteredSavedAddresses.length > 0 && (
+            <div className="border-t border-gray-100 pt-3" />
+          )}
+
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
               <ShieldCheck className="h-3.5 w-3.5 text-gray-400" />
-              Saved Delivery Addresses ({savedAddresses.length})
+              {searchQuery.trim().length >= 2 ? "Matching Saved Addresses" : "Saved Delivery Addresses"} ({filteredSavedAddresses.length})
             </span>
             <button
               type="button"

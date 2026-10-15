@@ -26,6 +26,9 @@ RESEND_FROM=support@riderzpro.com
 TWILIO_ACCOUNT_SID=your_twilio_account_sid_here
 TWILIO_AUTH_TOKEN=your_twilio_auth_token_here
 TWILIO_FROM=
+
+# Google Maps / Places API Configuration (Optional)
+GOOGLE_MAPS_API_KEY=
 `;
 
 const DEFAULT_DEV_VARS_CONTENT = `# SQLite Local Database (dev.db)
@@ -46,6 +49,9 @@ RESEND_FROM=support@riderzpro.com
 TWILIO_ACCOUNT_SID=your_twilio_account_sid_here
 TWILIO_AUTH_TOKEN=your_twilio_auth_token_here
 TWILIO_FROM=
+
+# Google Maps / Places API Configuration (Optional)
+GOOGLE_MAPS_API_KEY=
 `;
 
 export async function ensureEnvironmentAndDatabase() {

@@ -182,6 +182,143 @@ export function pgApiMiddleware() {
           });
         }
 
+        // ====================================================================
+        // 0.2 PLACES SEARCH API: /api/location/places
+        // ====================================================================
+        if (cleanUrl === "/api/location/places" && method === "GET") {
+          const q = (queryParams.get("q") || "").trim();
+          if (!q || q.length < 2) {
+            return sendJson(res, 200, { success: true, places: [] });
+          }
+
+          const googleApiKey = process.env["GOOGLE_MAPS_API_KEY"] || process.env["VITE_GOOGLE_MAPS_API_KEY"] || "";
+
+          // 1. If Google Maps API Key is provided, query Google Places Autocomplete
+          if (googleApiKey) {
+            try {
+              const gRes = await fetch(
+                `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(q)}&key=${googleApiKey}&components=country:in`,
+                { signal: AbortSignal.timeout(4000) }
+              );
+              if (gRes.ok) {
+                const gData: any = await gRes.json();
+                if (gData.status === "OK" && Array.isArray(gData.predictions) && gData.predictions.length > 0) {
+                  const places = gData.predictions.map((p: any) => {
+                    const terms = (p.terms || []).map((t: any) => t.value);
+                    const name = p.structured_formatting?.main_text || terms[0] || q;
+                    const secondary = p.structured_formatting?.secondary_text || terms.slice(1).join(", ");
+                    const city = terms.length > 2 ? terms[terms.length - 3] : (terms[1] || "India");
+                    const state = terms.length > 1 ? terms[terms.length - 2] : "";
+
+                    return {
+                      id: p.place_id || `gplace-${Date.now()}`,
+                      name,
+                      description: p.description || `${name}, ${secondary}`,
+                      city: city || name,
+                      state: state || "",
+                      pincode: "",
+                      source: "google",
+                    };
+                  });
+
+                  return sendJson(res, 200, { success: true, places, source: "google" });
+                }
+              }
+            } catch (err: any) {
+              console.warn("[Google Places API Warning]:", err?.message);
+            }
+          }
+
+          // 2. High-speed OpenStreetMap Photon Places Geocoder
+          try {
+            const userLat = queryParams.get("lat") || "16.5062"; // Default near Vijayawada/AP or India
+            const userLng = queryParams.get("lng") || "80.6480";
+            const photonRes = await fetch(
+              `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${userLat}&lon=${userLng}&limit=10`,
+              {
+                headers: { "User-Agent": "RiderzPro/1.0 (contact@riderzpro.com)" },
+                signal: AbortSignal.timeout(4000),
+              }
+            );
+            if (photonRes.ok) {
+              const pData: any = await photonRes.json();
+              if (Array.isArray(pData.features) && pData.features.length > 0) {
+                const places = pData.features.map((f: any, idx: number) => {
+                  const props = f.properties || {};
+                  const name = props.name || props.street || props.city || q;
+                  const parts = [props.street, props.city || props.county, props.state, props.postcode, props.country].filter(Boolean);
+                  const city = props.city || props.county || props.state || "India";
+                  const state = props.state || "";
+                  const pincode = props.postcode || "";
+                  const description = parts.length > 0 ? `${name}, ${parts.join(", ")}` : name;
+
+                  return {
+                    id: `place-${props.osm_id || idx}`,
+                    name,
+                    description,
+                    city,
+                    state,
+                    pincode,
+                    lat: f.geometry?.coordinates?.[1] || 12.9716,
+                    lng: f.geometry?.coordinates?.[0] || 77.5946,
+                    source: "osm_photon",
+                  };
+                });
+
+                // Prioritize Indian localities
+                places.sort((a: any, b: any) => {
+                  const aIn = (a.description || "").toLowerCase().includes("india") ? 1 : 0;
+                  const bIn = (b.description || "").toLowerCase().includes("india") ? 1 : 0;
+                  return bIn - aIn;
+                });
+
+                return sendJson(res, 200, { success: true, places, source: "photon" });
+              }
+            }
+          } catch (err: any) {
+            console.warn("[Photon Places Geocoder Warning]:", err?.message);
+          }
+
+          // 3. OpenStreetMap Nominatim Fallback
+          try {
+            const nomRes = await fetch(
+              `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}&countrycodes=in&limit=8&addressdetails=1`,
+              {
+                headers: { "User-Agent": "RiderzPro/1.0 (contact@riderzpro.com)" },
+                signal: AbortSignal.timeout(4000),
+              }
+            );
+            if (nomRes.ok) {
+              const nData: any = await nomRes.json();
+              if (Array.isArray(nData) && nData.length > 0) {
+                const places = nData.map((item: any, idx: number) => {
+                  const addr = item.address || {};
+                  const name = item.name || addr.road || addr.suburb || addr.city || q;
+                  const city = addr.city || addr.town || addr.village || addr.county || "India";
+                  const state = addr.state || "";
+                  const pincode = addr.postcode || "";
+
+                  return {
+                    id: `nom-${item.place_id || idx}`,
+                    name,
+                    description: item.display_name || name,
+                    city,
+                    state,
+                    pincode,
+                    lat: parseFloat(item.lat),
+                    lng: parseFloat(item.lon),
+                    source: "nominatim",
+                  };
+                });
+
+                return sendJson(res, 200, { success: true, places, source: "nominatim" });
+              }
+            }
+          } catch {}
+
+          return sendJson(res, 200, { success: true, places: [] });
+        }
+
 
         // ====================================================================
         // 1. PRODUCTS API: /api/products
