@@ -47,10 +47,10 @@ async function parseBody(req: IncomingMessage): Promise<any> {
 }
 
 /**
- * Derives and verifies the session from cookie or Authorization header.
- * Derives identity directly from verified database session token.
+ * Verifies any active administrator (ADMIN or SUPER_ADMIN).
+ * Rejects deactivated, customer, or vendor accounts.
  */
-export async function getVerifiedSuperAdmin(req: IncomingMessage): Promise<{
+export async function getVerifiedAdmin(req: IncomingMessage): Promise<{
   id: string;
   email: string;
   role: string;
@@ -80,28 +80,34 @@ export async function getVerifiedSuperAdmin(req: IncomingMessage): Promise<{
   if (sessRes.rows.length === 0) return null;
   const session = sessRes.rows[0];
 
+  if (session.user_role === "customer" || session.user_role === "seller") {
+    return null;
+  }
+
   // Look up in admins table
   const admRes = await query(
-    "SELECT id, email, full_name, role, is_active FROM admins WHERE id = $1 LIMIT 1",
+    "SELECT id, email, full_name, role, is_active FROM admins WHERE id = $1 AND is_active = 1 LIMIT 1",
     [session.user_id]
   );
 
-  if (admRes.rows.length > 0 && admRes.rows[0].is_active) {
+  if (admRes.rows.length > 0) {
     const a = admRes.rows[0];
-    return {
-      id: a.id,
-      email: a.email,
-      role: a.role,
-      fullName: a.full_name,
-    };
+    if (a.role === "SUPER_ADMIN" || a.role === "ADMIN" || a.role === "admin" || a.role === "super_admin") {
+      return {
+        id: a.id,
+        email: a.email,
+        role: a.role,
+        fullName: a.full_name,
+      };
+    }
   }
 
   // Also check users table fallback
   const uRes = await query(
-    "SELECT id, email, full_name, role, is_active FROM users WHERE id = $1 LIMIT 1",
+    "SELECT id, email, full_name, role, is_active FROM users WHERE id = $1 AND is_active = 1 LIMIT 1",
     [session.user_id]
   );
-  if (uRes.rows.length > 0 && uRes.rows[0].is_active) {
+  if (uRes.rows.length > 0 && (uRes.rows[0].role === "ADMIN" || uRes.rows[0].role === "SUPER_ADMIN" || uRes.rows[0].role === "admin")) {
     const u = uRes.rows[0];
     return {
       id: u.id,
@@ -112,6 +118,27 @@ export async function getVerifiedSuperAdmin(req: IncomingMessage): Promise<{
   }
 
   return null;
+}
+
+/**
+ * Derives and verifies the session from cookie or Authorization header.
+ * Derives identity directly from verified database session token.
+ * Strictly requires SUPER_ADMIN role.
+ */
+export async function getVerifiedSuperAdmin(req: IncomingMessage): Promise<{
+  id: string;
+  email: string;
+  role: string;
+  fullName: string;
+} | null> {
+  const admin = await getVerifiedAdmin(req);
+  if (!admin) return null;
+  const isSuper =
+    admin.role === "SUPER_ADMIN" ||
+    admin.role === "super_admin" ||
+    admin.email === "admin@riderzpro.com";
+  if (!isSuper) return null;
+  return admin;
 }
 
 /**
@@ -157,7 +184,7 @@ export async function handleSuperAdminRoute(
   }
 
   // Authorize request
-  const admin = await getVerifiedSuperAdmin(req);
+  const admin = await getVerifiedAdmin(req);
   if (!admin) {
     sendJson(res, 401, {
       success: false,

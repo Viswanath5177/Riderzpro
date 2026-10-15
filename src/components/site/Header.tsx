@@ -20,6 +20,7 @@ import { MegaMenu } from "./MegaMenu";
 import { MobileDrawer } from "./MobileDrawer";
 import { useStore } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
+import { getProduct } from "@/lib/data";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -39,7 +40,9 @@ export function Header() {
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const cartCount = cart.reduce((acc, item) => acc + item.qty, 0);
+  const cartCount = cart
+    .filter((item) => Boolean(getProduct(item.productId)))
+    .reduce((acc, item) => acc + item.qty, 0);
 
   useEffect(() => {
     if (isSearchExpanded && searchInputRef.current) {

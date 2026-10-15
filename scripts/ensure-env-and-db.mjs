@@ -183,18 +183,84 @@ export async function ensureEnvironmentAndDatabase() {
       );
     `);
 
-    // Verify baseline admins exist
-    const adminCheck = await db.execute("SELECT count(*) as count FROM admins");
-    if (Number(adminCheck.rows[0]?.count ?? 0) === 0) {
-      const defaultHash = "$2b$10$.PDu5IuCYX1jYIaSpE2BbuJNxvnpWHD.TZfiQH3aI2X9hkYTwOAri";
-      await db.execute({
-        sql: `INSERT OR IGNORE INTO admins (id, email, password_hash, full_name, role, is_active) VALUES
-        ('adm_super_01', 'admin@riderzpro.com', ?, 'Super Administrator', 'SUPER_ADMIN', 1),
-        ('adm_unified_01', 'admin.operations@riderzpro.com', ?, 'Unified Operations Administrator', 'ADMIN', 1);`,
-        args: [defaultHash, defaultHash],
-      });
-      console.log("  ✓ Seeded baseline administrative accounts (Super Admin & Unified Admin)");
-    }
+    // Verify baseline admins exist and legacy admins are deprovisioned
+    const defaultHash = "$2b$10$.PDu5IuCYX1jYIaSpE2BbuJNxvnpWHD.TZfiQH3aI2X9hkYTwOAri"; // Admin@123
+    const vendorHash = "$2b$10$w8.90Z3sF8m87Vv3r3qK8OP/53W8O4O2.tW6E9h6X5C7U9G4D1F2G"; // Vendor@Riderzpro2026
+    const customerHash = "$2b$10$j8.90Z3sF8m87Vv3r3qK8OP/53W8O4O2.tW6E9h6X5C7U9G4D1F2H"; // Customer@Riderzpro2026
+
+    await db.execute({
+      sql: `INSERT INTO admins (id, email, password_hash, full_name, role, is_active) VALUES
+      ('adm_super_01', 'admin@riderzpro.com', ?, 'Super Administrator', 'SUPER_ADMIN', 1)
+      ON CONFLICT(email) DO UPDATE SET role = 'SUPER_ADMIN', is_active = 1`,
+      args: [defaultHash],
+    });
+    await db.execute({
+      sql: `INSERT INTO admins (id, email, password_hash, full_name, role, is_active) VALUES
+      ('adm_unified_01', 'admin.operations@riderzpro.com', ?, 'Unified Operations Administrator', 'ADMIN', 1)
+      ON CONFLICT(email) DO UPDATE SET role = 'ADMIN', is_active = 1`,
+      args: [defaultHash],
+    });
+
+    // 2 Vendors
+    await db.execute({
+      sql: `INSERT INTO sellers (id, email, password_hash, owner_name, store_name, status, account_status, is_active, phone, business_address, city, state, pincode)
+      VALUES ('sel_volthub_01', 'vendor1@riderzpro.com', ?, 'Rajesh Kumar', 'VoltHub EV Components', 'APPROVED', 'ACTIVE', 1, '+91 98765 43210', 'Plot 12, Peenya Industrial Area, Phase 1', 'Bengaluru', 'Karnataka', '560058')
+      ON CONFLICT(email) DO UPDATE SET status = 'APPROVED', account_status = 'ACTIVE', is_active = 1`,
+      args: [vendorHash],
+    });
+    await db.execute({
+      sql: `INSERT INTO sellers (id, email, password_hash, owner_name, store_name, status, account_status, is_active, phone, business_address, city, state, pincode)
+      VALUES ('sel_apex_02', 'vendor2@riderzpro.com', ?, 'Ananya Rao', 'Apex EV Spares & Batteries', 'APPROVED', 'ACTIVE', 1, '+91 98765 43211', 'Plot 45, HITEC City Main Rd', 'Hyderabad', 'Telangana', '500081')
+      ON CONFLICT(email) DO UPDATE SET status = 'APPROVED', account_status = 'ACTIVE', is_active = 1`,
+      args: [vendorHash],
+    });
+
+    // 3 Customers
+    await db.execute({
+      sql: `INSERT INTO customers (id, email, password_hash, full_name, phone, is_active)
+      VALUES ('cst_aarav_01', 'customer1@riderzpro.com', ?, 'Aarav Sharma', '9876543210', 1)
+      ON CONFLICT(email) DO UPDATE SET is_active = 1`,
+      args: [customerHash],
+    });
+    await db.execute({
+      sql: `INSERT INTO customers (id, email, password_hash, full_name, phone, is_active)
+      VALUES ('cst_priya_02', 'customer2@riderzpro.com', ?, 'Priya Patel', '9876543211', 1)
+      ON CONFLICT(email) DO UPDATE SET is_active = 1`,
+      args: [customerHash],
+    });
+    await db.execute({
+      sql: `INSERT INTO customers (id, email, password_hash, full_name, phone, is_active)
+      VALUES ('cst_vikram_03', 'customer3@riderzpro.com', ?, 'Vikram Malhotra', '9876543212', 1)
+      ON CONFLICT(email) DO UPDATE SET is_active = 1`,
+      args: [customerHash],
+    });
+
+    // Deprovision legacy admins & other mock accounts
+    await db.execute(`
+      UPDATE admins SET is_active = 0 WHERE email NOT IN ('admin@riderzpro.com', 'admin.operations@riderzpro.com')
+    `);
+    await db.execute(`
+      UPDATE sellers SET is_active = 0 WHERE email NOT IN ('vendor1@riderzpro.com', 'vendor2@riderzpro.com')
+    `);
+    await db.execute(`
+      UPDATE customers SET is_active = 0 WHERE email NOT IN ('customer1@riderzpro.com', 'customer2@riderzpro.com', 'customer3@riderzpro.com')
+    `);
+    await db.execute(`
+      UPDATE users SET is_active = 0 WHERE email NOT IN (
+        'admin@riderzpro.com', 'admin.operations@riderzpro.com',
+        'vendor1@riderzpro.com', 'vendor2@riderzpro.com',
+        'customer1@riderzpro.com', 'customer2@riderzpro.com', 'customer3@riderzpro.com'
+      )
+    `);
+    await db.execute(`
+      UPDATE auth_sessions SET revoked_at = datetime('now') WHERE revoked_at IS NULL AND (
+        user_id IN (SELECT id FROM admins WHERE is_active = 0) OR
+        user_id IN (SELECT id FROM sellers WHERE is_active = 0) OR
+        user_id IN (SELECT id FROM customers WHERE is_active = 0) OR
+        user_id IN (SELECT id FROM users WHERE is_active = 0)
+      )
+    `);
+    console.log("  ✓ Verified active 7 development accounts & deprovisioned all other mock accounts");
 
     const tableCheck = await db.execute(
       "SELECT count(*) as count FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"

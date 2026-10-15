@@ -3,7 +3,7 @@ import { query } from "./db";
 
 export interface NotificationPayload {
   userId: string;
-  userRole: "customer" | "seller" | "PRODUCT_ADMIN" | "SELLER_ADMIN" | "SUPER_ADMIN" | "admin" | string;
+  userRole: "customer" | "seller" | "ADMIN" | "SUPER_ADMIN" | "admin" | string;
   type: string;
   title: string;
   message: string;

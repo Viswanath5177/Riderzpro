@@ -10,7 +10,7 @@ import {
   sendProductApprovalEmail,
 } from "./email.server";
 
-export type RoleType = "customer" | "seller" | "PRODUCT_ADMIN" | "SUPPORT_ADMIN" | "SELLER_ADMIN" | "SUPER_ADMIN" | "admin";
+export type RoleType = "customer" | "seller" | "ADMIN" | "SUPER_ADMIN" | "admin";
 
 const SESSION_COOKIE = "riderzpro_session";
 

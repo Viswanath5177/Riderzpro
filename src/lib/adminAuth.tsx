@@ -47,37 +47,86 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [pendingUser, setPendingUser] = useState<AdminUser | null>(null);
 
-  // Restore session from localStorage on mount
+  // Restore session from localStorage on mount and sync with server
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(ADMIN_SESSION_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.user && parsed.user.email) {
-          setAdminUser(parsed.user);
-        } else if (parsed.email && (parsed.role?.includes("ADMIN") || parsed.role === "admin")) {
-          const userObj: AdminUser = {
-            id: parsed.id || "adm_session",
-            name: parsed.fullName || parsed.name || "Administrator",
-            email: parsed.email,
-            role: "admin",
-            roleTitle:
-              parsed.role === "SUPER_ADMIN"
-                ? "Super Administrator"
-                : "Operations Administrator",
-            department:
-              parsed.role === "SUPER_ADMIN"
-                ? "Executive Platform Oversight"
-                : "Seller Compliance & Product Catalog Moderation",
-          };
-          setAdminUser(userObj);
+    async function initSession() {
+      try {
+        // Check authoritative server session
+        const meRes = await fetch("/api/auth/me", { credentials: "include" }).catch(() => null);
+        if (meRes && meRes.ok) {
+          const meData = await meRes.json().catch(() => null);
+          if (meData?.authenticated && (meData.role === "SUPER_ADMIN" || meData.role === "ADMIN")) {
+            const userObj: AdminUser = {
+              id: meData.user?.id || "adm_session",
+              name: meData.user?.fullName || "Administrator",
+              email: meData.user?.email,
+              role: "admin",
+              roleTitle:
+                meData.role === "SUPER_ADMIN"
+                  ? "Super Administrator"
+                  : "Operations Administrator",
+              department:
+                meData.role === "SUPER_ADMIN"
+                  ? "Executive Platform Oversight"
+                  : "Seller Compliance & Product Catalog Moderation",
+            };
+            setAdminUser(userObj);
+            setLoading(false);
+            return;
+          } else if (meData && (!meData.authenticated || meData.role === "customer" || meData.role === "seller")) {
+            // Server explicitly says not an admin
+            localStorage.removeItem(ADMIN_SESSION_KEY);
+            setAdminUser(null);
+            setLoading(false);
+            return;
+          }
         }
+
+        const raw = localStorage.getItem(ADMIN_SESSION_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const email = (parsed.user?.email || parsed.email || "").toLowerCase();
+          // Reject deprovisioned accounts
+          if (
+            email === "product.admin@riderzpro.com" ||
+            email === "seller.admin@riderzpro.com" ||
+            email.includes("productadmin") ||
+            email.includes("selleradmin")
+          ) {
+            localStorage.removeItem(ADMIN_SESSION_KEY);
+            setAdminUser(null);
+            setLoading(false);
+            return;
+          }
+
+          if (parsed.user && parsed.user.email) {
+            setAdminUser(parsed.user);
+          } else if (parsed.email && (parsed.role?.includes("ADMIN") || parsed.role === "admin")) {
+            const userObj: AdminUser = {
+              id: parsed.id || "adm_session",
+              name: parsed.fullName || parsed.name || "Administrator",
+              email: parsed.email,
+              role: "admin",
+              roleTitle:
+                parsed.role === "SUPER_ADMIN"
+                  ? "Super Administrator"
+                  : "Operations Administrator",
+              department:
+                parsed.role === "SUPER_ADMIN"
+                  ? "Executive Platform Oversight"
+                  : "Seller Compliance & Product Catalog Moderation",
+            };
+            setAdminUser(userObj);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to restore admin session:", e);
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      console.error("Failed to restore admin session:", e);
-    } finally {
-      setLoading(false);
     }
+
+    initSession();
   }, []);
 
   const saveSession = useCallback((user: AdminUser) => {
@@ -201,7 +250,7 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/admin/login" search={{ redirect: location.pathname }} replace />;
+    return <Navigate to="/vendor/login" search={{ redirect: location.pathname }} replace />;
   }
 
   return <>{children}</>;

@@ -74,12 +74,20 @@ async function run() {
   });
   console.log("  ✓ Verified Unified Admin: admin.operations@riderzpro.com (role: ADMIN)");
 
-  // Migrate legacy product.admin and seller.admin to unified role 'ADMIN'
+  // Deprovision legacy product.admin and seller.admin
   await client.execute({
-    sql: `UPDATE admins SET role = 'ADMIN', password_hash = ? WHERE email IN ('product.admin@riderzpro.com', 'seller.admin@riderzpro.com')`,
-    args: [passwordHash],
+    sql: `UPDATE admins SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE email IN ('product.admin@riderzpro.com', 'seller.admin@riderzpro.com')`,
   });
-  console.log("  ✓ Consolidated legacy admin roles to unified 'ADMIN'");
+  await client.execute({
+    sql: `UPDATE users SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE email IN ('product.admin@riderzpro.com', 'seller.admin@riderzpro.com')`,
+  });
+  await client.execute({
+    sql: `UPDATE auth_sessions SET revoked_at = datetime('now') WHERE revoked_at IS NULL AND (
+      user_id IN (SELECT id FROM admins WHERE is_active = 0) OR
+      user_id IN (SELECT id FROM users WHERE is_active = 0)
+    )`,
+  });
+  console.log("  ✓ Deprovisioned legacy product.admin and seller.admin accounts");
 
   // Also sync users table for admin accounts
   await client.execute({

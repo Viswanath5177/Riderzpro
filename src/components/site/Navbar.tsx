@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { getCurrentRole, signOut as endServerSession, useAuth } from "@/lib/auth";
+import { getProduct } from "@/lib/data";
 import { Logo } from "./bits";
 
 export interface NavCategory {
@@ -58,7 +59,9 @@ export function Navbar() {
     return () => { active = false; };
   }, [setRole, signIn, signOut]);
 
-  const cartCount = cart.reduce((s, c) => s + c.qty, 0);
+  const cartCount = cart
+    .filter((c) => Boolean(getProduct(c.productId)))
+    .reduce((s, c) => s + c.qty, 0);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();

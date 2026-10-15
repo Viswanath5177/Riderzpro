@@ -8,11 +8,14 @@ import { CartDrawer } from "@/components/common/CartDrawer";
 import { LocationPickerModal } from "@/components/common/LocationPickerModal";
 import { useStore } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
+import { getProduct } from "@/lib/data";
 
 export function SiteLayout({ children }: { children: ReactNode; transparent?: boolean }) {
   const { cart, isLocationModalOpen, setIsLocationModalOpen } = useStore();
   const { isAuthenticated } = useAuth();
-  const cartCount = cart.reduce((s, c) => s + c.qty, 0);
+  const cartCount = cart
+    .filter((c) => Boolean(getProduct(c.productId)))
+    .reduce((s, c) => s + c.qty, 0);
 
   return (
     <div className="min-h-screen bg-white text-[#111111] pb-16 md:pb-0 font-sans selection:bg-red-500 selection:text-white flex flex-col">

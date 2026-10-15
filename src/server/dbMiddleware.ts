@@ -7,9 +7,11 @@ import {
   sendVendorRejectedEmail,
   sendVendorMoreInfoEmail,
   sendProductApprovalEmail,
+  sendCustomerOrderPlacedEmail,
+  sendVendorNewOrderEmail,
 } from "../lib/email.server";
 import { handleAuthRoute } from "./authRoutes";
-import { handleSuperAdminRoute } from "./superAdminRoutes";
+import { handleSuperAdminRoute, getVerifiedAdmin } from "./superAdminRoutes";
 import { createNotification, notifyAdminRole } from "./notifications";
 
 async function parseBody(req: IncomingMessage): Promise<any> {
@@ -88,6 +90,16 @@ export function pgApiMiddleware() {
         const method = req.method?.toUpperCase();
         const [cleanUrl, queryString = ""] = url.split("?");
         const queryParams = new URLSearchParams(queryString);
+
+        // ====================================================================
+        // Permanently decommissioned admin login endpoints -> redirect to /vendor/login
+        // ====================================================================
+        if (cleanUrl === "/admin/login" || cleanUrl === "/super-admin/login") {
+          const dest = queryString ? `/vendor/login?${queryString}` : "/vendor/login";
+          res.writeHead(302, { Location: dest });
+          res.end();
+          return;
+        }
 
         // ====================================================================
         // 0. AUTHENTICATION & NOTIFICATIONS API
@@ -792,44 +804,26 @@ export function pgApiMiddleware() {
               }
             }
 
-            // Fallback: If not authenticated or previewing, resolve latest registered seller
+            // Allow Admin to view a specific vendor via query parameter, otherwise enforce session
+            const verifiedAdmin = await getVerifiedAdmin(req).catch(() => null);
+            if (verifiedAdmin && queryParams.get("seller_id")) {
+              sellerId = queryParams.get("seller_id");
+            }
+
             let sellerRow: any = null;
             if (sellerId) {
-              const res = await query("SELECT * FROM sellers WHERE id = $1 LIMIT 1", [sellerId]);
+              const res = await query("SELECT * FROM sellers WHERE id = $1 AND is_active = 1 LIMIT 1", [sellerId]);
               sellerRow = res.rows[0];
-            }
-            if (!sellerRow) {
-              const res = await query("SELECT * FROM sellers ORDER BY created_at DESC LIMIT 1");
-              sellerRow = res.rows[0];
-              if (sellerRow) {
-                sellerId = sellerRow.id;
-                sellerEmail = sellerRow.email;
-              }
             }
 
             if (!sellerRow) {
-              return sendJson(res, 200, {
-                success: true,
-                data: {
-                  vendor: null,
-                  metrics: {
-                    totalGrossSales: 0,
-                    activeListings: 0,
-                    pendingOrders: 0,
-                    inPreparation: 0,
-                    outForDelivery: 0,
-                    deliveredOrders: 0,
-                    unitsInStock: 0,
-                    rating: 0,
-                    reviewCount: 0,
-                  },
-                  orders: [],
-                  shipments: [],
-                  reviews: [],
-                  settlements: [],
-                },
+              return sendJson(res, 401, {
+                success: false,
+                error: "Vendor authorization required. Please sign in to your vendor partner account.",
               });
             }
+
+            sellerEmail = sellerRow.email;
 
             // Bank details & KYC documents for this seller
             const bankRes = await query(
@@ -863,25 +857,32 @@ export function pgApiMiddleware() {
             const activeListings = vendorProducts.filter((p: any) => p.verification_status === "approved").length;
             const unitsInStock = vendorProducts.reduce((sum: number, p: any) => sum + (Number(p.stock) || 0), 0);
 
-            // Real orders from DB for this vendor
+            // Real orders from DB containing items sold by this vendor
             const ordersRes = await query(
               `SELECT o.id, o.order_number, o.status, o.total_amount, o.delivery_address, o.created_at,
-                      u.full_name AS customer_name, u.phone AS customer_phone
+                      o.payment_status, o.payment_method,
+                      COALESCE(c.full_name, u.full_name, 'Customer') AS customer_name,
+                      COALESCE(c.phone, u.phone, '+91 98765 43210') AS customer_phone,
+                      oi.id AS item_id, oi.product_id, oi.quantity, oi.unit_price, oi.subtotal,
+                      p.name AS product_name
                FROM orders o
+               LEFT JOIN customers c ON o.customer_id = c.id
                LEFT JOIN users u ON o.customer_id = u.id
-               WHERE o.seller_id = $1 OR o.seller_id IN (SELECT id FROM users WHERE email = $2)
+               JOIN order_items oi ON oi.order_id = o.id
+               LEFT JOIN products p ON oi.product_id = p.id
+               WHERE oi.seller_id = $1
                ORDER BY o.created_at DESC`,
-              [sellerId, sellerEmail]
+              [sellerId]
             );
             const vendorOrders = ordersRes.rows;
             const totalGrossSales = vendorOrders
-              .filter((o: any) => o.status !== "cancelled")
-              .reduce((sum: number, o: any) => sum + (Number(o.total_amount) || 0), 0);
+              .filter((o: any) => o.status !== "cancelled" && o.payment_status === "paid")
+              .reduce((sum: number, o: any) => sum + (Number(o.subtotal || o.total_amount) || 0), 0);
 
             const pendingOrders = vendorOrders.filter((o: any) => o.status === "pending").length;
             const inPreparation = vendorOrders.filter((o: any) => o.status === "processing").length;
             const outForDelivery = vendorOrders.filter((o: any) => o.status === "shipped").length;
-            const deliveredOrders = vendorOrders.filter((o: any) => o.status === "delivered").length;
+            const deliveredOrders = vendorOrders.filter((o: any) => o.status === "delivered" || o.status === "completed").length;
 
             return sendJson(res, 200, {
               success: true,
@@ -1110,6 +1111,11 @@ export function pgApiMiddleware() {
         // 3.10 ADMIN NOTIFICATIONS API: /api/admin/notifications
         // ====================================================================
         if (cleanUrl === "/api/admin/notifications" && method === "GET") {
+          const verifiedAdmin = await getVerifiedAdmin(req);
+          if (!verifiedAdmin) {
+            return sendJson(res, 401, { success: false, error: "Administrative authorization required." });
+          }
+
           try {
             const sellersRes = await query(`
               SELECT id, store_name, owner_name, city, state, status, created_at
@@ -1146,9 +1152,148 @@ export function pgApiMiddleware() {
         }
 
         // ====================================================================
+        // 3.12 UNIFIED ADMIN MARKETPLACE METRICS & REVENUE API: /api/admin/metrics
+        // ====================================================================
+        if (cleanUrl === "/api/admin/metrics" && method === "GET") {
+          const verifiedAdmin = await getVerifiedAdmin(req);
+          if (!verifiedAdmin && process.env["NODE_ENV"] === "production") {
+            return sendJson(res, 401, { success: false, error: "Administrative authorization required." });
+          }
+
+          try {
+            const customersRes = await query("SELECT COUNT(*) as count FROM customers WHERE is_active = 1");
+            const totalCustomers = Number(customersRes.rows[0]?.count || 0);
+
+            const sellersRes = await query(`
+              SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'APPROVED' AND is_active = 1 THEN 1 ELSE 0 END) as active,
+                SUM(CASE WHEN status = 'PENDING_REVIEW' THEN 1 ELSE 0 END) as pending
+              FROM sellers
+            `);
+            const totalSellers = Number(sellersRes.rows[0]?.total || 0);
+            const activeSellers = Number(sellersRes.rows[0]?.active || 0);
+            const pendingSellers = Number(sellersRes.rows[0]?.pending || 0);
+
+            const productsRes = await query(`
+              SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN verification_status = 'approved' OR is_active = 1 THEN 1 ELSE 0 END) as active,
+                SUM(CASE WHEN verification_status = 'pending_approval' THEN 1 ELSE 0 END) as pending
+              FROM products
+            `);
+            const totalProducts = Number(productsRes.rows[0]?.total || 0);
+            const activeProducts = Number(productsRes.rows[0]?.active || 0);
+            const pendingProducts = Number(productsRes.rows[0]?.pending || 0);
+
+            const ordersStatsRes = await query(`
+              SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN status IN ('pending', 'processing') THEN 1 ELSE 0 END) as pending_processing,
+                SUM(CASE WHEN status = 'completed' OR status = 'delivered' THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled,
+                SUM(CASE WHEN status = 'refunded' OR refund_amount > 0 THEN 1 ELSE 0 END) as refunded,
+                SUM(CASE WHEN payment_status = 'paid' AND status != 'cancelled' THEN total_amount ELSE 0 END) as gross_sales,
+                SUM(COALESCE(refund_amount, 0)) as total_refunds
+              FROM orders
+            `);
+            const ord = ordersStatsRes.rows[0] || {};
+            const totalOrders = Number(ord.total || 0);
+            const pendingProcessingOrders = Number(ord.pending_processing || 0);
+            const completedOrders = Number(ord.completed || 0);
+            const cancelledOrders = Number(ord.cancelled || 0);
+            const refundedOrders = Number(ord.refunded || 0);
+            const grossSales = Number(ord.gross_sales || 0);
+            const totalRefunds = Number(ord.total_refunds || 0);
+            const netRevenue = Math.max(0, grossSales - totalRefunds);
+
+            const recentOrdersRes = await query(`
+              SELECT o.id, o.order_number, o.customer_id, o.seller_id, o.total_amount, 
+                     o.status, o.payment_status, o.payment_method, o.created_at,
+                     COALESCE(c.full_name, 'Customer') as customer_name,
+                     s.store_name
+              FROM orders o
+              LEFT JOIN customers c ON o.customer_id = c.id
+              LEFT JOIN sellers s ON o.seller_id = s.id
+              ORDER BY o.created_at DESC
+              LIMIT 10
+            `);
+
+            const vendorPerformanceRes = await query(`
+              SELECT s.id as seller_id, s.store_name, s.owner_name,
+                     COUNT(DISTINCT oi.order_id) as order_count,
+                     COALESCE(SUM(oi.subtotal), 0) as total_sales
+              FROM sellers s
+              LEFT JOIN order_items oi ON s.id = oi.seller_id
+              LEFT JOIN orders o ON oi.order_id = o.id AND o.payment_status = 'paid' AND o.status != 'cancelled'
+              GROUP BY s.id, s.store_name, s.owner_name
+              ORDER BY total_sales DESC
+            `);
+
+            return sendJson(res, 200, {
+              success: true,
+              data: {
+                totalCustomers,
+                totalSellers,
+                activeSellers,
+                pendingSellers,
+                totalProducts,
+                activeProducts,
+                pendingProducts,
+                totalOrders,
+                pendingProcessingOrders,
+                completedOrders,
+                cancelledOrders,
+                refundedOrders,
+                grossSales,
+                totalRefunds,
+                netRevenue,
+                recentOrders: recentOrdersRes.rows,
+                vendorPerformance: vendorPerformanceRes.rows,
+              },
+            });
+          } catch (err: any) {
+            console.error("[Admin Metrics Error]:", err);
+            return sendJson(res, 500, { success: false, error: err.message });
+          }
+        }
+
+        // ====================================================================
+        // 3.13 ADMIN CUSTOMERS LIST API: /api/admin/customers
+        // ====================================================================
+        if (cleanUrl === "/api/admin/customers" && method === "GET") {
+          const verifiedAdmin = await getVerifiedAdmin(req);
+          if (!verifiedAdmin && process.env["NODE_ENV"] === "production") {
+            return sendJson(res, 401, { success: false, error: "Administrative authorization required." });
+          }
+
+          try {
+            const customersRes = await query(`
+              SELECT c.id, c.email, c.full_name, c.phone, c.is_active, c.created_at,
+                     COUNT(o.id) as orders_count,
+                     COALESCE(SUM(CASE WHEN o.payment_status = 'paid' THEN o.total_amount ELSE 0 END), 0) as total_spent
+              FROM customers c
+              LEFT JOIN orders o ON c.id = o.customer_id
+              WHERE c.is_active = 1
+              GROUP BY c.id, c.email, c.full_name, c.phone, c.is_active, c.created_at
+              ORDER BY c.created_at DESC
+            `);
+            return sendJson(res, 200, { success: true, data: customersRes.rows });
+          } catch (err: any) {
+            console.error("[Admin Customers Error]:", err);
+            return sendJson(res, 500, { success: false, error: err.message });
+          }
+        }
+
+        // ====================================================================
         // 4. ADMIN SELLERS & KYC REVIEW & ANALYTICS API: /api/admin/sellers
         // ====================================================================
         if (cleanUrl.startsWith("/api/admin/sellers") || cleanUrl === "/api/admin/analytics/sellers") {
+          const verifiedAdmin = await getVerifiedAdmin(req);
+          if (!verifiedAdmin) {
+            return sendJson(res, 401, { success: false, error: "Administrative authorization required." });
+          }
+
           const parts = cleanUrl.split("/").filter(Boolean); // ['api', 'admin', 'sellers', sellerId?, subAction?]
           const sellerId = parts.length > 3 ? parts[3] : null;
           const subAction = parts.length > 4 ? parts[4] : null;
@@ -1342,7 +1487,7 @@ export function pgApiMiddleware() {
             if (method === "POST" && sellerId && subAction === "freeze") {
               const body = await parseBody(req);
               const reason = (body.reason || "").trim();
-              const adminId = body.adminId || "adm_seller_01";
+              const adminId = body.adminId || verifiedAdmin.id;
 
               if (!reason) {
                 return sendJson(res, 400, {
@@ -1384,7 +1529,7 @@ export function pgApiMiddleware() {
                 userRole: "seller",
                 type: "account_frozen",
                 title: "Vendor Account Suspended (Frozen)",
-                message: `Your vendor account has been frozen by administration. Reason: ${reason}. Selling operations and product submissions are paused. Designated assistance: riderzpro@selleradmin.com`,
+                message: `Your vendor account has been frozen by administration. Reason: ${reason}. Selling operations and product submissions are paused. Designated assistance: admin.operations@riderzpro.com`,
                 targetRoute: "/dashboard/vendor",
               });
 
@@ -1398,7 +1543,7 @@ export function pgApiMiddleware() {
             // POST /api/admin/sellers/:id/unfreeze (Unfreeze Vendor Account)
             if (method === "POST" && sellerId && subAction === "unfreeze") {
               const body = await parseBody(req);
-              const adminId = body.adminId || "adm_seller_01";
+              const adminId = body.adminId || verifiedAdmin.id;
 
               const sRes = await query("SELECT id, email, store_name, owner_name FROM sellers WHERE id = $1", [sellerId]);
               const seller = sRes.rows[0];
@@ -1455,6 +1600,11 @@ export function pgApiMiddleware() {
         // 5. ADMIN PRODUCT REVIEW API: /api/admin/products/:id/review
         // ====================================================================
         if (cleanUrl.startsWith("/api/admin/products") && cleanUrl.includes("/review")) {
+          const verifiedAdmin = await getVerifiedAdmin(req);
+          if (!verifiedAdmin) {
+            return sendJson(res, 401, { success: false, error: "Administrative authorization required." });
+          }
+
           const parts = cleanUrl.split("/").filter(Boolean); // ['api', 'admin', 'products', productId, 'review']
           const productId = parts[3];
 
@@ -1463,7 +1613,7 @@ export function pgApiMiddleware() {
               const body = await parseBody(req);
               const action = body.action as "APPROVED" | "REJECTED";
               const reason = body.reason || body.remarks || "";
-              const adminId = body.adminId || body.reviewed_by || "adm_product_01";
+              const adminId = body.adminId || body.reviewed_by || verifiedAdmin.id;
 
               const prodRes = await query("SELECT name, seller_id FROM products WHERE id = $1", [productId]);
               const product = prodRes.rows[0];
@@ -1504,7 +1654,7 @@ export function pgApiMiddleware() {
                   if (aEmailCheck.rows.length > 0) {
                     verifiedByAdminId = aEmailCheck.rows[0].id;
                   } else {
-                    const fallbackAdmin = await query("SELECT id FROM admins WHERE role = 'PRODUCT_ADMIN' OR role = 'SELLER_ADMIN' LIMIT 1").catch(() => ({ rows: [] }));
+                    const fallbackAdmin = await query("SELECT id FROM admins WHERE (role = 'ADMIN' OR role = 'SUPER_ADMIN') AND is_active = 1 LIMIT 1").catch(() => ({ rows: [] }));
                     if (fallbackAdmin.rows.length > 0) {
                       verifiedByAdminId = fallbackAdmin.rows[0].id;
                     } else {
@@ -1605,43 +1755,73 @@ export function pgApiMiddleware() {
         // ====================================================================
         // 6. CUSTOMER CART PERSISTENCE API: /api/cart
         // ====================================================================
-        // ====================================================================
-        // ====================================================================
-        // 6. CUSTOMER CART PERSISTENCE API: /api/cart
-        // ====================================================================
         if (cleanUrl.startsWith("/api/cart")) {
           const authUser = await getAuthenticatedUser(req);
-          const rawId = queryParams.get("customer_id") || authUser?.id || authUser?.email || "usr_customer_demo";
+          let customerId: string | null = null;
+
+          if (authUser) {
+            const custRow = await query("SELECT id FROM customers WHERE id = $1 OR email = $1 LIMIT 1", [authUser.id || authUser.email]);
+            customerId = custRow.rows[0]?.id || authUser.id;
+          } else {
+            const paramId = queryParams.get("customer_id") || queryParams.get("customerId");
+            if (paramId && paramId !== "usr_customer_demo") {
+              const custRow = await query("SELECT id FROM customers WHERE id = $1 OR email = $1 LIMIT 1", [paramId]);
+              customerId = custRow.rows[0]?.id || paramId;
+            }
+          }
+
+          let body: any = null;
+          if (method === "POST" || method === "PUT" || method === "DELETE") {
+            body = await parseBody(req).catch(() => ({}));
+            if (!customerId && (body.customerId || body.customer_id)) {
+              const bId = body.customerId || body.customer_id;
+              const custRow = await query("SELECT id FROM customers WHERE id = $1 OR email = $1 LIMIT 1", [bId]);
+              customerId = custRow.rows[0]?.id || bId;
+            }
+          }
 
           try {
-            const custRow = await query("SELECT id FROM customers WHERE id = $1 OR email = $1 LIMIT 1", [rawId]);
-            const customerId = custRow.rows[0]?.id || rawId;
-
             if (method === "GET") {
-              if (!customerId || customerId === "usr_customer_demo") {
-                return sendJson(res, 200, { success: true, data: [], items: [] });
+              if (!customerId) {
+                return sendJson(res, 200, { success: true, data: [], items: [], count: 0 });
               }
 
               const cartRes = await query("SELECT id FROM carts WHERE customer_id = $1 LIMIT 1", [customerId]);
               if (!cartRes.rows[0]) {
-                return sendJson(res, 200, { success: true, data: [], items: [] });
+                return sendJson(res, 200, { success: true, data: [], items: [], count: 0 });
               }
+              const cartId = cartRes.rows[0].id;
+
+              // Clean up any orphaned cart items where product was deleted or unapproved
+              await query(
+                `DELETE FROM cart_items 
+                 WHERE cart_id = $1 
+                   AND product_id NOT IN (
+                     SELECT id FROM products 
+                     WHERE (is_active = 1 OR is_active IS NULL) 
+                       AND (verification_status = 'approved' OR verification_status = 'APPROVED')
+                   )`,
+                [cartId]
+              ).catch(() => {});
+
               const itemsRes = await query(
-                `SELECT ci.product_id, ci.quantity, p.name, p.price, p.stock, p.image_url, p.is_active, p.verification_status
+                `SELECT ci.product_id, ci.quantity, p.name, p.price, p.stock, p.image_url, p.is_active, p.verification_status, p.seller_id
                  FROM cart_items ci
-                 LEFT JOIN products p ON ci.product_id = p.id
-                 WHERE ci.cart_id = $1`,
-                [cartRes.rows[0].id]
+                 INNER JOIN products p ON ci.product_id = p.id
+                 WHERE ci.cart_id = $1 
+                   AND (p.is_active = 1 OR p.is_active IS NULL) 
+                   AND (p.verification_status = 'approved' OR verification_status = 'APPROVED')`,
+                [cartId]
               );
-              return sendJson(res, 200, { success: true, data: itemsRes.rows, items: itemsRes.rows });
+              const totalCount = itemsRes.rows.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 0), 0);
+              return sendJson(res, 200, { success: true, data: itemsRes.rows, items: itemsRes.rows, count: totalCount });
             }
 
             if (method === "POST") {
-              if (!customerId || customerId === "usr_customer_demo") {
+              if (!customerId) {
                 return sendJson(res, 200, { success: true, message: "Guest session - local storage used", items: [] });
               }
 
-              const body = await parseBody(req);
               let cartRes = await query("SELECT id FROM carts WHERE customer_id = $1 LIMIT 1", [customerId]);
               let cartId = cartRes.rows[0]?.id;
               if (!cartId) {
@@ -1656,17 +1836,32 @@ export function pgApiMiddleware() {
                   const pid = it.productId || it.product_id;
                   const qty = Math.max(1, Number(it.qty || it.quantity) || 1);
                   if (pid) {
-                    const itemId = `ci_${crypto.randomBytes(8).toString("hex")}`;
-                    await query(
-                      "INSERT INTO cart_items (id, cart_id, product_id, quantity) VALUES ($1, $2, $3, $4)",
-                      [itemId, cartId, pid, qty]
-                    ).catch(() => {});
+                    // Verify product exists and is approved
+                    const pCheck = await query(
+                      "SELECT id FROM products WHERE id = $1 AND (is_active = 1 OR is_active IS NULL) AND (verification_status = 'approved' OR verification_status = 'APPROVED') LIMIT 1",
+                      [pid]
+                    );
+                    if (pCheck.rows.length > 0) {
+                      const itemId = `ci_${crypto.randomBytes(8).toString("hex")}`;
+                      await query(
+                        "INSERT INTO cart_items (id, cart_id, product_id, quantity) VALUES ($1, $2, $3, $4)",
+                        [itemId, cartId, pid, qty]
+                      ).catch(() => {});
+                    }
                   }
                 }
               } else if (body.product_id || body.productId) {
                 // Single item add / increment
                 const pid = body.product_id || body.productId;
                 const addQty = Math.max(1, Number(body.quantity || body.qty) || 1);
+                const pCheck = await query(
+                  "SELECT id FROM products WHERE id = $1 AND (is_active = 1 OR is_active IS NULL) AND (verification_status = 'approved' OR verification_status = 'APPROVED') LIMIT 1",
+                  [pid]
+                );
+                if (pCheck.rows.length === 0) {
+                  return sendJson(res, 400, { success: false, error: "Product not available or no longer active" });
+                }
+
                 const existing = await query(
                   "SELECT id, quantity FROM cart_items WHERE cart_id = $1 AND product_id = $2 LIMIT 1",
                   [cartId, pid]
@@ -1687,7 +1882,6 @@ export function pgApiMiddleware() {
             }
 
             if (method === "PUT") {
-              const body = await parseBody(req);
               const pid = body.product_id || body.productId;
               const newQty = Number(body.quantity || body.qty);
               let cartRes = await query("SELECT id FROM carts WHERE customer_id = $1 LIMIT 1", [customerId]);
@@ -1703,8 +1897,7 @@ export function pgApiMiddleware() {
             }
 
             if (method === "DELETE") {
-              const body = await parseBody(req).catch(() => ({}));
-              const pid = body.product_id || body.productId || queryParams.get("product_id");
+              const pid = body?.product_id || body?.productId || queryParams.get("product_id");
               let cartRes = await query("SELECT id FROM carts WHERE customer_id = $1 LIMIT 1", [customerId]);
               const cartId = cartRes.rows[0]?.id;
               if (cartId) {
@@ -1904,6 +2097,7 @@ export function pgApiMiddleware() {
                   return {
                     ...c,
                     productIds: pRes.rows.map((p: any) => p.product_id),
+                    product_ids: pRes.rows.map((p: any) => p.product_id),
                   };
                 })
               );
@@ -1939,11 +2133,16 @@ export function pgApiMiddleware() {
                 return sendJson(res, 409, { success: false, error: `Coupon code '${code}' already exists.` });
               }
 
+              const postSellerId =
+                authUser && (authUser.role === "seller" || authUser.role === "vendor")
+                  ? authUser.id
+                  : (body.seller_id || body.sellerId || body.vendor_id || queryParams.get("seller_id") || sellerId);
+
               // Validate vendor ownership of selected products
-              if (selectedProducts.length > 0 && sellerId) {
+              if (selectedProducts.length > 0 && postSellerId) {
                 for (const pid of selectedProducts) {
                   const pCheck = await query("SELECT seller_id FROM products WHERE id = $1", [pid]);
-                  if (pCheck.rows[0] && pCheck.rows[0].seller_id && pCheck.rows[0].seller_id !== sellerId) {
+                  if (!pCheck.rows[0] || (pCheck.rows[0].seller_id && pCheck.rows[0].seller_id !== postSellerId)) {
                     return sendJson(res, 403, {
                       success: false,
                       error: `Unauthorized: Product '${pid}' does not belong to your store. You can only attach coupons to your own products.`,
@@ -1956,7 +2155,7 @@ export function pgApiMiddleware() {
               await query(
                 `INSERT INTO coupons (id, vendor_id, code, description, discount_type, discount_value, minimum_order_value, maximum_discount, starts_at, expires_at, usage_limit, per_customer_limit, status)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'active')`,
-                [cId, sellerId, code, description, discountType, discountValue, minOrder, maxDiscount, startsAt, expiresAt, usageLimit, perCustomerLimit]
+                [cId, postSellerId, code, description, discountType, discountValue, minOrder, maxDiscount, startsAt, expiresAt, usageLimit, perCustomerLimit]
               );
 
               for (const pid of selectedProducts) {
@@ -2027,10 +2226,18 @@ export function pgApiMiddleware() {
           if (!productId) return sendJson(res, 200, { success: true, coupons: [] });
 
           const rows = await query(
-            `SELECT c.id, c.code, c.description, c.discount_type, c.discount_value, c.minimum_order_value, c.maximum_discount, c.expires_at
+            `SELECT c.id, c.vendor_id, c.code, c.description, c.discount_type, c.discount_value, 
+                    c.minimum_order_value, c.maximum_discount, c.starts_at, c.expires_at,
+                    c.usage_limit, c.per_customer_limit, 
+                    COALESCE(s.store_name, (SELECT store_name FROM sellers WHERE id = c.vendor_id OR email = (SELECT email FROM users WHERE id = c.vendor_id LIMIT 1) LIMIT 1), 'Verified Marketplace Vendor') AS store_name,
+                    COALESCE(s.store_name, (SELECT store_name FROM sellers WHERE id = c.vendor_id OR email = (SELECT email FROM users WHERE id = c.vendor_id LIMIT 1) LIMIT 1), 'Verified Marketplace Vendor') AS seller_name
              FROM coupons c
              JOIN coupon_products cp ON c.id = cp.coupon_id
-             WHERE cp.product_id = $1 AND c.status = 'active'
+             LEFT JOIN sellers s ON c.vendor_id = s.id
+             WHERE cp.product_id = $1 
+               AND c.status = 'active'
+               AND (c.expires_at IS NULL OR date(c.expires_at) >= date('now'))
+               AND (c.starts_at IS NULL OR date(c.starts_at) <= date('now'))
              ORDER BY c.discount_value DESC`,
             [productId]
           );
@@ -2135,19 +2342,100 @@ export function pgApiMiddleware() {
         }
 
         // ====================================================================
-        // 8. ORDERS API: /api/orders
+        // 8. ORDERS & ORDER ITEMS API: /api/orders
         // ====================================================================
         if (cleanUrl.startsWith("/api/orders")) {
           try {
-            // GET /api/orders?customer_id=... or /api/orders?seller_id=...
+            const parts = cleanUrl.split("/").filter(Boolean); // ['api', 'orders', orderId?, action?]
+            const urlOrderId = parts.length > 2 && parts[2] !== "status" ? parts[2] : null;
+            const subAction = parts.length > 3 ? parts[3] : parts.length > 2 && parts[2] === "status" ? "status" : null;
+
+            // POST /api/orders/:id/status (Update order status)
+            if (method === "POST" && urlOrderId && (subAction === "status" || cleanUrl.includes("/status"))) {
+              const body = await parseBody(req);
+              const newStatus = (body.status || "").toLowerCase().trim();
+              if (!newStatus) {
+                return sendJson(res, 400, { success: false, error: "New order status is required." });
+              }
+
+              const existingRes = await query("SELECT id, status, total_amount, customer_id, seller_id FROM orders WHERE id = $1 OR order_number = $1", [urlOrderId]);
+              const order = existingRes.rows[0];
+              if (!order) {
+                return sendJson(res, 404, { success: false, error: "Order not found." });
+              }
+
+              await query(
+                "UPDATE orders SET status = $1, updated_at = datetime('now') WHERE id = $2",
+                [newStatus, order.id]
+              );
+
+              // If cancelled, restore stock
+              if (newStatus === "cancelled" && order.status !== "cancelled") {
+                const itemsRes = await query("SELECT product_id, quantity FROM order_items WHERE order_id = $1", [order.id]);
+                for (const item of itemsRes.rows) {
+                  await query("UPDATE products SET stock = stock + $1, updated_at = datetime('now') WHERE id = $2", [item.quantity, item.product_id]);
+                }
+              }
+
+              return sendJson(res, 200, {
+                success: true,
+                message: `Order #${order.id} status updated to ${newStatus}.`,
+                status: newStatus,
+              });
+            }
+
+            // POST /api/orders/:id/refund (Admin order refund)
+            if (method === "POST" && urlOrderId && (subAction === "refund" || cleanUrl.includes("/refund"))) {
+              const verifiedAdmin = await getVerifiedAdmin(req);
+              if (!verifiedAdmin && process.env["NODE_ENV"] === "production") {
+                return sendJson(res, 401, { success: false, error: "Administrative authorization required." });
+              }
+
+              const existingRes = await query("SELECT id, status, total_amount, payment_status FROM orders WHERE id = $1 OR order_number = $1", [urlOrderId]);
+              const order = existingRes.rows[0];
+              if (!order) {
+                return sendJson(res, 404, { success: false, error: "Order not found." });
+              }
+
+              await query(
+                `UPDATE orders 
+                 SET status = 'refunded', 
+                     payment_status = 'refunded', 
+                     refund_amount = total_amount, 
+                     updated_at = datetime('now') 
+                 WHERE id = $1`,
+                [order.id]
+              );
+
+              // Restore product stock upon refund if not already cancelled/refunded
+              if (order.status !== "cancelled" && order.status !== "refunded") {
+                const itemsRes = await query("SELECT product_id, quantity FROM order_items WHERE order_id = $1", [order.id]);
+                for (const it of itemsRes.rows) {
+                  await query("UPDATE products SET stock = stock + $1 WHERE id = $2", [Number(it.quantity) || 1, it.product_id]);
+                }
+              }
+
+              return sendJson(res, 200, {
+                success: true,
+                message: `Order #${order.id} refunded successfully.`,
+                status: "refunded",
+                payment_status: "refunded",
+              });
+            }
+
+            // GET /api/orders (List orders with items)
             if (method === "GET") {
               const customerId = queryParams.get("customer_id");
               const sellerId = queryParams.get("seller_id");
 
               let sql = `
-                SELECT o.id, o.order_number, o.customer_id, o.seller_id, o.total_amount, 
-                       o.payment_method, o.order_status, o.shipping_address, o.created_at,
-                       s.store_name, c.full_name as customer_name, c.phone as customer_phone
+                SELECT o.id, o.order_number, o.customer_id, o.seller_id, o.status, o.total_amount, 
+                       o.delivery_address, o.payment_status, o.payment_method, o.refund_amount, 
+                       o.created_at, o.updated_at,
+                       s.store_name, s.owner_name as seller_name,
+                       COALESCE(c.full_name, 'Customer') as customer_name,
+                       COALESCE(c.phone, '') as customer_phone,
+                       COALESCE(c.email, '') as customer_email
                 FROM orders o
                 LEFT JOIN sellers s ON o.seller_id = s.id
                 LEFT JOIN customers c ON o.customer_id = c.id
@@ -2155,83 +2443,298 @@ export function pgApiMiddleware() {
               const params: any[] = [];
               if (customerId) {
                 params.push(customerId);
-                sql += ` WHERE o.customer_id = $${params.length}`;
+                sql += ` WHERE o.customer_id = $${params.length} OR o.customer_id IN (SELECT id FROM customers WHERE email = $${params.length})`;
               } else if (sellerId) {
                 params.push(sellerId);
-                sql += ` WHERE o.seller_id = $${params.length}`;
+                sql += ` WHERE o.seller_id = $${params.length} OR o.id IN (SELECT order_id FROM order_items WHERE seller_id = $${params.length})`;
               }
               sql += " ORDER BY o.created_at DESC";
 
               const ordersRes = await query(sql, params);
-              return sendJson(res, 200, { success: true, data: ordersRes.rows });
+              const ordersList = ordersRes.rows;
+
+              // Attach order_items for each order
+              for (const ord of ordersList) {
+                let itemSql = `
+                  SELECT oi.id, oi.order_id, oi.product_id, oi.quantity, oi.unit_price, oi.subtotal, oi.seller_id,
+                         COALESCE(p.name, 'EV Spare Part') as product_name,
+                         s.store_name
+                  FROM order_items oi
+                  LEFT JOIN products p ON oi.product_id = p.id
+                  LEFT JOIN sellers s ON oi.seller_id = s.id
+                  WHERE oi.order_id = $1
+                `;
+                const itemParams: any[] = [ord.id];
+                if (sellerId) {
+                  itemParams.push(sellerId);
+                  itemSql += ` AND (oi.seller_id = $2 OR oi.seller_id IS NULL)`;
+                }
+                const itemsRes = await query(itemSql, itemParams);
+                ord.items = itemsRes.rows;
+              }
+
+              return sendJson(res, 200, { success: true, data: ordersList });
             }
 
-            // POST /api/orders (Customer checkout)
+            // POST /api/orders (Customer checkout & database placement)
             if (method === "POST") {
               const body = await parseBody(req);
+              const cryptoMod = await import("node:crypto");
               const orderNum = `RZ-${Math.floor(100000 + Math.random() * 900000)}`;
-              const orderId = `ord_${(await import("node:crypto")).randomBytes(8).toString("hex")}`;
-              const custId = body.customer_id || "cst_guest";
-              const sellerId = body.seller_id || null;
-              const totalAmount = Number(body.total_amount || body.total || 0);
-              if (isNaN(totalAmount) || totalAmount <= 0) {
-                return sendJson(res, 400, {
-                  success: false,
-                  error: "Order total amount must be greater than ₹0. Please add valid items to your cart.",
-                });
-              }
-              const paymentMethod = body.payment_method || "UPI";
-              const shippingAddress = JSON.stringify(body.shipping_address || {});
+              const orderId = `ord_${cryptoMod.randomBytes(8).toString("hex")}`;
 
-              const ins = await query(
-                `INSERT INTO orders (id, order_number, customer_id, seller_id, total_amount, payment_method, order_status, shipping_address)
-                 VALUES ($1, $2, $3, $4, $5, $6, 'CONFIRMED', $7)
-                 RETURNING *`,
-                [orderId, orderNum, custId, sellerId, totalAmount, paymentMethod, shippingAddress]
-              );
-
-              // Clear customer cart after checkout
-              if (custId && custId !== "cst_guest") {
-                const cRow = await query("SELECT id FROM carts WHERE customer_id = $1", [custId]);
-                if (cRow.rows[0]) {
-                  await query("DELETE FROM cart_items WHERE cart_id = $1", [cRow.rows[0].id]);
+              // 1. Resolve raw items
+              let requestedItems: Array<{ productId: string; qty: number }> = [];
+              if (Array.isArray(body.items) && body.items.length > 0) {
+                requestedItems = body.items.map((it: any) => ({
+                  productId: it.productId || it.product_id || it.id,
+                  qty: Math.max(1, Number(it.quantity || it.qty || 1)),
+                }));
+              } else if (Array.isArray(body.groups) && body.groups.length > 0) {
+                for (const g of body.groups) {
+                  if (Array.isArray(g.items)) {
+                    for (const it of g.items) {
+                      requestedItems.push({
+                        productId: it.productId || it.product_id || it.id,
+                        qty: Math.max(1, Number(it.quantity || it.qty || 1)),
+                      });
+                    }
+                  }
                 }
               }
 
-              // In-app notifications
-              if (custId && custId !== "cst_guest") {
-                await createNotification({
-                  userId: custId,
-                  userRole: "customer",
-                  type: "order_placed",
-                  title: "Order Placed Successfully",
-                  message: `Order #${orderNum} has been placed for ₹${Number(totalAmount).toLocaleString()}. We are processing your delivery.`,
-                  entityId: orderId,
-                  targetRoute: "/orders",
+              // Fallback: If no items in body, check customer's persistent cart in DB
+              const rawCustId = body.customer_id;
+              if (requestedItems.length === 0 && rawCustId) {
+                const dbCartRes = await query(
+                  `SELECT ci.product_id, ci.quantity 
+                   FROM cart_items ci
+                   JOIN carts c ON ci.cart_id = c.id
+                   WHERE c.customer_id = $1 OR c.customer_id IN (SELECT id FROM customers WHERE email = $1)`,
+                  [rawCustId]
+                );
+                if (dbCartRes.rows.length > 0) {
+                  requestedItems = dbCartRes.rows.map((r: any) => ({
+                    productId: r.product_id,
+                    qty: Number(r.quantity) || 1,
+                  }));
+                }
+              }
+
+              if (requestedItems.length === 0) {
+                return sendJson(res, 400, {
+                  success: false,
+                  error: "Your shopping cart is empty. Please add items to place an order.",
                 });
               }
 
-              if (sellerId) {
-                await createNotification({
-                  userId: sellerId,
+              // 2. Validate products, inventory stock, and calculate authoritative prices
+              let computedTotal = 0;
+              const validatedItems: Array<{
+                productId: string;
+                name: string;
+                price: number;
+                qty: number;
+                subtotal: number;
+                sellerId: string;
+              }> = [];
+
+              for (const it of requestedItems) {
+                const pRes = await query(
+                  "SELECT id, name, price, stock, seller_id, is_active FROM products WHERE id = $1 LIMIT 1",
+                  [it.productId]
+                );
+                const prod = pRes.rows[0];
+                if (!prod) {
+                  return sendJson(res, 400, {
+                    success: false,
+                    error: `Product with ID '${it.productId}' is no longer available.`,
+                  });
+                }
+                if (!prod.is_active) {
+                  return sendJson(res, 400, {
+                    success: false,
+                    error: `Product '${prod.name}' is currently unavailable.`,
+                  });
+                }
+                const currentStock = Number(prod.stock) || 0;
+                if (currentStock < it.qty) {
+                  return sendJson(res, 400, {
+                    success: false,
+                    error: `Product '${prod.name}' is out of stock (Available: ${currentStock}, Requested: ${it.qty}).`,
+                  });
+                }
+
+                const price = Number(prod.price) || 0;
+                const subtotal = price * it.qty;
+                computedTotal += subtotal;
+
+                validatedItems.push({
+                  productId: prod.id,
+                  name: prod.name,
+                  price,
+                  qty: it.qty,
+                  subtotal,
+                  sellerId: prod.seller_id,
+                });
+              }
+
+              // 3. Resolve customer details
+              let customerRow: any = null;
+              if (rawCustId) {
+                const cRes = await query("SELECT id, email, full_name, phone FROM customers WHERE id = $1 OR email = $1 LIMIT 1", [rawCustId]);
+                customerRow = cRes.rows[0];
+              }
+              const customerId = customerRow ? customerRow.id : (rawCustId || "cst_guest");
+              const customerEmail = customerRow ? customerRow.email : (body.email || "customer@riderzpro.com");
+              const customerName = customerRow ? customerRow.full_name : (body.customer_name || "Valued Customer");
+              const primarySellerId = validatedItems[0]?.sellerId || body.seller_id || "sel_volthub_01";
+
+              // 4. Resolve delivery address
+              let deliveryAddressStr = "Doorstep Delivery Address";
+              if (body.shipping_address) {
+                if (typeof body.shipping_address === "string") {
+                  deliveryAddressStr = body.shipping_address;
+                } else {
+                  const addr = body.shipping_address;
+                  deliveryAddressStr = [
+                    addr.house_flat || addr.street || addr.street_address,
+                    addr.city,
+                    addr.state,
+                    addr.pincode,
+                  ]
+                    .filter(Boolean)
+                    .join(", ");
+                }
+              }
+
+              const paymentMethod = body.payment_method || "UPI";
+
+              // 5. Insert order record
+              await query(
+                `INSERT INTO orders (id, order_number, customer_id, seller_id, status, total_amount, delivery_address, payment_status, payment_method, created_at, updated_at)
+                 VALUES ($1, $2, $3, $4, 'completed', $5, $6, 'paid', $7, datetime('now'), datetime('now'))`,
+                [orderId, orderNum, customerId, primarySellerId, computedTotal, deliveryAddressStr, paymentMethod]
+              );
+
+              // 6. Insert order items & update inventory stock
+              for (const it of validatedItems) {
+                const itemId = `item_${cryptoMod.randomBytes(6).toString("hex")}`;
+                await query(
+                  `INSERT INTO order_items (id, order_id, product_id, quantity, unit_price, subtotal, seller_id)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                  [itemId, orderId, it.productId, it.qty, it.price, it.subtotal, it.sellerId]
+                );
+
+                // Deduct stock in products table
+                await query(
+                  `UPDATE products 
+                   SET stock = MAX(0, stock - $1), 
+                       updated_at = datetime('now') 
+                   WHERE id = $2`,
+                  [it.qty, it.productId]
+                );
+              }
+
+              // 7. Clear database cart for this customer
+              if (customerId && customerId !== "cst_guest") {
+                await query(
+                  "DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE customer_id = $1)",
+                  [customerId]
+                ).catch(() => {});
+              }
+
+              // 8. Send Email to Customer
+              sendCustomerOrderPlacedEmail({
+                to: customerEmail,
+                customerName,
+                orderNumber: orderNum,
+                totalAmount: computedTotal,
+                items: validatedItems.map((it) => ({
+                  name: it.name,
+                  quantity: it.qty,
+                  price: it.price,
+                })),
+                shippingAddress: deliveryAddressStr,
+                paymentMethod,
+              }).catch((e) => console.warn("[Customer Email Error]:", e?.message));
+
+              // 9. Send Email to each Vendor with their items
+              const vendorGroups = new Map<string, typeof validatedItems>();
+              for (const it of validatedItems) {
+                const arr = vendorGroups.get(it.sellerId) || [];
+                arr.push(it);
+                vendorGroups.set(it.sellerId, arr);
+              }
+
+              for (const [sId, sItems] of vendorGroups.entries()) {
+                const sRowRes = await query("SELECT email, store_name FROM sellers WHERE id = $1 LIMIT 1", [sId]);
+                const sRow = sRowRes.rows[0];
+                if (sRow) {
+                  const sSubtotal = sItems.reduce((acc, x) => acc + x.subtotal, 0);
+                  sendVendorNewOrderEmail({
+                    to: sRow.email,
+                    storeName: sRow.store_name,
+                    orderNumber: orderNum,
+                    customerName,
+                    items: sItems.map((it) => ({
+                      name: it.name,
+                      quantity: it.qty,
+                      price: it.price,
+                    })),
+                    vendorSubtotal: sSubtotal,
+                    deliveryAddress: deliveryAddressStr,
+                  }).catch((e) => console.warn("[Vendor Email Error]:", e?.message));
+                }
+
+                // In-app notification for vendor
+                createNotification({
+                  userId: sId,
                   userRole: "seller",
                   type: "new_order_received",
                   title: "New Order Received",
-                  message: `New order #${orderNum} received for ₹${Number(totalAmount).toLocaleString()}. Please prepare items for dispatch.`,
+                  message: `New order #${orderNum} received for your items. Please prepare for pickup.`,
                   entityId: orderId,
                   targetRoute: "/dashboard/vendor?tab=orders",
-                });
+                }).catch(() => {});
               }
 
-              await notifyAdminRole("SELLER_ADMIN", {
+              // In-app notification for customer
+              if (customerId && customerId !== "cst_guest") {
+                createNotification({
+                  userId: customerId,
+                  userRole: "customer",
+                  type: "order_placed",
+                  title: "Order Placed Successfully",
+                  message: `Order #${orderNum} has been placed for ₹${Number(computedTotal).toLocaleString()}. Track live in your dashboard.`,
+                  entityId: orderId,
+                  targetRoute: "/orders",
+                }).catch(() => {});
+              }
+
+              // In-app notification for admin
+              notifyAdminRole("ADMIN", {
                 type: "marketplace_order",
                 title: "New Marketplace Order",
-                message: `Order #${orderNum} placed for ₹${Number(totalAmount).toLocaleString()}.`,
+                message: `Order #${orderNum} placed for ₹${Number(computedTotal).toLocaleString()}.`,
                 entityId: orderId,
                 targetRoute: "/admin/orders",
-              });
+              }).catch(() => {});
 
-              return sendJson(res, 201, { success: true, data: ins.rows[0], message: "Order placed successfully" });
+              return sendJson(res, 201, {
+                success: true,
+                message: "Order placed successfully",
+                data: {
+                  id: orderId,
+                  order_number: orderNum,
+                  total_amount: computedTotal,
+                  status: "completed",
+                  payment_status: "paid",
+                  delivery_address: deliveryAddressStr,
+                  payment_method: paymentMethod,
+                  items: validatedItems,
+                },
+              });
             }
 
             return sendJson(res, 405, { success: false, error: `Method ${method} not allowed` });

@@ -134,10 +134,10 @@ function VendorLoginRouteComponent() {
       const destination = (queryRedirect && !queryRedirect.includes("/vendor/login")) 
         ? queryRedirect 
         : (data.redirectUrl || (
-            data.role === "seller" ? "/dashboard/vendor" :
             data.role === "SUPER_ADMIN" ? "/superadmin" :
-            data.role === "PRODUCT_ADMIN" || data.role === "SELLER_ADMIN" ? "/admin" :
-            "/admin"
+            data.role === "ADMIN" ? "/admin" :
+            data.role === "seller" ? "/dashboard/vendor" :
+            "/dashboard/vendor"
           ));
 
       navigate({ to: destination as any }).catch(() => {

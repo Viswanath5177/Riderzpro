@@ -219,7 +219,7 @@ export function SellersScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           reason: freezeReasonText.trim(),
-          adminId: adminUser?.id || "adm_seller_01",
+          adminId: adminUser?.id || "adm_unified_01",
         }),
       });
       const data = await res.json();
@@ -243,7 +243,7 @@ export function SellersScreen() {
       const res = await fetch(`/api/admin/sellers/${seller.id}/unfreeze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminId: adminUser?.id || "adm_seller_01" }),
+        body: JSON.stringify({ adminId: adminUser?.id || "adm_unified_01" }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "Failed to unfreeze account");
@@ -271,7 +271,7 @@ export function SellersScreen() {
         body: JSON.stringify({
           action,
           notes: notes || "",
-          adminId: adminUser?.id || "adm_seller_01",
+          adminId: adminUser?.id || "adm_unified_01",
         }),
       });
       const json = await res.json();

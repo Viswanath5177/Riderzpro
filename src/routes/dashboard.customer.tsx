@@ -26,10 +26,10 @@ export const Route = createFileRoute("/dashboard/customer")({
     }
     const role = await getCurrentRole();
     if (!role) throw redirect({ to: "/", search: { openLogin: "customer", redirect: "/dashboard/customer" } });
-    if (role === "SUPER_ADMIN" || role === "admin") throw redirect({ to: "/superadmin" });
-    if (role === "PRODUCT_ADMIN" || role === "SELLER_ADMIN") throw redirect({ to: "/admin" });
+    if (role === "SUPER_ADMIN" || role === "super_admin") throw redirect({ to: "/superadmin" });
+    if (role === "ADMIN" || role === "admin") throw redirect({ to: "/admin" });
     if (role === "seller") throw redirect({ to: "/dashboard/vendor" });
-    if (role !== "customer") throw redirect({ to: "/superadmin" });
+    if (role !== "customer") throw redirect({ to: "/" });
   },
   head: () => ({
     meta: [

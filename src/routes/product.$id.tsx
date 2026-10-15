@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Clock,
@@ -19,6 +19,11 @@ import {
   ChevronRight,
   ExternalLink,
   Heart,
+  Minus,
+  Plus,
+  ShoppingCart,
+  X,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/site/SiteLayout";
@@ -57,6 +62,7 @@ type OfferSortOption = "value" | "price_asc" | "rating_desc" | "delivery_fast";
 
 function ProductPage() {
   const { id } = Route.useParams();
+  const navigate = useNavigate();
   const { activeBikeId, addToCart, isSaved, toggleSaved } = useStore();
 
   const [product, setProduct] = useState<Product | null>(() => getProduct(id) || null);
@@ -76,6 +82,8 @@ function ProductPage() {
   const [newUserName, setNewUserName] = useState("");
   const [newVehicle, setNewVehicle] = useState("");
   const [applicableCoupons, setApplicableCoupons] = useState<any[]>([]);
+  const [selectedOfferModal, setSelectedOfferModal] = useState<any | null>(null);
+  const [buyQty, setBuyQty] = useState(1);
 
   useEffect(() => {
     if (!product) {
@@ -309,7 +317,154 @@ function ProductPage() {
               </span>
             </div>
 
-            <p className="mt-4 text-sm text-[#6B7280] leading-relaxed whitespace-pre-line">
+            {/* Canonical Price Display (Flipkart Reference Layout with RiderzPro Branding) */}
+            {(() => {
+              const primaryOffer = enrichedOffers[0] || p.offers[0];
+              const displayPrice = primaryOffer?.price || 0;
+              const displayMrp = p.mrp || Math.round(displayPrice * 1.15);
+              const discountPercent = displayMrp > displayPrice ? Math.round(((displayMrp - displayPrice) / displayMrp) * 100) : 0;
+
+              return (
+                <div className="mt-4 pt-4 border-t border-[#E5E7EB]">
+                  <div className="flex items-baseline gap-3 flex-wrap">
+                    {discountPercent > 0 && (
+                      <span className="text-sm font-extrabold text-emerald-600 flex items-center">
+                        ↓ {discountPercent}%
+                      </span>
+                    )}
+                    {displayMrp > displayPrice && (
+                      <span className="text-base text-gray-400 line-through font-medium">
+                        {inr(displayMrp)}
+                      </span>
+                    )}
+                    <span className="text-3xl font-extrabold text-[#111111]">
+                      {inr(displayPrice)}
+                    </span>
+                  </div>
+
+                  {applicableCoupons.length > 0 && (
+                    <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-semibold border border-emerald-200">
+                      <Tag className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>Special Vendor Promotion Available on this Product</span>
+                    </div>
+                  )}
+
+                  <p className="text-[11px] text-[#6B7280] mt-1.5">
+                    Inclusive of all statutory taxes · Fast courier dispatch with fitment guarantee
+                  </p>
+
+                  {/* ─────────────────────────────────────────────────────────────
+                      FLIPKART-INSPIRED AVAILABLE OFFERS SECTION
+                     ───────────────────────────────────────────────────────────── */}
+                  {applicableCoupons.length > 0 && (
+                    <div className="mt-5 rounded-2xl border border-red-200 bg-white p-4 shadow-2xs space-y-3">
+                      <div className="flex items-center justify-between border-b border-red-100 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <Tag className="h-4 w-4 text-[#E31E24]" />
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-[#111111]">
+                            Available Offers
+                          </h3>
+                        </div>
+                        <span className="text-[11px] font-semibold text-gray-500">
+                          {applicableCoupons.length} offer{applicableCoupons.length > 1 ? "s" : ""}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {applicableCoupons.map((cpn: any) => {
+                          const discLabel = cpn.discount_type === "percentage" ? `${cpn.discount_value}%` : `₹${cpn.discount_value}`;
+                          const validTill = cpn.expires_at ? new Date(cpn.expires_at).toLocaleDateString() : "Limited Time";
+
+                          return (
+                            <div
+                              key={cpn.id}
+                              className="flex items-start justify-between gap-3 p-3 rounded-xl bg-red-50/40 border border-red-100 transition hover:bg-red-50/70"
+                            >
+                              <div className="space-y-1 min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Tag className="h-3.5 w-3.5 text-[#E31E24] shrink-0" />
+                                  <span className="font-bold text-xs text-[#111111]">
+                                    {cpn.store_name ? `${cpn.store_name} Special Offer` : "Special Vendor Offer"}
+                                  </span>
+                                  <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-white text-[#E31E24] border border-red-200">
+                                    {cpn.code}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-700">
+                                  Save <strong className="text-[#E31E24] font-bold">{discLabel}</strong> on this product
+                                  {cpn.minimum_order_value > 0 ? ` on min purchase of ₹${cpn.minimum_order_value}` : ""}.
+                                </p>
+                                <p className="text-[11px] text-gray-500">
+                                  Valid until {validTill}.
+                                </p>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setSelectedOfferModal(cpn)}
+                                className="shrink-0 text-xs font-bold text-[#E31E24] hover:underline hover:text-red-700 cursor-pointer pt-0.5"
+                              >
+                                View offer details
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quick Purchase Action Bar */}
+                  <div className="mt-5 flex items-center gap-3">
+                    <div className="flex items-center border border-[#E5E7EB] rounded-xl bg-gray-50 p-1">
+                      <button
+                        type="button"
+                        onClick={() => setBuyQty((q) => Math.max(1, q - 1))}
+                        className="h-8 w-8 grid place-items-center rounded-lg hover:bg-gray-200 text-gray-700 transition cursor-pointer"
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </button>
+                      <span className="w-8 text-center text-xs font-bold text-gray-900">{buyQty}</span>
+                      <button
+                        type="button"
+                        onClick={() => setBuyQty((q) => q + 1)}
+                        className="h-8 w-8 grid place-items-center rounded-lg hover:bg-gray-200 text-gray-700 transition cursor-pointer"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (primaryOffer) {
+                          addToCart(p.id, primaryOffer.vendorId, buyQty);
+                          toast.success(`Added ${buyQty} unit(s) of ${p.name} to cart!`);
+                        }
+                      }}
+                      className="flex-1 h-10 rounded-xl bg-[#E31E24] hover:bg-red-700 text-white text-xs font-bold shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <ShoppingCart className="h-4 w-4" />
+                      <span>+ Add to Cart</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (primaryOffer) {
+                          addToCart(p.id, primaryOffer.vendorId, buyQty);
+                          navigate({ to: "/cart" });
+                        }
+                      }}
+                      className="h-10 px-5 rounded-xl border border-gray-900 bg-gray-900 hover:bg-black text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <span>Buy Now</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <p className="mt-5 text-sm text-[#6B7280] leading-relaxed whitespace-pre-line">
               {p.description}
             </p>
 
@@ -346,48 +501,6 @@ function ProductPage() {
                 <span className="font-bold text-[#111111]">{p.weightKg} kg</span>
               </div>
             </div>
-
-            {/* Applicable Vendor Coupons & Offers */}
-            {applicableCoupons.length > 0 && (
-              <div className="mt-6 rounded-2xl border border-red-200 bg-red-50/60 p-4 space-y-2.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-[#E31E24] uppercase tracking-wider">
-                  <Tag className="h-4 w-4" />
-                  <span>Available Store Coupons ({applicableCoupons.length})</span>
-                </div>
-                <div className="space-y-2">
-                  {applicableCoupons.map((cpn: any) => (
-                    <div
-                      key={cpn.id}
-                      className="flex items-center justify-between rounded-xl bg-white border border-red-100 p-2.5 shadow-2xs"
-                    >
-                      <div className="min-w-0 pr-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-red-50 text-[#E31E24] border border-red-200">
-                            {cpn.code}
-                          </span>
-                          <span className="text-xs font-semibold text-gray-900 truncate">
-                            {cpn.discount_type === "percentage" ? `${cpn.discount_value}% OFF` : `₹${cpn.discount_value} FLAT OFF`}
-                          </span>
-                        </div>
-                        {cpn.description && (
-                          <p className="text-[11px] text-gray-500 mt-0.5 truncate">{cpn.description}</p>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(cpn.code);
-                          toast.success(`Coupon code ${cpn.code} copied! Apply at checkout.`);
-                        }}
-                        className="shrink-0 text-xs font-bold text-[#E31E24] hover:underline px-2 py-1"
-                      >
-                        Copy
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -881,6 +994,118 @@ function ProductPage() {
             </div>
           </section>
         )}
+      {/* ─────────────────────────────────────────────────────────────
+          OFFER DETAILS & TERMS MODAL (FLIPKART REFERENCE)
+         ───────────────────────────────────────────────────────────── */}
+      {selectedOfferModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg rounded-2xl bg-white border border-[#E5E7EB] shadow-2xl p-6 sm:p-7 space-y-4 my-8">
+            <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-3">
+              <div className="flex items-center gap-2">
+                <Tag className="h-5 w-5 text-[#E31E24]" />
+                <h3 className="text-base font-bold font-display text-[#111111]">
+                  Offer Details & Eligibility Terms
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedOfferModal(null)}
+                className="rounded-lg p-1 text-gray-400 hover:text-gray-700 transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              {/* Promo Banner */}
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-red-50 border border-red-200">
+                <div>
+                  <span className="font-mono text-sm font-extrabold text-[#E31E24] tracking-wider">
+                    {selectedOfferModal.code}
+                  </span>
+                  <p className="text-xs font-bold text-gray-900 mt-0.5">
+                    {selectedOfferModal.discount_type === "percentage"
+                      ? `${selectedOfferModal.discount_value}% Discount`
+                      : `₹${selectedOfferModal.discount_value} Flat Off`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(selectedOfferModal.code);
+                    toast.success(`Coupon code ${selectedOfferModal.code} copied!`);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-[#E31E24] hover:bg-red-700 text-white font-bold text-xs transition shadow-2xs"
+                >
+                  Copy Code
+                </button>
+              </div>
+
+              {/* Offer Attributes Table */}
+              <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white overflow-hidden">
+                <div className="flex justify-between p-3">
+                  <span className="text-gray-500 font-medium">Authorized Dealer</span>
+                  <span className="font-bold text-gray-900">
+                    {selectedOfferModal.store_name || "Verified Authorized Seller"}
+                  </span>
+                </div>
+                <div className="flex justify-between p-3">
+                  <span className="text-gray-500 font-medium">Discount Type & Value</span>
+                  <span className="font-bold text-emerald-700">
+                    {selectedOfferModal.discount_type === "percentage"
+                      ? `${selectedOfferModal.discount_value}% Percentage Discount`
+                      : `₹${selectedOfferModal.discount_value} Flat Cash Discount`}
+                  </span>
+                </div>
+                <div className="flex justify-between p-3">
+                  <span className="text-gray-500 font-medium">Minimum Purchase Amount</span>
+                  <span className="font-bold text-gray-900">
+                    {selectedOfferModal.minimum_order_value > 0 ? inr(selectedOfferModal.minimum_order_value) : "No minimum requirement"}
+                  </span>
+                </div>
+                {selectedOfferModal.maximum_discount > 0 && selectedOfferModal.discount_type === "percentage" && (
+                  <div className="flex justify-between p-3">
+                    <span className="text-gray-500 font-medium">Maximum Discount Cap</span>
+                    <span className="font-bold text-gray-900">
+                      {inr(selectedOfferModal.maximum_discount)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between p-3">
+                  <span className="text-gray-500 font-medium">Validity Period</span>
+                  <span className="font-bold text-gray-900">
+                    {selectedOfferModal.starts_at ? new Date(selectedOfferModal.starts_at).toLocaleDateString() : "Active"} — {selectedOfferModal.expires_at ? new Date(selectedOfferModal.expires_at).toLocaleDateString() : "Ongoing"}
+                  </span>
+                </div>
+                <div className="flex justify-between p-3">
+                  <span className="text-gray-500 font-medium">Eligible Products</span>
+                  <span className="font-bold text-gray-900 truncate max-w-[220px]">
+                    {p.name}
+                  </span>
+                </div>
+              </div>
+
+              {/* Terms and Application Note */}
+              <div className="space-y-1.5 text-[11px] text-gray-500 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                <p className="font-bold text-gray-700">How to Avail this Offer:</p>
+                <p>• Add this verified product to your shopping cart.</p>
+                <p>• This promotional discount is automatically calculated and applied at checkout.</p>
+                <p>• Offer valid only for authenticated customers with verified delivery addresses.</p>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setSelectedOfferModal(null)}
+                  className="px-5 py-2 rounded-xl bg-[#E31E24] hover:bg-red-700 text-white font-bold transition shadow-xs"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </SiteLayout>
   );

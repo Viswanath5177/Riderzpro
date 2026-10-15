@@ -57,7 +57,9 @@ export function CartDrawer() {
   if (!isCartOpen) return null;
 
   const quote = quoteCart(cart, appliedDiscount);
-  const totalItemCount = cart.reduce((acc, c) => acc + c.qty, 0);
+  const totalItemCount = cart
+    .filter((c) => Boolean(getProduct(c.productId)))
+    .reduce((acc, c) => acc + c.qty, 0);
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();

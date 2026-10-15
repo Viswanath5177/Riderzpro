@@ -1,14 +1,75 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { Package, ArrowRight, Check, MapPin, Download, RefreshCw, ShoppingBag, Eye, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore, ORDER_STEPS, type Order } from "@/lib/store";
 import { getProduct, getVendor, inr } from "@/lib/data";
+import { useAuth } from "@/lib/auth";
 
 export function OrdersTab() {
-  const { orders, deleteOrder, clearOrders } = useStore();
+  const { user } = useAuth();
+  const { clearOrders, deleteOrder } = useStore();
   const [filter, setFilter] = useState<"all" | "active" | "delivered">("all");
-  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<any | null>(null);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchOrders = () => {
+    setIsLoading(true);
+    const query = user?.id ? `?customer_id=${encodeURIComponent(user.id)}` : "";
+    fetch(`/api/orders${query}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          const mapped: Order[] = res.data.map((o: any) => ({
+            id: o.order_number || o.id,
+            createdAt: o.created_at || new Date().toISOString(),
+            payment: o.payment_method || "UPI",
+            status: (o.status === "completed" || o.status === "delivered" ? 5 : 2) as any,
+            total: Number(o.total_amount) || 0,
+            itemsTotal: Number(o.total_amount) || 0,
+            deliveryTotal: 0,
+            tax: 0,
+            shippingAddress: {
+              name: o.customer_name || user?.name || "Customer",
+              street: o.delivery_address || "Doorstep Address",
+              city: "Bengaluru",
+              pincode: "560038",
+              phone: o.customer_phone || "+91 98765 43210",
+            },
+            groups: [
+              {
+                vendorId: o.seller_id || "sel_volthub_01",
+                items: Array.isArray(o.items) && o.items.length > 0
+                  ? o.items.map((it: any) => ({
+                      productId: it.product_id,
+                      qty: Number(it.quantity) || 1,
+                      price: Number(it.unit_price) || 0,
+                    }))
+                  : [
+                      {
+                        productId: "prod_generic",
+                        qty: 1,
+                        price: Number(o.total_amount) || 0,
+                      },
+                    ],
+              },
+            ],
+          }));
+          setOrders(mapped);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load customer orders:", err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, [user?.id]);
 
   const filteredOrders = orders.filter((o) => {
     if (filter === "active") return o.status < 5;
@@ -42,12 +103,12 @@ export function OrdersTab() {
               </div>
 
               <div className="border border-gray-100 rounded-2xl p-3 bg-gray-50 divide-y divide-gray-100">
-                {selectedInvoiceOrder.groups.map((g) => {
+                {selectedInvoiceOrder.groups.map((g: any) => {
                   const v = getVendor(g.vendorId);
                   return (
                     <div key={g.vendorId} className="py-2 first:pt-0 last:pb-0">
                       <p className="font-bold text-gray-800">{v?.name || "Verified EV Vendor"}</p>
-                      {g.items.map((it) => {
+                      {g.items.map((it: any) => {
                         const p = getProduct(it.productId);
                         return (
                           <div key={it.productId} className="flex justify-between text-gray-600 mt-1">
@@ -207,7 +268,7 @@ export function OrdersTab() {
                   <div className="text-right">
                     <p className="text-base font-extrabold text-gray-900">{inr(o.total)}</p>
                     <span className="text-[11px] text-gray-500">
-                      {o.groups.reduce((s, g) => s + g.items.reduce((n, i) => n + i.qty, 0), 0)} items total
+                      {o.groups.reduce((s: number, g: any) => s + g.items.reduce((n: number, i: any) => n + (i.qty || 0), 0), 0)} items total
                     </span>
                   </div>
                 </div>
@@ -246,7 +307,7 @@ export function OrdersTab() {
 
                 {/* Items & Vendor Summary */}
                 <div className="p-3 rounded-2xl bg-gray-50 border border-gray-100 space-y-2 text-xs">
-                  {o.groups.map((g) => {
+                  {o.groups.map((g: any) => {
                     const v = getVendor(g.vendorId);
                     return (
                       <div key={g.vendorId} className="flex flex-wrap items-center justify-between gap-2">
@@ -255,7 +316,7 @@ export function OrdersTab() {
                           <span className="text-gray-400 ml-2">({g.km} km away · ~{g.eta} min dispatch)</span>
                         </div>
                         <div className="text-gray-600">
-                          {g.items.map((it) => {
+                          {g.items.map((it: any) => {
                             const p = getProduct(it.productId);
                             return (
                               <span key={it.productId} className="inline-block mr-2 font-medium">
@@ -283,6 +344,7 @@ export function OrdersTab() {
                       onClick={() => {
                         if (window.confirm(`Are you sure you want to delete order ${o.id}?`)) {
                           deleteOrder(o.id);
+                          setOrders((prev) => prev.filter((item) => item.id !== o.id));
                           toast.success(`Order ${o.id} deleted`);
                         }
                       }}

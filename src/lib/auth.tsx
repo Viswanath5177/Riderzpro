@@ -327,7 +327,7 @@ export type User = {
   name: string;
   email: string;
   phone: string;
-  role: "customer" | "seller" | "admin" | "SUPER_ADMIN" | "PRODUCT_ADMIN" | "SELLER_ADMIN" | string;
+  role: "customer" | "seller" | "admin" | "SUPER_ADMIN" | "ADMIN" | string;
   storeName?: string;
   avatarUrl?: string;
 };

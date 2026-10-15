@@ -38,7 +38,7 @@ import { toast } from "sonner";
 import { Logo } from "@/components/site/bits";
 import { useStore } from "@/lib/store";
 import { signOut as endServerSession } from "@/lib/auth";
-import { inr, products, type Product } from "@/lib/data";
+import { inr, products, getProduct, type Product } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { VinSearchModal } from "./VinSearchModal";
 import { CartDrawer } from "@/components/common/CartDrawer";
@@ -127,7 +127,9 @@ export function CustomerLayout({
     );
   }, [searchQuery]);
 
-  const cartCount = cart.reduce((s, c) => s + c.qty, 0);
+  const cartCount = cart
+    .filter((c) => Boolean(getProduct(c.productId)))
+    .reduce((s, c) => s + c.qty, 0);
 
   const navItems: Array<{
     id: CustomerTab;

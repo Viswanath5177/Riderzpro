@@ -242,25 +242,25 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_token ON auth_sessions(token_hash) WHERE revoked_at IS NULL;
 
 -- ----------------------------------------------------------------------------
--- 8. INITIAL PROVISIONED ADMINISTRATORS (PRODUCT_ADMIN & SUPPORT_ADMIN)
--- Password for demo/initial: Admin@Riderzpro2026
+-- 8. INITIAL PROVISIONED ADMINISTRATORS (SUPER_ADMIN & ADMIN)
+-- Password for demo/initial: Admin@123
 -- ----------------------------------------------------------------------------
 INSERT INTO admins (id, email, password_hash, full_name, role)
 VALUES 
     (
-        'adm_product_01', 
-        'product.admin@riderzpro.com', 
-        crypt('Admin@Riderzpro2026', gen_salt('bf')), 
-        'Product Approval Admin', 
-        'PRODUCT_ADMIN'
+        'adm_super_01', 
+        'admin@riderzpro.com', 
+        crypt('Admin@123', gen_salt('bf')), 
+        'Super Administrator', 
+        'SUPER_ADMIN'
     ),
     (
-        'adm_support_01', 
-        'support.admin@riderzpro.com', 
-        crypt('Admin@Riderzpro2026', gen_salt('bf')), 
-        'Support Operations Admin', 
-        'SUPPORT_ADMIN'
+        'adm_unified_01', 
+        'admin.operations@riderzpro.com', 
+        crypt('Admin@123', gen_salt('bf')), 
+        'Unified Operations Administrator', 
+        'ADMIN'
     )
-ON CONFLICT (email) DO NOTHING;
+ON CONFLICT (email) DO UPDATE SET role = EXCLUDED.role, is_active = true;
 
 COMMIT;

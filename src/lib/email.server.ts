@@ -24,6 +24,7 @@ function getResendConfig() {
 
 export async function sendEmail({ to, subject, html, templateName }: EmailOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const { apiKey, from } = getResendConfig();
+  const logId = `eml_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   // For mock/test domains, simulate successful email dispatch without sending real external emails
   const cleanTo = (to || "").trim().toLowerCase();
@@ -35,6 +36,11 @@ export async function sendEmail({ to, subject, html, templateName }: EmailOption
   ) {
     const mockId = `mock_msg_${Date.now()}`;
     console.log(`[Email Service - Simulated] 📦 Mock email '${templateName}' for recipient ${to} recorded.`);
+    query(
+      `INSERT INTO email_delivery_logs (id, recipient_email, subject, template_name, status)
+       VALUES ($1, $2, $3, $4, 'SENT')`,
+      [logId, to, subject, templateName]
+    ).catch(() => {});
     return { success: true, messageId: mockId };
   }
 
@@ -312,3 +318,134 @@ export async function sendProductApprovalEmail(to: string, productName: string, 
     templateName: approved ? "PRODUCT_APPROVED" : "PRODUCT_REJECTED",
   });
 }
+
+export async function sendCustomerOrderPlacedEmail(data: {
+  to: string;
+  customerName: string;
+  orderNumber: string;
+  totalAmount: number;
+  items: Array<{ name: string; quantity: number; price: number }>;
+  shippingAddress: string;
+  paymentMethod: string;
+}) {
+  const itemsHtml = data.items
+    .map(
+      (item) => `
+      <tr>
+        <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px; color: #111827;">${item.name}</td>
+        <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px; color: #4b5563; text-align: center;">${item.quantity}</td>
+        <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px; color: #111827; text-align: right;">₹${(item.price * item.quantity).toLocaleString()}</td>
+      </tr>
+    `
+    )
+    .join("");
+
+  const html = baseLayout(`
+    <div style="text-align: center; margin-bottom: 24px;">
+      <span class="badge badge-success" style="font-size: 14px; padding: 6px 16px;">ORDER CONFIRMED</span>
+    </div>
+    <h2 style="font-size: 22px; font-weight: 800; color: #111827; margin: 0 0 12px 0;">Order #${data.orderNumber} Confirmed!</h2>
+    <p style="color: #4b5563; font-size: 14px; line-height: 1.6;">
+      Dear <strong>${data.customerName}</strong>, thank you for your order on RiderzPro. We have notified our verified sellers to prepare your genuine EV parts for pickup and courier dispatch.
+    </p>
+
+    <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin: 20px 0;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="text-align: left; font-size: 12px; text-transform: uppercase; color: #6b7280; padding-bottom: 8px;">Product</th>
+            <th style="text-align: center; font-size: 12px; text-transform: uppercase; color: #6b7280; padding-bottom: 8px;">Qty</th>
+            <th style="text-align: right; font-size: 12px; text-transform: uppercase; color: #6b7280; padding-bottom: 8px;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsHtml}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2" style="padding-top: 12px; font-size: 14px; font-weight: 700; color: #111827;">Total Paid (${data.paymentMethod}):</td>
+            <td style="padding-top: 12px; font-size: 16px; font-weight: 800; color: #E31E24; text-align: right;">₹${data.totalAmount.toLocaleString()}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div style="background-color: #f3f4f6; border-radius: 8px; padding: 12px; margin-top: 16px; font-size: 13px; color: #4b5563;">
+      <strong>Delivery Address:</strong><br />
+      ${data.shippingAddress}
+    </div>
+  `);
+
+  return sendEmail({
+    to: data.to,
+    subject: `Order Confirmed: #${data.orderNumber} — RiderzPro EV Marketplace`,
+    html,
+    templateName: "CUSTOMER_ORDER_PLACED",
+  });
+}
+
+export async function sendVendorNewOrderEmail(data: {
+  to: string;
+  storeName: string;
+  orderNumber: string;
+  customerName: string;
+  items: Array<{ name: string; quantity: number; price: number }>;
+  vendorSubtotal: number;
+  deliveryAddress: string;
+}) {
+  const itemsHtml = data.items
+    .map(
+      (item) => `
+      <tr>
+        <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px; color: #111827;">${item.name}</td>
+        <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px; color: #4b5563; text-align: center;">${item.quantity}</td>
+        <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px; color: #111827; text-align: right;">₹${(item.price * item.quantity).toLocaleString()}</td>
+      </tr>
+    `
+    )
+    .join("");
+
+  const html = baseLayout(`
+    <div style="text-align: center; margin-bottom: 24px;">
+      <span class="badge badge-info" style="font-size: 14px; padding: 6px 16px;">NEW ORDER RECEIVED</span>
+    </div>
+    <h2 style="font-size: 22px; font-weight: 800; color: #111827; margin: 0 0 12px 0;">New Order #${data.orderNumber} Received</h2>
+    <p style="color: #4b5563; font-size: 14px; line-height: 1.6;">
+      Dear <strong>${data.storeName}</strong>, a customer has purchased spare parts from your store. Please prepare and pack these items for scheduled courier pickup.
+    </p>
+
+    <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin: 20px 0;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="text-align: left; font-size: 12px; text-transform: uppercase; color: #6b7280; padding-bottom: 8px;">Item to Pack</th>
+            <th style="text-align: center; font-size: 12px; text-transform: uppercase; color: #6b7280; padding-bottom: 8px;">Qty</th>
+            <th style="text-align: right; font-size: 12px; text-transform: uppercase; color: #6b7280; padding-bottom: 8px;">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsHtml}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2" style="padding-top: 12px; font-size: 14px; font-weight: 700; color: #111827;">Your Item Earnings:</td>
+            <td style="padding-top: 12px; font-size: 16px; font-weight: 800; color: #10b981; text-align: right;">₹${data.vendorSubtotal.toLocaleString()}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div style="background-color: #f3f4f6; border-radius: 8px; padding: 12px; margin-top: 16px; font-size: 13px; color: #4b5563;">
+      <strong>Deliver To:</strong> ${data.customerName}<br />
+      ${data.deliveryAddress}
+    </div>
+  `);
+
+  return sendEmail({
+    to: data.to,
+    subject: `Action Required: New Order #${data.orderNumber} Received — RiderzPro Partner`,
+    html,
+    templateName: "VENDOR_ORDER_RECEIVED",
+  });
+}
+

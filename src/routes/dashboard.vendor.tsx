@@ -40,6 +40,7 @@ import {
   UploadCloud,
   Ticket,
   Trash2,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardShell, Panel, Stat, StatusPill, type Section } from "@/components/site/DashboardShell";
@@ -570,14 +571,19 @@ export function VendorDashboard() {
   }
   const [vendorCoupons, setVendorCoupons] = useState<VendorCoupon[]>([]);
   const [isCreateCouponOpen, setIsCreateCouponOpen] = useState(false);
+  const [editingCouponId, setEditingCouponId] = useState<string | null>(null);
   const [couponCodeInput, setCouponCodeInput] = useState("");
   const [couponDescInput, setCouponDescInput] = useState("");
   const [couponTypeInput, setCouponTypeInput] = useState<"percentage" | "fixed">("percentage");
   const [couponValueInput, setCouponValueInput] = useState<number | "">(15);
   const [couponMinOrderInput, setCouponMinOrderInput] = useState<number | "">(1000);
   const [couponMaxDiscInput, setCouponMaxDiscInput] = useState<number | "">(500);
+  const [couponStartsAtInput, setCouponStartsAtInput] = useState<string>(() => new Date().toISOString().split("T")[0]);
   const [couponExpiryInput, setCouponExpiryInput] = useState<string>("2027-12-31");
   const [couponUsageLimitInput, setCouponUsageLimitInput] = useState<number | "">(100);
+  const [couponPerCustInput, setCouponPerCustInput] = useState<number | "">(1);
+  const [couponProductSearch, setCouponProductSearch] = useState("");
+  const [couponStatusFilter, setCouponStatusFilter] = useState<"all" | "active" | "inactive" | "expired">("all");
   const [selectedCouponProductIds, setSelectedCouponProductIds] = useState<string[]>([]);
   const [isSubmittingCoupon, setIsSubmittingCoupon] = useState(false);
 
@@ -611,6 +617,40 @@ export function VendorDashboard() {
     return map;
   }, [vendorCoupons]);
 
+  const handleOpenCreateCoupon = () => {
+    setEditingCouponId(null);
+    setCouponCodeInput("");
+    setCouponDescInput("");
+    setCouponTypeInput("percentage");
+    setCouponValueInput(10);
+    setCouponMinOrderInput(500);
+    setCouponMaxDiscInput(200);
+    setCouponStartsAtInput(new Date().toISOString().split("T")[0]);
+    setCouponExpiryInput("2027-12-31");
+    setCouponUsageLimitInput(100);
+    setCouponPerCustInput(1);
+    setSelectedCouponProductIds([]);
+    setCouponProductSearch("");
+    setIsCreateCouponOpen(true);
+  };
+
+  const handleEditCoupon = (c: VendorCoupon) => {
+    setEditingCouponId(c.id);
+    setCouponCodeInput(c.code);
+    setCouponDescInput(c.description || "");
+    setCouponTypeInput(c.discount_type);
+    setCouponValueInput(c.discount_value);
+    setCouponMinOrderInput(c.minimum_order_value || 0);
+    setCouponMaxDiscInput(c.maximum_discount || 0);
+    setCouponStartsAtInput(c.starts_at ? c.starts_at.split("T")[0] : new Date().toISOString().split("T")[0]);
+    setCouponExpiryInput(c.expires_at ? c.expires_at.split("T")[0] : "");
+    setCouponUsageLimitInput(c.usage_limit || 100);
+    setCouponPerCustInput(c.per_customer_limit || 1);
+    setSelectedCouponProductIds(c.product_ids || []);
+    setCouponProductSearch("");
+    setIsCreateCouponOpen(true);
+  };
+
   const handleCreateCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = couponCodeInput.trim().toUpperCase();
@@ -629,8 +669,12 @@ export function VendorDashboard() {
 
     setIsSubmittingCoupon(true);
     try {
-      const res = await fetch("/api/vendor/coupons", {
-        method: "POST",
+      const isEditing = Boolean(editingCouponId);
+      const url = isEditing ? `/api/vendor/coupons/${editingCouponId}` : "/api/vendor/coupons";
+      const method = isEditing ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           seller_id: currentVendor.id,
@@ -640,23 +684,30 @@ export function VendorDashboard() {
           discount_value: Number(couponValueInput),
           minimum_order_value: Number(couponMinOrderInput) || 0,
           maximum_discount: Number(couponMaxDiscInput) || 0,
+          starts_at: couponStartsAtInput,
           expires_at: couponExpiryInput,
           usage_limit: Number(couponUsageLimitInput) || 100,
+          per_customer_limit: Number(couponPerCustInput) || 1,
           product_ids: selectedCouponProductIds,
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to create coupon");
+        throw new Error(data.error || "Failed to save coupon");
       }
-      toast.success(`Coupon ${code} created successfully and linked to ${selectedCouponProductIds.length} products!`);
+      toast.success(
+        isEditing
+          ? `Coupon ${code} updated successfully!`
+          : `Coupon ${code} created successfully and linked to ${selectedCouponProductIds.length} products!`
+      );
       setIsCreateCouponOpen(false);
+      setEditingCouponId(null);
       setCouponCodeInput("");
       setCouponDescInput("");
       setSelectedCouponProductIds([]);
       fetchVendorCoupons(currentVendor.id);
     } catch (err: any) {
-      toast.error(err.message || "Failed to create coupon");
+      toast.error(err.message || "Failed to save coupon");
     } finally {
       setIsSubmittingCoupon(false);
     }
@@ -697,7 +748,30 @@ export function VendorDashboard() {
   };
 
   // Order status progression
-  const updateOrderState = (orderId: string, nextStatus: VendorOrderItem["status"]) => {
+  const updateOrderState = async (orderId: string, nextStatus: VendorOrderItem["status"]) => {
+    let dbStatus = "pending";
+    if (nextStatus === "Preparing" || nextStatus === "Packed") dbStatus = "processing";
+    if (nextStatus === "Shipped") dbStatus = "shipped";
+    if (nextStatus === "Delivered") dbStatus = "delivered";
+    if (nextStatus === "Cancelled") dbStatus = "cancelled";
+
+    try {
+      const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: dbStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        toast.error(data.error || "Failed to update order status in database.");
+        return;
+      }
+    } catch {
+      toast.error("Failed to connect to order service.");
+      return;
+    }
+
     setVendorOrders((prev) =>
       prev.map((o) => {
         if (o.orderId === orderId) {
@@ -2001,7 +2075,7 @@ export function VendorDashboard() {
                     });
                     return;
                   }
-                  setIsCreateCouponOpen(true);
+                  handleOpenCreateCoupon();
                 }}
                 className="rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-2xs hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer"
               >
@@ -2010,6 +2084,40 @@ export function VendorDashboard() {
               </button>
             }
           >
+            {/* Status Filter Tabs */}
+            <div className="flex items-center gap-2 pb-3 mb-3 border-b border-border overflow-x-auto">
+              {(
+                [
+                  ["all", `All (${vendorCoupons.length})`],
+                  [
+                    "active",
+                    `Active (${vendorCoupons.filter((c) => c.status === "active" && (!c.expires_at || new Date(c.expires_at) >= new Date())).length})`,
+                  ],
+                  [
+                    "inactive",
+                    `Inactive (${vendorCoupons.filter((c) => c.status !== "active").length})`,
+                  ],
+                  [
+                    "expired",
+                    `Expired (${vendorCoupons.filter((c) => c.expires_at && new Date(c.expires_at) < new Date()).length})`,
+                  ],
+                ] as const
+              ).map(([statusKey, label]) => (
+                <button
+                  key={statusKey}
+                  type="button"
+                  onClick={() => setCouponStatusFilter(statusKey as any)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer shrink-0 ${
+                    couponStatusFilter === statusKey
+                      ? "bg-primary text-primary-foreground font-bold shadow-2xs"
+                      : "bg-muted/40 text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
             {vendorCoupons.length === 0 ? (
               <div className="py-12 text-center text-xs text-muted-foreground space-y-3">
                 <Ticket className="h-10 w-10 mx-auto text-muted-foreground/40" />
@@ -2020,8 +2128,8 @@ export function VendorDashboard() {
                   </p>
                 </div>
                 <button
-                  onClick={() => setIsCreateCouponOpen(true)}
-                  className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:opacity-90 transition"
+                  onClick={handleOpenCreateCoupon}
+                  className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:opacity-90 transition cursor-pointer"
                 >
                   Create Your First Coupon
                 </button>
@@ -2042,7 +2150,15 @@ export function VendorDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {vendorCoupons.map((c) => {
+                    {vendorCoupons
+                      .filter((c) => {
+                        const isExpired = c.expires_at && new Date(c.expires_at) < new Date();
+                        if (couponStatusFilter === "active") return c.status === "active" && !isExpired;
+                        if (couponStatusFilter === "inactive") return c.status !== "active";
+                        if (couponStatusFilter === "expired") return isExpired;
+                        return true;
+                      })
+                      .map((c) => {
                       const isActive = c.status === "active";
                       const isExpired = c.expires_at && new Date(c.expires_at) < new Date();
                       const linkedProducts = vendorProducts.filter((p) => c.product_ids?.includes(p.id));
@@ -2111,17 +2227,24 @@ export function VendorDashboard() {
                           </td>
 
                           <td className="text-right">
-                            <div className="flex items-center justify-end gap-2">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleEditCoupon(c)}
+                                title="Edit Coupon"
+                                className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer"
+                              >
+                                <Edit3 className="h-3.5 w-3.5" />
+                              </button>
                               <button
                                 onClick={() => handleToggleCoupon(c.id, c.status)}
-                                className="rounded-lg border border-border px-2.5 py-1 text-xs font-semibold hover:bg-muted transition"
+                                className="rounded-lg border border-border px-2.5 py-1 text-xs font-semibold hover:bg-muted transition cursor-pointer"
                               >
                                 {isActive ? "Deactivate" : "Activate"}
                               </button>
                               <button
                                 onClick={() => handleDeleteCoupon(c.id)}
                                 title="Delete Coupon"
-                                className="rounded-lg p-1.5 text-muted-foreground hover:bg-rose-50 hover:text-rose-600 transition"
+                                className="rounded-lg p-1.5 text-muted-foreground hover:bg-rose-50 hover:text-rose-600 transition cursor-pointer"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
@@ -2932,8 +3055,14 @@ export function VendorDashboard() {
                         <Tag className="h-5 w-5" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold font-display text-foreground">Create Store Coupon</h3>
-                        <p className="text-xs text-muted-foreground">Select products from your inventory that this coupon applies to.</p>
+                        <h3 className="text-lg font-bold font-display text-foreground">
+                          {editingCouponId ? "Edit Store Coupon" : "Create Store Coupon"}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          {editingCouponId
+                            ? "Modify discount values, limits, and product eligibility for this promotion."
+                            : "Select products from your inventory that this coupon applies to."}
+                        </p>
                       </div>
                     </div>
                     <button
@@ -3025,6 +3154,16 @@ export function VendorDashboard() {
 
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div>
+                        <label className="block text-xs font-bold uppercase text-foreground mb-1">Start Date</label>
+                        <input
+                          type="date"
+                          value={couponStartsAtInput}
+                          onChange={(e) => setCouponStartsAtInput(e.target.value)}
+                          className="w-full h-10 rounded-xl border border-border bg-background px-3 text-xs focus:border-primary focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
                         <label className="block text-xs font-bold uppercase text-foreground mb-1">Expiration Date</label>
                         <input
                           type="date"
@@ -3033,9 +3172,11 @@ export function VendorDashboard() {
                           className="w-full h-10 rounded-xl border border-border bg-background px-3 text-xs focus:border-primary focus:outline-none"
                         />
                       </div>
+                    </div>
 
+                    <div className="grid gap-4 sm:grid-cols-2">
                       <div>
-                        <label className="block text-xs font-bold uppercase text-foreground mb-1">Usage Limit</label>
+                        <label className="block text-xs font-bold uppercase text-foreground mb-1">Total Usage Limit</label>
                         <input
                           type="number"
                           min={1}
@@ -3043,15 +3184,31 @@ export function VendorDashboard() {
                           onChange={(e) => setCouponUsageLimitInput(e.target.value === "" ? "" : Number(e.target.value))}
                           className="w-full h-10 rounded-xl border border-border bg-background px-3 text-xs focus:border-primary focus:outline-none"
                         />
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Total redemptions allowed across all customers</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-foreground mb-1">Per-Customer Limit</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={couponPerCustInput}
+                          onChange={(e) => setCouponPerCustInput(e.target.value === "" ? "" : Number(e.target.value))}
+                          className="w-full h-10 rounded-xl border border-border bg-background px-3 text-xs focus:border-primary focus:outline-none"
+                        />
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Maximum times a single customer can use this coupon</p>
                       </div>
                     </div>
 
                     {/* Product Selection Multi-Select */}
-                    <div className="space-y-2 pt-2 border-t border-border">
-                      <div className="flex items-center justify-between">
-                        <label className="block text-xs font-bold uppercase text-foreground">
-                          Eligible Products ({selectedCouponProductIds.length} of {vendorProducts.length} selected) *
-                        </label>
+                    <div className="space-y-3 pt-2 border-t border-border">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <label className="block text-xs font-bold uppercase text-foreground">
+                            Eligible Products ({selectedCouponProductIds.length} of {vendorProducts.length} selected) *
+                          </label>
+                          <p className="text-[10px] text-muted-foreground">Select products from your inventory that this coupon applies to</p>
+                        </div>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
@@ -3071,49 +3228,103 @@ export function VendorDashboard() {
                         </div>
                       </div>
 
+                      {/* Product search box */}
+                      <div className="relative">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <input
+                          type="text"
+                          placeholder="Search inventory by product name, SKU, or ID..."
+                          value={couponProductSearch}
+                          onChange={(e) => setCouponProductSearch(e.target.value)}
+                          className="w-full h-9 rounded-xl border border-border bg-background pl-9 pr-3 text-xs focus:border-primary focus:outline-none"
+                        />
+                      </div>
+
                       {vendorProducts.length === 0 ? (
                         <p className="text-xs text-muted-foreground italic py-3">No products available in your store inventory yet.</p>
-                      ) : (
-                        <div className="border border-border rounded-xl max-h-48 overflow-y-auto divide-y divide-border bg-background p-1">
-                          {vendorProducts.map((p) => {
-                            const isChecked = selectedCouponProductIds.includes(p.id);
-                            return (
-                              <label
-                                key={p.id}
-                                className="flex items-center gap-3 p-2.5 hover:bg-muted/40 rounded-lg cursor-pointer transition"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setSelectedCouponProductIds((prev) => [...prev, p.id]);
-                                    } else {
-                                      setSelectedCouponProductIds((prev) => prev.filter((id) => id !== p.id));
-                                    }
-                                  }}
-                                  className="rounded border-border text-primary focus:ring-primary h-4 w-4"
-                                />
-                                <img
-                                  src={p.image}
-                                  alt=""
-                                  className="h-8 w-8 rounded-lg object-cover border border-border shrink-0"
-                                  onError={(e) => {
-                                    (e.currentTarget as HTMLImageElement).src = "/src/assets/parts.jpg";
-                                  }}
-                                />
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-xs font-semibold text-foreground truncate">{p.name}</p>
-                                  <p className="text-[10px] text-muted-foreground font-mono">{p.sku || p.id} · {p.category}</p>
-                                </div>
-                                <span className="text-xs font-bold text-foreground shrink-0">
-                                  {inr(p.offers[0]?.price || p.mrp || 0)}
-                                </span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      )}
+                      ) : (() => {
+                        const filtered = vendorProducts.filter((p) => {
+                          if (!couponProductSearch.trim()) return true;
+                          const q = couponProductSearch.toLowerCase();
+                          return (
+                            p.name.toLowerCase().includes(q) ||
+                            (p.sku && p.sku.toLowerCase().includes(q)) ||
+                            p.id.toLowerCase().includes(q) ||
+                            p.category.toLowerCase().includes(q)
+                          );
+                        });
+
+                        if (filtered.length === 0) {
+                          return (
+                            <p className="text-xs text-muted-foreground italic py-3">
+                              No products match &ldquo;{couponProductSearch}&rdquo;.
+                            </p>
+                          );
+                        }
+
+                        return (
+                          <div className="border border-border rounded-xl max-h-52 overflow-y-auto divide-y divide-border bg-background p-1">
+                            {filtered.map((p) => {
+                              const isChecked = selectedCouponProductIds.includes(p.id);
+                              const inStock = (p.offers?.[0]?.stock ?? 10) > 0;
+                              return (
+                                <label
+                                  key={p.id}
+                                  className={cn(
+                                    "flex items-center gap-3 p-2.5 hover:bg-muted/40 rounded-lg cursor-pointer transition",
+                                    isChecked && "bg-primary/5"
+                                  )}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedCouponProductIds((prev) => [...prev, p.id]);
+                                      } else {
+                                        setSelectedCouponProductIds((prev) => prev.filter((id) => id !== p.id));
+                                      }
+                                    }}
+                                    className="rounded border-border text-primary focus:ring-primary h-4 w-4 shrink-0"
+                                  />
+                                  <img
+                                    src={p.image}
+                                    alt=""
+                                    className="h-9 w-9 rounded-lg object-cover border border-border shrink-0"
+                                    onError={(e) => {
+                                      (e.currentTarget as HTMLImageElement).src = "/src/assets/parts.jpg";
+                                    }}
+                                  />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <p className="text-xs font-semibold text-foreground truncate">{p.name}</p>
+                                      <span className="shrink-0 px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-emerald-100 text-emerald-800">
+                                        Approved
+                                      </span>
+                                      <span
+                                        className={cn(
+                                          "shrink-0 px-1.5 py-0.2 rounded text-[9px] font-semibold",
+                                          inStock ? "bg-slate-100 text-slate-700" : "bg-red-100 text-red-700"
+                                        )}
+                                      >
+                                        {inStock ? "In Stock" : "Out of Stock"}
+                                      </span>
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground font-mono truncate">
+                                      ID: {p.id} · SKU: {p.sku || p.id} · {p.category}
+                                    </p>
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    <span className="text-xs font-bold text-foreground block">
+                                      {inr(p.offers?.[0]?.price || p.mrp || 0)}
+                                    </span>
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div className="pt-4 border-t border-border flex items-center justify-end gap-3 shrink-0">
@@ -3129,7 +3340,11 @@ export function VendorDashboard() {
                         disabled={isSubmittingCoupon || selectedCouponProductIds.length === 0}
                         className="rounded-xl bg-primary px-5 py-2 text-xs font-bold text-primary-foreground hover:opacity-90 transition disabled:opacity-50"
                       >
-                        {isSubmittingCoupon ? "Saving Coupon..." : "Publish Coupon"}
+                        {isSubmittingCoupon
+                          ? "Saving Coupon..."
+                          : editingCouponId
+                          ? "Update Coupon"
+                          : "Publish Coupon"}
                       </button>
                     </div>
                   </form>

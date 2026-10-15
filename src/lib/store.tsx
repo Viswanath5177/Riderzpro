@@ -125,11 +125,15 @@ export function quoteCart(cart: CartItem[], discount = 0, loc: { lat: number; ln
   }
   const groups = [...map.values()];
   const itemsTotal = groups.reduce((s, g) => s + g.subtotal, 0);
+  if (itemsTotal === 0) {
+    return { groups: [], itemsTotal: 0, deliveryTotal: 0, tax: 0, discountTotal: 0, total: 0, eta: 0 };
+  }
   const deliveryTotal = groups.reduce((s, g) => s + g.fee, 0);
-  const discountedSubtotal = Math.max(0, itemsTotal - discount);
+  const validDiscount = Math.min(Math.max(0, discount), itemsTotal);
+  const discountedSubtotal = Math.max(0, itemsTotal - validDiscount);
   const tax = Math.round(discountedSubtotal * GST_RATE);
   const eta = groups.reduce((m, g) => Math.max(m, g.eta), 0) + Math.max(0, groups.length - 1) * 8;
-  return { groups, itemsTotal, deliveryTotal, tax, discountTotal: discount, total: discountedSubtotal + deliveryTotal + tax, eta };
+  return { groups, itemsTotal, deliveryTotal, tax, discountTotal: validDiscount, total: discountedSubtotal + deliveryTotal + tax, eta };
 }
 
 type Ctx = {
@@ -248,7 +252,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const raw = localStorage.getItem(KEY);
       if (raw) {
         const s = JSON.parse(raw);
-        if (s.cart) setCart(s.cart);
+        if (s.cart && Array.isArray(s.cart)) {
+          const valid = s.cart
+            .filter((i: any) => Boolean(getProduct(i.productId)))
+            .map((i: any) => ({
+              productId: i.productId,
+              vendorId: i.vendorId || "v_01",
+              qty: Math.max(1, Number(i.qty) || 1),
+            }));
+          setCart(valid);
+        }
         if (s.garage && s.garage.length > 0) setGarage(s.garage);
         if ("activeBikeId" in s && s.activeBikeId) setActiveBikeId(s.activeBikeId);
         if (s.shipments && s.shipments.length > 0) {
@@ -303,18 +316,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })
         .catch(() => {});
 
-      // Hydrate cart from database
+      // Hydrate cart from database - backend is single source of truth
       fetch("/api/cart", { credentials: "include" })
         .then((r) => r.json())
         .then((d) => {
-          if (d.success && Array.isArray(d.items) && d.items.length > 0) {
-            setCart(
-              d.items.map((it: any) => ({
+          if (d.success && Array.isArray(d.items)) {
+            const valid = d.items
+              .map((it: any) => ({
                 productId: it.productId || it.product_id,
                 vendorId: it.vendorId || it.vendor_id || "v_01",
-                qty: it.qty || it.quantity || 1,
+                qty: Math.max(1, Number(it.qty || it.quantity) || 1),
               }))
-            );
+              .filter((it: any) => Boolean(getProduct(it.productId)));
+            setCart(valid);
+          } else {
+            setCart([]);
           }
         })
         .catch(() => {});
@@ -852,7 +868,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(() => setIsLoggedIn(true), []);
-  const signOut = useCallback(() => setIsLoggedIn(false), []);
+  const signOut = useCallback(() => {
+    setIsLoggedIn(false);
+    setCart([]);
+    setSavedProductIds([]);
+    setWishlistItems([]);
+    try {
+      localStorage.removeItem(KEY);
+    } catch {}
+  }, []);
   const deleteOrder = useCallback((id: string) => setOrders((os) => os.filter((o) => o.id !== id)), []);
   const clearOrders = useCallback(() => setOrders([]), []);
 
@@ -863,7 +887,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       cart,
       addToCart,
       setQty,
-      clearCart: () => setCart([]),
+      clearCart: () => {
+        setCart([]);
+        fetch("/api/cart", {
+          method: "DELETE",
+          credentials: "include",
+        }).catch(() => {});
+      },
       garage,
       addBike: (b) => {
         setGarage((g) => [...g.filter((x) => x.bikeId !== b.bikeId), b]);
