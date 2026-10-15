@@ -24,9 +24,9 @@
     "is_bestseller": false,
     "hsn_code": "85184000",
     "gst_rate": 18,
-    "image_url": "/catalogue/images/RZP-0335/01.jpg",
+    "image_url": "https://blaupunktcar.in/uploads/main/1771605172445prime.jpg",
     "image_urls": [
-      "/catalogue/images/RZP-0335/01.jpg"
+      "https://blaupunktcar.in/uploads/main/1771605172445prime.jpg"
     ],
     "description": "Compact 2/1 channel Class-D high-efficiency amplifier delivering 600W max total output. Features 2x100W RMS at 4 ohms, 1x300W RMS bridged, and >95dB signal-to-noise ratio. Designed with ultra-compact dimensions (160mm x 112mm x 53mm) for stealth vehicle installs.",
     "features": [
@@ -47,7 +47,15 @@
     "is_active": true,
     "category_name": "Amplifiers",
     "seller_city": "Sector 63, Noida",
-    "ships_from": "Noida"
+    "ships_from": "Noida",
+    "specifications": {
+      "Type": "2-Channel Class-D Amplifier",
+      "Max Power": "600 Watts",
+      "RMS Power (4Ω)": "2 x 100W / 1 x 300W Bridged",
+      "RMS Power (2Ω)": "2 x 150W",
+      "Signal to Noise Ratio": ">95dB",
+      "Dimensions": "160mm x 112mm x 53mm"
+    }
   },
   {
     "id": "RZP-0336",
@@ -74,9 +82,9 @@
     "is_bestseller": true,
     "hsn_code": "85184000",
     "gst_rate": 18,
-    "image_url": "/catalogue/images/RZP-0336/01.jpg",
+    "image_url": "https://blaupunktcar.in/uploads/main/1771606154446prime.jpg",
     "image_urls": [
-      "/catalogue/images/RZP-0336/01.jpg"
+      "https://blaupunktcar.in/uploads/main/1771606154446prime.jpg"
     ],
     "description": "Versatile 4/3/2 channel Class-D full-range amplifier with 1200W max total power output. Delivers 4x100W RMS at 4 ohms, 4x150W RMS at 2 ohms, and 2x300W RMS bridged with active low/high pass crossovers and thermal protection.",
     "features": [
@@ -97,7 +105,15 @@
     "is_active": true,
     "category_name": "Amplifiers",
     "seller_city": "Sector 63, Noida",
-    "ships_from": "Noida"
+    "ships_from": "Noida",
+    "specifications": {
+      "Type": "4-Channel Class-D Amplifier",
+      "Max Power": "1200 Watts",
+      "RMS Power (4Ω)": "4 x 100W / 2 x 300W Bridged",
+      "RMS Power (2Ω)": "4 x 150W",
+      "Signal to Noise Ratio": ">95dB",
+      "Dimensions": "200mm x 112mm x 53mm"
+    }
   },
   {
     "id": "RZP-0338",
@@ -124,9 +140,9 @@
     "is_bestseller": false,
     "hsn_code": "85184000",
     "gst_rate": 18,
-    "image_url": "/catalogue/images/RZP-0338/01.jpg",
+    "image_url": "https://blaupunktcar.in/uploads/main/1771609553448prime.jpg",
     "image_urls": [
-      "/catalogue/images/RZP-0338/01.jpg"
+      "https://blaupunktcar.in/uploads/main/1771609553448prime.jpg"
     ],
     "description": "Premium Class-D power stage delivering 1400W peak output with 4x120W RMS at 4 ohms and 2x320W RMS bridged. Equipped with precision frequency tuning, gold-plated RCA terminals, and an advanced aluminium heatsink.",
     "features": [
@@ -147,7 +163,15 @@
     "is_active": true,
     "category_name": "Amplifiers",
     "seller_city": "Sector 63, Noida",
-    "ships_from": "Noida"
+    "ships_from": "Noida",
+    "specifications": {
+      "Type": "4-Channel High-Power Class-D",
+      "Max Power": "1400 Watts",
+      "RMS Power (4Ω)": "4 x 120W / 2 x 320W Bridged",
+      "RMS Power (2Ω)": "4 x 160W",
+      "Signal to Noise Ratio": ">95dB",
+      "Dimensions": "200mm x 112mm x 53mm"
+    }
   },
   {
     "id": "RZP-0342",
@@ -174,9 +198,9 @@
     "is_bestseller": true,
     "hsn_code": "85184000",
     "gst_rate": 18,
-    "image_url": "/catalogue/images/RZP-0342/01.jpg",
+    "image_url": "https://blaupunktcar.in/uploads/main/1582784994125prime.webp",
     "image_urls": [
-      "/catalogue/images/RZP-0342/01.jpg"
+      "https://blaupunktcar.in/uploads/main/1582784994125prime.webp"
     ],
     "description": "Flagship Blaupunkt Velocity series 4/2 channel amplifier with selectable bass boost (0/6/12 dB at 45Hz), 24dB steep high-pass filter, and 720W max power. Delivers studio-grade audio staging across component and coaxial systems.",
     "features": [
@@ -197,7 +221,15 @@
     "is_active": true,
     "category_name": "Amplifiers",
     "seller_city": "Sector 63, Noida",
-    "ships_from": "Noida"
+    "ships_from": "Noida",
+    "specifications": {
+      "Type": "4-Channel Class-D Velocity High-End",
+      "RMS Power (4Ω)": "4 x 60W / 2 x 180W Bridged",
+      "Variable Gain Adjust": "0.2V to 10V",
+      "Bass Boost": "0/6/12 dB @ 45 Hz",
+      "Signal to Noise Ratio": ">95 dB/A",
+      "Dimensions": "86.4mm x 48.3mm x 210.8mm"
+    }
   },
   {
     "id": "RZP-0344",
@@ -224,9 +256,9 @@
     "is_bestseller": true,
     "hsn_code": "85258900",
     "gst_rate": 18,
-    "image_url": "/catalogue/images/RZP-0344/01.jpg",
+    "image_url": "https://carshala.in/cdn/shop/files/BlaupunktDashcamBPM110_1024x1024.jpg?v=1787227579",
     "image_urls": [
-      "/catalogue/images/RZP-0344/01.jpg"
+      "https://carshala.in/cdn/shop/files/BlaupunktDashcamBPM110_1024x1024.jpg?v=1787227579"
     ],
     "description": "Connected 4G intelligent dual-channel vehicle recording and telematics system. Offers 2K crystal-clear front recording, rear view recording, real-time live GPS tracking, emergency collision SOS upload, and cloud remote surveillance via mobile app.",
     "features": [
@@ -246,7 +278,14 @@
     "is_active": true,
     "category_name": "Cameras & Security",
     "seller_city": "Sector 63, Noida",
-    "ships_from": "Noida"
+    "ships_from": "Noida",
+    "specifications": {
+      "Channels": "Dual-Channel (Front 2K Quad HD + Rear 1080P)",
+      "Connectivity": "4G LTE SIM + Real-Time GPS Tracking",
+      "Viewing Angle": "140° Ultra-Wide Angle",
+      "Night Vision": "Enhanced Sensor with WDR",
+      "Storage": "Supports up to 256GB MicroSD"
+    }
   },
   {
     "id": "RZP-0346",
@@ -273,9 +312,9 @@
     "is_bestseller": true,
     "hsn_code": "85272100",
     "gst_rate": 18,
-    "image_url": "/catalogue/images/RZP-0346/01.jpg",
+    "image_url": "https://carshala.in/cdn/shop/files/BlauptunkKeyLargo1010CarAndroidStereo_1_1024x1024.jpg?v=1786101003",
     "image_urls": [
-      "/catalogue/images/RZP-0346/01.jpg"
+      "https://carshala.in/cdn/shop/files/BlauptunkKeyLargo1010CarAndroidStereo_1_1024x1024.jpg?v=1786101003"
     ],
     "description": "9.0-inch capacitive IPS touchscreen (1280x800) powered by Android with Wireless PhoneLINK (Apple CarPlay & Android Auto). Features 2GB RAM, 32GB storage, quad-core 1.5GHz processor, 10-band equalizer, 4x50W max output, and AHD reverse camera support.",
     "features": [
@@ -296,7 +335,14 @@
     "is_active": true,
     "category_name": "Displays & Head Units",
     "seller_city": "Sector 63, Noida",
-    "ships_from": "Noida"
+    "ships_from": "Noida",
+    "specifications": {
+      "Display": "9.0 Inch 2.5D IPS Capacitive Touchscreen",
+      "Operating System": "Android Auto & Apple CarPlay Ready",
+      "Processor & Memory": "Quad-Core, 2GB RAM + 32GB Storage",
+      "Audio Output": "4 x 50W MOSFET High Power",
+      "Connectivity": "Wi-Fi, Bluetooth 5.0, Dual USB"
+    }
   },
   {
     "id": "RZP-0040",
@@ -346,7 +392,14 @@
     "is_active": true,
     "category_name": "Amplifiers",
     "seller_city": "Sector 63, Noida",
-    "ships_from": "Noida"
+    "ships_from": "Noida",
+    "specifications": {
+      "Type": "4-Channel Class-D Amplifier",
+      "Max Output": "1200 Watts RMS",
+      "RMS Power": "4 x 300W @ 2Ω / 4 x 190W @ 4Ω / 2 x 520W Bridged @ 4Ω",
+      "Protection Circuit": "4-Way Thermal, Voltage, and Speaker DC",
+      "Dimensions": "6.67\" x 4.92\" x 2.01\""
+    }
   },
   {
     "id": "RZP-0044",
@@ -375,8 +428,7 @@
     "gst_rate": 18,
     "image_url": "https://recoilaudio.com/wp-content/uploads/2021/09/1-48.jpg",
     "image_urls": [
-      "https://recoilaudio.com/wp-content/uploads/2021/09/1-48.jpg",
-      "https://recoilaudio.com/wp-content/uploads/2021/09/2-47.jpg"
+      "https://recoilaudio.com/wp-content/uploads/2021/09/1-48.jpg"
     ],
     "description": "Audiophile-grade Class A/B 4-channel full-range car amplifier. Delivers 4x130W RMS at 2 ohms, 4x95W RMS at 4 ohms, and 2x260W RMS bridged. Engineered with high-speed MOSFET power supply, 20Hz-20kHz response, and 0-12dB bass boost.",
     "features": [
@@ -397,7 +449,14 @@
     "is_active": true,
     "category_name": "Amplifiers",
     "seller_city": "Sector 63, Noida",
-    "ships_from": "Noida"
+    "ships_from": "Noida",
+    "specifications": {
+      "Type": "4-Channel Class A/B Amplifier",
+      "Max Total Power": "600 Watts",
+      "RMS Power": "4 x 130W @ 2Ω / 4 x 95W @ 4Ω / 2 x 260W Bridged",
+      "Signal to Noise Ratio": "90dB (THD < 0.05%)",
+      "Bass Boost EQ": "0 to 12dB at 45Hz"
+    }
   },
   {
     "id": "RZP-0047",
@@ -426,8 +485,7 @@
     "gst_rate": 18,
     "image_url": "https://recoilaudio.com/wp-content/uploads/2025/01/1-2.jpg",
     "image_urls": [
-      "https://recoilaudio.com/wp-content/uploads/2025/01/1-2.jpg",
-      "https://recoilaudio.com/wp-content/uploads/2025/01/5-2.jpg"
+      "https://recoilaudio.com/wp-content/uploads/2025/01/1-2.jpg"
     ],
     "description": "Pocket-sized 4-channel Class-D micro amplifier measuring just 3.97\" x 4.92\" x 2.0\". Delivers 4x170W at 2 ohms, 4x95W at 4 ohms, and 2x250W bridged. Perfect for space-constrained EV bikes, scooters, convertibles, and compact cars.",
     "features": [
@@ -447,7 +505,14 @@
     "is_active": true,
     "category_name": "Amplifiers",
     "seller_city": "Sector 63, Noida",
-    "ships_from": "Noida"
+    "ships_from": "Noida",
+    "specifications": {
+      "Type": "Pocket-Size 4-Channel Class-D",
+      "Total Power": "680 Watts",
+      "RMS Power": "4 x 170W @ 2Ω / 4 x 95W @ 4Ω / 2 x 250W Bridged",
+      "Dimensions": "108mm x 125mm x 51mm",
+      "Frequency Response": "20Hz to 35kHz"
+    }
   },
   {
     "id": "RZP-0078",
@@ -480,8 +545,7 @@
     "gst_rate": 18,
     "image_url": "https://recoilaudio.com/wp-content/uploads/2023/04/1.jpg",
     "image_urls": [
-      "https://recoilaudio.com/wp-content/uploads/2023/04/1.jpg",
-      "https://recoilaudio.com/wp-content/uploads/2023/04/2.jpg"
+      "https://recoilaudio.com/wp-content/uploads/2023/04/1.jpg"
     ],
     "description": "Complete waterproof 3-inch handlebar speaker audio package for motorcycles, EV two-wheelers, and ATVs. Includes pair of matte black UV-stable speaker pods, a compact 360W Class-D amplifier with Bluetooth 5.0, handlebar clamps (0.75\"-1.25\"), and wireless remote controller.",
     "features": [
@@ -501,7 +565,13 @@
     "is_active": true,
     "category_name": "Speakers",
     "seller_city": "Sector 63, Noida",
-    "ships_from": "Noida"
+    "ships_from": "Noida",
+    "specifications": {
+      "Speaker Size": "3-Inch High Output Coaxial",
+      "Waterproof Rating": "IPX7 All-Weather Certified",
+      "Housing": "UV-Treated Heavy-Duty Polymer",
+      "Mounting": "Universal Cage / Handlebar Clamp"
+    }
   },
   {
     "id": "RZP-0081",
@@ -530,8 +600,7 @@
     "gst_rate": 18,
     "image_url": "https://recoilaudio.com/wp-content/uploads/2024/04/1-1.jpg",
     "image_urls": [
-      "https://recoilaudio.com/wp-content/uploads/2024/04/1-1.jpg",
-      "https://recoilaudio.com/wp-content/uploads/2024/04/4-1.jpg"
+      "https://recoilaudio.com/wp-content/uploads/2024/04/1-1.jpg"
     ],
     "description": "High-resolution marine and automotive Bluetooth 5.0 audio streamer powered by Qualcomm QCC3034 chipset. Supports 24-bit lossless codecs (aptX-HD, aptX-LL, AAC). Provides 4V RMS stereo line output, remote amp turn-on trigger, and IPX7 immersion rating.",
     "features": [
@@ -551,7 +620,13 @@
     "is_active": true,
     "category_name": "Accessories",
     "seller_city": "Sector 63, Noida",
-    "ships_from": "Noida"
+    "ships_from": "Noida",
+    "specifications": {
+      "Bluetooth Version": "Bluetooth 5.0 with aptX",
+      "Waterproof Rating": "IPX7 Submersible",
+      "Output": "Stereo RCA Pre-outs + 3.5mm Aux",
+      "Frequency Response": "18Hz to 25kHz, SNR > 98dB"
+    }
   },
   {
     "id": "RZP-0082",
@@ -580,8 +655,7 @@
     "gst_rate": 18,
     "image_url": "https://recoilaudio.com/wp-content/uploads/2024/03/1-1.jpg",
     "image_urls": [
-      "https://recoilaudio.com/wp-content/uploads/2024/03/1-1.jpg",
-      "https://recoilaudio.com/wp-content/uploads/2024/03/2-1.jpg"
+      "https://recoilaudio.com/wp-content/uploads/2024/03/1-1.jpg"
     ],
     "description": "High-performance 6.5-inch 2-way coaxial car speakers rated at 140W peak / 70W RMS per driver. Features woven fiberglass composite cone, butyl rubber surround, 1.0\" silk dome tweeter with neodymium motor, and 60Hz-20kHz response.",
     "features": [
@@ -601,7 +675,14 @@
     "is_active": true,
     "category_name": "Speakers",
     "seller_city": "Sector 63, Noida",
-    "ships_from": "Noida"
+    "ships_from": "Noida",
+    "specifications": {
+      "Speaker Type": "6.5-Inch 2-Way Coaxial Speakers (Pair)",
+      "Power Handling": "140W RMS Pair / 280W Peak Pair",
+      "Voice Coil": "1.0\" High-Temperature Kapton Former",
+      "Sensitivity": "88 dB @ 1W/1m",
+      "Frequency Range": "60Hz – 20,000Hz"
+    }
   },
   {
     "id": "RZP-0123",
@@ -630,8 +711,7 @@
     "gst_rate": 18,
     "image_url": "https://recoilaudio.com/wp-content/uploads/2025/12/RLS10-1.jpg",
     "image_urls": [
-      "https://recoilaudio.com/wp-content/uploads/2025/12/RLS10-1.jpg",
-      "https://recoilaudio.com/wp-content/uploads/2025/12/RLS10-2.jpg"
+      "https://recoilaudio.com/wp-content/uploads/2025/12/RLS10-1.jpg"
     ],
     "description": "Slim 2.95-inch height under-seat powered subwoofer housing a high-excursion 10\" woofer and 300W peak / 150W RMS Class-D amplifier. Features auto signal sensing, wired bass level remote, variable low-pass (50-150Hz), and bass boost.",
     "features": [
@@ -651,7 +731,13 @@
     "is_active": true,
     "category_name": "Subwoofers",
     "seller_city": "Sector 63, Noida",
-    "ships_from": "Noida"
+    "ships_from": "Noida",
+    "specifications": {
+      "Driver Size": "10-Inch Low-Profile Subwoofer",
+      "Amplifier": "Built-In Class-D High Efficiency",
+      "Enclosure": "Cast Aluminum Compact Sealed Enclosure",
+      "Controls": "Wired Remote Bass Knob & Low-Pass Filter"
+    }
   },
   {
     "id": "RZP-0004",
@@ -708,7 +794,13 @@
     "is_active": true,
     "category_name": "Seat Covers",
     "seller_city": "Sector 63, Noida",
-    "ships_from": "Noida"
+    "ships_from": "Noida",
+    "specifications": {
+      "Material": "Automotive-Grade PU Leatherette 1.2mm",
+      "Construction": "5-Layer (PU + Sponge + XPE + EVA + Anti-Skid)",
+      "Safety": "Airbag-Compliant Tear Seam Stitching",
+      "Fitment": "Laser-Cut Model-Specific Fit"
+    }
   },
   {
     "id": "RZP-0016",
@@ -763,7 +855,13 @@
     "is_active": true,
     "category_name": "Wiring & Installation",
     "seller_city": "Sector 63, Noida",
-    "ships_from": "Noida"
+    "ships_from": "Noida",
+    "specifications": {
+      "Material": "Pure Butyl Rubber with Reinforced Aluminum Foil",
+      "Thickness": "2.0 mm Heavy Duty",
+      "Pack Coverage": "4 Doors (Approx. 20 sq. ft.)",
+      "Operating Temperature": "-40°C to +150°C"
+    }
   },
   {
     "id": "RZP-0017",
@@ -819,7 +917,13 @@
     "is_active": true,
     "category_name": "Exterior Accessories",
     "seller_city": "Sector 63, Noida",
-    "ships_from": "Noida"
+    "ships_from": "Noida",
+    "specifications": {
+      "Fabric": "Triple-Layer Breathable Composite Fleece",
+      "Water Resistance": "100% Water & Rainproof",
+      "UV Protection": "UPF 50+ Sun Barrier",
+      "Fitment": "Mirror Pockets & Windproof Elastic Hem"
+    }
   },
   {
     "id": "RZP-0019",
@@ -848,8 +952,7 @@
     "gst_rate": 18,
     "image_url": "https://autoform-image.s3.ap-south-1.amazonaws.com/products/tire-inflator-1.jpg",
     "image_urls": [
-      "https://autoform-image.s3.ap-south-1.amazonaws.com/products/tire-inflator-1.jpg",
-      "https://autoform-image.s3.ap-south-1.amazonaws.com/products/Small-Inflator-1.jpg"
+      "https://autoform-image.s3.ap-south-1.amazonaws.com/products/tire-inflator-1.jpg"
     ],
     "description": "Industrial-grade twin-cylinder 12V air compressor outputting 160 litres/minute. Inflates four standard SUV tyres from 18 to 32 PSI in under 9 minutes. Includes heavy-duty battery alligator clamps, 8-metre coiled air hose, analogue pressure gauge, and puncture kit bag.",
     "features": [
@@ -868,6 +971,572 @@
     "is_active": true,
     "category_name": "Tyre Care & Utilities",
     "seller_city": "Sector 63, Noida",
-    "ships_from": "Noida"
+    "ships_from": "Noida",
+    "specifications": {
+      "Motor Type": "Dual 30mm Metal Cylinders",
+      "Max Pressure": "150 PSI",
+      "Free Air Flow": "160 Litres / Minute",
+      "Power Source": "12V Direct Battery Terminal Clamp"
+    }
+  },
+  {
+    "id": "RZP-BAT-0001",
+    "sku": "BAT-VR-60V30AH",
+    "brand": "VoltRide",
+    "name": "VoltRide 60V 30Ah Lithium NMC Replacement Battery Pack",
+    "category": "EV Batteries",
+    "category_id": "cat_batteries",
+    "department": "EV Spares",
+    "vehicle_type": "bike",
+    "fitment_type": "vehicle-specific",
+    "compatible_vehicles": [
+      "ather-450x",
+      "ola-s1pro",
+      "bajaj-chetak",
+      "hero-vida-v1"
+    ],
+    "price": 34999,
+    "mrp": 38500,
+    "stock": 14,
+    "moq": 1,
+    "weight_kg": 13,
+    "warranty": "3 Years Manufacturer Warranty",
+    "delivery_time": "2–4 days across India",
+    "rating": 4.9,
+    "reviews_count": 42,
+    "is_bestseller": true,
+    "hsn_code": "85076000",
+    "gst_rate": 18,
+    "image_url": "https://images.unsplash.com/photo-1558441719-8b489c652758?w=800&auto=format&fit=crop&q=80",
+    "image_urls": [
+      "https://images.unsplash.com/photo-1558441719-8b489c652758?w=800&auto=format&fit=crop&q=80"
+    ],
+    "description": "Automotive-grade 60V 30Ah (1.8 kWh) Lithium NMC replacement battery pack with integrated intelligent CAN-bus BMS. Delivers up to 1800 cycles @ 80% DoD with IP67 laser-welded casing.",
+    "features": [
+      "Cell Chemistry: Grade-A Li-NiMnCo (NMC)",
+      "Nominal Voltage: 60V, Capacity: 30Ah (1.8 kWh)",
+      "Cycle Life: 1800 cycles @ 80% DoD",
+      "BMS: Smart CAN-bus 60A Continuous with Thermal Cutoff",
+      "IP67 waterproof and vibration resistant enclosure"
+    ],
+    "discount_percent": 9,
+    "seller_id": "usr_seller_qbit",
+    "seller_name": "Qbit Pro",
+    "store_name": "Qbit Pro",
+    "key_features": "Cell Chemistry: Grade-A Li-NiMnCo (NMC) · Nominal Voltage: 60V, Capacity: 30Ah (1.8 kWh) · Cycle Life: 1800 cycles @ 80% DoD · BMS: Smart CAN-bus 60A Continuous with Thermal Cutoff · IP67 waterproof enclosure",
+    "category_name": "EV Batteries",
+    "seller_city": "Sector 63, Noida",
+    "ships_from": "Noida",
+    "verification_status": "approved",
+    "is_active": true,
+    "specifications": {
+      "Chemistry": "Grade-A Li-NiMnCo (NMC)",
+      "Nominal Voltage": "60V",
+      "Capacity": "30Ah (1.8 kWh)",
+      "Cycle Life": "1800 Cycles @ 80% DoD",
+      "BMS": "Smart CAN-Bus 60A with Bluetooth App Monitoring"
+    }
+  },
+  {
+    "id": "RZP-BAT-0002",
+    "sku": "BAT-DEC-48V28AH",
+    "brand": "Deccan Battery Labs",
+    "name": "Deccan 48V 28Ah Heavy Duty Swappable LiFePO4 Battery",
+    "category": "EV Batteries",
+    "category_id": "cat_batteries",
+    "department": "EV Spares",
+    "vehicle_type": "bike",
+    "fitment_type": "vehicle-specific",
+    "compatible_vehicles": [
+      "bajaj-chetak",
+      "hero-vida-v1",
+      "tvs-iqube"
+    ],
+    "price": 28500,
+    "mrp": 32000,
+    "stock": 8,
+    "moq": 1,
+    "weight_kg": 12.4,
+    "warranty": "3 Years Replacement Warranty",
+    "delivery_time": "2–4 days across India",
+    "rating": 4.8,
+    "reviews_count": 31,
+    "is_bestseller": false,
+    "hsn_code": "85076000",
+    "gst_rate": 18,
+    "image_url": "https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=800&auto=format&fit=crop&q=80",
+    "image_urls": [
+      "https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=800&auto=format&fit=crop&q=80"
+    ],
+    "description": "Ultra-safe Prismatic LiFePO4 swappable battery module built for heavy daily commuters with over 3000 charge cycles, plug-and-play Chogori connectors, and low self-discharge.",
+    "features": [
+      "Prismatic LiFePO4 3000+ lifecycle cells",
+      "Nominal 48V 28Ah output (1.34 kWh)",
+      "Integrated carry handle and plug-and-play connector",
+      "Dual temperature probe active thermal monitoring"
+    ],
+    "discount_percent": 11,
+    "seller_id": "usr_seller_qbit",
+    "seller_name": "Qbit Pro",
+    "store_name": "Qbit Pro",
+    "key_features": "Prismatic LiFePO4 3000+ lifecycle cells · Nominal 48V 28Ah output · Integrated carry handle · Dual temperature probe active thermal monitoring",
+    "category_name": "EV Batteries",
+    "seller_city": "Sector 63, Noida",
+    "ships_from": "Noida",
+    "verification_status": "approved",
+    "is_active": true,
+    "specifications": {
+      "Chemistry": "Lithium Iron Phosphate (LiFePO4)",
+      "Nominal Voltage": "48V",
+      "Capacity": "28Ah (1.34 kWh)",
+      "Cycle Life": "2500+ Cycles",
+      "Thermal Protection": "Dual Temperature Probe Thermal Monitoring"
+    }
+  },
+  {
+    "id": "RZP-CHG-0001",
+    "sku": "CHG-HCP-72V12A",
+    "brand": "ChargeMax",
+    "name": "ChargeMax Pro 60V 5A Smart Fast Aluminum Charger",
+    "category": "Chargers",
+    "category_id": "cat_chargers",
+    "department": "EV Spares",
+    "vehicle_type": "both",
+    "fitment_type": "vehicle-specific",
+    "compatible_vehicles": [
+      "ola-s1pro",
+      "ather-450x",
+      "bajaj-chetak",
+      "hero-vida-v1"
+    ],
+    "price": 5499,
+    "mrp": 6999,
+    "stock": 18,
+    "moq": 1,
+    "weight_kg": 1.8,
+    "warranty": "2 Years Manufacturer Warranty",
+    "delivery_time": "2–4 days across India",
+    "rating": 4.9,
+    "reviews_count": 65,
+    "is_bestseller": true,
+    "hsn_code": "85044030",
+    "gst_rate": 18,
+    "image_url": "https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=800&auto=format&fit=crop&q=80",
+    "image_urls": [
+      "https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=800&auto=format&fit=crop&q=80"
+    ],
+    "description": "Compact aluminum fin-cooled high-efficiency fast charger with automated CC/CV profile, auto-cutoff, OVP, OCP, and dual MagLev silent cooling fans.",
+    "features": [
+      "Input Voltage: 180V - 260V AC Indian standard",
+      "Max charging current: 5A rapid charge mode",
+      "Smart automatic auto-cutoff at 100% state of charge",
+      "Over-voltage, short-circuit and reverse-polarity protection"
+    ],
+    "discount_percent": 21,
+    "seller_id": "usr_seller_qbit",
+    "seller_name": "Qbit Pro",
+    "store_name": "Qbit Pro",
+    "key_features": "Input Voltage: 180V - 260V AC · Max 5A rapid charge mode · Smart auto-cutoff at 100% · Short-circuit and reverse-polarity protection",
+    "category_name": "Chargers",
+    "seller_city": "Sector 63, Noida",
+    "ships_from": "Noida",
+    "verification_status": "approved",
+    "is_active": true,
+    "specifications": {
+      "Nominal Output": "60V - 72V 5A Rapid",
+      "Input Voltage": "180V - 260V AC Indian Standard",
+      "Chassis": "Extruded Aluminum Heat Dispersion",
+      "Safety Protections": "Over-Voltage, Reverse Polarity, Auto Cut-Off"
+    }
+  },
+  {
+    "id": "RZP-CHG-0002",
+    "sku": "CHG-APX-DOCK-2200W",
+    "brand": "Southern Apex",
+    "name": "Southern Apex Weatherproof Home Charging Dock 2.2kW",
+    "category": "Chargers",
+    "category_id": "cat_chargers",
+    "department": "EV Spares",
+    "vehicle_type": "both",
+    "fitment_type": "universal",
+    "compatible_vehicles": [
+      "universal",
+      "ather-450x",
+      "ola-s1pro",
+      "tvs-iqube",
+      "bajaj-chetak"
+    ],
+    "price": 9999,
+    "mrp": 11200,
+    "stock": 15,
+    "moq": 1,
+    "weight_kg": 3.2,
+    "warranty": "3 Years Replacement Warranty",
+    "delivery_time": "2–4 days across India",
+    "rating": 4.8,
+    "reviews_count": 44,
+    "is_bestseller": false,
+    "hsn_code": "85044030",
+    "gst_rate": 18,
+    "image_url": "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80",
+    "image_urls": [
+      "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80"
+    ],
+    "description": "Wall-mountable IP67 weatherproof 2.2kW residential fast-charging station with 5-metre heavy gauge copper cable and automatic power surge isolation.",
+    "features": [
+      "IP67 weatherproof enclosure suitable for outdoor parking",
+      "5-metre heavy duty charging cable included",
+      "Auto-cutoff sensor with tri-color LED charging status",
+      "Surge and earth leakage protection"
+    ],
+    "discount_percent": 11,
+    "seller_id": "usr_seller_qbit",
+    "seller_name": "Qbit Pro",
+    "store_name": "Qbit Pro",
+    "key_features": "IP67 weatherproof enclosure · 5-metre heavy duty charging cable · Auto-cutoff sensor with LED status · Surge and earth leakage protection",
+    "category_name": "Chargers",
+    "seller_city": "Sector 63, Noida",
+    "ships_from": "Noida",
+    "verification_status": "approved",
+    "is_active": true,
+    "specifications": {
+      "Output Power": "2.2 kW Max",
+      "Input Voltage": "230V AC Single Phase 16A",
+      "Weatherproof Rating": "IP65 Outdoor Certified",
+      "Protection": "Surge Protection & Earth Leakage Relay"
+    }
+  },
+  {
+    "id": "RZP-HLM-0001",
+    "sku": "HLM-RS-AERO-L",
+    "brand": "RideSafe",
+    "name": "RideSafe AeroShield Pro Full-Face ECE 22.06 Helmet",
+    "category": "Riding Gear & Helmets",
+    "category_id": "cat_gear",
+    "department": "Riding Gear",
+    "vehicle_type": "bike",
+    "fitment_type": "universal",
+    "compatible_vehicles": [
+      "universal",
+      "ather-450x",
+      "ola-s1pro",
+      "tvs-iqube",
+      "bajaj-chetak",
+      "revolt-rv400"
+    ],
+    "price": 4899,
+    "mrp": 5499,
+    "stock": 22,
+    "moq": 1,
+    "weight_kg": 1.45,
+    "warranty": "2 Years Manufacturer Warranty",
+    "delivery_time": "2–4 days across India",
+    "rating": 4.9,
+    "reviews_count": 88,
+    "is_bestseller": true,
+    "hsn_code": "65061090",
+    "gst_rate": 18,
+    "image_url": "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=800&auto=format&fit=crop&q=80",
+    "image_urls": [
+      "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=800&auto=format&fit=crop&q=80"
+    ],
+    "description": "Dual-certified ISI and ECE 22.06 aerodynamic full-face helmet with Pinlock-ready optical visor, laser-cut hypoallergenic cheek pads, and wind-tunnel engineered chin vents.",
+    "features": [
+      "ECE 22.06 and ISI dual homologation safety certified",
+      "Advanced aerodynamic polycarbonate shell construction",
+      "Optically correct scratch-resistant anti-fog UV visor",
+      "Removable and washable moisture-wicking comfort liner"
+    ],
+    "discount_percent": 11,
+    "seller_id": "usr_seller_qbit",
+    "seller_name": "Qbit Pro",
+    "store_name": "Qbit Pro",
+    "key_features": "ECE 22.06 and ISI certified · Aerodynamic polycarbonate shell · Anti-fog UV visor · Removable comfort liner",
+    "category_name": "Riding Gear & Helmets",
+    "seller_city": "Sector 63, Noida",
+    "ships_from": "Noida",
+    "verification_status": "approved",
+    "is_active": true,
+    "specifications": {
+      "Certification": "ECE 22.06 & DOT Certified",
+      "Shell Material": "Aerodynamic Polycarbonate Composite",
+      "Liner": "Removable, Washable Moisture-Wicking Liner",
+      "Visor": "Pinlock 70 Anti-Fog Ready with Quick Release"
+    }
+  },
+  {
+    "id": "RZP-HLM-0002",
+    "sku": "HLM-SMK-TYPH",
+    "brand": "SMK Helmets",
+    "name": "SMK Typhoon Full-Face Dual Visor Motorcycle Helmet",
+    "category": "Riding Gear & Helmets",
+    "category_id": "cat_gear",
+    "department": "Riding Gear",
+    "vehicle_type": "bike",
+    "fitment_type": "universal",
+    "compatible_vehicles": [
+      "universal"
+    ],
+    "price": 4199,
+    "mrp": 4800,
+    "stock": 16,
+    "moq": 1,
+    "weight_kg": 1.5,
+    "warranty": "2 Years Warranty",
+    "delivery_time": "2–4 days across India",
+    "rating": 4.7,
+    "reviews_count": 62,
+    "is_bestseller": false,
+    "hsn_code": "65061090",
+    "gst_rate": 18,
+    "image_url": "https://images.unsplash.com/photo-1558980664-769d59546b3d?w=800&auto=format&fit=crop&q=80",
+    "image_urls": [
+      "https://images.unsplash.com/photo-1558980664-769d59546b3d?w=800&auto=format&fit=crop&q=80"
+    ],
+    "description": "High-impact thermoplastic full-face motorcycle helmet equipped with internal retractable sun visor, channelled multi-density EPS, and quick-release micrometric buckle.",
+    "features": [
+      "Integrated internal sun visor for bright daytime riding",
+      "Quick-release micrometric reinforced chin strap",
+      "Multi-vent channeled ventilation for defogging",
+      "ISI certified and Bluetooth intercom pocket ready"
+    ],
+    "discount_percent": 13,
+    "seller_id": "usr_seller_qbit",
+    "seller_name": "Qbit Pro",
+    "store_name": "Qbit Pro",
+    "key_features": "Internal retractable sun visor · Quick-release micrometric buckle · Multi-vent ventilation · Bluetooth speaker ready",
+    "category_name": "Riding Gear & Helmets",
+    "seller_city": "Sector 63, Noida",
+    "ships_from": "Noida",
+    "verification_status": "approved",
+    "is_active": true,
+    "specifications": {
+      "Certification": "ISI & ECE Certified",
+      "Visor System": "Dual Visor (Internal Sun Visor + Clear)",
+      "Intercom Ready": "Built-In Speaker & Mic Pockets",
+      "Weight": "1600 ± 50g"
+    }
+  },
+  {
+    "id": "RZP-BRK-0001",
+    "sku": "BRK-KAV-CER-F",
+    "brand": "Kavach",
+    "name": "Kavach Sintered Ceramic Front Brake Pad Set",
+    "category": "Brakes & Suspension",
+    "category_id": "cat_brakes",
+    "department": "EV Spares",
+    "vehicle_type": "bike",
+    "fitment_type": "vehicle-specific",
+    "compatible_vehicles": [
+      "ather-450x",
+      "ola-s1pro",
+      "tvs-iqube",
+      "bajaj-chetak"
+    ],
+    "price": 1599,
+    "mrp": 1850,
+    "stock": 35,
+    "moq": 1,
+    "weight_kg": 0.35,
+    "warranty": "1 Year Warranty",
+    "delivery_time": "2–4 days across India",
+    "rating": 4.8,
+    "reviews_count": 38,
+    "is_bestseller": true,
+    "hsn_code": "87141090",
+    "gst_rate": 18,
+    "image_url": "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80",
+    "image_urls": [
+      "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80"
+    ],
+    "description": "High-performance sintered ceramic-copper front disc brake pads engineered for regenerative and mechanical electric two-wheeler braking with heat tolerance up to 650°C.",
+    "features": [
+      "Sintered ceramic-copper friction material",
+      "Heat tolerance up to 650°C without brake fade",
+      "Low-dust, non-abrasive formula preserving rotor life",
+      "Direct bolt-on replacement for Ather and Ola calipers"
+    ],
+    "discount_percent": 14,
+    "seller_id": "usr_seller_qbit",
+    "seller_name": "Qbit Pro",
+    "store_name": "Qbit Pro",
+    "key_features": "Sintered ceramic-copper friction · Heat tolerance up to 650°C · Low-dust formula · Direct bolt-on replacement",
+    "category_name": "Brakes & Suspension",
+    "seller_city": "Sector 63, Noida",
+    "ships_from": "Noida",
+    "verification_status": "approved",
+    "is_active": true,
+    "specifications": {
+      "Friction Material": "Sintered Ceramic Composite",
+      "Heat Resistance": "Up to 650°C Zero-Fade",
+      "Fitment": "Direct Bolt-On for Ola S1, Ather 450X, TVS iQube",
+      "Rotor Wear": "Low Dust & Non-Abrasive"
+    }
+  },
+  {
+    "id": "RZP-BRK-0002",
+    "sku": "BRK-BRM-ROT220",
+    "brand": "Brembo",
+    "name": "Brembo Wave Stainless Steel Disc Brake Rotor 220mm",
+    "category": "Brakes & Suspension",
+    "category_id": "cat_brakes",
+    "department": "EV Spares",
+    "vehicle_type": "bike",
+    "fitment_type": "vehicle-specific",
+    "compatible_vehicles": [
+      "ather-450x",
+      "ola-s1pro",
+      "tvs-iqube",
+      "bajaj-chetak",
+      "revolt-rv400"
+    ],
+    "price": 2400,
+    "mrp": 2800,
+    "stock": 20,
+    "moq": 1,
+    "weight_kg": 0.8,
+    "warranty": "1 Year Warranty",
+    "delivery_time": "2–4 days across India",
+    "rating": 4.9,
+    "reviews_count": 45,
+    "is_bestseller": false,
+    "hsn_code": "87141090",
+    "gst_rate": 18,
+    "image_url": "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=800&auto=format&fit=crop&q=80",
+    "image_urls": [
+      "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=800&auto=format&fit=crop&q=80"
+    ],
+    "description": "Precision laser-cut 420 stainless wave rotor with perimeter cooling ports for fast heat dissipation, reduced unsprung mass, and crisp braking bite under hard stops.",
+    "features": [
+      "High-carbon 420 Japanese stainless steel",
+      "Wave profile shedding water, dust and thermal buildup",
+      "220mm outer diameter with precision 3-bolt hub mount",
+      "Resists warping under repeated rapid-regen stops"
+    ],
+    "discount_percent": 14,
+    "seller_id": "usr_seller_qbit",
+    "seller_name": "Qbit Pro",
+    "store_name": "Qbit Pro",
+    "key_features": "High-carbon 420 stainless steel · Wave cooling profile · 220mm outer diameter · Warp-resistant under hard braking",
+    "category_name": "Brakes & Suspension",
+    "seller_city": "Sector 63, Noida",
+    "ships_from": "Noida",
+    "verification_status": "approved",
+    "is_active": true,
+    "specifications": {
+      "Rotor Diameter": "220 mm",
+      "Material": "High-Grade AISI 420 Stainless Steel",
+      "Design": "Wave Profile with Cross-Drilled Ventilation",
+      "Compatibility": "Universal Front Hub for EV Scooters"
+    }
+  },
+  {
+    "id": "RZP-BMS-0001",
+    "sku": "VR-BMS-6050",
+    "brand": "VoltRide",
+    "name": "VoltRide High-Discharge Smart BMS 60V 50A with Bluetooth",
+    "category": "BMS & Electronics",
+    "category_id": "cat_bms",
+    "department": "EV Spares",
+    "vehicle_type": "both",
+    "fitment_type": "vehicle-specific",
+    "compatible_vehicles": [
+      "ola-s1pro",
+      "bajaj-chetak",
+      "hero-vida-v1"
+    ],
+    "price": 4399,
+    "mrp": 5499,
+    "stock": 24,
+    "moq": 1,
+    "weight_kg": 0.45,
+    "warranty": "18 Months Manufacturer Warranty",
+    "delivery_time": "2–4 days across India",
+    "rating": 4.9,
+    "reviews_count": 34,
+    "is_bestseller": false,
+    "hsn_code": "85044090",
+    "gst_rate": 18,
+    "image_url": "https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=800&auto=format&fit=crop&q=80",
+    "image_urls": [
+      "https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=800&auto=format&fit=crop&q=80"
+    ],
+    "description": "Intelligent battery management system designed for 16S Li-ion and NMC packs with active cell balancing, dual temperature sensors, and smartphone Bluetooth diagnostic telemetry.",
+    "features": [
+      "Continuous 50A discharge, 100A peak current support",
+      "Bluetooth 5.0 wireless cell telemetry and live SoC app",
+      "Active cell balancing extending battery cycle life",
+      "Conformal-coated IP65 moisture protection"
+    ],
+    "discount_percent": 20,
+    "seller_id": "usr_seller_qbit",
+    "seller_name": "Qbit Pro",
+    "store_name": "Qbit Pro",
+    "key_features": "Continuous 50A discharge · Bluetooth 5.0 wireless telemetry · Active cell balancing · IP65 moisture protection",
+    "category_name": "BMS & Electronics",
+    "seller_city": "Sector 63, Noida",
+    "ships_from": "Noida",
+    "verification_status": "approved",
+    "is_active": true,
+    "specifications": {
+      "Configuration": "16S-17S Li-ion / LiFePO4",
+      "Continuous Current": "50A (120A Peak Discharge)",
+      "Communication": "Bluetooth 5.0 + UART / CAN-Bus",
+      "Moisture Protection": "Conformal-Coated IP65"
+    }
+  },
+  {
+    "id": "RZP-BLT-0001",
+    "sku": "BLT-APX-78T-CS",
+    "brand": "Apex",
+    "name": "Apex Carbon Steel 78T Reinforced Drive Belt Replacement",
+    "category": "Motors & Transmission",
+    "category_id": "cat_motors",
+    "department": "EV Spares",
+    "vehicle_type": "bike",
+    "fitment_type": "vehicle-specific",
+    "compatible_vehicles": [
+      "ather-450x",
+      "ola-s1pro"
+    ],
+    "price": 2899,
+    "mrp": 3200,
+    "stock": 15,
+    "moq": 1,
+    "weight_kg": 0.5,
+    "warranty": "1 Year Warranty",
+    "delivery_time": "2–4 days across India",
+    "rating": 4.8,
+    "reviews_count": 29,
+    "is_bestseller": false,
+    "hsn_code": "40103990",
+    "gst_rate": 18,
+    "image_url": "https://images.unsplash.com/photo-1616422285623-13ff0162193c?w=800&auto=format&fit=crop&q=80",
+    "image_urls": [
+      "https://images.unsplash.com/photo-1616422285623-13ff0162193c?w=800&auto=format&fit=crop&q=80"
+    ],
+    "description": "Carbon-fiber reinforced tensile core drive belt engineered for high instantaneous torque EV scooters, eliminating belt stretch and tooth shearing under rapid acceleration.",
+    "features": [
+      "High-tensile carbon fiber core cord",
+      "HTD 8M precision-molded tooth pitch",
+      "Oil, heat, and ozone resistant HNBR polymer body",
+      "Reduces drivetrain noise and transmission losses"
+    ],
+    "discount_percent": 9,
+    "seller_id": "usr_seller_qbit",
+    "seller_name": "Qbit Pro",
+    "store_name": "Qbit Pro",
+    "key_features": "Carbon fiber core cord · HTD 8M precision tooth pitch · Heat and oil resistant · Eliminates belt stretch",
+    "category_name": "Motors & Transmission",
+    "seller_city": "Sector 63, Noida",
+    "ships_from": "Noida",
+    "verification_status": "approved",
+    "is_active": true,
+    "specifications": {
+      "Tooth Count": "78T High Torque",
+      "Cord Core": "Carbon Steel Tension Members",
+      "Pitch & Width": "8mm Pitch, 20mm Width",
+      "Durability": "Resistant to Oil, Heat, and Ozone Degradation"
+    }
   }
 ]

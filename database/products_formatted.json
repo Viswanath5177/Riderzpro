@@ -1,0 +1,640 @@
+[
+  {
+    "name": "Blaupunkt ODx 2.100D Class-D 2-Channel Amplifier",
+    "brand": "Blaupunkt",
+    "category": "Amplifiers",
+    "price": 10350,
+    "mrp": 11500,
+    "stock": 25,
+    "sku": "ODx 2.100D",
+    "description": "Compact 2/1 channel Class-D high-efficiency amplifier delivering 600W max total output. Features 2x100W RMS at 4 ohms, 1x300W RMS bridged, and >95dB signal-to-noise ratio. Designed with ultra-compact dimensions (160mm x 112mm x 53mm) for stealth vehicle installs.",
+    "warranty": "2 Years Manufacturer Warranty",
+    "image": "https://blaupunktcar.in/uploads/main/1771605172445prime.jpg",
+    "compatible_vehicles": [
+      "Universal"
+    ],
+    "specifications": {
+      "Type": "2-Channel Class-D Amplifier",
+      "Max Power": "600 Watts",
+      "RMS Power (4Ω)": "2 x 100W / 1 x 300W Bridged",
+      "RMS Power (2Ω)": "2 x 150W",
+      "Signal to Noise Ratio": ">95dB",
+      "Dimensions": "160mm x 112mm x 53mm"
+    }
+  },
+  {
+    "name": "Blaupunkt ODx 4.100D Class-D 4-Channel Amplifier",
+    "brand": "Blaupunkt",
+    "category": "Amplifiers",
+    "price": 12590,
+    "mrp": 13990,
+    "stock": 30,
+    "sku": "ODx 4.100D",
+    "description": "Versatile 4/3/2 channel Class-D full-range amplifier with 1200W max total power output. Delivers 4x100W RMS at 4 ohms, 4x150W RMS at 2 ohms, and 2x300W RMS bridged with active low/high pass crossovers and thermal protection.",
+    "warranty": "2 Years Manufacturer Warranty",
+    "image": "https://blaupunktcar.in/uploads/main/1771606154446prime.jpg",
+    "compatible_vehicles": [
+      "Universal"
+    ],
+    "specifications": {
+      "Type": "4-Channel Class-D Amplifier",
+      "Max Power": "1200 Watts",
+      "RMS Power (4Ω)": "4 x 100W / 2 x 300W Bridged",
+      "RMS Power (2Ω)": "4 x 150W",
+      "Signal to Noise Ratio": ">95dB",
+      "Dimensions": "200mm x 112mm x 53mm"
+    }
+  },
+  {
+    "name": "Blaupunkt PDx 4.120D High-Power 4-Channel Amplifier",
+    "brand": "Blaupunkt",
+    "category": "Amplifiers",
+    "price": 12590,
+    "mrp": 13990,
+    "stock": 20,
+    "sku": "PDx 4.120D",
+    "description": "Premium Class-D power stage delivering 1400W peak output with 4x120W RMS at 4 ohms and 2x320W RMS bridged. Equipped with precision frequency tuning, gold-plated RCA terminals, and an advanced aluminium heatsink.",
+    "warranty": "2 Years Manufacturer Warranty",
+    "image": "https://blaupunktcar.in/uploads/main/1771609553448prime.jpg",
+    "compatible_vehicles": [
+      "Universal"
+    ],
+    "specifications": {
+      "Type": "4-Channel High-Power Class-D",
+      "Max Power": "1400 Watts",
+      "RMS Power (4Ω)": "4 x 120W / 2 x 320W Bridged",
+      "RMS Power (2Ω)": "4 x 160W",
+      "Signal to Noise Ratio": ">95dB",
+      "Dimensions": "200mm x 112mm x 53mm"
+    }
+  },
+  {
+    "name": "Blaupunkt Velocity VA 1004 4-Channel Amplifier",
+    "brand": "Blaupunkt",
+    "category": "Amplifiers",
+    "price": 17990,
+    "mrp": 19990,
+    "stock": 18,
+    "sku": "VA 1004",
+    "description": "Flagship Blaupunkt Velocity series 4/2 channel amplifier with selectable bass boost (0/6/12 dB at 45Hz), 24dB steep high-pass filter, and 720W max power. Delivers studio-grade audio staging across component and coaxial systems.",
+    "warranty": "2 Years Manufacturer Warranty",
+    "image": "https://blaupunktcar.in/uploads/main/1582784994125prime.webp",
+    "compatible_vehicles": [
+      "Universal"
+    ],
+    "specifications": {
+      "Type": "4-Channel Class-D Velocity High-End",
+      "RMS Power (4Ω)": "4 x 60W / 2 x 180W Bridged",
+      "Variable Gain Adjust": "0.2V to 10V",
+      "Bass Boost": "0/6/12 dB @ 45 Hz",
+      "Signal to Noise Ratio": ">95 dB/A",
+      "Dimensions": "86.4mm x 48.3mm x 210.8mm"
+    }
+  },
+  {
+    "name": "Blaupunkt BPM 110 4G Dash Cam & GPS Dual-Channel Tracker",
+    "brand": "Blaupunkt",
+    "category": "Cameras & Security",
+    "price": 26990,
+    "mrp": 29990,
+    "stock": 22,
+    "sku": "BPM 110",
+    "description": "Connected 4G intelligent dual-channel vehicle recording and telematics system. Offers 2K crystal-clear front recording, rear view recording, real-time live GPS tracking, emergency collision SOS upload, and cloud remote surveillance via mobile app.",
+    "warranty": "1 Year Replacement Warranty",
+    "image": "https://carshala.in/cdn/shop/files/BlaupunktDashcamBPM110_1024x1024.jpg?v=1787227579",
+    "compatible_vehicles": [
+      "Universal"
+    ],
+    "specifications": {
+      "Channels": "Dual-Channel (Front 2K Quad HD + Rear 1080P)",
+      "Connectivity": "4G LTE SIM + Real-Time GPS Tracking",
+      "Viewing Angle": "140° Ultra-Wide Angle",
+      "Night Vision": "Enhanced Sensor with WDR",
+      "Storage": "Supports up to 256GB MicroSD"
+    }
+  },
+  {
+    "name": "Blaupunkt Key Largo 1010 9-Inch Android Multimedia Head Unit",
+    "brand": "Blaupunkt",
+    "category": "Displays & Head Units",
+    "price": 17990,
+    "mrp": 19990,
+    "stock": 16,
+    "sku": "KEY LARGO 1010",
+    "description": "9.0-inch capacitive IPS touchscreen (1280x800) powered by Android with Wireless PhoneLINK (Apple CarPlay & Android Auto). Features 2GB RAM, 32GB storage, quad-core 1.5GHz processor, 10-band equalizer, 4x50W max output, and AHD reverse camera support.",
+    "warranty": "2 Years Manufacturer Warranty",
+    "image": "https://carshala.in/cdn/shop/files/BlauptunkKeyLargo1010CarAndroidStereo_1_1024x1024.jpg?v=1786101003",
+    "compatible_vehicles": [
+      "Universal"
+    ],
+    "specifications": {
+      "Display": "9.0 Inch 2.5D IPS Capacitive Touchscreen",
+      "Operating System": "Android Auto & Apple CarPlay Ready",
+      "Processor & Memory": "Quad-Core, 2GB RAM + 32GB Storage",
+      "Audio Output": "4 x 50W MOSFET High Power",
+      "Connectivity": "Wi-Fi, Bluetooth 5.0, Dual USB"
+    }
+  },
+  {
+    "name": "RECOIL RL1200.4 4-Channel RMS 1200 Watts Amplifier",
+    "brand": "RECOIL",
+    "category": "Amplifiers",
+    "price": 27000,
+    "mrp": 30000,
+    "stock": 25,
+    "sku": "RL1200.4",
+    "description": "Ultra-compact 4-channel power amplifier built for full-range system upgrades where space is tight. Rated at 4x300W RMS at 2 ohms and bridgeable to 2x520W RMS at 4 ohms. Features independent HPF/LPF crossovers (30-300Hz), 4-way protection circuitry, and clip LED indicator.",
+    "warranty": "1 Year Official Warranty",
+    "image": "https://cdn.shopify.com/s/files/1/0968/7400/4758/files/RL1200.4-Main.png?v=1772090249",
+    "compatible_vehicles": [
+      "Universal"
+    ],
+    "specifications": {
+      "Type": "4-Channel Class-D Amplifier",
+      "Max Output": "1200 Watts RMS",
+      "RMS Power": "4 x 300W @ 2Ω / 4 x 190W @ 4Ω / 2 x 520W Bridged @ 4Ω",
+      "Protection Circuit": "4-Way Thermal, Voltage, and Speaker DC",
+      "Dimensions": "6.67\" x 4.92\" x 2.01\""
+    }
+  },
+  {
+    "name": "RECOIL REA600.4 600 Watts Class A/B 4-Channel Amplifier",
+    "brand": "RECOIL",
+    "category": "Amplifiers",
+    "price": 28800,
+    "mrp": 32000,
+    "stock": 20,
+    "sku": "REA600.4",
+    "description": "Audiophile-grade Class A/B 4-channel full-range car amplifier. Delivers 4x130W RMS at 2 ohms, 4x95W RMS at 4 ohms, and 2x260W RMS bridged. Engineered with high-speed MOSFET power supply, 20Hz-20kHz response, and 0-12dB bass boost.",
+    "warranty": "1 Year Official Warranty",
+    "image": "https://recoilaudio.com/wp-content/uploads/2021/09/1-48.jpg",
+    "compatible_vehicles": [
+      "Universal"
+    ],
+    "specifications": {
+      "Type": "4-Channel Class A/B Amplifier",
+      "Max Total Power": "600 Watts",
+      "RMS Power": "4 x 130W @ 2Ω / 4 x 95W @ 4Ω / 2 x 260W Bridged",
+      "Signal to Noise Ratio": "90dB (THD < 0.05%)",
+      "Bass Boost EQ": "0 to 12dB at 45Hz"
+    }
+  },
+  {
+    "name": "RECOIL RL680.4 Pocket-Size 680 Watts 4-Channel Amplifier",
+    "brand": "RECOIL",
+    "category": "Amplifiers",
+    "price": 16020,
+    "mrp": 17800,
+    "stock": 35,
+    "sku": "RL680.4",
+    "description": "Pocket-sized 4-channel Class-D micro amplifier measuring just 3.97\" x 4.92\" x 2.0\". Delivers 4x170W at 2 ohms, 4x95W at 4 ohms, and 2x250W bridged. Perfect for space-constrained EV bikes, scooters, convertibles, and compact cars.",
+    "warranty": "1 Year Official Warranty",
+    "image": "https://recoilaudio.com/wp-content/uploads/2025/01/1-2.jpg",
+    "compatible_vehicles": [
+      "Universal"
+    ],
+    "specifications": {
+      "Type": "Pocket-Size 4-Channel Class-D",
+      "Total Power": "680 Watts",
+      "RMS Power": "4 x 170W @ 2Ω / 4 x 95W @ 4Ω / 2 x 250W Bridged",
+      "Dimensions": "108mm x 125mm x 51mm",
+      "Frequency Response": "20Hz to 35kHz"
+    }
+  },
+  {
+    "name": "RECOIL R3B-P 3-Inch All-Weather Speaker Audio Kit",
+    "brand": "RECOIL",
+    "category": "Speakers",
+    "price": 31680,
+    "mrp": 36000,
+    "stock": 15,
+    "sku": "R3B-P",
+    "description": "Complete waterproof 3-inch handlebar speaker audio package for motorcycles, EV two-wheelers, and ATVs. Includes pair of matte black UV-stable speaker pods, a compact 360W Class-D amplifier with Bluetooth 5.0, handlebar clamps (0.75\"-1.25\"), and wireless remote controller.",
+    "warranty": "1 Year Official Warranty",
+    "image": "https://recoilaudio.com/wp-content/uploads/2023/04/1.jpg",
+    "compatible_vehicles": [
+      "Universal",
+      "ola-s1pro",
+      "ather-450x",
+      "tvs-iqube",
+      "revolt-rv400"
+    ],
+    "specifications": {
+      "Speaker Size": "3-Inch High Output Coaxial",
+      "Waterproof Rating": "IPX7 All-Weather Certified",
+      "Housing": "UV-Treated Heavy-Duty Polymer",
+      "Mounting": "Universal Cage / Handlebar Clamp"
+    }
+  },
+  {
+    "name": "RECOIL BTR-20 Waterproof Bluetooth 5.0 Audio Receiver",
+    "brand": "RECOIL",
+    "category": "Accessories",
+    "price": 7920,
+    "mrp": 9000,
+    "stock": 45,
+    "sku": "BTR-20",
+    "description": "High-resolution marine and automotive Bluetooth 5.0 audio streamer powered by Qualcomm QCC3034 chipset. Supports 24-bit lossless codecs (aptX-HD, aptX-LL, AAC). Provides 4V RMS stereo line output, remote amp turn-on trigger, and IPX7 immersion rating.",
+    "warranty": "1 Year Official Warranty",
+    "image": "https://recoilaudio.com/wp-content/uploads/2024/04/1-1.jpg",
+    "compatible_vehicles": [
+      "Universal"
+    ],
+    "specifications": {
+      "Bluetooth Version": "Bluetooth 5.0 with aptX",
+      "Waterproof Rating": "IPX7 Submersible",
+      "Output": "Stereo RCA Pre-outs + 3.5mm Aux",
+      "Frequency Response": "18Hz to 25kHz, SNR > 98dB"
+    }
+  },
+  {
+    "name": "RECOIL Echo Pro RX65 6.5-Inch 2-Way Coaxial Speakers",
+    "brand": "RECOIL",
+    "category": "Speakers",
+    "price": 12320,
+    "mrp": 14000,
+    "stock": 40,
+    "sku": "RX65",
+    "description": "High-performance 6.5-inch 2-way coaxial car speakers rated at 140W peak / 70W RMS per driver. Features woven fiberglass composite cone, butyl rubber surround, 1.0\" silk dome tweeter with neodymium motor, and 60Hz-20kHz response.",
+    "warranty": "1 Year Official Warranty",
+    "image": "https://recoilaudio.com/wp-content/uploads/2024/03/1-1.jpg",
+    "compatible_vehicles": [
+      "Universal"
+    ],
+    "specifications": {
+      "Speaker Type": "6.5-Inch 2-Way Coaxial Speakers (Pair)",
+      "Power Handling": "140W RMS Pair / 280W Peak Pair",
+      "Voice Coil": "1.0\" High-Temperature Kapton Former",
+      "Sensitivity": "88 dB @ 1W/1m",
+      "Frequency Range": "60Hz – 20,000Hz"
+    }
+  },
+  {
+    "name": "RECOIL RLS10 10-Inch Low-Profile Amplified Subwoofer",
+    "brand": "RECOIL",
+    "category": "Subwoofers",
+    "price": 19800,
+    "mrp": 22000,
+    "stock": 28,
+    "sku": "RLS10",
+    "description": "Slim 2.95-inch height under-seat powered subwoofer housing a high-excursion 10\" woofer and 300W peak / 150W RMS Class-D amplifier. Features auto signal sensing, wired bass level remote, variable low-pass (50-150Hz), and bass boost.",
+    "warranty": "1 Year Official Warranty",
+    "image": "https://recoilaudio.com/wp-content/uploads/2025/12/RLS10-1.jpg",
+    "compatible_vehicles": [
+      "Universal"
+    ],
+    "specifications": {
+      "Driver Size": "10-Inch Low-Profile Subwoofer",
+      "Amplifier": "Built-In Class-D High Efficiency",
+      "Enclosure": "Cast Aluminum Compact Sealed Enclosure",
+      "Controls": "Wired Remote Bass Knob & Low-Pass Filter"
+    }
+  },
+  {
+    "name": "Riderzpro Custom-Fit Leatherette Seat Covers",
+    "brand": "Riderzpro",
+    "category": "Seat Covers",
+    "price": 12900,
+    "mrp": 17500,
+    "stock": 22,
+    "sku": "RZP-SC-001",
+    "description": "Cut on your car actual seat pattern with airbag-safe tear seams on the side bolsters. Diamond, hexagon or plain stitch in breathable perforated PU leather.",
+    "warranty": "2 Years Warranty against wear & tear",
+    "image": "https://autoform-image.s3.ap-south-1.amazonaws.com/products/PADDED-PLUS02.jpg",
+    "compatible_vehicles": [
+      "creta",
+      "seltos",
+      "city",
+      "swift",
+      "brezza",
+      "nexon",
+      "venue",
+      "xuv700",
+      "harrier",
+      "fortuner"
+    ],
+    "specifications": {
+      "Material": "Automotive-Grade PU Leatherette 1.2mm",
+      "Construction": "5-Layer (PU + Sponge + XPE + EVA + Anti-Skid)",
+      "Safety": "Airbag-Compliant Tear Seam Stitching",
+      "Fitment": "Laser-Cut Model-Specific Fit"
+    }
+  },
+  {
+    "name": "Riderzpro Butyl Sound Deadening Kit — 4 Door",
+    "brand": "Riderzpro",
+    "category": "Wiring & Installation",
+    "price": 11900,
+    "mrp": 15900,
+    "stock": 40,
+    "sku": "RZP-DAMP-04",
+    "description": "Butyl-and-aluminium constrained layer damper plus closed-cell foam. Drops door resonance, kills road drum and makes every speaker sound one class better.",
+    "warranty": "3 Years Warranty against cracking & curling",
+    "image": "https://autoform-image.s3.ap-south-1.amazonaws.com/products/damping-sheet.jpg",
+    "compatible_vehicles": [
+      "thar",
+      "creta",
+      "seltos",
+      "fortuner",
+      "scorpio-n",
+      "xuv700",
+      "harrier",
+      "city"
+    ],
+    "specifications": {
+      "Material": "Pure Butyl Rubber with Reinforced Aluminum Foil",
+      "Thickness": "2.0 mm Heavy Duty",
+      "Pack Coverage": "4 Doors (Approx. 20 sq. ft.)",
+      "Operating Temperature": "-40°C to +150°C"
+    }
+  },
+  {
+    "name": "Riderzpro All-Weather Triple-Layer Waterproof Body Cover",
+    "brand": "Riderzpro",
+    "category": "Exterior Accessories",
+    "price": 2499,
+    "mrp": 3999,
+    "stock": 210,
+    "sku": "RZP-CBC-001",
+    "description": "Heavy-duty triple-layer car cover featuring UV-reflective outer membrane, waterproof middle barrier, and ultra-soft scratch-resistant cotton fleece lining. Protects clear coat from monsoon rain, tree sap, bird droppings, and UV oxidation.",
+    "warranty": "1 Year against seam failure and fading",
+    "image": "https://autoform-image.s3.ap-south-1.amazonaws.com/products/TRILAYER-BODY-COVER.jpg",
+    "compatible_vehicles": [
+      "creta",
+      "seltos",
+      "city",
+      "swift",
+      "thar",
+      "fortuner",
+      "harrier",
+      "scorpio-n",
+      "xuv700"
+    ],
+    "specifications": {
+      "Fabric": "Triple-Layer Breathable Composite Fleece",
+      "Water Resistance": "100% Water & Rainproof",
+      "UV Protection": "UPF 50+ Sun Barrier",
+      "Fitment": "Mirror Pockets & Windproof Elastic Hem"
+    }
+  },
+  {
+    "name": "Riderzpro Portable Twin-Cylinder 150 PSI Air Compressor",
+    "brand": "Riderzpro",
+    "category": "Tyre Care & Utilities",
+    "price": 16900,
+    "mrp": 21900,
+    "stock": 34,
+    "sku": "RZP-TI-003",
+    "description": "Industrial-grade twin-cylinder 12V air compressor outputting 160 litres/minute. Inflates four standard SUV tyres from 18 to 32 PSI in under 9 minutes. Includes heavy-duty battery alligator clamps, 8-metre coiled air hose, analogue pressure gauge, and puncture kit bag.",
+    "warranty": "2 Years Warranty with Thermal Protection",
+    "image": "https://autoform-image.s3.ap-south-1.amazonaws.com/products/tire-inflator-1.jpg",
+    "compatible_vehicles": [
+      "Universal"
+    ],
+    "specifications": {
+      "Motor Type": "Dual 30mm Metal Cylinders",
+      "Max Pressure": "150 PSI",
+      "Free Air Flow": "160 Litres / Minute",
+      "Power Source": "12V Direct Battery Terminal Clamp"
+    }
+  },
+  {
+    "name": "VoltRide 60V 30Ah Lithium NMC Replacement Battery Pack",
+    "brand": "VoltRide",
+    "category": "EV Batteries",
+    "price": 34999,
+    "mrp": 38500,
+    "stock": 14,
+    "sku": "BAT-VR-60V30AH",
+    "description": "Automotive-grade 60V 30Ah (1.8 kWh) Lithium NMC replacement battery pack with integrated intelligent CAN-bus BMS. Delivers up to 1800 cycles @ 80% DoD with IP67 laser-welded casing.",
+    "warranty": "3 Years Manufacturer Warranty",
+    "image": "https://images.unsplash.com/photo-1558441719-8b489c652758?w=800&auto=format&fit=crop&q=80",
+    "compatible_vehicles": [
+      "ather-450x",
+      "ola-s1pro",
+      "bajaj-chetak",
+      "hero-vida-v1"
+    ],
+    "specifications": {
+      "Chemistry": "Grade-A Li-NiMnCo (NMC)",
+      "Nominal Voltage": "60V",
+      "Capacity": "30Ah (1.8 kWh)",
+      "Cycle Life": "1800 Cycles @ 80% DoD",
+      "BMS": "Smart CAN-Bus 60A with Bluetooth App Monitoring"
+    }
+  },
+  {
+    "name": "Deccan 48V 28Ah Heavy Duty Swappable LiFePO4 Battery",
+    "brand": "Deccan Battery Labs",
+    "category": "EV Batteries",
+    "price": 28500,
+    "mrp": 32000,
+    "stock": 8,
+    "sku": "BAT-DEC-48V28AH",
+    "description": "Ultra-safe Prismatic LiFePO4 swappable battery module built for heavy daily commuters with over 3000 charge cycles, plug-and-play Chogori connectors, and low self-discharge.",
+    "warranty": "3 Years Replacement Warranty",
+    "image": "https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=800&auto=format&fit=crop&q=80",
+    "compatible_vehicles": [
+      "bajaj-chetak",
+      "hero-vida-v1",
+      "tvs-iqube"
+    ],
+    "specifications": {
+      "Chemistry": "Lithium Iron Phosphate (LiFePO4)",
+      "Nominal Voltage": "48V",
+      "Capacity": "28Ah (1.34 kWh)",
+      "Cycle Life": "2500+ Cycles",
+      "Thermal Protection": "Dual Temperature Probe Thermal Monitoring"
+    }
+  },
+  {
+    "name": "ChargeMax Pro 60V 5A Smart Fast Aluminum Charger",
+    "brand": "ChargeMax",
+    "category": "Chargers",
+    "price": 5499,
+    "mrp": 6999,
+    "stock": 18,
+    "sku": "CHG-HCP-72V12A",
+    "description": "Compact aluminum fin-cooled high-efficiency fast charger with automated CC/CV profile, auto-cutoff, OVP, OCP, and dual MagLev silent cooling fans.",
+    "warranty": "2 Years Manufacturer Warranty",
+    "image": "https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=800&auto=format&fit=crop&q=80",
+    "compatible_vehicles": [
+      "ola-s1pro",
+      "ather-450x",
+      "bajaj-chetak",
+      "hero-vida-v1"
+    ],
+    "specifications": {
+      "Nominal Output": "60V - 72V 5A Rapid",
+      "Input Voltage": "180V - 260V AC Indian Standard",
+      "Chassis": "Extruded Aluminum Heat Dispersion",
+      "Safety Protections": "Over-Voltage, Reverse Polarity, Auto Cut-Off"
+    }
+  },
+  {
+    "name": "Southern Apex Weatherproof Home Charging Dock 2.2kW",
+    "brand": "Southern Apex",
+    "category": "Chargers",
+    "price": 9999,
+    "mrp": 11200,
+    "stock": 15,
+    "sku": "CHG-APX-DOCK-2200W",
+    "description": "Wall-mountable IP67 weatherproof 2.2kW residential fast-charging station with 5-metre heavy gauge copper cable and automatic power surge isolation.",
+    "warranty": "3 Years Replacement Warranty",
+    "image": "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80",
+    "compatible_vehicles": [
+      "Universal",
+      "ather-450x",
+      "ola-s1pro",
+      "tvs-iqube",
+      "bajaj-chetak"
+    ],
+    "specifications": {
+      "Output Power": "2.2 kW Max",
+      "Input Voltage": "230V AC Single Phase 16A",
+      "Weatherproof Rating": "IP65 Outdoor Certified",
+      "Protection": "Surge Protection & Earth Leakage Relay"
+    }
+  },
+  {
+    "name": "RideSafe AeroShield Pro Full-Face ECE 22.06 Helmet",
+    "brand": "RideSafe",
+    "category": "Riding Gear & Helmets",
+    "price": 4899,
+    "mrp": 5499,
+    "stock": 22,
+    "sku": "HLM-RS-AERO-L",
+    "description": "Dual-certified ISI and ECE 22.06 aerodynamic full-face helmet with Pinlock-ready optical visor, laser-cut hypoallergenic cheek pads, and wind-tunnel engineered chin vents.",
+    "warranty": "2 Years Manufacturer Warranty",
+    "image": "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=800&auto=format&fit=crop&q=80",
+    "compatible_vehicles": [
+      "Universal",
+      "ather-450x",
+      "ola-s1pro",
+      "tvs-iqube",
+      "bajaj-chetak",
+      "revolt-rv400"
+    ],
+    "specifications": {
+      "Certification": "ECE 22.06 & DOT Certified",
+      "Shell Material": "Aerodynamic Polycarbonate Composite",
+      "Liner": "Removable, Washable Moisture-Wicking Liner",
+      "Visor": "Pinlock 70 Anti-Fog Ready with Quick Release"
+    }
+  },
+  {
+    "name": "SMK Typhoon Full-Face Dual Visor Motorcycle Helmet",
+    "brand": "SMK Helmets",
+    "category": "Riding Gear & Helmets",
+    "price": 4199,
+    "mrp": 4800,
+    "stock": 16,
+    "sku": "HLM-SMK-TYPH",
+    "description": "High-impact thermoplastic full-face motorcycle helmet equipped with internal retractable sun visor, channelled multi-density EPS, and quick-release micrometric buckle.",
+    "warranty": "2 Years Warranty",
+    "image": "https://images.unsplash.com/photo-1558980664-769d59546b3d?w=800&auto=format&fit=crop&q=80",
+    "compatible_vehicles": [
+      "Universal"
+    ],
+    "specifications": {
+      "Certification": "ISI & ECE Certified",
+      "Visor System": "Dual Visor (Internal Sun Visor + Clear)",
+      "Intercom Ready": "Built-In Speaker & Mic Pockets",
+      "Weight": "1600 ± 50g"
+    }
+  },
+  {
+    "name": "Kavach Sintered Ceramic Front Brake Pad Set",
+    "brand": "Kavach",
+    "category": "Brakes & Suspension",
+    "price": 1599,
+    "mrp": 1850,
+    "stock": 35,
+    "sku": "BRK-KAV-CER-F",
+    "description": "High-performance sintered ceramic-copper front disc brake pads engineered for regenerative and mechanical electric two-wheeler braking with heat tolerance up to 650°C.",
+    "warranty": "1 Year Warranty",
+    "image": "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80",
+    "compatible_vehicles": [
+      "ather-450x",
+      "ola-s1pro",
+      "tvs-iqube",
+      "bajaj-chetak"
+    ],
+    "specifications": {
+      "Friction Material": "Sintered Ceramic Composite",
+      "Heat Resistance": "Up to 650°C Zero-Fade",
+      "Fitment": "Direct Bolt-On for Ola S1, Ather 450X, TVS iQube",
+      "Rotor Wear": "Low Dust & Non-Abrasive"
+    }
+  },
+  {
+    "name": "Brembo Wave Stainless Steel Disc Brake Rotor 220mm",
+    "brand": "Brembo",
+    "category": "Brakes & Suspension",
+    "price": 2400,
+    "mrp": 2800,
+    "stock": 20,
+    "sku": "BRK-BRM-ROT220",
+    "description": "Precision laser-cut 420 stainless wave rotor with perimeter cooling ports for fast heat dissipation, reduced unsprung mass, and crisp braking bite under hard stops.",
+    "warranty": "1 Year Warranty",
+    "image": "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=800&auto=format&fit=crop&q=80",
+    "compatible_vehicles": [
+      "ather-450x",
+      "ola-s1pro",
+      "tvs-iqube",
+      "bajaj-chetak",
+      "revolt-rv400"
+    ],
+    "specifications": {
+      "Rotor Diameter": "220 mm",
+      "Material": "High-Grade AISI 420 Stainless Steel",
+      "Design": "Wave Profile with Cross-Drilled Ventilation",
+      "Compatibility": "Universal Front Hub for EV Scooters"
+    }
+  },
+  {
+    "name": "VoltRide High-Discharge Smart BMS 60V 50A with Bluetooth",
+    "brand": "VoltRide",
+    "category": "BMS & Electronics",
+    "price": 4399,
+    "mrp": 5499,
+    "stock": 24,
+    "sku": "VR-BMS-6050",
+    "description": "Intelligent battery management system designed for 16S Li-ion and NMC packs with active cell balancing, dual temperature sensors, and smartphone Bluetooth diagnostic telemetry.",
+    "warranty": "18 Months Manufacturer Warranty",
+    "image": "https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=800&auto=format&fit=crop&q=80",
+    "compatible_vehicles": [
+      "ola-s1pro",
+      "bajaj-chetak",
+      "hero-vida-v1"
+    ],
+    "specifications": {
+      "Configuration": "16S-17S Li-ion / LiFePO4",
+      "Continuous Current": "50A (120A Peak Discharge)",
+      "Communication": "Bluetooth 5.0 + UART / CAN-Bus",
+      "Moisture Protection": "Conformal-Coated IP65"
+    }
+  },
+  {
+    "name": "Apex Carbon Steel 78T Reinforced Drive Belt Replacement",
+    "brand": "Apex",
+    "category": "Motors & Transmission",
+    "price": 2899,
+    "mrp": 3200,
+    "stock": 15,
+    "sku": "BLT-APX-78T-CS",
+    "description": "Carbon-fiber reinforced tensile core drive belt engineered for high instantaneous torque EV scooters, eliminating belt stretch and tooth shearing under rapid acceleration.",
+    "warranty": "1 Year Warranty",
+    "image": "https://images.unsplash.com/photo-1616422285623-13ff0162193c?w=800&auto=format&fit=crop&q=80",
+    "compatible_vehicles": [
+      "ather-450x",
+      "ola-s1pro"
+    ],
+    "specifications": {
+      "Tooth Count": "78T High Torque",
+      "Cord Core": "Carbon Steel Tension Members",
+      "Pitch & Width": "8mm Pitch, 20mm Width",
+      "Durability": "Resistant to Oil, Heat, and Ozone Degradation"
+    }
+  }
+]
