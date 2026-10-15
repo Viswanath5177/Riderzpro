@@ -153,14 +153,12 @@ export function PaymentStep({
         console.warn("[PaymentStep] Backend order creation fallback:", e);
       }
 
-      const keyId =
-        orderData?.key_id ||
-        orderData?.key ||
-        (import.meta as any).env?.VITE_RAZORPAY_KEY_ID ||
-        "rzp_test_5177RiderzProKey";
+      const keyId = orderData?.key_id || orderData?.key || (import.meta as any).env?.VITE_RAZORPAY_KEY_ID;
+      if (!keyId || !orderData?.id) {
+        throw new Error("Payment gateway is not configured. Missing Razorpay keys or order.");
+      }
 
-      const rzpOrderId =
-        orderData?.id || orderData?.order_id || `order_test_${Math.random().toString(36).substring(2, 10)}`;
+      const rzpOrderId = orderData.id || orderData.order_id;
 
       // Step 2: Configure Razorpay Checkout Options
       const options = {
@@ -196,7 +194,7 @@ export function PaymentStep({
         }) => {
           setProcessingStage("Verifying cryptographic signature with banking switch...");
           try {
-            await fetch("/api/payments/verify", {
+            const verifyRes = await fetch("/api/payments/verify", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -207,12 +205,16 @@ export function PaymentStep({
                 customer_name: customerName,
               }),
             });
+            const verifyBody = await verifyRes.json().catch(() => ({}));
+            if (!verifyRes.ok || !verifyBody?.success || verifyBody?.signature_verified !== true) {
+              throw new Error(verifyBody?.error || "Payment signature verification failed");
+            }
 
             setIsProcessing(false);
             toast.success("Payment verified! Payment Status: PAID");
             if (onPaymentSuccess) {
               onPaymentSuccess({
-                method: "Razorpay (Test Mode)",
+                method: "Razorpay",
                 payment_status: "PAID",
                 paymentId: response.razorpay_payment_id,
                 orderId: response.razorpay_order_id || rzpOrderId,
@@ -220,18 +222,11 @@ export function PaymentStep({
               });
             }
             if (onClose) onClose();
-          } catch (verifyErr) {
-            console.error("Signature verification fallback:", verifyErr);
+          } catch (verifyErr: any) {
+            console.error("Signature verification failed:", verifyErr);
             setIsProcessing(false);
-            if (onPaymentSuccess) {
-              onPaymentSuccess({
-                method: "Razorpay (Test Mode Verified)",
-                payment_status: "PAID",
-                paymentId: response.razorpay_payment_id,
-                orderId: response.razorpay_order_id || rzpOrderId,
-              });
-            }
-            if (onClose) onClose();
+            toast.error(verifyErr?.message || "Payment verification failed");
+            if (onPaymentError) onPaymentError(verifyErr);
           }
         },
       };

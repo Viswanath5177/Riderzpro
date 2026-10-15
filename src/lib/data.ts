@@ -1,12 +1,4 @@
-import battery1 from "@/assets/battery-1.jpg";
-import battery2 from "@/assets/battery-2.jpg";
-import battery3 from "@/assets/battery-3.jpg";
-import charger from "@/assets/charger.jpg";
-import parts from "@/assets/parts.jpg";
-
-import heroBike from "@/assets/hero-bike.jpg";
-import scooterImg from "@/assets/scooter.jpg";
-import catalog from "@/data/accessory_catalog.json";
+import catalog from "../data/accessory_catalog.json";
 import vehicleCatalog from "../../web/data/ev_two_wheeler_catalog.json";
 
 export type Bike = { id: string; make: string; model: string; years: number[]; voltage: number; wmi: string };

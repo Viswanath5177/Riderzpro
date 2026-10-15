@@ -62,7 +62,7 @@ export const Route = createFileRoute("/cart")({
 });
 
 function CartPage() {
-  const { cart, setQty, userProfile, inventoryStock, clearCart, addToCart, userLocation, placeOrderWithOptions } = useStore();
+  const { cart, setQty, userProfile, inventoryStock, clearCart, addToCart, userLocation } = useStore();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -420,25 +420,7 @@ function CartPage() {
 
       const newOrder = await createOrder(payload);
 
-      // Record in local store for seamless local state compatibility
-      try {
-        placeOrderWithOptions({
-          payment: paymentMethod === "COD" ? "Cash on Delivery" : `Razorpay (${paymentMethod})`,
-          paymentStatus: paymentMethod === "COD" ? "COD_PENDING" : "PAID",
-          shippingAddress: {
-            name: contact.name.trim() || userProfile.name || "Customer",
-            street: address.street,
-            city: "Delhi",
-            state: "Delhi",
-            pincode: address.pincode,
-            phone: contact.phone,
-          },
-          couponCode: appliedCoupon?.code,
-          discount: discountAmount,
-        });
-      } catch {}
-
-      // Success: clear cart and redirect to confirmation page
+      // Success: clear cart and redirect to confirmation page (no localStorage double-write)
       clearCart();
       toast.success(`Order ${newOrder.orderNumber || newOrder.id} confirmed!`);
       navigate({
