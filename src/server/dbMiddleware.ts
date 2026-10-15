@@ -1118,11 +1118,11 @@ export function pgApiMiddleware() {
               // Verify adminId exists in admins table or resolve to an active admin
               let verifiedAdminId: string | null = null;
               if (adminId) {
-                const aCheck = await query("SELECT id FROM admins WHERE id = $1", [adminId]);
+                const aCheck = await query("SELECT id FROM admins WHERE id = $1", [adminId]).catch(() => ({ rows: [] }));
                 if (aCheck.rows[0]) verifiedAdminId = aCheck.rows[0].id;
               }
               if (!verifiedAdminId) {
-                const fallbackAdmin = await query("SELECT id FROM admins LIMIT 1");
+                const fallbackAdmin = await query("SELECT id FROM admins LIMIT 1").catch(() => ({ rows: [] }));
                 verifiedAdminId = fallbackAdmin.rows[0]?.id || null;
               }
 
@@ -1350,19 +1350,19 @@ export function pgApiMiddleware() {
               // Resolve verifiedByAdminId for product_approval_history.admin_id (references admins.id)
               let verifiedByAdminId: string | null = null;
               if (adminId) {
-                const aCheck = await query("SELECT id FROM admins WHERE id = $1 LIMIT 1", [adminId]);
+                const aCheck = await query("SELECT id FROM admins WHERE id = $1 LIMIT 1", [adminId]).catch(() => ({ rows: [] }));
                 if (aCheck.rows.length > 0) {
                   verifiedByAdminId = aCheck.rows[0].id;
                 } else {
-                  const aEmailCheck = await query("SELECT id FROM admins WHERE email = (SELECT email FROM users WHERE id = $1 LIMIT 1) LIMIT 1", [adminId]);
+                  const aEmailCheck = await query("SELECT id FROM admins WHERE email = (SELECT email FROM users WHERE id = $1 LIMIT 1) LIMIT 1", [adminId]).catch(() => ({ rows: [] }));
                   if (aEmailCheck.rows.length > 0) {
                     verifiedByAdminId = aEmailCheck.rows[0].id;
                   } else {
-                    const fallbackAdmin = await query("SELECT id FROM admins WHERE role = 'PRODUCT_ADMIN' OR role = 'SELLER_ADMIN' LIMIT 1");
+                    const fallbackAdmin = await query("SELECT id FROM admins WHERE role = 'PRODUCT_ADMIN' OR role = 'SELLER_ADMIN' LIMIT 1").catch(() => ({ rows: [] }));
                     if (fallbackAdmin.rows.length > 0) {
                       verifiedByAdminId = fallbackAdmin.rows[0].id;
                     } else {
-                      const anyAdmin = await query("SELECT id FROM admins LIMIT 1");
+                      const anyAdmin = await query("SELECT id FROM admins LIMIT 1").catch(() => ({ rows: [] }));
                       if (anyAdmin.rows.length > 0) verifiedByAdminId = anyAdmin.rows[0].id;
                     }
                   }

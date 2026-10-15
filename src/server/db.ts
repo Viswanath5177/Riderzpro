@@ -19,6 +19,8 @@ let sqliteClient: Client | null = null;
 if (isSqliteConfigured || fs.existsSync(devDbPath)) {
   try {
     sqliteClient = createClient({ url: `file:${devDbPath}` });
+    sqliteClient.execute("PRAGMA journal_mode=WAL;").catch(() => {});
+    sqliteClient.execute("PRAGMA busy_timeout=5000;").catch(() => {});
     console.log(`[Database] SQLite dev.db initialized: ${devDbPath}`);
   } catch (err: any) {
     console.warn("[Database] Failed to initialize SQLite dev.db:", err?.message);

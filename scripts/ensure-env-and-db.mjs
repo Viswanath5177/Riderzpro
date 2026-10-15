@@ -69,17 +69,36 @@ export async function ensureEnvironmentAndDatabase() {
     console.log("  ✓ .dev.vars file present");
   }
 
-  // 3. Ensure dev.db
-  const dbNeedsInit =
-    !fs.existsSync(DEV_DB_FILE) || fs.statSync(DEV_DB_FILE).size < 1000;
+  // 3. Ensure dev.db exists and contains all required tables
+  let dbNeedsInit = false;
+  if (!fs.existsSync(DEV_DB_FILE) || fs.statSync(DEV_DB_FILE).size < 50000) {
+    dbNeedsInit = true;
+  } else {
+    try {
+      const checkClient = createClient({ url: `file:${DEV_DB_FILE}` });
+      const checkRes = await checkClient.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('admins', 'users', 'sellers', 'products', 'categories', 'customers', 'orders', 'coupons')"
+      );
+      const readyCoreTables = checkRes.rows.length;
+      if (readyCoreTables < 8) {
+        console.log(`  ! dev.db is missing essential tables (${readyCoreTables}/8 found). Re-initializing from template...`);
+        dbNeedsInit = true;
+      }
+      checkClient.close();
+    } catch {
+      dbNeedsInit = true;
+    }
+  }
 
   if (dbNeedsInit) {
-    if (fs.existsSync(TEMPLATE_DB_FILE) && fs.statSync(TEMPLATE_DB_FILE).size > 1000) {
+    if (fs.existsSync(TEMPLATE_DB_FILE) && fs.statSync(TEMPLATE_DB_FILE).size > 50000) {
       fs.copyFileSync(TEMPLATE_DB_FILE, DEV_DB_FILE);
       console.log(`  ✓ Restored fresh dev.db from pre-built database template (${fs.statSync(DEV_DB_FILE).size} bytes)`);
     } else {
-      console.log("  ℹ Template not found, creating new dev.db file...");
-      fs.writeFileSync(DEV_DB_FILE, "", "utf8");
+      console.log("  ℹ Template not found or empty, creating new dev.db file...");
+      if (!fs.existsSync(DEV_DB_FILE)) {
+        fs.writeFileSync(DEV_DB_FILE, "", "utf8");
+      }
     }
   }
 
@@ -89,6 +108,17 @@ export async function ensureEnvironmentAndDatabase() {
 
     // Ensure critical tables exist
     await db.executeMultiple(`
+      CREATE TABLE IF NOT EXISTS admins (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        full_name TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'PRODUCT_ADMIN',
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE TABLE IF NOT EXISTS customer_addresses (
         id TEXT PRIMARY KEY,
         customer_id TEXT NOT NULL,
@@ -146,6 +176,18 @@ export async function ensureEnvironmentAndDatabase() {
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Verify baseline admins exist
+    const adminCheck = await db.execute("SELECT count(*) as count FROM admins");
+    if (Number(adminCheck.rows[0]?.count ?? 0) === 0) {
+      await db.executeMultiple(`
+        INSERT OR IGNORE INTO admins (id, email, password_hash, full_name, role, is_active) VALUES
+        ('adm_super_01', 'admin@riderzpro.com', '$2a$10$vI8aWBnW3fID.ZQ4/ZO1G.qHw9vB7eM2NfB5Tf0W8o1V1Z2Y3X4.', 'Platform Super Admin', 'SUPER_ADMIN', 1),
+        ('adm_product_01', 'product.admin@riderzpro.com', '$2a$10$vI8aWBnW3fID.ZQ4/ZO1G.qHw9vB7eM2NfB5Tf0W8o1V1Z2Y3X4.', 'Product Administrator', 'PRODUCT_ADMIN', 1),
+        ('adm_seller_01', 'seller.admin@riderzpro.com', '$2a$10$vI8aWBnW3fID.ZQ4/ZO1G.qHw9vB7eM2NfB5Tf0W8o1V1Z2Y3X4.', 'Seller Administrator', 'SELLER_ADMIN', 1);
+      `);
+      console.log("  ✓ Seeded baseline administrative accounts");
+    }
 
     const tableCheck = await db.execute(
       "SELECT count(*) as count FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"

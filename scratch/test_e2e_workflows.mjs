@@ -6,6 +6,7 @@ const BASE_URL = "http://localhost:8080";
 console.log("=== STARTING FULL END-TO-END WORKFLOW ACCEPTANCE TEST ===");
 
 async function runTests() {
+  await db.execute("PRAGMA busy_timeout=5000;");
   let passed = 0;
   let failed = 0;
 

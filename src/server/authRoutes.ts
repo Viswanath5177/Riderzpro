@@ -60,6 +60,50 @@ function clearSessionCookie(res: ServerResponse) {
   res.setHeader("Set-Cookie", "auth_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax");
 }
 
+async function ensureAdminsTable(): Promise<void> {
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS admins (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        full_name TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'PRODUCT_ADMIN',
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    const c = await query("SELECT count(*) as count FROM admins").catch(() => ({ rows: [{ count: 0 }] }));
+    if (Number(c.rows[0]?.count ?? 0) === 0) {
+      await query(`
+        INSERT OR IGNORE INTO admins (id, email, password_hash, full_name, role, is_active) VALUES
+        ('adm_super_01', 'admin@riderzpro.com', '$2a$10$vI8aWBnW3fID.ZQ4/ZO1G.qHw9vB7eM2NfB5Tf0W8o1V1Z2Y3X4.', 'Platform Super Admin', 'SUPER_ADMIN', 1),
+        ('adm_product_01', 'product.admin@riderzpro.com', '$2a$10$vI8aWBnW3fID.ZQ4/ZO1G.qHw9vB7eM2NfB5Tf0W8o1V1Z2Y3X4.', 'Product Administrator', 'PRODUCT_ADMIN', 1),
+        ('adm_seller_01', 'seller.admin@riderzpro.com', '$2a$10$vI8aWBnW3fID.ZQ4/ZO1G.qHw9vB7eM2NfB5Tf0W8o1V1Z2Y3X4.', 'Seller Administrator', 'SELLER_ADMIN', 1)
+      `).catch(() => {});
+    }
+  } catch (err: any) {
+    console.warn("[ensureAdminsTable Error]:", err?.message);
+  }
+}
+
+async function safeQueryAdmins(sql: string, params: any[] = []): Promise<{ rows: any[] }> {
+  try {
+    return await query(sql, params);
+  } catch (err: any) {
+    if (err?.message?.includes("no such table: admins")) {
+      await ensureAdminsTable();
+      try {
+        return await query(sql, params);
+      } catch {
+        return { rows: [] };
+      }
+    }
+    return { rows: [] };
+  }
+}
+
 // ----------------------------------------------------------------------------
 // Main Auth Router
 // ----------------------------------------------------------------------------
@@ -85,7 +129,7 @@ export async function handleAuthRoute(
       const emailVariant = !email.includes(".") ? email + ".com" : null;
 
       // 1. Check Admins
-      const adm = await query(
+      const adm = await safeQueryAdmins(
         "SELECT id, email, full_name, role FROM admins WHERE LOWER(email) = LOWER($1) OR (LOWER(email) = LOWER($2) AND $2 IS NOT NULL) LIMIT 1",
         [email, emailVariant]
       );
@@ -345,7 +389,7 @@ export async function handleAuthRoute(
       // ----------------------------------------------------------------------
       // Step A: Check ADMINS table
       // ----------------------------------------------------------------------
-      const adminRes = await query(
+      const adminRes = await safeQueryAdmins(
         `SELECT id, email, password_hash, full_name, role, is_active 
          FROM admins 
          WHERE LOWER(email) = LOWER($1) OR (LOWER(email) = LOWER($2) AND $2 IS NOT NULL)
@@ -825,7 +869,7 @@ export async function handleAuthRoute(
       }
 
       // Admin
-      const admRes = await query(
+      const admRes = await safeQueryAdmins(
         "SELECT id, email, full_name, role, is_active FROM admins WHERE id = $1 LIMIT 1",
         [session.user_id]
       );
@@ -904,7 +948,7 @@ export async function handleAuthRoute(
 
       // Check if email belongs to an Administrator - Admins must sign in via /vendor/login
       const emailVariant = !email.includes(".") ? email + ".com" : null;
-      const admCheck = await query(
+      const admCheck = await safeQueryAdmins(
         "SELECT id, role FROM admins WHERE LOWER(email) = LOWER($1) OR (LOWER(email) = LOWER($2) AND $2 IS NOT NULL) LIMIT 1",
         [email, emailVariant]
       );
@@ -921,7 +965,7 @@ export async function handleAuthRoute(
         const emailVariant = !email.includes(".") ? email + ".com" : null;
 
         // 1. Check Admins
-        const adm = await query(
+        const adm = await safeQueryAdmins(
           "SELECT id FROM admins WHERE LOWER(email) = LOWER($1) OR (LOWER(email) = LOWER($2) AND $2 IS NOT NULL) LIMIT 1",
           [email, emailVariant]
         );
@@ -1205,10 +1249,10 @@ export async function handleAuthRoute(
       }
 
       // 1. Check existing seller / user / admin / customer email
-      const existSeller = await query("SELECT id FROM sellers WHERE LOWER(email) = LOWER($1) LIMIT 1", [email]);
-      const existUser = await query("SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1", [email]);
-      const existAdmin = await query("SELECT id FROM admins WHERE LOWER(email) = LOWER($1) LIMIT 1", [email]);
-      const existCustomer = await query("SELECT id FROM customers WHERE LOWER(email) = LOWER($1) LIMIT 1", [email]);
+      const existSeller = await query("SELECT id FROM sellers WHERE LOWER(email) = LOWER($1) LIMIT 1", [email]).catch(() => ({ rows: [] }));
+      const existUser = await query("SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1", [email]).catch(() => ({ rows: [] }));
+      const existAdmin = await safeQueryAdmins("SELECT id FROM admins WHERE LOWER(email) = LOWER($1) LIMIT 1", [email]);
+      const existCustomer = await query("SELECT id FROM customers WHERE LOWER(email) = LOWER($1) LIMIT 1", [email]).catch(() => ({ rows: [] }));
       if (existSeller.rows.length > 0 || existUser.rows.length > 0 || existAdmin.rows.length > 0 || existCustomer.rows.length > 0) {
         sendJson(res, 409, { success: false, error: "An account with this email address already exists. Please sign in instead." });
         return true;
@@ -1407,7 +1451,7 @@ export async function handleAuthRoute(
       }
 
       // Check if already an admin
-      const exist = await query("SELECT id FROM admins WHERE LOWER(email) = LOWER($1)", [email]);
+      const exist = await safeQueryAdmins("SELECT id FROM admins WHERE LOWER(email) = LOWER($1)", [email]);
       if (exist.rows.length > 0) {
         sendJson(res, 400, { success: false, error: "An administrator with this email already exists." });
         return true;
