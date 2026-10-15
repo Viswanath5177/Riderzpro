@@ -28,6 +28,7 @@ import { Logo } from "@/components/site/bits";
 import { useAdminAuth } from "@/lib/adminAuth";
 import { useAdminStore } from "@/mocks/admin/adminStore";
 import { cn } from "@/lib/utils";
+import { SHOW_ADMIN_SELLERS } from "../mockFlags";
 
 export interface NavGroup {
   title: string;
@@ -64,12 +65,16 @@ export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: Adm
         { title: "Dashboard", to: "/admin", icon: <LayoutDashboard className="h-4 w-4" /> },
         { title: "Orders", to: "/admin/orders", icon: <Package className="h-4 w-4" />, badge: "42" },
         { title: "Riders & Fleet", to: "/admin/riders", icon: <Bike className="h-4 w-4" />, badge: "142" },
-        {
-          title: "Sellers & KYC",
-          to: "/admin/sellers",
-          icon: <Store className="h-4 w-4" />,
-          badge: pendingSellersCount > 0 ? String(pendingSellersCount) : undefined,
-        },
+        ...(SHOW_ADMIN_SELLERS
+          ? [
+              {
+                title: "Sellers & KYC",
+                to: "/admin/sellers" as const,
+                icon: <Store className="h-4 w-4" />,
+                badge: pendingSellersCount > 0 ? String(pendingSellersCount) : undefined,
+              },
+            ]
+          : []),
         { title: "Customers", to: "/admin/customers", icon: <Users className="h-4 w-4" /> },
       ],
     },
