@@ -90,16 +90,17 @@ function VendorLoginRouteComponent() {
       localStorage.setItem("riderzpro_auth_token", "session_active");
       localStorage.setItem("riderzpro_token", "session_active");
 
-      // If administrator, store admin session
+      // If administrator, store admin session with precise role
       if (data.role && data.role !== "customer" && data.role !== "seller") {
+        const exactRole = data.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN";
         const adminSession = {
           token: "session_active",
-          role: "admin",
+          role: exactRole,
           user: {
             id: userObj.id,
             name: userObj.fullName || userObj.storeName || "Administrator",
             email: userObj.email,
-            role: "admin",
+            role: exactRole,
             roleTitle:
               data.role === "SUPER_ADMIN"
                 ? "Super Administrator"
@@ -140,6 +141,12 @@ function VendorLoginRouteComponent() {
             "/dashboard/vendor"
           ));
 
+      // For admin and superadmin logins, direct window.location ensures clean sync without router state bounce
+      if (data.role === "SUPER_ADMIN" || data.role === "ADMIN") {
+        window.location.href = destination;
+        return;
+      }
+
       navigate({ to: destination as any }).catch(() => {
         window.location.href = destination;
       });
@@ -147,7 +154,7 @@ function VendorLoginRouteComponent() {
         if (window.location.pathname !== destination.split("?")[0]) {
           window.location.href = destination;
         }
-      }, 250);
+      }, 200);
     } catch (err: any) {
       setErrorMessage(err?.message || "Login failed. Please check credentials.");
       toast.error(err?.message || "Login failed.");

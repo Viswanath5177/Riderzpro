@@ -28,8 +28,8 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
   const [vehicleType, setVehicleType] = useState<"Car" | "Bike" | "Universal" | "Commercial">("Car");
-  const [department, setDepartment] = useState("Accessories");
-  const [categoryInput, setCategoryInput] = useState("Cushions");
+  const [department, setDepartment] = useState("");
+  const [categoryInput, setCategoryInput] = useState("");
   const [sku, setSku] = useState("");
   const [description, setDescription] = useState("");
   const [keyFeatures, setKeyFeatures] = useState("");
@@ -37,9 +37,9 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
   // ----------------------------------------------------
   // STEP 2: Pricing & Inventory
   // ----------------------------------------------------
-  const [sellingPrice, setSellingPrice] = useState<number | "">(3599);
-  const [mrp, setMrp] = useState<number | "">(3999);
-  const [stock, setStock] = useState<number | "">(25);
+  const [sellingPrice, setSellingPrice] = useState<number | "">("");
+  const [mrp, setMrp] = useState<number | "">("");
+  const [stock, setStock] = useState<number | "">("");
   const [availability, setAvailability] = useState<"In Stock" | "Out of Stock" | "Pre-Order" | "Made to Order">("In Stock");
 
   // ----------------------------------------------------
@@ -47,17 +47,17 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
   // ----------------------------------------------------
   const [fitmentType, setFitmentType] = useState<"universal" | "specific" | "vin">("universal");
   const [vin, setVin] = useState("");
-  const [optionsVariants, setOptionsVariants] = useState("Black, Beige, Pack of 1");
-  const [selectedMake, setSelectedMake] = useState("Tata");
-  const [selectedModel, setSelectedModel] = useState("Nexon.ev");
+  const [optionsVariants, setOptionsVariants] = useState("");
+  const [selectedMake, setSelectedMake] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
 
   // ----------------------------------------------------
   // STEP 4: Images & Product Specifications
   // ----------------------------------------------------
-  const [primaryImageUrl, setPrimaryImageUrl] = useState("/src/assets/parts.jpg");
+  const [primaryImageUrl, setPrimaryImageUrl] = useState("");
   const [secondaryImageUrl, setSecondaryImageUrl] = useState("");
-  const [warranty, setWarranty] = useState("1 year");
-  const [deliveryDetails, setDeliveryDetails] = useState("3–5 business days");
+  const [warranty, setWarranty] = useState("");
+  const [deliveryDetails, setDeliveryDetails] = useState("");
   const [installationPrice, setInstallationPrice] = useState<number | "">("");
   const [installationTime, setInstallationTime] = useState("");
   const [weightKg, setWeightKg] = useState<number | "">("");
@@ -74,16 +74,25 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
       setSku(product.sku || (product.id ? `SKU-${product.id.toUpperCase()}` : "RZP-001"));
       setDescription(product.description || "");
       const offer = product.offers?.[0];
-      if (offer) {
-        setSellingPrice(offer.price);
-        setMrp(Math.round(offer.price * 1.15));
-        setStock(offer.stock);
-        setAvailability(offer.stock > 0 ? "In Stock" : "Out of Stock");
-      }
+      const prodPrice = offer?.price ?? (product as any).price ?? "";
+      const prodMrp = (product as any).mrp ?? (typeof prodPrice === "number" ? Math.round(prodPrice * 1.15) : "");
+      const prodStock = offer?.stock ?? (product as any).stock ?? "";
+      setSellingPrice(prodPrice);
+      setMrp(prodMrp);
+      setStock(prodStock);
+      setAvailability(prodStock > 0 ? "In Stock" : "Out of Stock");
       if (product.image) setPrimaryImageUrl(product.image);
       if (product.warrantyMonths) setWarranty(`${product.warrantyMonths / 12} year`);
       if (product.variantModel) setOptionsVariants(product.variantModel);
-      if (product.category) setCategoryInput(product.category);
+      if (product.category) {
+        setCategoryInput(product.category);
+        if (product.category.includes("Batter")) setDepartment("EV Batteries");
+        else if (product.category.includes("Charg")) setDepartment("Smart Chargers");
+        else if (product.category.includes("Brak")) setDepartment("Braking & Safety");
+        else if (product.category.includes("BMS")) setDepartment("BMS Systems");
+        else if (product.category.includes("Motor")) setDepartment("Motors & Controllers");
+        else if (product.category.includes("Part")) setDepartment("Spare Parts");
+      }
     }
   }, [product]);
 
@@ -132,6 +141,14 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
       }
       if (!description.trim()) {
         toast.error("Description is required.");
+        return false;
+      }
+      if (!department.trim()) {
+        toast.error("Department is required.");
+        return false;
+      }
+      if (!categoryInput.trim()) {
+        toast.error("Category is required.");
         return false;
       }
     }
@@ -205,10 +222,10 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
     toast.success("Product data copied to clipboard as JSON!");
   };
 
-  // Submit and Publish product to PostgreSQL database
+  // Submit and Publish product to database
   const handleSubmitToDatabase = async () => {
     setIsSaving(true);
-    const toastId = toast.loading("Saving and publishing product to PostgreSQL database...");
+    const toastId = toast.loading("Publishing product...");
 
     const prodId = product ? product.id : `prod_${Math.random().toString(36).substring(2, 10)}`;
     
@@ -459,6 +476,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
                     onChange={(e) => setDepartment(e.target.value)}
                     className="w-full appearance-none rounded-2xl border border-zinc-800 bg-[#000000] px-4 py-3 text-sm text-zinc-100 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400/30 cursor-pointer transition-colors"
                   >
+                    <option value="">Select Department</option>
                     <option value="Accessories">Accessories</option>
                     <option value="Spare Parts">Spare Parts</option>
                     <option value="EV Batteries">EV Batteries</option>
@@ -578,7 +596,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
                   min="1"
                   value={sellingPrice}
                   onChange={(e) => setSellingPrice(e.target.value === "" ? "" : Number(e.target.value))}
-                  placeholder="3599"
+                  placeholder="e.g. 3599"
                   className="w-full rounded-2xl border border-zinc-800 bg-[#000000] px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400/30 transition-colors font-medium"
                 />
               </div>
@@ -592,7 +610,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
                   min="1"
                   value={mrp}
                   onChange={(e) => setMrp(e.target.value === "" ? "" : Number(e.target.value))}
-                  placeholder="3999"
+                  placeholder="e.g. 3999"
                   className="w-full rounded-2xl border border-zinc-800 bg-[#000000] px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400/30 transition-colors"
                 />
               </div>
@@ -731,6 +749,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
                     onChange={(e) => setSelectedMake(e.target.value)}
                     className="w-full rounded-xl border border-zinc-800 bg-[#000000] px-3 py-2 text-xs text-zinc-200 focus:border-amber-400 focus:outline-none cursor-pointer"
                   >
+                    <option value="">Select Make</option>
                     <option value="Tata">Tata</option>
                     <option value="Ola">Ola</option>
                     <option value="Ather">Ather</option>
@@ -747,6 +766,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
                     onChange={(e) => setSelectedModel(e.target.value)}
                     className="w-full rounded-xl border border-zinc-800 bg-[#000000] px-3 py-2 text-xs text-zinc-200 focus:border-amber-400 focus:outline-none cursor-pointer"
                   >
+                    <option value="">Select Model</option>
                     <option value="Nexon.ev">Nexon.ev</option>
                     <option value="S1 Pro">S1 Pro</option>
                     <option value="450X">450X</option>
@@ -1140,12 +1160,12 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
               {isSaving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin text-black" />
-                  <span>Publishing to Database...</span>
+                  <span>Publishing...</span>
                 </>
               ) : (
                 <>
                   <Check className="h-4 w-4 text-black" />
-                  <span>{isEdit ? "Save Changes" : "Publish Product to Database"}</span>
+                  <span>{isEdit ? "Save Changes" : "Publish"}</span>
                 </>
               )}
             </button>

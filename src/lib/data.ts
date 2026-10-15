@@ -409,7 +409,13 @@ export const getVendor = (id: string): Vendor =>
     returnPolicy: "7-day replacement warranty.",
     commissionRate: 0.10,
   };
-export const getProduct = (id: string) => products.find((p) => p.id === id);
+const dynamicProductsMap = new Map<string, Product>();
+
+export function registerDynamicProduct(p: Product) {
+  dynamicProductsMap.set(p.id, p);
+}
+
+export const getProduct = (id: string) => dynamicProductsMap.get(id) || products.find((p) => p.id === id);
 
 export function mapDbProductToProduct(row: any): Product {
   let primaryImg = parts;
@@ -437,7 +443,26 @@ export function mapDbProductToProduct(row: any): Product {
   const mrpPrice = Number(row.mrp) || Math.round(offerPrice * 1.15);
   const voltMatch = row.description?.match(/(\d+)V/i)?.[1];
 
-  return {
+  let offersList = [
+    {
+      vendorId: row.seller_id || "v1",
+      price: offerPrice,
+      stock: Number(row.stock) || 0,
+    },
+  ];
+
+  if (row.offers && Array.isArray(row.offers) && row.offers.length > 0) {
+    offersList = row.offers.map((o: any) => ({
+      vendorId: o.vendorId || o.vendor_id || row.seller_id || "v1",
+      price: Number(o.price) || offerPrice,
+      stock: Number(o.stock) || 0,
+      shippingCharge: o.shippingCharge !== undefined ? Number(o.shippingCharge) : undefined,
+      deliveryDays: o.deliveryDays,
+      warrantyTerms: o.warrantyTerms,
+    }));
+  }
+
+  const mapped: Product = {
     id: row.id,
     name: row.name,
     brand: row.brand || "Riderzpro Certified",
@@ -449,13 +474,7 @@ export function mapDbProductToProduct(row: any): Product {
     description: row.description || "",
     voltage: voltMatch ? Number(voltMatch) : undefined,
     mrp: mrpPrice,
-    offers: [
-      {
-        vendorId: row.seller_id || "v1",
-        price: offerPrice,
-        stock: Number(row.stock) || 0,
-      },
-    ],
+    offers: offersList,
     verificationStatus: row.verification_status || "approved",
     rejectionReason: row.rejection_reason || undefined,
     sellerId: row.seller_id,
@@ -468,6 +487,8 @@ export function mapDbProductToProduct(row: any): Product {
     availability: row.availability || undefined,
     priceType: row.price_type || undefined,
   };
+  registerDynamicProduct(mapped);
+  return mapped;
 }
 
 export const getBike = (id: string) => bikes.find((b) => b.id === id);

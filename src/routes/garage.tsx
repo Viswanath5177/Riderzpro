@@ -347,13 +347,13 @@ function GaragePage() {
           <div>
             <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider mb-1">
               <Database className="h-3.5 w-3.5" />
-              <span>PostgreSQL Connected: public.customer_garage &bull; public.products</span>
+              <span>Registered Vehicles &bull; Verified Components</span>
             </div>
             <h1 className="font-display text-4xl sm:text-6xl text-foreground font-extrabold tracking-tight">
-              My Garage & Compatible Parts
+              My Garage &amp; Compatible Parts
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Manage your registered electric vehicles in PostgreSQL. All vendor uploads are retrieved and filtered live to fit your active vehicle.
+              Manage your registered electric vehicles. All vendor components are retrieved and filtered live to fit your active vehicle.
             </p>
           </div>
 
@@ -362,13 +362,13 @@ function GaragePage() {
             onClick={() => {
               fetchGarageFromDb();
               fetchProductsFromDb();
-              toast.success("Refreshed garage and products live from PostgreSQL!");
+              toast.success("Refreshed garage and compatible products!");
             }}
             disabled={isSyncingDb}
             className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-bold hover:bg-muted text-foreground transition-all cursor-pointer shadow-xs"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isSyncingDb ? "animate-spin text-primary" : ""}`} />
-            <span>Sync with PostgreSQL</span>
+            <span>Sync Catalog</span>
           </button>
         </div>
 
@@ -448,7 +448,7 @@ function GaragePage() {
               onClick={handleAddManualVehicle}
               className="w-full rounded-xl border border-primary/40 bg-primary/10 hover:bg-primary hover:text-primary-foreground py-2.5 text-xs font-bold text-primary transition-all cursor-pointer"
             >
-              + Save Vehicle to PostgreSQL Garage
+              + Save Vehicle to Garage
             </button>
           </div>
 
@@ -545,13 +545,13 @@ function GaragePage() {
             <div>
               <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider mb-1">
                 <Sparkles className="h-4 w-4" />
-                <span>Live Vendor Catalogue &bull; Stored in PostgreSQL</span>
+                <span>Live Vendor Catalog &bull; Genuine Components</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground">
-                Compatible Parts & Upgrades for {activeVehicle ? `${activeVehicle.make} ${activeVehicle.model}` : "Your Vehicles"}
+                Compatible Parts &amp; Upgrades for {activeVehicle ? `${activeVehicle.make} ${activeVehicle.model}` : "Your Vehicles"}
               </h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                These items are stored in PostgreSQL table <code className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono">riderzpro.products</code> and retrieved live according to vehicle fitment.
+                These items are verified by RiderzPro and retrieved live according to vehicle fitment.
               </p>
             </div>
 
@@ -565,7 +565,7 @@ function GaragePage() {
           {/* Compatible Parts Grid */}
           {isLoadingProducts ? (
             <div className="py-12 text-center text-muted-foreground text-sm">
-              Loading compatible products from PostgreSQL database...
+              Loading compatible products from catalog...
             </div>
           ) : compatibleProducts.length === 0 ? (
             <div className="py-12 text-center text-muted-foreground text-sm border border-dashed rounded-2xl p-6">
@@ -680,7 +680,7 @@ function GaragePage() {
               </Link>
               <span>&bull;</span>
               <Link to="/dashboard/customer" className="text-primary font-bold hover:underline inline-flex items-center gap-1">
-                Go to Customer Dashboard <ArrowRight className="h-3.5 w-3.5" />
+                Go to Dashboard <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>

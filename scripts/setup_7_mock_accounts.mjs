@@ -9,19 +9,19 @@ async function setup() {
   const customerPassHash = await bcrypt.hash("Customer@Riderzpro2026", 10);
 
   // 1. Super Admin: admin@riderzpro.com
+  await query("DELETE FROM admins WHERE email = 'admin@riderzpro.com'");
   await query(
     `INSERT INTO admins (id, email, password_hash, full_name, role, is_active)
-     VALUES ('adm_super_01', 'admin@riderzpro.com', $1, 'Super Administrator', 'SUPER_ADMIN', 1)
-     ON CONFLICT(email) DO UPDATE SET password_hash = $1, role = 'SUPER_ADMIN', is_active = 1`,
+     VALUES ('adm_super_01', 'admin@riderzpro.com', $1, 'Super Administrator', 'SUPER_ADMIN', 1)`,
     [adminPassHash]
   );
   console.log("✓ Super Admin (admin@riderzpro.com) ready.");
 
   // 2. Unified Admin: admin.operations@riderzpro.com
+  await query("DELETE FROM admins WHERE email = 'admin.operations@riderzpro.com'");
   await query(
     `INSERT INTO admins (id, email, password_hash, full_name, role, is_active)
-     VALUES ('adm_unified_01', 'admin.operations@riderzpro.com', $1, 'Unified Operations Administrator', 'ADMIN', 1)
-     ON CONFLICT(email) DO UPDATE SET password_hash = $1, role = 'ADMIN', is_active = 1`,
+     VALUES ('adm_unified_01', 'admin.operations@riderzpro.com', $1, 'Unified Operations Administrator', 'ADMIN', 1)`,
     [adminPassHash]
   );
   console.log("✓ Unified Admin (admin.operations@riderzpro.com) ready.");

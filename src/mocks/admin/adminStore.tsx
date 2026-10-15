@@ -86,19 +86,19 @@ const AdminStoreContext = createContext<AdminStoreContextType | null>(null);
 
 export function AdminStoreProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<"dark" | "light">("light");
-  const [bikes] = useState<AdminBike[]>(MOCK_ADMIN_BIKES);
-  const [customers, setCustomers] = useState<AdminCustomer[]>(MOCK_ADMIN_CUSTOMERS);
-  const [sellers, setSellers] = useState<AdminSeller[]>(MOCK_ADMIN_SELLERS);
-  const [riders, setRiders] = useState<AdminRider[]>(MOCK_ADMIN_RIDERS);
-  const [products, setProducts] = useState<AdminProduct[]>(MOCK_ADMIN_PRODUCTS);
-  const [orders, setOrders] = useState<AdminOrder[]>(MOCK_ADMIN_ORDERS);
-  const [tickets, setTickets] = useState<AdminTicket[]>(MOCK_ADMIN_TICKETS);
-  const [transactions, setTransactions] = useState<AdminPaymentTransaction[]>(MOCK_ADMIN_TRANSACTIONS);
-  const [coupons, setCoupons] = useState<AdminCoupon[]>(MOCK_ADMIN_COUPONS);
-  const [reviews, setReviews] = useState<AdminReview[]>(MOCK_ADMIN_REVIEWS);
-  const [warrantyClaims, setWarrantyClaims] = useState<AdminWarrantyClaim[]>(MOCK_ADMIN_WARRANTY);
+  const [bikes] = useState<AdminBike[]>([]);
+  const [customers, setCustomers] = useState<AdminCustomer[]>([]);
+  const [sellers, setSellers] = useState<AdminSeller[]>([]);
+  const [riders, setRiders] = useState<AdminRider[]>([]);
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [tickets, setTickets] = useState<AdminTicket[]>([]);
+  const [transactions, setTransactions] = useState<AdminPaymentTransaction[]>([]);
+  const [coupons, setCoupons] = useState<AdminCoupon[]>([]);
+  const [reviews, setReviews] = useState<AdminReview[]>([]);
+  const [warrantyClaims, setWarrantyClaims] = useState<AdminWarrantyClaim[]>([]);
   const [team, setTeam] = useState<AdminTeamMember[]>(MOCK_ADMIN_TEAM);
-  const [notifications, setNotifications] = useState<AdminNotificationHistory[]>(MOCK_ADMIN_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<AdminNotificationHistory[]>([]);
 
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>({
     activeCities: ["Bengaluru", "Hyderabad", "Chennai", "Pune", "Mumbai"],

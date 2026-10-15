@@ -91,11 +91,21 @@ export function Navbar() {
   };
 
   const handleSignOut = async () => {
-    await endServerSession();
-    signOut();
     setIsAccountMenuOpen(false);
-    toast.info("You have signed out successfully");
-    navigate({ to: "/" });
+    toast.info("Signing out...", { duration: 1500 });
+    try {
+      signOut();
+      await endServerSession();
+    } catch {}
+    try {
+      localStorage.removeItem("riderzpro_auth_user");
+      localStorage.removeItem("riderzpro_auth_token");
+      localStorage.removeItem("riderzpro_token");
+      localStorage.removeItem("riderzpro_admin_session");
+      localStorage.removeItem("riderzpro-v7");
+      sessionStorage.clear();
+    } catch {}
+    window.location.href = "/";
   };
 
   const displayName = userProfile?.name?.trim()

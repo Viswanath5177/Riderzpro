@@ -90,8 +90,36 @@ export function CustomerLayout({
     isLocationModalOpen,
     setIsLocationModalOpen,
   } = useStore();
-  const { user: authUser, signOut } = useAuth();
+  const { user: authUser, signOut: authSignOut } = useAuth();
   const navigate = useNavigate();
+
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    setIsProfileOpen(false);
+    setIsMobileMenuOpen(false);
+    toast.info("Signing out...", { duration: 1500 });
+    try {
+      storeSignOut();
+      await authSignOut();
+    } catch (e) {
+      console.warn("Signout error:", e);
+    } finally {
+      try {
+        localStorage.removeItem("riderzpro_auth_user");
+        localStorage.removeItem("riderzpro_auth_token");
+        localStorage.removeItem("riderzpro_token");
+        localStorage.removeItem("riderzpro_admin_session");
+        localStorage.removeItem("riderzpro_seller_store_confirmed");
+        localStorage.removeItem("riderzpro-v7");
+        localStorage.removeItem("riderzpro_active_bike");
+        sessionStorage.clear();
+      } catch {}
+      window.location.href = "/";
+    }
+  };
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -409,55 +437,69 @@ export function CustomerLayout({
           {/* Bottom of Navbar: Profile & Account Settings */}
           <div className="p-3 border-t border-black/[0.06] bg-white/70 backdrop-blur-md">
             {!isCollapsed ? (
-              <button
-                onClick={() => onTabChange("settings")}
-                className={cn(
-                  "flex w-full items-center gap-3 p-2 rounded-2xl transition-all duration-200 text-left group cursor-pointer",
-                  activeTab === "settings"
-                    ? "bg-[#E31E24]/10 text-[#E31E24] ring-1 ring-[#E31E24]/30"
-                    : "hover:bg-black/[0.04] text-gray-800"
-                )}
-                title="Profile & Account Settings"
-              >
-                <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-tr from-[#E31E24] to-rose-500 text-white font-extrabold text-xs shadow-xs shrink-0 ring-2 ring-white">
-                  {userProfile.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .slice(0, 2) || "U"}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold truncate group-hover:text-[#E31E24] transition-colors">
-                      {userProfile.name}
+              <div className="space-y-1.5">
+                <button
+                  onClick={() => onTabChange("settings")}
+                  className={cn(
+                    "flex w-full items-center gap-3 p-2 rounded-2xl transition-all duration-200 text-left group cursor-pointer",
+                    activeTab === "settings"
+                      ? "bg-[#E31E24]/10 text-[#E31E24] ring-1 ring-[#E31E24]/30"
+                      : "hover:bg-black/[0.04] text-gray-800"
+                  )}
+                  title="Profile & Account Settings"
+                >
+                  <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-tr from-[#E31E24] to-rose-500 text-white font-extrabold text-xs shadow-xs shrink-0 ring-2 ring-white">
+                    {userInitials}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold truncate group-hover:text-[#E31E24] transition-colors">
+                        {userProfile.name || authUser?.name || "User"}
+                      </p>
+                      <UserCog className="h-3.5 w-3.5 text-gray-400 group-hover:text-[#E31E24] shrink-0" />
+                    </div>
+                    <p className="text-[11px] text-[#E31E24] font-medium truncate flex items-center gap-1.5 mt-0.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#E31E24] shrink-0" />
+                      <span>{userProfile.points || 0} pts · Member</span>
                     </p>
-                    <UserCog className="h-3.5 w-3.5 text-gray-400 group-hover:text-[#E31E24] shrink-0" />
                   </div>
-                  <p className="text-[11px] text-[#E31E24] font-medium truncate flex items-center gap-1.5 mt-0.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#E31E24] shrink-0" />
-                    <span>{userProfile.points || 0} pts · Member</span>
-                  </p>
-                </div>
-              </button>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  disabled={isSigningOut}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition cursor-pointer group"
+                  title="Sign out of your account"
+                >
+                  <LogOut className="h-3.5 w-3.5 text-rose-500 group-hover:-translate-x-0.5 transition-transform" />
+                  <span>{isSigningOut ? "Signing out..." : "Sign Out"}</span>
+                </button>
+              </div>
             ) : (
-              <button
-                onClick={() => onTabChange("settings")}
-                className={cn(
-                  "grid h-10 w-10 mx-auto place-items-center rounded-2xl transition cursor-pointer",
-                  activeTab === "settings"
-                    ? "bg-[#E31E24] text-white shadow-xs"
-                    : "bg-gradient-to-tr from-[#E31E24] to-rose-500 text-white hover:opacity-90 shadow-xs"
-                )}
-                title={`Profile & Account: ${userProfile.name}`}
-              >
-                <span className="font-bold text-xs">
-                  {userProfile.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .slice(0, 2) || "AS"}
-                </span>
-              </button>
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  onClick={() => onTabChange("settings")}
+                  className={cn(
+                    "grid h-10 w-10 mx-auto place-items-center rounded-2xl transition cursor-pointer",
+                    activeTab === "settings"
+                      ? "bg-[#E31E24] text-white shadow-xs"
+                      : "bg-gradient-to-tr from-[#E31E24] to-rose-500 text-white hover:opacity-90 shadow-xs"
+                  )}
+                  title={`Profile & Account: ${userProfile.name || "User"}`}
+                >
+                  <span className="font-bold text-xs">{userInitials}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  disabled={isSigningOut}
+                  className="grid h-8 w-8 mx-auto place-items-center rounded-xl text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition cursor-pointer"
+                  title="Sign out"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
             )}
           </div>
         </aside>
@@ -689,21 +731,12 @@ export function CustomerLayout({
 
                       <button
                         type="button"
-                        onClick={async () => {
-                          setIsProfileOpen(false);
-                          try {
-                            await endServerSession();
-                          } catch {
-                            // server session end fallback
-                          }
-                          signOut();
-                          toast.success("Signed out successfully. See you soon!");
-                          navigate({ to: "/" });
-                        }}
+                        onClick={handleSignOut}
+                        disabled={isSigningOut}
                         className="flex w-full items-center gap-2.5 p-2.5 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer group"
                       >
                         <LogOut className="h-4 w-4 text-rose-600 group-hover:-translate-x-0.5 transition-transform" />
-                        <span>Sign Out</span>
+                        <span>{isSigningOut ? "Signing out..." : "Sign Out"}</span>
                       </button>
                     </div>
                   </>
@@ -791,6 +824,16 @@ export function CustomerLayout({
                   <p className="text-xs font-bold truncate">{userProfile.name}</p>
                   <p className="text-[11px] text-gray-500">Profile & Settings</p>
                 </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={isSigningOut}
+                className="flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+              >
+                <LogOut className="h-4 w-4 text-rose-500" />
+                <span>{isSigningOut ? "Signing out..." : "Sign Out"}</span>
               </button>
 
               <Link

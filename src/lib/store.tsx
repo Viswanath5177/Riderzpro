@@ -250,8 +250,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KEY);
+      let storedUserEmail = "";
+      let storedIsLoggedIn = false;
       if (raw) {
         const s = JSON.parse(raw);
+        storedUserEmail = s?.userProfile?.email || "";
+        storedIsLoggedIn = Boolean(s?.isLoggedIn);
         if (s.cart && Array.isArray(s.cart)) {
           const valid = s.cart
             .filter((i: any) => Boolean(getProduct(i.productId)))
@@ -337,16 +341,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       // Hydrate wishlist from database (authoritative source of truth)
       setIsLoadingWishlist(true);
-      fetch("/api/wishlist", { credentials: "include" })
+      const emailQuery = storedUserEmail ? `?email=${encodeURIComponent(storedUserEmail)}` : "";
+      fetch(`/api/wishlist${emailQuery}`, { credentials: "include" })
         .then((r) => r.json())
         .then((d) => {
           if (d.success && Array.isArray(d.items)) {
-            const ids = Array.from(new Set(d.items.map((it: any) => it.product_id || it.id))) as string[];
-            setSavedProductIds(ids);
-            setWishlistItems(d.items);
-          } else {
-            setSavedProductIds([]);
-            setWishlistItems([]);
+            if (d.items.length > 0 || storedIsLoggedIn) {
+              const ids = Array.from(new Set(d.items.map((it: any) => it.product_id || it.id))) as string[];
+              setSavedProductIds(ids);
+              setWishlistItems(d.items);
+            }
           }
         })
         .catch((err) => {
@@ -403,6 +407,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loaded) return;
+    if (!isLoggedIn && cart.length === 0 && garage.length === 0 && orders.length === 0) {
+      try {
+        localStorage.removeItem(KEY);
+      } catch {}
+      return;
+    }
     localStorage.setItem(
       KEY,
       JSON.stringify({
@@ -676,15 +686,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setIsLoadingWishlist(true);
     setWishlistError(null);
     try {
-      const res = await fetch("/api/wishlist", { credentials: "include" });
+      const emailQuery = userProfile?.email ? `?email=${encodeURIComponent(userProfile.email)}` : "";
+      const res = await fetch(`/api/wishlist${emailQuery}`, { credentials: "include" });
       const data = await res.json();
       if (data.success && Array.isArray(data.items)) {
-        const ids = Array.from(new Set(data.items.map((it: any) => it.product_id || it.id))) as string[];
-        setSavedProductIds(ids);
-        setWishlistItems(data.items);
-      } else {
-        setSavedProductIds([]);
-        setWishlistItems([]);
+        if (data.items.length > 0 || isLoggedIn) {
+          const ids = Array.from(new Set(data.items.map((it: any) => it.product_id || it.id))) as string[];
+          setSavedProductIds(ids);
+          setWishlistItems(data.items);
+        }
       }
     } catch (err: any) {
       console.error("[fetchWishlist Error]:", err);
@@ -692,7 +702,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoadingWishlist(false);
     }
-  }, []);
+  }, [userProfile?.email, isLoggedIn]);
 
   const toggleSaved = useCallback(
     async (id: string, productData?: any): Promise<boolean> => {
@@ -732,7 +742,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           method: alreadySaved ? "DELETE" : "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ product_id: id, action: alreadySaved ? "remove" : "add" }),
+          body: JSON.stringify({
+          product_id: id,
+          action: alreadySaved ? "remove" : "add",
+          email: userProfile?.email || undefined,
+          customer_id: userProfile?.email || undefined,
+        }),
         });
         const data = await res.json();
         if (!res.ok || (!data.success && !data.guest)) {
@@ -871,12 +886,38 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(() => {
     setIsLoggedIn(false);
     setCart([]);
+    setGarage([]);
+    setActiveBikeId(null);
+    setOrders([]);
+    setShipments([]);
     setSavedProductIds([]);
     setWishlistItems([]);
+    setServiceBookings([]);
+    setNotifications([]);
+    setUserProfile(DEFAULT_PROFILE);
+    setRole("customer");
+    setUserLocation(DEFAULT_LOCATION);
     try {
       localStorage.removeItem(KEY);
+      localStorage.removeItem("riderzpro_auth_user");
+      localStorage.removeItem("riderzpro_auth_token");
+      localStorage.removeItem("riderzpro_token");
+      localStorage.removeItem("riderzpro_admin_session");
+      localStorage.removeItem("riderzpro_seller_store_confirmed");
+      localStorage.removeItem("riderzpro_active_bike");
+      try {
+        sessionStorage.clear();
+      } catch {}
     } catch {}
   }, []);
+
+  useEffect(() => {
+    const handleSignOutEvent = () => {
+      signOut();
+    };
+    window.addEventListener("riderzpro:signout", handleSignOutEvent);
+    return () => window.removeEventListener("riderzpro:signout", handleSignOutEvent);
+  }, [signOut]);
   const deleteOrder = useCallback((id: string) => setOrders((os) => os.filter((o) => o.id !== id)), []);
   const clearOrders = useCallback(() => setOrders([]), []);
 

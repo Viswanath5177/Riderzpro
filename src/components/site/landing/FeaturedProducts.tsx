@@ -46,7 +46,7 @@ export function FeaturedProducts() {
       .catch(() => {});
   }, []);
 
-  const allAvailableProducts = dbProducts.length > 0 ? dbProducts : staticProducts;
+  const allAvailableProducts = dbProducts;
 
   const getFilteredProducts = (): Product[] => {
     switch (activeTab) {
@@ -125,7 +125,13 @@ export function FeaturedProducts() {
         </div>
 
         {/* Products Grid: 2 columns on mobile, 4 columns on desktop */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5">
+        {currentProducts.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-[#ececec] bg-white p-12 text-center">
+            <p className="text-sm font-semibold text-gray-500">No products available in this category yet.</p>
+            <p className="text-xs text-gray-400 mt-1">Verified vendor components will be featured here once cataloged.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5">
           {currentProducts.map((p) => {
             const offer = bestOffer(p);
             const isInCart = cart.some((c) => c.productId === p.id);
@@ -218,6 +224,7 @@ export function FeaturedProducts() {
             );
           })}
         </div>
+        )}
       </div>
     </section>
   );

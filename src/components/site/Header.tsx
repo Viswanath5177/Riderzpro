@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function Header() {
-  const { cart, userProfile, savedProductIds, userLocation, setIsLocationModalOpen } = useStore();
+  const { cart, userProfile, savedProductIds, userLocation, setIsLocationModalOpen, signOut: storeSignOut } = useStore();
   const { user, isAuthenticated, signOut, openCustomerLoginModal } = useAuth();
   const navigate = useNavigate();
 
@@ -59,11 +59,20 @@ export function Header() {
   };
 
   const handleSignOut = async () => {
-    await signOut();
-    toast.success("Signed out successfully", {
-      description: "You have been signed out from Riderzpro.",
-    });
-    navigate({ to: "/" });
+    toast.info("Signing out...", { duration: 1500 });
+    try {
+      storeSignOut();
+      await signOut();
+    } catch {}
+    try {
+      localStorage.removeItem("riderzpro_auth_user");
+      localStorage.removeItem("riderzpro_auth_token");
+      localStorage.removeItem("riderzpro_token");
+      localStorage.removeItem("riderzpro_admin_session");
+      localStorage.removeItem("riderzpro-v7");
+      sessionStorage.clear();
+    } catch {}
+    window.location.href = "/";
   };
 
   const handleProtectedNav = (e: React.MouseEvent, path: "/garage" | "/orders", label: string) => {

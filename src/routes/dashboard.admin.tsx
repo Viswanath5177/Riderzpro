@@ -338,7 +338,7 @@ export function AdminDashboard() {
   };
 
   const handleDeleteSingleProduct = async (product: Product) => {
-    const confirmMsg = `Are you sure you want to permanently delete "${product.name}" (ID: ${product.id})?\n\nThis will remove it from the catalog and PostgreSQL database.`;
+    const confirmMsg = `Are you sure you want to permanently delete "${product.name}" (ID: ${product.id})?\n\nThis will remove it from the catalog.`;
     if (!window.confirm(confirmMsg)) return;
 
     setIsDeletingProducts(true);
@@ -397,7 +397,7 @@ export function AdminDashboard() {
     const count = items.length;
     if (count === 0) return;
 
-    const confirmMsg = `WARNING: Are you sure you want to delete ALL ${count} product(s) currently displayed? This will permanently erase them from PostgreSQL.`;
+    const confirmMsg = `WARNING: Are you sure you want to delete ALL ${count} product(s) currently displayed? This will permanently erase them from the catalog.`;
     if (!window.confirm(confirmMsg)) return;
 
     setIsDeletingProducts(true);
@@ -1241,7 +1241,7 @@ export function AdminDashboard() {
                     <span>Back to Product Catalog</span>
                   </button>
                   <span className="text-xs text-gray-500 font-medium">
-                    {editingAdminProduct ? `Editing: ${editingAdminProduct.name}` : "New Product Listing (PostgreSQL Sync)"}
+                    {editingAdminProduct ? `Editing: ${editingAdminProduct.name}` : "New Product Listing"}
                   </span>
                 </div>
 
@@ -1259,7 +1259,7 @@ export function AdminDashboard() {
                   <div>
                     <h1 className="font-display text-2xl font-extrabold text-[#111111]">Product Catalog</h1>
                     <p className="text-xs text-[#6B7280]">
-                      Manage all {adminProducts.length} automotive parts & retail catalogue items synchronized with PostgreSQL.
+                      Manage all {adminProducts.length} automotive parts &amp; retail catalog items.
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1575,7 +1575,7 @@ export function AdminDashboard() {
                 <div>
                   <h1 className="font-display text-2xl font-extrabold text-[#111111]">Category Architecture</h1>
                   <p className="text-xs text-[#6B7280]">
-                    Total {dbCategories.length > 0 ? dbCategories.length : 93} categories synchronized with PostgreSQL database.
+                    Total {dbCategories.length} categories cataloged across the platform.
                   </p>
                 </div>
                 <div className="relative max-w-xs w-full">

@@ -40,6 +40,7 @@ import {
   UploadCloud,
   Ticket,
   Trash2,
+  Loader2,
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -470,18 +471,8 @@ export function VendorDashboard() {
     loadVendorNotifications();
   }, [dbVendor?.id, currentUser?.id]);
 
-  // Determine if store action is actually needed (only if incomplete AND unconfirmed)
-  const needsStoreAction = useMemo(() => {
-    if (hasConfirmedStore) return false;
-    const hasAddress = Boolean(dbVendor?.address && dbVendor.address.trim().length > 3);
-    const hasCity = Boolean(dbVendor?.city && dbVendor.city.trim().length > 1);
-    const hasPhone = Boolean(dbVendor?.phone && dbVendor.phone.trim().length >= 10);
-    const hasBank = Boolean(
-      dbVendor?.bankAccount?.accountNumber && dbVendor.bankAccount.accountNumber.trim().length > 4
-    );
-    if (hasAddress && hasCity && hasPhone && hasBank) return false;
-    return true;
-  }, [hasConfirmedStore, dbVendor]);
+  // Store action alert disabled
+  const needsStoreAction = false;
 
   const rejectedNotifications = useMemo(() => {
     return vendorNotifications.filter((n) => n.type === "product_rejected" && !n.is_read);
@@ -550,6 +541,42 @@ export function VendorDashboard() {
 
   // JSON Product Bulk Import Modal State
   const [isJsonImportOpen, setIsJsonImportOpen] = useState(false);
+
+  // Product Selection & Batch Deletion State
+  const [selectedVendorProductIds, setSelectedVendorProductIds] = useState<string[]>([]);
+  const [isDeletingProducts, setIsDeletingProducts] = useState(false);
+  const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<{
+    type: "single" | "bulk";
+    ids: string[];
+    name?: string;
+  } | null>(null);
+
+  const handleExecuteProductDelete = async (ids: string[]) => {
+    if (!ids || ids.length === 0) return;
+    setIsDeletingProducts(true);
+    const toastId = toast.loading(`Deleting ${ids.length} product(s)...`);
+    try {
+      const res = await fetch("/api/products/batch-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(`${data.deletedCount || ids.length} product(s) deleted successfully`, { id: toastId });
+        setAllProducts((prev) => prev.filter((p) => !ids.includes(p.id)));
+        setSelectedVendorProductIds((prev) => prev.filter((id) => !ids.includes(id)));
+        setDeleteConfirmTarget(null);
+        fetchProductsFromDb();
+      } else {
+        throw new Error(data.error || "Failed to delete products");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete products", { id: toastId });
+    } finally {
+      setIsDeletingProducts(false);
+    }
+  };
 
   // Vendor Coupons State & Management
   interface VendorCoupon {
@@ -1800,10 +1827,52 @@ export function VendorDashboard() {
               </div>
             }
           >
+            {/* Bulk Selection Action Bar */}
+            {selectedVendorProductIds.length > 0 && (
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-sm animate-in fade-in duration-200">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-foreground text-xs sm:text-sm">
+                    {selectedVendorProductIds.length} of {vendorProducts.length} product{selectedVendorProductIds.length > 1 ? "s" : ""} selected
+                  </span>
+                  <button
+                    onClick={() => setSelectedVendorProductIds([])}
+                    className="text-xs text-muted-foreground hover:underline ml-2 cursor-pointer font-medium"
+                  >
+                    Deselect all
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setDeleteConfirmTarget({ type: "bulk", ids: selectedVendorProductIds })}
+                    disabled={isDeletingProducts}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white px-3.5 py-1.5 text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete Selected ({selectedVendorProductIds.length})
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-sm">
                 <thead className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border pb-2">
                   <tr>
+                    <th className="w-10 px-3 py-2.5">
+                      <input
+                        type="checkbox"
+                        checked={vendorProducts.length > 0 && selectedVendorProductIds.length === vendorProducts.length}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedVendorProductIds(vendorProducts.map((p) => p.id));
+                          } else {
+                            setSelectedVendorProductIds([]);
+                          }
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#E31E24] cursor-pointer"
+                        title="Select all products"
+                      />
+                    </th>
                     <th className="py-2.5">Product</th>
                     <th>Category</th>
                     <th>Your Offer</th>
@@ -1826,9 +1895,25 @@ export function VendorDashboard() {
                     };
                     const isPaused = off.status === "paused";
                     const linkedCoupons = productCouponsMap[p.id] || [];
+                    const isSelected = selectedVendorProductIds.includes(p.id);
 
                     return (
-                      <tr key={p.id} className="hover:bg-muted/30 transition-colors">
+                      <tr key={p.id} className={cn("hover:bg-muted/30 transition-colors", isSelected && "bg-red-500/5")}>
+                        <td className="w-10 px-3 py-3.5">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedVendorProductIds((prev) => [...prev, p.id]);
+                              } else {
+                                setSelectedVendorProductIds((prev) => prev.filter((id) => id !== p.id));
+                              }
+                            }}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#E31E24] cursor-pointer"
+                            title={`Select ${p.name}`}
+                          />
+                        </td>
                         <td className="flex items-center gap-3 py-3.5">
                           <img
                             src={p.image}
@@ -1908,35 +1993,49 @@ export function VendorDashboard() {
                         </td>
 
                         <td className="text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1.5">
                             {p.verificationStatus === "rejected" ? (
-                              <button
-                                onClick={() => handleOpenEdit(p)}
-                                className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-red-700 transition cursor-pointer"
-                                title="Edit product and resubmit for admin approval"
-                              >
-                                Edit & Resubmit
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => handleOpenEdit(p)}
+                                  className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-red-700 transition cursor-pointer"
+                                  title="Edit product and resubmit for admin approval"
+                                >
+                                  Edit & Resubmit
+                                </button>
+                                <button
+                                  onClick={() => setDeleteConfirmTarget({ type: "single", ids: [p.id], name: p.name })}
+                                  disabled={isDeletingProducts}
+                                  className="rounded-lg border border-red-200 dark:border-red-900/50 p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 transition cursor-pointer"
+                                  title="Delete product"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </>
                             ) : (
                               <>
                                 <button
                                   onClick={() => handleToggleOfferStatus(p.id)}
                                   title={isPaused ? "Resume Offer" : "Pause Offer"}
-                                  className="rounded-lg border border-border p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                  className="rounded-lg border border-border p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition"
                                 >
                                   {isPaused ? <Play className="h-3.5 w-3.5 text-emerald-600" /> : <Pause className="h-3.5 w-3.5" />}
                                 </button>
                                 <button
-                                  onClick={() => {
-                                    const newP = prompt("Enter new selling price in INR:", String(off.price));
-                                    const newS = prompt("Enter available stock units:", String(off.stock));
-                                    if (newP && newS) {
-                                      handleUpdateOffer(p.id, Number(newP), Number(newS));
-                                    }
-                                  }}
-                                  className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary hover:text-white transition"
+                                  onClick={() => handleOpenEdit(p)}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary hover:bg-primary hover:text-white transition cursor-pointer"
+                                  title="Edit product details (name, description, price, stock, fitment, etc.)"
                                 >
-                                  Edit Price
+                                  <Edit3 className="h-3 w-3" />
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => setDeleteConfirmTarget({ type: "single", ids: [p.id], name: p.name })}
+                                  disabled={isDeletingProducts}
+                                  className="rounded-lg border border-red-200 dark:border-red-900/50 p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 transition cursor-pointer"
+                                  title="Delete product"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
                                 </button>
                               </>
                             )}
@@ -3044,6 +3143,57 @@ export function VendorDashboard() {
                 fetchProductsFromDb();
               }}
             />
+
+            {/* Product Delete Confirmation Modal */}
+            {deleteConfirmTarget && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+                <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 dark:bg-red-950/50 text-red-600">
+                      <Trash2 className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-foreground">
+                        {deleteConfirmTarget.type === "bulk"
+                          ? `Delete ${deleteConfirmTarget.ids.length} Selected Products?`
+                          : "Delete Product?"}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {deleteConfirmTarget.type === "bulk"
+                          ? `Are you sure you want to delete ${deleteConfirmTarget.ids.length} selected products? This will permanently remove them and all associated offers.`
+                          : `Are you sure you want to delete "${deleteConfirmTarget.name || "this product"}"? This will permanently remove it and all associated offers.`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2.5 pt-3 border-t border-border">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirmTarget(null)}
+                      disabled={isDeletingProducts}
+                      className="rounded-xl border border-border px-4 py-2 text-xs font-semibold hover:bg-muted transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleExecuteProductDelete(deleteConfirmTarget.ids)}
+                      disabled={isDeletingProducts}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white px-4 py-2 text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
+                    >
+                      {isDeletingProducts ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="h-3.5 w-3.5" /> Confirm Delete
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Create Coupon Modal with Product Selection */}
             {isCreateCouponOpen && (

@@ -126,9 +126,9 @@ export function JsonProductImportModal({
   const validateProductsArray = (rawProducts: any[]): ParsedRow[] => {
     const skuMap = new Map<string, number>();
 
-    // Pass 1: count SKUs
+    // Pass 1: count explicitly provided SKUs
     rawProducts.forEach((p) => {
-      const sku = (p.sku || "").toString().trim().toUpperCase();
+      const sku = (p.sku || p.SKU || p.sku_code || p.product_code || "").toString().trim().toUpperCase();
       if (sku) {
         skuMap.set(sku, (skuMap.get(sku) || 0) + 1);
       }
@@ -139,43 +139,62 @@ export function JsonProductImportModal({
       const errors: string[] = [];
       const warnings: string[] = [];
 
-      if (!p.name || typeof p.name !== "string" || !p.name.trim()) {
+      const name = (p.name || p.title || p.product_name || p.productName || p.label || "").toString().trim();
+      if (!name) {
         errors.push("Missing or invalid product name.");
       }
-      if (p.price === undefined || p.price === null || isNaN(Number(p.price)) || Number(p.price) < 0) {
+
+      const rawPrice = p.price ?? p.selling_price ?? p.sellingPrice ?? p.mrp ?? p.cost ?? p.amount ?? p.unit_price;
+      const priceNum = Number(rawPrice);
+      if (rawPrice === undefined || rawPrice === null || isNaN(priceNum) || priceNum <= 0) {
         errors.push("Price must be a valid non-negative number.");
       }
-      if (p.stock === undefined || p.stock === null || isNaN(Number(p.stock)) || Number(p.stock) < 0 || !Number.isInteger(Number(p.stock))) {
+
+      const rawStock = p.stock ?? p.quantity ?? p.qty ?? p.inventory ?? p.units ?? 10;
+      const stockNum = parseInt(String(rawStock), 10);
+      if (isNaN(stockNum) || stockNum < 0) {
         errors.push("Stock must be a valid non-negative integer.");
       }
-      const sku = (p.sku || "").toString().trim();
+
+      let sku = (p.sku || p.SKU || p.sku_code || p.product_code || p.item_code || p.code || p.id || "").toString().trim();
       if (!sku) {
-        errors.push("SKU is required.");
-      } else if (skuMap.get(sku.toUpperCase())! > 1) {
-        errors.push(`Duplicate SKU "${sku}" within import batch.`);
+        sku = `SKU-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}-${index + 1}`;
+      } else if (skuMap.get(sku.toUpperCase()) && skuMap.get(sku.toUpperCase())! > 1) {
+        // Automatically make batch duplicates unique
+        sku = `${sku}-${index + 1}`;
       }
 
-      if (!p.category || typeof p.category !== "string" || !p.category.trim()) {
-        errors.push("Category is required.");
-      }
+      const category = (p.category || p.department || p.category_name || p.categoryName || "Vehicle Accessories & Mounts").toString().trim();
+      const brand = (p.brand || p.make || p.manufacturer || "Riderzpro Certified").toString().trim();
+      const description = (p.description || p.desc || p.details || p.summary || `${brand} ${name}`).toString().trim();
 
       // Check stock warning
-      const stockNum = Number(p.stock);
       if (stockNum <= 5 && stockNum > 0) {
         warnings.push("Stock is <= 5 (Hurry! Limited stock label will display).");
       } else if (stockNum === 0) {
         warnings.push("Stock is 0 (Will display Out of Stock).");
       }
 
+      let images: any[] = [];
+      if (Array.isArray(p.images) && p.images.length > 0) {
+        images = p.images;
+      } else if (p.image_url) {
+        images = [p.image_url];
+      } else if (p.imageUrl) {
+        images = [p.imageUrl];
+      } else if (p.image) {
+        images = [p.image];
+      }
+
       const rowData: JsonProductItem = {
-        name: String(p.name || ""),
-        description: p.description ? String(p.description) : "",
-        category: String(p.category || "Accessories"),
-        brand: p.brand ? String(p.brand) : "",
-        sku: sku,
-        price: Number(p.price) || 0,
-        stock: Number(p.stock) || 0,
-        images: Array.isArray(p.images) ? p.images : [],
+        name,
+        description,
+        category,
+        brand,
+        sku,
+        price: isNaN(priceNum) ? 0 : priceNum,
+        stock: isNaN(stockNum) ? 10 : stockNum,
+        images,
         specifications: p.specifications && typeof p.specifications === "object" ? p.specifications : {},
       };
 
@@ -195,10 +214,15 @@ export function JsonProductImportModal({
       let items: any[] = [];
       if (Array.isArray(parsed)) {
         items = parsed;
-      } else if (parsed && Array.isArray(parsed.products)) {
-        items = parsed.products;
-      } else if (parsed && Array.isArray(parsed.items)) {
-        items = parsed.items;
+      } else if (parsed && typeof parsed === "object") {
+        if (Array.isArray(parsed.products)) items = parsed.products;
+        else if (Array.isArray(parsed.items)) items = parsed.items;
+        else if (Array.isArray(parsed.data)) items = parsed.data;
+        else if (Array.isArray(parsed.catalog)) items = parsed.catalog;
+        else if (Array.isArray(parsed.listings)) items = parsed.listings;
+        else if (Array.isArray(parsed.records)) items = parsed.records;
+        else if (parsed.name || parsed.title) items = [parsed];
+        else throw new Error("Could not find a list of products in the provided JSON.");
       } else {
         throw new Error("JSON must be an array of products or an object containing a 'products' array.");
       }
@@ -280,6 +304,7 @@ export function JsonProductImportModal({
       const res = await fetch("/api/products/bulk-import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           seller_id: sellerId,
           products: validRows.map((r) => r.data),

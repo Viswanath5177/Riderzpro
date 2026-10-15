@@ -143,6 +143,7 @@ export function ProductsScreen() {
       const res = await fetch(`/api/admin/products/${productId}/review`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ action, reason }),
       });
       const json = await res.json();
@@ -159,6 +160,79 @@ export function ProductsScreen() {
       loadProducts();
     } catch (err: any) {
       toast.error(err.message, { id: toastId });
+    }
+  };
+
+  const handleBulkReview = async (
+    ids: string[],
+    action: "APPROVED" | "REJECTED",
+    clearSelection?: () => void,
+    reason?: string
+  ) => {
+    if (!ids.length) return;
+    const toastId = toast.loading(
+      action === "APPROVED"
+        ? `Accepting & publishing ${ids.length} product(s)...`
+        : `Declining ${ids.length} product(s)...`
+    );
+    try {
+      const res = await fetch("/api/admin/products/bulk-review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ids, action, reason }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Bulk review failed");
+      }
+      toast.success(
+        action === "APPROVED"
+          ? `Successfully accepted ${json.count || ids.length} product(s)! Published to customer catalog.`
+          : `Declined ${json.count || ids.length} product(s). Feedback recorded.`,
+        { id: toastId }
+      );
+      loadProducts();
+      clearSelection?.();
+    } catch (err: any) {
+      toast.error(err.message || "Bulk review failed", { id: toastId });
+    }
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    try {
+      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success("Product deleted successfully from catalog");
+        loadProducts();
+      } else {
+        throw new Error(data.error || "Failed to delete product");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete product");
+    }
+  };
+
+  const handleBulkDelete = async (ids: string[], clearSelection?: () => void) => {
+    if (!ids.length) return;
+    const toastId = toast.loading(`Deleting ${ids.length} products...`);
+    try {
+      const res = await fetch("/api/products/batch-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(`Successfully deleted ${data.deletedCount || ids.length} product(s)`, { id: toastId });
+        loadProducts();
+        clearSelection?.();
+      } else {
+        throw new Error(data.error || "Failed to delete products");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete products", { id: toastId });
     }
   };
 
@@ -447,6 +521,38 @@ export function ProductsScreen() {
           return true;
         }}
         keyExtractor={(p) => p.id}
+        bulkActions={(selectedIds, clearSelection) => (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => handleBulkReview(selectedIds, "APPROVED", clearSelection)}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 text-xs shadow-xs transition cursor-pointer"
+              title="Accept all selected products at once and publish to customer store"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              <span>Accept Selected ({selectedIds.length})</span>
+            </button>
+            <button
+              onClick={() => handleBulkReview(selectedIds, "REJECTED", clearSelection, "Declined during administrative compliance review")}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold px-3 py-1.5 text-xs transition cursor-pointer"
+              title="Decline all selected products"
+            >
+              <XCircle className="h-3.5 w-3.5" />
+              <span>Decline Selected ({selectedIds.length})</span>
+            </button>
+            <button
+              onClick={() => {
+                if (window.confirm(`Are you sure you want to delete ${selectedIds.length} selected product(s)?`)) {
+                  handleBulkDelete(selectedIds, clearSelection);
+                }
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#374151] font-bold px-3 py-1.5 text-xs transition cursor-pointer"
+              title="Permanently delete all selected products from database"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Delete ({selectedIds.length})</span>
+            </button>
+          </div>
+        )}
         exportFileName="riderzpro_products"
       />
 
@@ -695,10 +801,12 @@ export function ProductsScreen() {
       <ConfirmDialog
         isOpen={Boolean(deleteModalProduct)}
         onClose={() => setDeleteModalProduct(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (deleteModalProduct) {
-            deleteProduct(deleteModalProduct.id);
+            const pId = deleteModalProduct.id;
+            deleteProduct(pId);
             setDeleteModalProduct(null);
+            await handleDeleteProduct(pId);
           }
         }}
         title="Remove Product?"

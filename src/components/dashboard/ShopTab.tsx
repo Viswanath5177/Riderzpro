@@ -55,7 +55,48 @@ export function ShopTab() {
       });
   }, []);
 
-  const totalCatalogCount = 561;
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      All: dbProducts.length,
+      "Electric Bikes": 0,
+      "EV Batteries": 0,
+      "Car Accessories": 0,
+      "Bike Accessories": 0,
+    };
+    for (const p of dbProducts) {
+      const cat = (p.category as string) || "";
+      const name = p.name.toLowerCase();
+      if (
+        cat === "Electric Bikes" ||
+        cat === "Vehicle" ||
+        name.includes("electric") ||
+        name.includes("scooter") ||
+        name.includes("bike")
+      ) {
+        counts["Electric Bikes"]++;
+      } else if (
+        cat === "Battery" ||
+        name.includes("battery") ||
+        name.includes("volt")
+      ) {
+        counts["EV Batteries"]++;
+      } else if (
+        cat === "Car Accessories" ||
+        (p.vehicleType && (p.vehicleType === "car" || p.vehicleType === "four-wheeler"))
+      ) {
+        counts["Car Accessories"]++;
+      } else if (
+        cat === "Bike Accessories" ||
+        cat === "Brakes" ||
+        cat === "Charger" ||
+        cat === "Accessory" ||
+        cat === "Accessories"
+      ) {
+        counts["Bike Accessories"]++;
+      }
+    }
+    return counts;
+  }, [dbProducts]);
 
   // Filtered products list
   const filteredProducts = useMemo(() => {
@@ -160,7 +201,7 @@ export function ShopTab() {
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* ─────────────────────────────────────────────────────────────
-          1. TOP CATALOG HERO BANNER (Matches Screenshot 2)
+          1. TOP CATALOG HERO BANNER
          ───────────────────────────────────────────────────────────── */}
       <div className="rounded-3xl border border-gray-200/80 bg-white p-6 sm:p-7 shadow-2xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
@@ -230,11 +271,11 @@ export function ShopTab() {
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="w-full appearance-none bg-white border border-gray-200 hover:border-gray-300 rounded-xl px-3.5 py-2.5 pr-8 text-xs font-semibold text-gray-800 shadow-2xs outline-none focus:border-[#E31E24] cursor-pointer"
             >
-              <option value="All">Category: All categories ({totalCatalogCount})</option>
-              <option value="Electric Bikes">Electric Bikes (40)</option>
-              <option value="EV Batteries">EV Batteries (6)</option>
-              <option value="Car Accessories">Car Accessories (482)</option>
-              <option value="Bike Accessories">Bike Accessories (52)</option>
+              <option value="All">Category: All categories ({categoryCounts["All"]})</option>
+              <option value="Electric Bikes">Electric Bikes ({categoryCounts["Electric Bikes"]})</option>
+              <option value="EV Batteries">EV Batteries ({categoryCounts["EV Batteries"]})</option>
+              <option value="Car Accessories">Car Accessories ({categoryCounts["Car Accessories"]})</option>
+              <option value="Bike Accessories">Bike Accessories ({categoryCounts["Bike Accessories"]})</option>
             </select>
             <ChevronDown className="h-3.5 w-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
@@ -257,16 +298,16 @@ export function ShopTab() {
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          3. CATEGORY PILLS ROW (Matches Screenshot 2: All 561, Electric Bikes 40, etc.)
+          3. CATEGORY PILLS ROW
          ───────────────────────────────────────────────────────────── */}
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           {[
-            { id: "All", label: "All", count: 561 },
-            { id: "Electric Bikes", label: "Electric Bikes", count: 40 },
-            { id: "EV Batteries", label: "EV Batteries", count: 6 },
-            { id: "Car Accessories", label: "Car Accessories", count: 482 },
-            { id: "Bike Accessories", label: "Bike Accessories", count: 52 },
+            { id: "All", label: "All", count: categoryCounts["All"] },
+            { id: "Electric Bikes", label: "Electric Bikes", count: categoryCounts["Electric Bikes"] },
+            { id: "EV Batteries", label: "EV Batteries", count: categoryCounts["EV Batteries"] },
+            { id: "Car Accessories", label: "Car Accessories", count: categoryCounts["Car Accessories"] },
+            { id: "Bike Accessories", label: "Bike Accessories", count: categoryCounts["Bike Accessories"] },
           ].map((cat) => {
             const isSelected = selectedCategory === cat.id;
             return (
@@ -323,102 +364,131 @@ export function ShopTab() {
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          4. COUNTER LINE: SHOWING 40 OF 561 ITEMS
+          4. COUNTER LINE
          ───────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between text-xs font-bold tracking-wider uppercase text-gray-400">
-        <span>SHOWING {Math.min(filteredProducts.length, 40)} OF {totalCatalogCount} ITEMS</span>
+        <span>SHOWING {filteredProducts.length} OF {dbProducts.length} ITEMS</span>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          5. PRODUCT CARDS GRID (Matches Screenshot 2: 12% OFF, Wishlist, Voltage Badge)
+          5. PRODUCT CARDS GRID OR EMPTY STATE
          ───────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {filteredProducts.slice(0, 40).map((product) => {
-          const offer = bestOffer(product);
-          const saved = isSaved(product.id);
-          const voltBadge = getVoltageTag(product);
-
-          return (
-            <div
-              key={product.id}
-              className="group rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between"
+      {filteredProducts.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-gray-200 bg-white p-12 text-center space-y-3">
+          <div className="mx-auto w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400">
+            <ShoppingBag className="h-6 w-6 text-gray-300" />
+          </div>
+          <h3 className="text-base font-bold text-[#111111]">
+            {dbProducts.length === 0 ? "No products in marketplace catalog" : "No products match your filter"}
+          </h3>
+          <p className="text-xs text-gray-500 max-w-sm mx-auto leading-relaxed">
+            {dbProducts.length === 0
+              ? "Products added by authorized vendors will appear here once approved by platform admin."
+              : "Try adjusting or clearing your category, voltage, or search filters to see other products."}
+          </p>
+          {(selectedCategory !== "All" || searchQuery || selectedVoltage !== null || selectedVehicle !== "all") && (
+            <button
+              onClick={() => {
+                setSelectedCategory("All");
+                setSearchQuery("");
+                setSelectedVoltage(null);
+                setSelectedVehicle("all");
+              }}
+              className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-bold text-gray-700 transition cursor-pointer"
             >
-              {/* Product Image Box */}
-              <div className="relative aspect-square bg-[#F7F9FB] flex items-center justify-center p-4 overflow-hidden">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
-                />
+              Reset Filters
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {filteredProducts.slice(0, 40).map((product) => {
+            const offer = bestOffer(product);
+            const saved = isSaved(product.id);
+            const voltBadge = getVoltageTag(product);
 
-                {/* 12% OFF Badge (Top Left) */}
-                <div className="absolute top-3 left-3 bg-[#E31E24] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-sm uppercase tracking-wider shadow-2xs">
-                  {product.discountPercent ? `${product.discountPercent}% OFF` : "12% OFF"}
-                </div>
-
-                {/* Wishlist Button (Top Right) */}
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    toggleSaved(product.id);
-                    toast.success(saved ? "Removed from wishlist" : "Saved to wishlist");
-                  }}
-                  className="absolute top-3 right-3 grid h-8 w-8 place-items-center rounded-full bg-white/90 hover:bg-white text-gray-400 hover:text-[#E31E24] border border-black/[0.06] shadow-2xs transition active:scale-90 cursor-pointer"
-                  title="Save item"
-                >
-                  <Heart
-                    className={cn(
-                      "h-4 w-4 transition-colors",
-                      saved ? "fill-[#E31E24] text-[#E31E24]" : ""
-                    )}
+            return (
+              <div
+                key={product.id}
+                className="group rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between"
+              >
+                {/* Product Image Box */}
+                <div className="relative aspect-square bg-[#F7F9FB] flex items-center justify-center p-4 overflow-hidden">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
                   />
-                </button>
 
-                {/* Voltage Tag (Bottom Right) */}
-                <div className="absolute bottom-3 right-3 bg-black/80 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md backdrop-blur-xs">
-                  {voltBadge}
-                </div>
-              </div>
-
-              {/* Product Info */}
-              <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
-                <div>
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                    {product.brand || "RiderzPro Certified"}
-                  </p>
-                  <Link
-                    to="/product/$id"
-                    params={{ id: product.id }}
-                    className="text-sm font-bold text-[#111111] hover:text-[#E31E24] transition-colors line-clamp-2 mt-0.5"
-                  >
-                    {product.name}
-                  </Link>
-                </div>
-
-                <div className="pt-2 border-t border-gray-50 flex items-center justify-between">
-                  <div>
-                    <span className="text-base font-extrabold text-[#111111]">
-                      {inr(offer.price)}
-                    </span>
-                    <span className="text-[11px] text-gray-400 line-through ml-1.5">
-                      {inr(Math.round(offer.price * 1.14))}
-                    </span>
+                  {/* 12% OFF Badge (Top Left) */}
+                  <div className="absolute top-3 left-3 bg-[#E31E24] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-sm uppercase tracking-wider shadow-2xs">
+                    {product.discountPercent ? `${product.discountPercent}% OFF` : "12% OFF"}
                   </div>
 
+                  {/* Wishlist Button (Top Right) */}
                   <button
-                    onClick={(e) => handleAddToCart(product, e)}
-                    className="p-2 rounded-xl bg-gray-50 hover:bg-[#E31E24] text-gray-700 hover:text-white transition active:scale-95 shadow-2xs cursor-pointer"
-                    title="Add to cart"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleSaved(product.id);
+                      toast.success(saved ? "Removed from wishlist" : "Saved to wishlist");
+                    }}
+                    className="absolute top-3 right-3 grid h-8 w-8 place-items-center rounded-full bg-white/90 hover:bg-white text-gray-400 hover:text-[#E31E24] border border-black/[0.06] shadow-2xs transition active:scale-90 cursor-pointer"
+                    title="Save item"
                   >
-                    <ShoppingBag className="h-4 w-4" />
+                    <Heart
+                      className={cn(
+                        "h-4 w-4 transition-colors",
+                        saved ? "fill-[#E31E24] text-[#E31E24]" : ""
+                      )}
+                    />
                   </button>
+
+                  {/* Voltage Tag (Bottom Right) */}
+                  <div className="absolute bottom-3 right-3 bg-black/80 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md backdrop-blur-xs">
+                    {voltBadge}
+                  </div>
+                </div>
+
+                {/* Product Info */}
+                <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                      {product.brand || "RiderzPro Certified"}
+                    </p>
+                    <Link
+                      to="/product/$id"
+                      params={{ id: product.id }}
+                      className="text-sm font-bold text-[#111111] hover:text-[#E31E24] transition-colors line-clamp-2 mt-0.5"
+                    >
+                      {product.name}
+                    </Link>
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-50 flex items-center justify-between">
+                    <div>
+                      <span className="text-base font-extrabold text-[#111111]">
+                        {inr(offer.price)}
+                      </span>
+                      <span className="text-[11px] text-gray-400 line-through ml-1.5">
+                        {inr(Math.round(offer.price * 1.14))}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={(e) => handleAddToCart(product, e)}
+                      className="p-2 rounded-xl bg-gray-50 hover:bg-[#E31E24] text-gray-700 hover:text-white transition active:scale-95 shadow-2xs cursor-pointer"
+                      title="Add to cart"
+                    >
+                      <ShoppingBag className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

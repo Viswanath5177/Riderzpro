@@ -102,20 +102,20 @@ export function CombinedOperationsScreen() {
     setIsLoading(true);
 
     // 1. Fetch Seller Analytics & Pending Sellers
-    const p1 = fetch("/api/admin/sellers/analytics")
+    const p1 = fetch("/api/admin/sellers/analytics", { credentials: "include" })
       .then((r) => r.json())
       .then((res) => {
         if (res.success && res.data) {
           setSellersMetrics({
             pendingSellers: res.data.metrics?.pendingSellers || 0,
-            activeSellers: res.data.metrics?.activeSellers || 0,
+            activeSellers: res.data.metrics?.activeSellers || res.data.metrics?.approvedSellers || 0,
             totalSellers: res.data.metrics?.totalSellers || 0,
           });
         }
       })
       .catch(() => {});
 
-    const p2 = fetch("/api/admin/sellers?status=PENDING_REVIEW")
+    const p2 = fetch("/api/admin/sellers?status=PENDING_REVIEW", { credentials: "include" })
       .then((r) => r.json())
       .then((res) => {
         if (res.success && Array.isArray(res.data)) {

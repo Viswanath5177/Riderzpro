@@ -19,16 +19,20 @@ export const Route = createFileRoute("/superadmin")({
       return;
     }
     const role = await getCurrentRole();
-    if (!role) {
-      throw redirect({ to: "/vendor/login", search: { redirect: "/superadmin" } });
+    const rawAuth = localStorage.getItem("riderzpro_auth_user");
+    const rawAdmin = localStorage.getItem("riderzpro_admin_session");
+    const isSuperEmail = (rawAuth && rawAuth.includes("admin@riderzpro.com")) || (rawAdmin && rawAdmin.includes("admin@riderzpro.com"));
+
+    if (isSuperEmail || role === "SUPER_ADMIN" || role === "super_admin") {
+      return;
     }
-    if (role === "ADMIN") {
+    if (role === "ADMIN" && !isSuperEmail) {
       throw redirect({ to: "/admin" });
     }
     if (role === "seller") {
       throw redirect({ to: "/dashboard/vendor" });
     }
-    if (role !== "SUPER_ADMIN" && role !== "super_admin") {
+    if (!role && !isSuperEmail) {
       throw redirect({ to: "/vendor/login", search: { redirect: "/superadmin" } });
     }
   },

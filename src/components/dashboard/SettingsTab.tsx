@@ -22,14 +22,43 @@ import {
   EyeOff,
   RefreshCw,
   X,
+  LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
 import { inr, getBike } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 export function SettingsTab() {
-  const { userProfile, updateUserProfile, garage, orders } = useStore();
+  const { userProfile, updateUserProfile, garage, orders, signOut: storeSignOut } = useStore();
+  const { signOut: authSignOut } = useAuth();
+
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    toast.info("Signing out...", { duration: 1500 });
+    try {
+      storeSignOut();
+      await authSignOut();
+    } catch (e) {
+      console.warn("Signout error:", e);
+    } finally {
+      try {
+        localStorage.removeItem("riderzpro_auth_user");
+        localStorage.removeItem("riderzpro_auth_token");
+        localStorage.removeItem("riderzpro_token");
+        localStorage.removeItem("riderzpro_admin_session");
+        localStorage.removeItem("riderzpro_seller_store_confirmed");
+        localStorage.removeItem("riderzpro-v7");
+        localStorage.removeItem("riderzpro_active_bike");
+        sessionStorage.clear();
+      } catch {}
+      window.location.href = "/";
+    }
+  };
 
   const [activeSubTab, setActiveSubTab] = useState<"personal" | "addresses" | "garage" | "notifications" | "security">("personal");
 
@@ -823,6 +852,30 @@ export function SettingsTab() {
                   <span className="font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded text-[11px]">
                     Enabled ✓
                   </span>
+                </div>
+
+                {/* Session & Sign Out Card */}
+                <div className="p-4 rounded-2xl border border-red-200 bg-red-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-red-100 text-[#E31E24] shrink-0 font-bold">
+                      <LogOut className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <p className="text-xs font-bold text-gray-900">Active Account Session</p>
+                      <p className="text-[11px] text-gray-600 mt-0.5">
+                        End your session and sign out of your account on this device.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    disabled={isSigningOut}
+                    className="px-4 py-2 rounded-xl bg-[#E31E24] hover:bg-red-700 active:scale-95 text-white text-xs font-bold shrink-0 transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>{isSigningOut ? "Signing out..." : "Sign Out"}</span>
+                  </button>
                 </div>
               </div>
             </div>

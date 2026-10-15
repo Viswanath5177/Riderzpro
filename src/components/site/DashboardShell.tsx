@@ -52,8 +52,18 @@ export function DashboardShell({
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   async function handleSignOut() {
-    await signOut();
-    await navigate({ to: "/" });
+    try {
+      await signOut();
+    } catch {}
+    try {
+      localStorage.removeItem("riderzpro_auth_user");
+      localStorage.removeItem("riderzpro_auth_token");
+      localStorage.removeItem("riderzpro_token");
+      localStorage.removeItem("riderzpro_admin_session");
+      localStorage.removeItem("riderzpro-v7");
+      sessionStorage.clear();
+    } catch {}
+    window.location.href = "/";
   }
 
   const showMoreButton = sections.length > 5;

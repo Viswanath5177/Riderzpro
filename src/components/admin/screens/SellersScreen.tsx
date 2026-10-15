@@ -25,6 +25,7 @@ import {
   Lock,
   RefreshCw,
   FileSignature,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { GlassCard } from "../glass/GlassCard";
@@ -124,7 +125,7 @@ export function SellersScreen() {
 
   const loadChangeRequests = () => {
     setIsLoadingChanges(true);
-    fetch("/api/admin/change-requests")
+    fetch("/api/admin/change-requests", { credentials: "include" })
       .then((r) => r.json())
       .then((res) => {
         if (res.success && Array.isArray(res.data)) {
@@ -144,8 +145,8 @@ export function SellersScreen() {
 
   // Fetch real sellers from PostgreSQL backend
   const loadSellers = () => {
-    setIsLoadingChanges(true);
-    fetch("/api/admin/sellers")
+    setIsLoading(true);
+    fetch("/api/admin/sellers", { credentials: "include" })
       .then((r) => r.json())
       .then((res) => {
         if (res.success && Array.isArray(res.data)) {
@@ -340,7 +341,25 @@ export function SellersScreen() {
     }
   };
 
-  const currentDisplaySellers = sellersList.length > 0 ? sellersList : mockSellers;
+  const handleDeleteSeller = async (seller: EnrichedSeller) => {
+    if (!confirm(`Are you sure you want to permanently remove seller "${seller.businessName}" (${seller.email})?`)) {
+      return;
+    }
+    const toastId = toast.loading(`Removing seller ${seller.businessName}...`);
+    try {
+      const res = await fetch(`/api/admin/sellers/${seller.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "Failed to remove seller");
+      toast.success("Seller profile removed successfully.", { id: toastId });
+      setSellersList((prev) => prev.filter((s) => s.id !== seller.id));
+      if (selectedSeller?.id === seller.id) setSelectedSeller(null);
+    } catch (err: any) {
+      toast.error(err.message, { id: toastId });
+    }
+  };
+
+  // Strictly drive from live database records; never show fallback mock sellers
+  const currentDisplaySellers = sellersList;
 
   const filterTabs = [
     { label: "All Sellers", value: "ALL", count: currentDisplaySellers.length },
@@ -503,6 +522,13 @@ export function SellersScreen() {
           >
             <Percent className="h-3.5 w-3.5" />
           </button>
+          <button
+            onClick={() => handleDeleteSeller(s)}
+            className="rounded-lg bg-red-50 text-red-600 hover:bg-red-100 p-1.5 transition cursor-pointer"
+            title="Remove Seller Profile"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
         </div>
       ),
     },
@@ -573,6 +599,7 @@ export function SellersScreen() {
           onRowClick={(seller) => setSelectedSeller(seller)}
           keyExtractor={(s) => s.id}
           exportFileName="riderzpro_sellers"
+          emptyMessage="No vendor accounts found. Mock profiles have been removed. Newly registered vendors via /vendor/sign-up will appear here."
         />
       ) : (
         /* Business Detail Change Requests View */

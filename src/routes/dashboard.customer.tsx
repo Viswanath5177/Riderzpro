@@ -25,7 +25,15 @@ export const Route = createFileRoute("/dashboard/customer")({
       return;
     }
     const role = await getCurrentRole();
-    if (!role) throw redirect({ to: "/", search: { openLogin: "customer", redirect: "/dashboard/customer" } });
+    if (!role) {
+      const hasStoredUser =
+        typeof window !== "undefined" &&
+        Boolean(localStorage.getItem("riderzpro_auth_user") || sessionStorage.getItem("riderzpro_auth_user"));
+      if (!hasStoredUser) {
+        throw redirect({ to: "/" });
+      }
+      throw redirect({ to: "/", search: { openLogin: "customer", redirect: "/dashboard/customer" } });
+    }
     if (role === "SUPER_ADMIN" || role === "super_admin") throw redirect({ to: "/superadmin" });
     if (role === "ADMIN" || role === "admin") throw redirect({ to: "/admin" });
     if (role === "seller") throw redirect({ to: "/dashboard/vendor" });

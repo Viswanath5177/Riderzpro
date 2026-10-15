@@ -184,55 +184,55 @@ export async function ensureEnvironmentAndDatabase() {
     `);
 
     // Verify baseline admins exist and legacy admins are deprovisioned
-    const defaultHash = "$2b$10$.PDu5IuCYX1jYIaSpE2BbuJNxvnpWHD.TZfiQH3aI2X9hkYTwOAri"; // Admin@123
-    const vendorHash = "$2b$10$w8.90Z3sF8m87Vv3r3qK8OP/53W8O4O2.tW6E9h6X5C7U9G4D1F2G"; // Vendor@Riderzpro2026
-    const customerHash = "$2b$10$j8.90Z3sF8m87Vv3r3qK8OP/53W8O4O2.tW6E9h6X5C7U9G4D1F2H"; // Customer@Riderzpro2026
+    const adminHash = "$2b$10$2cJe0APRkEEzt.qM.NB/8OqH2ALBdladkRN4iKDWmhheUcVyEzY/S"; // Admin@123
+    const vendorHash = "$2b$10$8KKonzHkvafErxMdIpbJWOJIdMpH0ZhLyIvsUi4RUuYknpWkxFjEi"; // Vendor@Riderzpro2026
+    const customerHash = "$2b$10$EjB5kPsl58yWY5CXDq1emOLeE3tSMMfySqL877ry/Co1XqUOe8R4a"; // Customer@Riderzpro2026
 
     await db.execute({
       sql: `INSERT INTO admins (id, email, password_hash, full_name, role, is_active) VALUES
       ('adm_super_01', 'admin@riderzpro.com', ?, 'Super Administrator', 'SUPER_ADMIN', 1)
-      ON CONFLICT(email) DO UPDATE SET role = 'SUPER_ADMIN', is_active = 1`,
-      args: [defaultHash],
+      ON CONFLICT(email) DO UPDATE SET role = 'SUPER_ADMIN', is_active = 1, password_hash = ?`,
+      args: [adminHash, adminHash],
     });
     await db.execute({
       sql: `INSERT INTO admins (id, email, password_hash, full_name, role, is_active) VALUES
       ('adm_unified_01', 'admin.operations@riderzpro.com', ?, 'Unified Operations Administrator', 'ADMIN', 1)
-      ON CONFLICT(email) DO UPDATE SET role = 'ADMIN', is_active = 1`,
-      args: [defaultHash],
+      ON CONFLICT(email) DO UPDATE SET role = 'ADMIN', is_active = 1, password_hash = ?`,
+      args: [adminHash, adminHash],
     });
 
     // 2 Vendors
     await db.execute({
-      sql: `INSERT INTO sellers (id, email, password_hash, owner_name, store_name, status, account_status, is_active, phone, business_address, city, state, pincode)
-      VALUES ('sel_volthub_01', 'vendor1@riderzpro.com', ?, 'Rajesh Kumar', 'VoltHub EV Components', 'APPROVED', 'ACTIVE', 1, '+91 98765 43210', 'Plot 12, Peenya Industrial Area, Phase 1', 'Bengaluru', 'Karnataka', '560058')
-      ON CONFLICT(email) DO UPDATE SET status = 'APPROVED', account_status = 'ACTIVE', is_active = 1`,
-      args: [vendorHash],
+      sql: `INSERT INTO sellers (id, email, password_hash, owner_name, store_name, phone, business_address, city, state, pincode, status, account_status, is_active)
+      VALUES ('sel_volthub_01', 'vendor1@riderzpro.com', ?, 'Rajesh Kumar', 'VoltHub EV Components', '9876543201', 'Plot 42, Electronic City Phase 1', 'Bengaluru', 'Karnataka', '560100', 'APPROVED', 'ACTIVE', 1)
+      ON CONFLICT(email) DO UPDATE SET is_active = 1, status = 'APPROVED', account_status = 'ACTIVE', password_hash = ?`,
+      args: [vendorHash, vendorHash],
     });
     await db.execute({
-      sql: `INSERT INTO sellers (id, email, password_hash, owner_name, store_name, status, account_status, is_active, phone, business_address, city, state, pincode)
-      VALUES ('sel_apex_02', 'vendor2@riderzpro.com', ?, 'Ananya Rao', 'Apex EV Spares & Batteries', 'APPROVED', 'ACTIVE', 1, '+91 98765 43211', 'Plot 45, HITEC City Main Rd', 'Hyderabad', 'Telangana', '500081')
-      ON CONFLICT(email) DO UPDATE SET status = 'APPROVED', account_status = 'ACTIVE', is_active = 1`,
-      args: [vendorHash],
+      sql: `INSERT INTO sellers (id, email, password_hash, owner_name, store_name, phone, business_address, city, state, pincode, status, account_status, is_active)
+      VALUES ('sel_apex_02', 'vendor2@riderzpro.com', ?, 'Ananya Rao', 'Apex EV Spares & Batteries', '9876543202', '12 Industrial Area, Whitefield', 'Bengaluru', 'Karnataka', '560066', 'APPROVED', 'ACTIVE', 1)
+      ON CONFLICT(email) DO UPDATE SET is_active = 1, status = 'APPROVED', account_status = 'ACTIVE', password_hash = ?`,
+      args: [vendorHash, vendorHash],
     });
 
     // 3 Customers
     await db.execute({
       sql: `INSERT INTO customers (id, email, password_hash, full_name, phone, is_active)
       VALUES ('cst_aarav_01', 'customer1@riderzpro.com', ?, 'Aarav Sharma', '9876543210', 1)
-      ON CONFLICT(email) DO UPDATE SET is_active = 1`,
-      args: [customerHash],
+      ON CONFLICT(email) DO UPDATE SET is_active = 1, password_hash = ?`,
+      args: [customerHash, customerHash],
     });
     await db.execute({
       sql: `INSERT INTO customers (id, email, password_hash, full_name, phone, is_active)
       VALUES ('cst_priya_02', 'customer2@riderzpro.com', ?, 'Priya Patel', '9876543211', 1)
-      ON CONFLICT(email) DO UPDATE SET is_active = 1`,
-      args: [customerHash],
+      ON CONFLICT(email) DO UPDATE SET is_active = 1, password_hash = ?`,
+      args: [customerHash, customerHash],
     });
     await db.execute({
       sql: `INSERT INTO customers (id, email, password_hash, full_name, phone, is_active)
       VALUES ('cst_vikram_03', 'customer3@riderzpro.com', ?, 'Vikram Malhotra', '9876543212', 1)
-      ON CONFLICT(email) DO UPDATE SET is_active = 1`,
-      args: [customerHash],
+      ON CONFLICT(email) DO UPDATE SET is_active = 1, password_hash = ?`,
+      args: [customerHash, customerHash],
     });
 
     // Deprovision legacy admins & other mock accounts

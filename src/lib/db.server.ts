@@ -142,19 +142,32 @@ function createSqliteDatabase(url: string): Database {
   };
 }
 
+function translateToPostgres(text: string): string {
+  return text
+    .replace(/datetime\('now',\s*'([+-]?)(\d+)\s*(minutes?|seconds?|hours?|days?)'\)/gi, (_m, sign, amount, unit) => {
+      const s = sign === "-" ? "-" : "+";
+      return `(CURRENT_TIMESTAMP ${s} INTERVAL '${amount} ${unit.toLowerCase()}')`;
+    })
+    .replace(/datetime\('now'\)/gi, "CURRENT_TIMESTAMP")
+    .replace(/\b(is_active|is_verified|is_read|is_bestseller|is_default)\s*=\s*1\b/gi, "$1 = true")
+    .replace(/\b(is_active|is_verified|is_read|is_bestseller|is_default)\s*=\s*0\b/gi, "$1 = false")
+    .replace(/\b(is_active|is_verified|is_read|is_bestseller|is_default)\s*!=\s*0\b/gi, "$1 = true")
+    .replace(/\b(is_active|is_verified|is_read|is_bestseller|is_default)\s*!=\s*1\b/gi, "$1 = false");
+}
+
 function createPostgresDatabase(connectionString: string): Database {
-  const pool = new Pool({ connectionString, max: 5, idleTimeoutMillis: 10_000, connectionTimeoutMillis: 5_000 });
+  const pool = new Pool({ connectionString, max: 15, idleTimeoutMillis: 10_000, connectionTimeoutMillis: 5_000 });
   return {
     dialect: "postgres",
     async query<T>(sql: string, values: unknown[] = []) {
-      const result = await pool.query(sql, values);
+      const result = await pool.query(translateToPostgres(sql), values);
       return { rows: result.rows as T[], rowCount: result.rowCount ?? 0 };
     },
     async connect() {
       const client: PoolClient = await pool.connect();
       return {
         async query<T>(sql: string, values: unknown[] = []) {
-          const result = await client.query(sql, values);
+          const result = await client.query(translateToPostgres(sql), values);
           return { rows: result.rows as T[], rowCount: result.rowCount ?? 0 };
         },
         release: () => client.release(),
@@ -165,12 +178,12 @@ function createPostgresDatabase(connectionString: string): Database {
 
 export function getDatabase(): Database {
   if (database) return database;
-  const envUrl = process.env["DATABASE_URL"] || "file:./dev.db";
+  const envUrl = process.env["DATABASE_URL"] || "postgresql://postgres:Vsvg%40db1@localhost:5432/riderzpro";
   const devDbPath = envUrl.startsWith("file:")
     ? path.resolve(process.cwd(), envUrl.slice(5))
     : path.resolve(process.cwd(), "dev.db");
 
-  const isSqlite = envUrl.startsWith("file:") || process.env["USE_SQLITE"] === "true" || fs.existsSync(devDbPath);
+  const isSqlite = (envUrl.startsWith("file:") || process.env["USE_SQLITE"] === "true") && !envUrl.startsWith("postgres");
 
   if (isSqlite) {
     database = createSqliteDatabase(`file:${devDbPath}`);

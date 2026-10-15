@@ -37,6 +37,12 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
+    const hasStoredUser =
+      typeof window !== "undefined" &&
+      Boolean(localStorage.getItem("riderzpro_auth_user") || sessionStorage.getItem("riderzpro_auth_user"));
+    if (!hasStoredUser) {
+      return <Navigate to="/" replace />;
+    }
     return <Navigate to="/" search={{ openLogin: "customer", redirect: currentPath }} replace />;
   }
 

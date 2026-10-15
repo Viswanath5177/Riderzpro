@@ -275,14 +275,18 @@ export async function getCurrentRole(): Promise<string | null> {
     }
   } catch {}
   try {
-    const adm = localStorage.getItem("riderzpro_admin_session");
-    if (adm) {
-      const parsed = JSON.parse(adm);
-      if (parsed?.role) return parsed.role;
-    }
     const usr = localStorage.getItem("riderzpro_auth_user");
     if (usr) {
       const parsed = JSON.parse(usr);
+      if (parsed?.email === "admin@riderzpro.com") return "SUPER_ADMIN";
+      if (parsed?.email === "admin.operations@riderzpro.com") return "ADMIN";
+      if (parsed?.role) return parsed.role;
+    }
+    const adm = localStorage.getItem("riderzpro_admin_session");
+    if (adm) {
+      const parsed = JSON.parse(adm);
+      if (parsed?.user?.email === "admin@riderzpro.com") return "SUPER_ADMIN";
+      if (parsed?.user?.email === "admin.operations@riderzpro.com") return "ADMIN";
       if (parsed?.role) return parsed.role;
     }
   } catch {}
@@ -309,17 +313,40 @@ export async function getCurrentUser(): Promise<any> {
   return null;
 }
 
-export async function signOut() {
+export const AUTH_USER_KEY = "riderzpro_auth_user";
+export const AUTH_TOKEN_KEY = "riderzpro_auth_token";
+export const USERS_STORE_KEY = "riderzpro_registered_users";
+
+export async function signOut(): Promise<void> {
   try {
     if (typeof window !== "undefined") {
       localStorage.removeItem(AUTH_USER_KEY);
       localStorage.removeItem(AUTH_TOKEN_KEY);
+      localStorage.removeItem("riderzpro_token");
       localStorage.removeItem("riderzpro_admin_session");
-      sessionStorage.removeItem(AUTH_USER_KEY);
-      sessionStorage.removeItem(AUTH_TOKEN_KEY);
-      await fetch("/api/auth/signout", { method: "POST", credentials: "include" }).catch(() => {});
+      localStorage.removeItem("riderzpro_seller_store_confirmed");
+      localStorage.removeItem("riderzpro-v7");
+      localStorage.removeItem("riderzpro_active_bike");
+      try {
+        sessionStorage.clear();
+      } catch {}
+
+      try {
+        await fetch("/api/auth/signout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        });
+      } catch (e) {
+        console.warn("Server signout request failed:", e);
+      }
+
+      window.dispatchEvent(new Event("storage"));
+      window.dispatchEvent(new CustomEvent("riderzpro:signout"));
     }
-  } catch {}
+  } catch (err) {
+    console.error("Sign out error:", err);
+  }
 }
 
 export type User = {
@@ -358,10 +385,6 @@ export type AuthContextType = {
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
-
-const AUTH_USER_KEY = "riderzpro_auth_user";
-const AUTH_TOKEN_KEY = "riderzpro_auth_token";
-const USERS_STORE_KEY = "riderzpro_registered_users";
 
 async function hashPassword(plain: string): Promise<string> {
   if (typeof window === "undefined" || !window.crypto?.subtle) {
@@ -438,6 +461,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     initAuth();
+
+    const onSignOutEvent = () => {
+      setUser(null);
+    };
+    window.addEventListener("riderzpro:signout", onSignOutEvent);
+    return () => window.removeEventListener("riderzpro:signout", onSignOutEvent);
   }, []);
 
   const signIn = useCallback(async (emailOrPhone: string, password: string, remember = true) => {
@@ -544,14 +573,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleSignOut = useCallback(async () => {
     try {
-      localStorage.removeItem(AUTH_USER_KEY);
-      localStorage.removeItem(AUTH_TOKEN_KEY);
-      sessionStorage.removeItem(AUTH_USER_KEY);
-      sessionStorage.removeItem(AUTH_TOKEN_KEY);
       setUser(null);
       await signOut();
     } catch (e) {
       console.error("Sign out error:", e);
+      setUser(null);
     }
   }, []);
 
