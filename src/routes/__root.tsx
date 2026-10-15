@@ -154,7 +154,7 @@ function RootComponent() {
           <StoreProvider>
             <Outlet />
             <CustomerLoginModal />
-            <Toaster position="top-center" />
+            <Toaster position="top-right" closeButton />
           </StoreProvider>
         </AdminAuthProvider>
       </AuthProvider>
