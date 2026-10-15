@@ -20,13 +20,12 @@ export const Route = createFileRoute("/shop")({
 
 const CATS = [
   "All",
-  "EV Spares",
-  "EV Batteries",
-  "Chargers",
-  "Riding Gear & Helmets",
-  "Brakes & Spares",
   "Car Accessories",
   "Bike Accessories",
+  "Amplifiers",
+  "Multimedia",
+  "Interior & Comfort",
+  "Utilities & Care",
 ] as const;
 
 const PAGE_SIZE = 40;
@@ -183,24 +182,12 @@ function Shop() {
     let l = catalogueProducts.filter((p) => {
       const matchesCat =
         cat === "All" ||
-        (cat === "EV Spares" && (
-          p.department === "EV Spares" ||
-          ["EV Batteries", "Chargers", "Brakes & Suspension", "BMS & Electronics", "Motors & Transmission"].includes(p.category) ||
-          p.category.toLowerCase().includes("battery") ||
-          p.category.toLowerCase().includes("charger")
-        )) ||
-        (cat === "EV Batteries" && (p.category.toLowerCase().includes("batter") || p.name.toLowerCase().includes("battery"))) ||
-        (cat === "Chargers" && (p.category.toLowerCase().includes("charg") || p.name.toLowerCase().includes("charger") || p.name.toLowerCase().includes("dock"))) ||
-        (cat === "Riding Gear & Helmets" && (p.category.toLowerCase().includes("helmet") || p.category.toLowerCase().includes("riding") || p.department === "Riding Gear")) ||
-        (cat === "Brakes & Spares" && (
-          ["Brakes & Suspension", "BMS & Electronics", "Motors & Transmission", "Tyre Care & Utilities"].includes(p.category) ||
-          p.name.toLowerCase().includes("brake") ||
-          p.name.toLowerCase().includes("rotor") ||
-          p.name.toLowerCase().includes("belt") ||
-          p.name.toLowerCase().includes("bms")
-        )) ||
         (cat === "Car Accessories" && (p.vehicleType === "car" || p.vehicleType === "both" || ["Multimedia", "Interior", "Exterior", "Utilities"].includes(p.department as string) || p.category === "Car Accessories")) ||
-        (cat === "Bike Accessories" && (p.vehicleType === "bike" || p.vehicleType === "both" || ["Riding Gear", "EV Spares"].includes(p.department as string) || p.category === "Bike Accessories")) ||
+        (cat === "Bike Accessories" && (p.vehicleType === "bike" || p.vehicleType === "both" || ["RZP-0078", "RZP-0081", "RZP-0047", "RZP-0019"].includes(p.id) || p.category === "Bike Accessories")) ||
+        (cat === "Amplifiers" && p.category === "Amplifiers") ||
+        (cat === "Multimedia" && (p.department === "Multimedia" || ["Amplifiers", "Speakers", "Subwoofers", "Displays & Head Units", "Cameras & Security", "Accessories"].includes(p.category))) ||
+        (cat === "Interior & Comfort" && (p.department === "Interior" || ["Seat Covers", "Wiring & Installation"].includes(p.category))) ||
+        (cat === "Utilities & Care" && (p.department === "Exterior" || p.department === "Utilities" || ["Exterior Accessories", "Tyre Care & Utilities"].includes(p.category))) ||
         p.category === cat;
 
       const matchesSubcat =

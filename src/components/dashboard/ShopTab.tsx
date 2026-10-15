@@ -13,44 +13,17 @@ import { cn } from "@/lib/utils";
 
 const SHOP_CATEGORIES = [
   "All",
-  "EV Spares",
-  "EV Batteries",
-  "Chargers",
-  "Riding Gear & Helmets",
-  "Brakes & Spares",
   "Car Accessories",
   "Bike Accessories",
+  "Amplifiers",
+  "Multimedia",
+  "Interior & Comfort",
+  "Utilities & Care",
 ] as const;
 
 const PAGE_SIZE = 40;
 function matchesShopCategory(product: (typeof products)[number], category: (typeof SHOP_CATEGORIES)[number]) {
   if (category === "All") return true;
-  if (category === "EV Spares") {
-    return (
-      product.department === "EV Spares" ||
-      ["EV Batteries", "Chargers", "Brakes & Suspension", "BMS & Electronics", "Motors & Transmission"].includes(product.category) ||
-      product.category.toLowerCase().includes("battery") ||
-      product.category.toLowerCase().includes("charger")
-    );
-  }
-  if (category === "EV Batteries") {
-    return product.category.toLowerCase().includes("batter") || product.name.toLowerCase().includes("battery");
-  }
-  if (category === "Chargers") {
-    return product.category.toLowerCase().includes("charg") || product.name.toLowerCase().includes("charger") || product.name.toLowerCase().includes("dock");
-  }
-  if (category === "Riding Gear & Helmets") {
-    return product.category.toLowerCase().includes("helmet") || product.category.toLowerCase().includes("riding") || product.department === "Riding Gear";
-  }
-  if (category === "Brakes & Spares") {
-    return (
-      ["Brakes & Suspension", "BMS & Electronics", "Motors & Transmission", "Tyre Care & Utilities"].includes(product.category) ||
-      product.name.toLowerCase().includes("brake") ||
-      product.name.toLowerCase().includes("rotor") ||
-      product.name.toLowerCase().includes("belt") ||
-      product.name.toLowerCase().includes("bms")
-    );
-  }
   if (category === "Car Accessories") {
     return (
       product.vehicleType === "car" ||
@@ -62,7 +35,36 @@ function matchesShopCategory(product: (typeof products)[number], category: (type
     return (
       product.vehicleType === "bike" ||
       product.vehicleType === "both" ||
-      ["Riding Gear", "EV Spares"].includes(product.department as string)
+      (product.department === "Multimedia" && ["RZP-0078", "RZP-0081", "RZP-0047", "RZP-0019"].includes(product.id))
+    );
+  }
+  if (category === "Amplifiers") {
+    return product.category === "Amplifiers";
+  }
+  if (category === "Multimedia") {
+    return (
+      product.department === "Multimedia" ||
+      [
+        "Amplifiers",
+        "Speakers",
+        "Subwoofers",
+        "Displays & Head Units",
+        "Cameras & Security",
+        "Accessories",
+      ].includes(product.category)
+    );
+  }
+  if (category === "Interior & Comfort") {
+    return (
+      product.department === "Interior" ||
+      ["Seat Covers", "Wiring & Installation"].includes(product.category)
+    );
+  }
+  if (category === "Utilities & Care") {
+    return (
+      product.department === "Exterior" ||
+      product.department === "Utilities" ||
+      ["Exterior Accessories", "Tyre Care & Utilities"].includes(product.category)
     );
   }
   return true;

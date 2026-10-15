@@ -75,13 +75,12 @@ export async function handleRoute(req: IncomingMessage, res: ServerResponse, cle
                         (p.category_id && p.category_id.toLowerCase() === c) ||
                         (p.category_name && p.category_name.toLowerCase().includes(c)) ||
                         (p.department && p.department.toLowerCase().includes(c)) ||
-                        (c === "ev spares" && (p.department?.toLowerCase() === "ev spares" || p.category?.toLowerCase().includes("ev") || p.category?.toLowerCase().includes("batter") || p.category?.toLowerCase().includes("charg") || p.category?.toLowerCase().includes("brake") || p.category?.toLowerCase().includes("bms"))) ||
-                        (c === "ev batteries" && (p.category?.toLowerCase().includes("batter") || p.name?.toLowerCase().includes("battery"))) ||
-                        (c === "chargers" && (p.category?.toLowerCase().includes("charg") || p.name?.toLowerCase().includes("charger") || p.name?.toLowerCase().includes("dock"))) ||
-                        (c === "riding gear & helmets" && (p.category?.toLowerCase().includes("helmet") || p.category?.toLowerCase().includes("riding") || p.department?.toLowerCase() === "riding gear")) ||
-                        (c === "brakes & spares" && (["brakes & suspension", "bms & electronics", "motors & transmission", "tyre care & utilities"].includes(p.category?.toLowerCase()) || p.name?.toLowerCase().includes("brake") || p.name?.toLowerCase().includes("rotor") || p.name?.toLowerCase().includes("belt") || p.name?.toLowerCase().includes("bms"))) ||
+                        (c === "amplifiers" && p.category?.toLowerCase() === "amplifiers") ||
+                        (c === "multimedia" && (p.department?.toLowerCase() === "multimedia" || ["amplifiers", "speakers", "subwoofers", "displays & head units", "cameras & security", "accessories"].includes(p.category?.toLowerCase()))) ||
+                        (c === "interior & comfort" && (p.department?.toLowerCase() === "interior" || ["seat covers", "wiring & installation"].includes(p.category?.toLowerCase()))) ||
+                        (c === "utilities & care" && (p.department?.toLowerCase() === "exterior" || p.department?.toLowerCase() === "utilities" || ["exterior accessories", "tyre care & utilities"].includes(p.category?.toLowerCase()))) ||
                         (c === "car accessories" && (p.vehicle_type === "car" || p.vehicle_type === "both" || p.category_name?.toLowerCase().includes("car") || p.category?.toLowerCase().includes("car") || ["multimedia", "interior", "exterior", "utilities", "comfort", "car care"].includes(p.department?.toLowerCase()))) ||
-                        (c === "bike accessories" && (p.vehicle_type === "bike" || p.vehicle_type === "both" || p.category_name?.toLowerCase().includes("bike") || ["riding gear", "ev spares"].includes(p.department?.toLowerCase())));
+                        (c === "bike accessories" && (p.vehicle_type === "bike" || p.vehicle_type === "both" || p.category_name?.toLowerCase().includes("bike") || ["RZP-0078", "RZP-0081", "RZP-0047", "RZP-0019"].includes(p.id)));
                       if (!matchCat) return false;
                     }
                     if (search) {
