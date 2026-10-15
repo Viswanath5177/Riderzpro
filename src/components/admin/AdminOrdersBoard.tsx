@@ -34,7 +34,7 @@ import { useAdminAuth } from "@/lib/adminAuth";
 
 export function AdminOrdersBoard() {
   const { adminUser, isAuthenticated, loading: authLoading } = useAdminAuth();
-  const { orders, loading, error, refetch, statusChangedIds } = useAdminOrders();
+  const { orders, summary, loading, error, refetch, statusChangedIds } = useAdminOrders();
 
   const [selectedOrder, setSelectedOrder] = useState<AdminOrderJoined | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -48,18 +48,18 @@ export function AdminOrdersBoard() {
 
   // Extract unique sellers for filter dropdown
   const sellerNames = useMemo(() => {
-    return Array.from(new Set(orders.map((o) => o.sellerName))).filter(Boolean);
+    return Array.from(new Set(orders.map((o) => o.sellerName || o.seller?.name))).filter(Boolean);
   }, [orders]);
 
-  // Compute summary metrics
-  const totalOrdersCount = orders.length;
-  const inProgressCount = orders.filter((o) =>
+  // Compute summary metrics (use server summary if available, fallback to computed)
+  const totalOrdersCount = summary?.total ?? orders.length;
+  const inProgressCount = summary?.inProgress ?? orders.filter((o) =>
     ["ACCEPTED", "PACKED", "RIDER_ASSIGNED", "PICKED_UP", "IN_TRANSIT"].includes(o.status),
   ).length;
-  const deliveredCount = orders.filter((o) => o.status === "DELIVERED").length;
-  const awaitingSellerCount = orders.filter((o) => o.status === "PLACED").length;
+  const deliveredCount = summary?.delivered ?? orders.filter((o) => o.status === "DELIVERED").length;
+  const awaitingSellerCount = summary?.awaitingSeller ?? orders.filter((o) => o.status === "PLACED").length;
   // Unassigned rider = PACKED with no rider
-  const unassignedRiderCount = orders.filter(
+  const unassignedRiderCount = summary?.unassignedRider ?? orders.filter(
     (o) => o.status === "PACKED" && (!o.riderName || o.riderName.trim() === ""),
   ).length;
 
@@ -610,25 +610,37 @@ export function AdminOrdersBoard() {
               {/* Items Ordered */}
               <div>
                 <h4 className="font-bold text-gray-900 mb-2">Ordered Parts & Spares</h4>
-                <div className="border border-gray-200 rounded-2xl divide-y divide-gray-100 overflow-hidden">
-                  {selectedOrder.items.map((it, idx) => (
-                    <div key={idx} className="p-3 flex items-center justify-between bg-white">
-                      <div>
-                        <p className="font-semibold text-gray-900">{it.name}</p>
-                        <p className="text-[11px] text-gray-400">Qty: {it.qty}</p>
+                {selectedOrder.items && selectedOrder.items.length > 0 ? (
+                  <div className="border border-gray-200 rounded-2xl divide-y divide-gray-100 overflow-hidden">
+                    {selectedOrder.items.map((it, idx) => (
+                      <div key={idx} className="p-3 flex items-center justify-between bg-white">
+                        <div>
+                          <p className="font-semibold text-gray-900">{it.name}</p>
+                          <p className="text-[11px] text-gray-400">Qty: {it.qty}</p>
+                        </div>
+                        <span className="font-mono font-bold text-gray-900">
+                          ₹{(it.price * it.qty).toLocaleString("en-IN")}
+                        </span>
                       </div>
-                      <span className="font-mono font-bold text-gray-900">
-                        ₹{(it.price * it.qty).toLocaleString("en-IN")}
+                    ))}
+                    <div className="p-3 bg-gray-50 flex items-center justify-between font-bold text-gray-900">
+                      <span>Total Order Amount</span>
+                      <span className="font-mono text-sm">
+                        ₹{selectedOrder.amount.toLocaleString("en-IN")}
                       </span>
                     </div>
-                  ))}
-                  <div className="p-3 bg-gray-50 flex items-center justify-between font-bold text-gray-900">
-                    <span>Total Order Amount</span>
-                    <span className="font-mono text-sm">
-                      ₹{selectedOrder.amount.toLocaleString("en-IN")}
-                    </span>
                   </div>
-                </div>
+                ) : (
+                  <div className="border border-gray-200 rounded-2xl p-4 bg-gray-50 text-gray-500 text-xs">
+                    <p>No line items recorded for this order.</p>
+                    <div className="mt-2 flex items-center justify-between font-bold text-gray-900">
+                      <span>Total Order Amount</span>
+                      <span className="font-mono text-sm">
+                        ₹{selectedOrder.amount.toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Payment Info */}
@@ -652,28 +664,34 @@ export function AdminOrdersBoard() {
               {/* Status History Timeline */}
               <div>
                 <h4 className="font-bold text-gray-900 mb-3">Audit & Lifecycle Timeline</h4>
-                <div className="space-y-3 relative before:absolute before:inset-0 before:left-3 before:w-0.5 before:bg-gray-200">
-                  {selectedOrder.statusHistory.map((h, i) => (
-                    <div key={i} className="relative flex items-start gap-3 pl-7">
-                      <div className="absolute left-1.5 top-1.5 h-3 w-3 rounded-full bg-[#E11D2A] ring-4 ring-white" />
-                      <div className="bg-white p-3 rounded-xl border border-gray-200 flex-1 shadow-2xs">
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-gray-900">{h.status}</span>
-                          <span className="text-[10px] text-gray-400">
-                            {new Date(h.timestamp).toLocaleTimeString("en-IN", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                {selectedOrder.statusHistory && selectedOrder.statusHistory.length > 0 ? (
+                  <div className="space-y-3 relative before:absolute before:inset-0 before:left-3 before:w-0.5 before:bg-gray-200">
+                    {selectedOrder.statusHistory.map((h, i) => (
+                      <div key={i} className="relative flex items-start gap-3 pl-7">
+                        <div className="absolute left-1.5 top-1.5 h-3 w-3 rounded-full bg-[#E11D2A] ring-4 ring-white" />
+                        <div className="bg-white p-3 rounded-xl border border-gray-200 flex-1 shadow-2xs">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-gray-900">{h.status}</span>
+                            <span className="text-[10px] text-gray-400">
+                              {new Date(h.timestamp).toLocaleTimeString("en-IN", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                          {h.note && <p className="text-gray-600 mt-1">{h.note}</p>}
+                          <span className="inline-block mt-1 text-[10px] uppercase font-bold text-gray-400">
+                            Source: {h.source}
                           </span>
                         </div>
-                        {h.note && <p className="text-gray-600 mt-1">{h.note}</p>}
-                        <span className="inline-block mt-1 text-[10px] uppercase font-bold text-gray-400">
-                          Source: {h.source}
-                        </span>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-gray-500 text-xs">
+                    No status history recorded yet (lifecycle audit table pending).
+                  </div>
+                )}
               </div>
             </div>
 
