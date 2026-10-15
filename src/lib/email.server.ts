@@ -299,3 +299,91 @@ export async function sendProductApprovalEmail(to: string, productName: string, 
     templateName: approved ? "PRODUCT_APPROVED" : "PRODUCT_REJECTED",
   });
 }
+
+export interface OrderEmailDetails {
+  orderId: string;
+  customerName: string;
+  orderTotal: number;
+  paymentStatus: "PAID" | "COD_PENDING" | "PENDING";
+  paymentMethod: string;
+  shippingAddress: {
+    street: string;
+    city: string;
+    state: string;
+    pincode: string;
+  };
+  invoiceUrl?: string;
+}
+
+export async function sendOrderConfirmationEmail(to: string, details: OrderEmailDetails) {
+  const inr = (n: number) => "₹" + n.toLocaleString("en-IN");
+  const invoiceLink = details.invoiceUrl || `https://riderzpro.com/api/orders/${details.orderId}/invoice?format=html`;
+  const isPaid = details.paymentStatus === "PAID";
+
+  const html = baseLayout(`
+    <div style="text-align: center; margin-bottom: 24px;">
+      <span class="badge ${isPaid ? 'badge-approved' : 'badge-info'}" style="font-size: 13px; padding: 6px 16px;">
+        ${isPaid ? 'ORDER CONFIRMED & PAID' : 'ORDER CONFIRMED · COD PENDING'}
+      </span>
+    </div>
+    <h2 style="font-size: 22px; font-weight: 800; color: #111827; margin: 0 0 12px 0; text-align: center;">
+      Thank You for Your Order, ${details.customerName}!
+    </h2>
+    <p style="color: #4b5563; font-size: 14px; line-height: 1.6; text-align: center;">
+      Your order <strong style="color: #111827;">#${details.orderId}</strong> has been received and registered with our logistics network for doorstep express delivery.
+    </p>
+
+    <!-- Order summary card -->
+    <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin: 24px 0;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <tr>
+          <td style="color: #6b7280; padding: 6px 0;">Order Reference:</td>
+          <td style="text-align: right; font-weight: 700; font-family: monospace; color: #111827;">${details.orderId}</td>
+        </tr>
+        <tr>
+          <td style="color: #6b7280; padding: 6px 0;">Payment Method:</td>
+          <td style="text-align: right; font-weight: 700; color: #111827;">${details.paymentMethod}</td>
+        </tr>
+        <tr>
+          <td style="color: #6b7280; padding: 6px 0;">Payment Status:</td>
+          <td style="text-align: right; font-weight: 800; color: ${isPaid ? '#047857' : '#b45309'};">
+            ${details.paymentStatus}
+          </td>
+        </tr>
+        <tr>
+          <td style="color: #6b7280; padding: 6px 0;">Delivery Address:</td>
+          <td style="text-align: right; font-size: 12px; color: #374151;">
+            ${details.shippingAddress.street}, ${details.shippingAddress.city}, ${details.shippingAddress.state} - ${details.shippingAddress.pincode}
+          </td>
+        </tr>
+        <tr style="border-top: 1px solid #e5e7eb;">
+          <td style="padding: 10px 0 4px 0; font-size: 15px; font-weight: 800; color: #111827;">Total Amount:</td>
+          <td style="padding: 10px 0 4px 0; text-align: right; font-size: 18px; font-weight: 900; color: #E31E24; font-family: monospace;">
+            ${inr(details.orderTotal)}
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Rule 46 GST notice & CTA -->
+    <p style="font-size: 12px; color: #6b7280; text-align: center; margin: 16px 0 8px 0;">
+      Your Rule 46 CGST Tax Invoice has been generated with HSN breakdown and inter-state IGST calculation.
+    </p>
+    <div style="text-align: center; margin: 24px 0;">
+      <a href="${invoiceLink}" class="button" target="_blank" style="background-color: #111827; margin-right: 8px;">
+        Download GST Tax Invoice &rarr;
+      </a>
+      <a href="https://riderzpro.com/dashboard/customer" class="button" style="background-color: #E31E24;">
+        Track Live Delivery &rarr;
+      </a>
+    </div>
+  `);
+
+  return sendEmail({
+    to,
+    subject: `Order Confirmed #${details.orderId} — RiderzPro (${details.paymentStatus})`,
+    html,
+    templateName: "ORDER_CONFIRMED",
+  });
+}
+
