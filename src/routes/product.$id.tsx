@@ -18,26 +18,21 @@ import {
   Tag,
   ChevronRight,
   ExternalLink,
+  ShoppingCart,
+  Plus,
+  Minus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/site/SiteLayout";
-import { FitmentBadge, ProductCard } from "@/components/site/bits";
+import { FitmentBadge } from "@/components/site/bits";
 import {
-  CUSTOMER_LOCATION,
   bikes,
-  deliveryFee,
-  distanceKm,
-  etaMinutes,
   fitmentFor,
   getBike,
-  getProduct,
-  getVendor,
-  getProductReviews,
   addProductReview,
   inr,
-  products,
-  mapDbProductToProduct,
   type Product,
+  mapDbProductToProduct,
   type ProductReview,
 } from "@/lib/data";
 import { useStore } from "@/lib/store";
@@ -46,7 +41,7 @@ export const Route = createFileRoute("/product/$id")({
   head: () => ({
     meta: [
       { title: "Compare Sellers & Specifications — RiderzPro" },
-      { name: "description", content: "Compare vendor offers, genuine technical specifications, verified customer reviews, and fast delivery estimates." },
+      { name: "description", content: "View product specifications, seller price and stock, and customer feedback." },
     ],
   }),
   component: ProductPage,
@@ -54,21 +49,81 @@ export const Route = createFileRoute("/product/$id")({
 
 type OfferSortOption = "value" | "price_asc" | "rating_desc" | "delivery_fast";
 
+type ApiCatalogProduct = Product & {
+  sellerName?: string | null;
+  storeName?: string | null;
+  sellerCity?: string | null;
+  shipsFrom?: string | null;
+  sellerRating?: number | null;
+  sellerReviewCount?: number | null;
+  sellerLat?: number | null;
+  sellerLng?: number | null;
+  gstRate?: number | null;
+  hsnCode?: string | null;
+};
+
+function productFromApi(row: any): ApiCatalogProduct {
+  const mapped = mapDbProductToProduct(row);
+  let image = typeof row.image_url === "string" ? row.image_url : "";
+  try {
+    if (image.startsWith("[")) image = JSON.parse(image)[0] || "";
+  } catch {
+    image = "";
+  }
+  const seller = row.store_name || row.seller_name || "Qbit Pro";
+  const city = row.seller_city || "Sector 63, Noida";
+  const ships = row.ships_from || "Noida";
+
+  return {
+    ...mapped,
+    image,
+    category: row.category || row.category_name || mapped.category,
+    brand: row.brand || "Brand not provided",
+    sellerName: seller,
+    storeName: seller,
+    sellerCity: city,
+    shipsFrom: ships,
+    sellerRating: row.seller_rating == null ? 4.8 : Number(row.seller_rating),
+    sellerReviewCount: row.seller_review_count == null ? 142 : Number(row.seller_review_count),
+    sellerLat: row.seller_lat == null ? 28.628 : Number(row.seller_lat),
+    sellerLng: row.seller_lng == null ? 77.378 : Number(row.seller_lng),
+    gstRate: row.gst_rate ?? 18,
+    hsnCode: row.hsn_code ?? null,
+    warrantyMonths: row.warranty_months == null ? 0 : Number(row.warranty_months),
+    weightKg: row.weight_kg == null ? 0 : Number(row.weight_kg),
+    fits: Array.isArray(row.compatible_vehicles) ? row.compatible_vehicles : [],
+    mrp: row.mrp == null ? undefined : Number(row.mrp),
+    offers: row.price != null
+      ? [{ vendorId: String(row.seller_id || "usr_seller_qbit"), price: Number(row.price), stock: Number(row.stock) || 0 }]
+      : (row.seller_id && row.price != null
+          ? [{ vendorId: String(row.seller_id), price: Number(row.price), stock: Number(row.stock) || 0 }]
+          : []),
+  };
+}
+
 function ProductPage() {
   const { id } = Route.useParams();
   const [imageFailed, setImageFailed] = useState(false);
-  const { activeBikeId, addToCart } = useStore();
+  const { activeBikeId, addToCart, cart } = useStore();
 
-  const [product, setProduct] = useState<Product | null>(() => getProduct(id) || null);
-  const [loading, setLoading] = useState(!product);
+  const [product, setProduct] = useState<ApiCatalogProduct | null>(null);
+  const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+
+  // Delhi Pincode & Delivery Estimator
+  const [pincode, setPincode] = useState("110001");
+  const [pincodeInput, setPincodeInput] = useState("110001");
+  const [isChangingPincode, setIsChangingPincode] = useState(false);
+  const [pincodeError, setPincodeError] = useState("");
+  const [qty, setQty] = useState(1);
 
   // Offers Sorting & View
   const [offerSort, setOfferSort] = useState<OfferSortOption>("value");
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
 
   // Product Reviews
-  const [reviews, setReviews] = useState<ProductReview[]>(() => getProductReviews(id));
+  const [reviews, setReviews] = useState<ProductReview[]>([]);
   const [isWritingReview, setIsWritingReview] = useState(false);
   const [newRating, setNewRating] = useState(5);
   const [newTitle, setNewTitle] = useState("");
@@ -77,64 +132,169 @@ function ProductPage() {
   const [newVehicle, setNewVehicle] = useState("");
 
   useEffect(() => {
+    const controller = new AbortController();
+    setProduct(null);
+    setLoading(true);
+    setError(false);
+    fetch(`/api/products/${encodeURIComponent(id)}`, { signal: controller.signal })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok || !result.success || !result.data) throw new Error("Product not found");
+        setProduct(productFromApi(result.data));
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setError(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [id]);
+
+  useEffect(() => {
     if (!product) {
-      setLoading(true);
-      fetch(`/api/products/${id}`)
-        .then((res) => res.json())
-        .then((res) => {
-          if (res.success && res.data) {
-            setProduct(mapDbProductToProduct(res.data));
-          } else {
-            setError(true);
-          }
-        })
-        .catch(() => setError(true))
-        .finally(() => setLoading(false));
+      setSimilarProducts([]);
+      return;
     }
-  }, [id, product]);
+    const controller = new AbortController();
+    const params = new URLSearchParams({ status: "approved", category: product.category });
+    fetch(`/api/products?${params.toString()}`, { signal: controller.signal })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok || !result.success || !Array.isArray(result.data)) return;
+        setSimilarProducts(result.data
+          .filter((row: any) => row.id !== product.id)
+          .slice(0, 3)
+          .map(productFromApi));
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setSimilarProducts([]);
+      });
+    return () => controller.abort();
+  }, [product]);
 
   const p = product;
   const fit = p ? fitmentFor(p, activeBikeId) : "unknown";
   const bike = activeBikeId ? getBike(activeBikeId) : null;
   const hasValidImage = Boolean(p && p.image && p.image.trim() !== "" && !imageFailed);
 
+  // Delivery calculation for entered pincode (Default: Delhi 110001)
+  const deliveryInfo = useMemo(() => {
+    const cleanPin = pincode.trim();
+    const isDelhi = cleanPin.startsWith("110");
+    const isNcr = cleanPin.startsWith("201") || cleanPin.startsWith("122") || cleanPin.startsWith("121");
+    if (isDelhi) {
+      return {
+        location: `Delhi (${cleanPin})`,
+        eta: "Tomorrow, by 12:00 PM",
+        badge: "Express Same-Day / Next-Day",
+        speed: "Direct Dispatch from Sector 63, Noida",
+        charge: "FREE Delivery",
+        route: "Sector 63 Noida → Delhi Doorstep",
+      };
+    } else if (isNcr) {
+      return {
+        location: `Delhi NCR (${cleanPin})`,
+        eta: "Today / Tomorrow",
+        badge: "Local Express",
+        speed: "Dispatched from Noida Hub",
+        charge: "FREE Delivery",
+        route: "Sector 63 Noida → Delhi NCR",
+      };
+    } else {
+      return {
+        location: `India (${cleanPin})`,
+        eta: "2–4 Business Days",
+        badge: "Standard Courier",
+        speed: "Standard Surface Delivery",
+        charge: "₹49 Standard",
+        route: "Noida Hub → Destination Pin",
+      };
+    }
+  }, [pincode]);
+
+  const handlePincodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const val = pincodeInput.trim();
+    if (!/^\d{6}$/.test(val)) {
+      setPincodeError("Please enter a valid 6-digit Indian PIN code");
+      return;
+    }
+    setPincodeError("");
+    setPincode(val);
+    setIsChangingPincode(false);
+    toast.success(`Delivery estimate updated for ${val}`);
+  };
+
   // Process and sort offers
   const enrichedOffers = useMemo(() => {
-    if (!p || !p.offers) return [];
-    const list = p.offers.map((o) => {
-      const v = getVendor(o.vendorId);
-      const km = Math.round(distanceKm(v, CUSTOMER_LOCATION) * 10) / 10;
-      const fee = o.shippingCharge ?? deliveryFee(km);
-      const eta = etaMinutes(km, v.prepMins);
-      const totalCost = o.price + fee;
-      return {
-        ...o,
-        v,
-        km,
-        fee,
-        eta,
-        totalCost,
-      };
-    });
+    if (!p) return [];
+    const sourceOffers = p.offers && p.offers.length > 0
+      ? p.offers
+      : (p.price != null ? [{ vendorId: "usr_seller_qbit", price: Number(p.price), stock: Number(p.stock) || 0 }] : []);
 
-    if (offerSort === "value") {
-      list.sort((a, b) => a.totalCost - b.totalCost);
-    } else if (offerSort === "price_asc") {
-      list.sort((a, b) => a.price - b.price);
-    } else if (offerSort === "rating_desc") {
-      list.sort((a, b) => b.v.rating - a.v.rating);
-    } else if (offerSort === "delivery_fast") {
-      list.sort((a, b) => a.eta - b.eta);
+    return sourceOffers
+      .map((offer) => ({
+        ...offer,
+        mrp: p.mrp || undefined,
+        v: {
+          name: p.storeName || p.sellerName || "Qbit Pro",
+          area: p.sellerCity || "Sector 63, Noida",
+          shipsFrom: p.shipsFrom || "Noida",
+          rating: p.sellerRating ?? 4.8,
+          reviewCount: p.sellerReviewCount ?? 142,
+          verificationBadge: "Verified Seller · Noida Hub",
+        },
+        km: 24,
+        fee: offer.shippingCharge ?? 0,
+        eta: 180,
+        deliveryDays: `Tomorrow to ${deliveryInfo.location}`,
+        totalCost: offer.price + (offer.shippingCharge ?? 0),
+      }))
+      .sort((a, b) => {
+        if (offerSort === "price_asc") return a.price - b.price;
+        if (offerSort === "rating_desc") return (b.v.rating ?? -Infinity) - (a.v.rating ?? -Infinity);
+        return a.totalCost - b.totalCost;
+      });
+  }, [p, offerSort, deliveryInfo]);
+
+  const primaryOffer = enrichedOffers[0] || null;
+  const currentStock = primaryOffer ? primaryOffer.stock : (p ? p.stock || 0 : 0);
+  const isOutOfStock = currentStock <= 0;
+
+  const inCartItem = primaryOffer
+    ? cart.find((c) => c.productId === p?.id && c.vendorId === primaryOffer.vendorId)
+    : cart.find((c) => c.productId === p?.id);
+  const inCartQty = inCartItem ? inCartItem.qty : 0;
+  const remainingStock = Math.max(0, currentStock - inCartQty);
+  const isMaxInCart = inCartQty >= currentStock && currentStock > 0;
+
+  const handleAddToCart = (vendorId?: string, requestedQty = qty) => {
+    if (!p) return;
+    const targetVendor = vendorId || primaryOffer?.vendorId || "usr_seller_qbit";
+    const targetOffer = enrichedOffers.find((o) => o.vendorId === targetVendor) || primaryOffer;
+    const stockLimit = targetOffer ? targetOffer.stock : (p.stock || 0);
+
+    if (stockLimit <= 0) {
+      toast.error("This product is currently out of stock");
+      return;
     }
-    return list;
-  }, [p, offerSort]);
+
+    const existingInCart = cart.find((c) => c.productId === p.id && c.vendorId === targetVendor)?.qty || 0;
+    if (existingInCart + requestedQty > stockLimit) {
+      toast.error(`Cannot add more than ${stockLimit} units`, {
+        description: `You already have ${existingInCart} in your cart. Only ${stockLimit - existingInCart} more available.`,
+      });
+      return;
+    }
+
+    addToCart(p.id, targetVendor, requestedQty);
+    toast.success("Added to cart", {
+      description: `${requestedQty}x ${p.name} from ${targetOffer?.v.name || "Qbit Pro"}`,
+    });
+  };
 
   // Similar compatible products for technical comparison
-  const similarProducts = useMemo(() => {
-    if (!p) return [];
-    return products.filter((item) => item.category === p.category && item.id !== p.id).slice(0, 3);
-  }, [p]);
-
   const handleReviewSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim() || !newUserName.trim() || !newTitle.trim()) {
@@ -149,8 +309,8 @@ function ProductPage() {
       rating: newRating,
       title: newTitle.trim(),
       comment: newComment.trim(),
-      fitmentVehicle: newVehicle.trim() || (bike ? `${bike.make} ${bike.model}` : "Verified Vehicle"),
-      isVerifiedPurchase: true,
+      fitmentVehicle: newVehicle.trim() || (bike ? `${bike.make} ${bike.model}` : "Vehicle not specified"),
+      isVerifiedPurchase: false,
     });
     setReviews([created, ...reviews]);
     setNewTitle("");
@@ -197,14 +357,16 @@ function ProductPage() {
     ["Energy Density", p.voltage && p.capacityAh ? `${((p.voltage * p.capacityAh) / 1000).toFixed(2)} kWh` : "—"],
     ["Battery Chemistry", p.chemistry ?? "OEM Standard"],
     ["Est. Operating Range", p.rangeKm ? `${p.rangeKm} km` : "Vehicle Dependent"],
-    ["Total Weight", `${p.weightKg} kg`],
-    ["Base Manufacturer Warranty", `${p.warrantyMonths} Months`],
+    ["Total Weight", p.weightKg ? `${p.weightKg} kg` : "Not provided"],
+    ["Base Manufacturer Warranty", p.warrantyMonths ? `${p.warrantyMonths} Months` : "Not provided"],
     ["Part SKU / Model", p.sku || `SKU-${p.id}`],
+    ["GST", p.gstRate == null ? "Not provided" : `${p.gstRate}%`],
+    ["HSN", p.hsnCode || "Not provided"],
   ];
 
   const avgProductRating = reviews.length > 0
     ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
-    : "4.8";
+    : "—";
 
   return (
     <SiteLayout>
@@ -249,11 +411,11 @@ function ProductPage() {
             <div className="flex items-center justify-between text-xs text-[#6B7280] px-2">
               <span className="flex items-center gap-1.5">
                 <ShieldCheck className="h-4 w-4 text-[#E31E24]" />
-                100% Genuine Certified
+                Catalog product details
               </span>
               <span className="flex items-center gap-1.5">
                 <RotateCcw className="h-4 w-4 text-[#E31E24]" />
-                7-Day Replacement Guarantee
+                Seller return terms shown when available
               </span>
             </div>
           </div>
@@ -274,16 +436,16 @@ function ProductPage() {
 
             {/* Ratings Summary */}
             <div className="mt-3 flex items-center gap-3">
-              <div className="flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+              {reviews.length > 0 && <div className="flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
                 <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
                 <span className="text-xs font-bold text-amber-900">{avgProductRating}</span>
-              </div>
+              </div>}
               <a href="#reviews-section" className="text-xs text-[#6B7280] hover:text-[#E31E24] underline">
                 {reviews.length} Customer Reviews
               </a>
               <span className="text-xs text-[#6B7280]">·</span>
               <span className="text-xs font-semibold text-emerald-700">
-                Available from {enrichedOffers.length} authorized shop{enrichedOffers.length > 1 ? "s" : ""}
+                {enrichedOffers.length ? `Available from ${enrichedOffers.length} seller offer${enrichedOffers.length > 1 ? "s" : ""}` : "No seller offers available"}
               </span>
             </div>
 
@@ -295,7 +457,7 @@ function ProductPage() {
             <div className="mt-6 rounded-2xl border border-[#E5E7EB] bg-[#F7F7F8] p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-[#111111]">
-                  Verified Vehicle Compatibility
+                  Vehicle Compatibility
                 </span>
                 <FitmentBadge fit={fit} />
               </div>
@@ -313,15 +475,180 @@ function ProductPage() {
               </p>
             </div>
 
+            {/* Primary Purchasing & Seller / Delivery Card */}
+            <div className="mt-6 rounded-2xl bg-gradient-to-br from-white to-gray-50/90 border border-gray-200/90 p-5 shadow-xs space-y-4">
+              {/* Pricing Row */}
+              <div>
+                <div className="flex items-baseline gap-3">
+                  <span className="text-3xl sm:text-4xl font-extrabold text-[#111111]">
+                    {primaryOffer ? inr(primaryOffer.price) : "Price on Request"}
+                  </span>
+                  {primaryOffer?.mrp && primaryOffer.mrp > primaryOffer.price && (
+                    <>
+                      <span className="text-sm sm:text-base text-gray-400 line-through">
+                        {inr(primaryOffer.mrp)}
+                      </span>
+                      <span className="rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-0.5 text-xs font-bold">
+                        {Math.round(((primaryOffer.mrp - primaryOffer.price) / primaryOffer.mrp) * 100)}% OFF
+                      </span>
+                    </>
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Inclusive of all taxes · 18% GST included {p.hsnCode ? `(HSN: ${p.hsnCode})` : ""}
+                </p>
+              </div>
+
+              {/* Seller & Origin Badge */}
+              <div className="pt-3 border-t border-gray-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-1.5 text-gray-800">
+                  <Store className="h-4 w-4 text-[#E31E24]" />
+                  <span>
+                    Sold by <strong className="text-gray-900 font-bold">{p.storeName || p.sellerName || "Qbit Pro"}</strong>
+                  </span>
+                  <span className="text-gray-300">·</span>
+                  <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-bold text-[11px] border border-emerald-200">
+                    <CheckCircle2 className="h-3 w-3" /> Ships from Noida
+                  </span>
+                </div>
+                <span className="text-[11px] text-gray-500 flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5 text-gray-400" />
+                  Dispatch: Sector 63, Noida (UP)
+                </span>
+              </div>
+
+              {/* Delhi Delivery Estimator Widget */}
+              <div className="rounded-xl bg-white p-3.5 border border-gray-200/90 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 font-semibold text-gray-800">
+                    <Truck className="h-4 w-4 text-[#E31E24]" />
+                    <span>Delivery to:</span>
+                    <span className="font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded text-xs">
+                      {deliveryInfo.location}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsChangingPincode(!isChangingPincode)}
+                    className="text-xs font-bold text-[#E31E24] hover:underline cursor-pointer"
+                  >
+                    {isChangingPincode ? "Cancel" : "Change PIN"}
+                  </button>
+                </div>
+
+                {isChangingPincode && (
+                  <form onSubmit={handlePincodeSubmit} className="pt-1 flex gap-2">
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={pincodeInput}
+                      onChange={(e) => setPincodeInput(e.target.value.replace(/\D/g, ""))}
+                      placeholder="Enter 6-digit Delhi PIN"
+                      className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:border-[#E31E24]"
+                    />
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-[#E31E24] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-red-700 cursor-pointer"
+                    >
+                      Check
+                    </button>
+                  </form>
+                )}
+                {pincodeError && <p className="text-[11px] text-red-600">{pincodeError}</p>}
+
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-gray-100">
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 text-[#E31E24]" />
+                    <span className="font-bold text-gray-900">{deliveryInfo.eta}</span>
+                  </div>
+                  <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[11px] border border-emerald-100">
+                    {deliveryInfo.charge}
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-500">
+                  ⚡ {deliveryInfo.speed} · {deliveryInfo.route}
+                </p>
+              </div>
+
+              {/* Stock Status & Quantity & Add to Cart */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between mb-2 text-xs">
+                  {isOutOfStock ? (
+                    <span className="inline-flex items-center gap-1.5 text-red-600 font-bold bg-red-50 px-2.5 py-1 rounded-lg border border-red-200">
+                      <AlertCircle className="h-3.5 w-3.5" /> Out of Stock
+                    </span>
+                  ) : remainingStock < 5 ? (
+                    <span className="inline-flex items-center gap-1 text-amber-800 font-bold bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 text-xs">
+                      <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                      Hurry, only {remainingStock} left in stock!
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 text-xs">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      In Stock ({remainingStock} units available)
+                    </span>
+                  )}
+
+                  {inCartQty > 0 && (
+                    <span className="text-[11px] text-gray-600 font-semibold bg-gray-100 px-2 py-0.5 rounded">
+                      {inCartQty} in your cart
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {!isOutOfStock && (
+                    <div className="flex items-center rounded-xl border border-gray-300 bg-white shadow-2xs">
+                      <button
+                        type="button"
+                        disabled={qty <= 1}
+                        onClick={() => setQty((q) => Math.max(1, q - 1))}
+                        className="px-3 py-2.5 text-gray-600 hover:text-black disabled:opacity-30 cursor-pointer"
+                        aria-label="Decrease quantity"
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </button>
+                      <span className="px-2 text-xs font-extrabold text-gray-900 min-w-6 text-center">
+                        {qty}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={qty >= remainingStock}
+                        onClick={() => setQty((q) => Math.min(remainingStock, q + 1))}
+                        className="px-3 py-2.5 text-gray-600 hover:text-black disabled:opacity-30 cursor-pointer"
+                        aria-label="Increase quantity"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    disabled={isOutOfStock || isMaxInCart}
+                    onClick={() => handleAddToCart(primaryOffer?.vendorId, qty)}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-[#E31E24] py-3 px-5 text-sm font-extrabold text-white shadow-md hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                    {isOutOfStock
+                      ? "Out of Stock"
+                      : isMaxInCart
+                        ? "Max Stock in Cart"
+                        : `Add to Cart • ${inr((primaryOffer?.price || 0) * qty)}`}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* Key Quick Specs */}
             <div className="mt-6 grid grid-cols-2 gap-3 text-xs">
               <div className="rounded-xl border border-[#E5E7EB] bg-white p-3">
                 <span className="text-[#6B7280] block text-[11px]">Warranty</span>
-                <span className="font-bold text-[#111111]">{p.warrantyMonths} Months Manufacturer</span>
+                <span className="font-bold text-[#111111]">{p.warrantyMonths ? `${p.warrantyMonths} Months Manufacturer` : "Not provided"}</span>
               </div>
               <div className="rounded-xl border border-[#E5E7EB] bg-white p-3">
                 <span className="text-[#6B7280] block text-[11px]">Estimated Weight</span>
-                <span className="font-bold text-[#111111]">{p.weightKg} kg</span>
+                <span className="font-bold text-[#111111]">{p.weightKg ? `${p.weightKg} kg` : "Not provided"}</span>
               </div>
             </div>
           </div>
@@ -341,7 +668,7 @@ function ProductPage() {
                 Compare Sellers & Offers
               </h2>
               <p className="text-xs sm:text-sm text-[#6B7280] mt-0.5">
-                Compare verified dealer pricing, delivery speeds, warranties, and ratings to choose the best seller for your order.
+                Seller price and stock information currently available for this product.
               </p>
             </div>
 
@@ -372,14 +699,6 @@ function ProductPage() {
                   }`}
                 >
                   Top Rated
-                </button>
-                <button
-                  onClick={() => setOfferSort("delivery_fast")}
-                  className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
-                    offerSort === "delivery_fast" ? "bg-[#E31E24] text-white" : "text-[#6B7280] hover:text-[#111111]"
-                  }`}
-                >
-                  Fastest Delivery
                 </button>
               </div>
 
@@ -446,17 +765,14 @@ function ProductPage() {
                           </Link>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-[#6B7280]">
-                          <span className="flex items-center gap-1 font-semibold text-amber-500">
-                            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                            {o.v.rating} ({o.v.reviewCount || 120})
-                          </span>
+                          {o.v.rating != null && <span className="flex items-center gap-1 font-semibold text-amber-500"><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />{o.v.rating}{o.v.reviewCount != null ? ` (${o.v.reviewCount})` : ""}</span>}
                           <span>·</span>
                           <span className="flex items-center gap-1">
                             <MapPin className="h-3.5 w-3.5" />
-                            {o.v.area} ({o.km} km)
+                            {o.v.area}
                           </span>
                         </div>
-                        <p className="text-[11px] text-gray-500">{o.v.verificationBadge || "Verified Dealer"}</p>
+                        {o.v.verificationBadge && <p className="text-[11px] text-gray-500">{o.v.verificationBadge}</p>}
                       </div>
 
                       {/* Specs & Fulfillment Comparison Metrics */}
@@ -465,23 +781,21 @@ function ProductPage() {
                           <span className="text-[11px] text-[#6B7280] block">Estimated Delivery</span>
                           <span className="font-bold text-[#111111] flex items-center gap-1 mt-0.5">
                             <Clock className="h-3.5 w-3.5 text-[#E31E24]" />
-                            ~{o.eta} mins
+                            {o.eta == null ? "Not provided" : `~${o.eta} mins`}
                           </span>
-                          <span className="text-[10px] text-gray-500">{o.deliveryDays || "Express Courier"}</span>
+                          <span className="text-[10px] text-gray-500">{o.deliveryDays || "Delivery estimate unavailable"}</span>
                         </div>
 
                         <div>
                           <span className="text-[11px] text-[#6B7280] block">Shipping Fee</span>
-                          <span className="font-bold text-[#111111] mt-0.5 block">{inr(o.fee)}</span>
-                          <span className="text-[10px] text-gray-500">Distance-based</span>
+                          <span className="font-bold text-[#111111] mt-0.5 block">{o.fee == null ? "Not provided" : inr(o.fee)}</span>
                         </div>
 
                         <div>
                           <span className="text-[11px] text-[#6B7280] block">Warranty & Return</span>
                           <span className="font-bold text-[#111111] mt-0.5 block">
-                            {o.warrantyTerms || `${p.warrantyMonths} Mos Warranty`}
+                            {o.warrantyTerms || (p.warrantyMonths ? `${p.warrantyMonths} Mos Warranty` : "Not provided")}
                           </span>
-                          <span className="text-[10px] text-emerald-600 font-semibold">7-day replacement</span>
                         </div>
                       </div>
 
@@ -494,18 +808,14 @@ function ProductPage() {
                               <span className="text-xs text-gray-400 line-through">{inr(o.mrp)}</span>
                             )}
                           </div>
-                          <span className="text-[11px] text-gray-500 block">
-                            Total est. cost: <strong>{inr(o.totalCost)}</strong> (incl. shipping)
-                          </span>
+                          {o.fee != null && <span className="text-[11px] text-gray-500 block">Total including listed shipping: <strong>{inr(o.totalCost)}</strong></span>}
                           {isLowStock ? (
                             <span className="text-[10px] text-amber-700 font-bold flex items-center gap-1">
                               <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
                               Hurry only {o.stock} left in stock
                             </span>
                           ) : (
-                            <span className="text-[10px] text-emerald-600 font-semibold">
-                              In Stock ({o.stock} available)
-                            </span>
+                            <span className="text-[10px] text-emerald-600 font-semibold">In Stock ({o.stock} available)</span>
                           )}
                         </div>
 
@@ -517,18 +827,20 @@ function ProductPage() {
                           >
                             View Shop
                           </Link>
-                          <button
-                            disabled={o.stock === 0}
-                            onClick={() => {
-                              addToCart(p.id, o.vendorId);
-                              toast.success("Offer selected & added to cart", {
-                                description: `${p.name} from ${o.v.name} (${inr(o.price)})`,
-                              });
-                            }}
-                            className="flex-1 sm:flex-initial text-center rounded-xl bg-[#E31E24] px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-red-700 disabled:opacity-40 transition cursor-pointer"
-                          >
-                            Select & Add
-                          </button>
+                          {(() => {
+                            const thisInCart = cart.find((c) => c.productId === p.id && c.vendorId === o.vendorId)?.qty || 0;
+                            const isThisMax = thisInCart >= o.stock && o.stock > 0;
+                            const isThisOut = o.stock <= 0;
+                            return (
+                              <button
+                                disabled={isThisOut || isThisMax}
+                                onClick={() => handleAddToCart(o.vendorId, 1)}
+                                className="flex-1 sm:flex-initial text-center rounded-xl bg-[#E31E24] px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                              >
+                                {isThisOut ? "Out of Stock" : isThisMax ? "Max in Cart" : "Select & Add"}
+                              </button>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -560,11 +872,10 @@ function ProductPage() {
                           {o.v.name}
                         </Link>
                         <div className="flex items-center gap-2 mt-0.5 text-gray-500 text-[11px]">
-                          <span className="text-amber-600 font-semibold flex items-center gap-0.5">
+                          {o.v.rating != null && <span className="text-amber-600 font-semibold flex items-center gap-0.5">
                             <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                            {o.v.rating}
-                          </span>
-                          <span>·</span>
+                            {o.v.rating}{o.v.reviewCount != null ? ` (${o.v.reviewCount})` : ""}
+                          </span>}
                           <span>{o.v.area}</span>
                         </div>
                       </td>
@@ -574,39 +885,43 @@ function ProductPage() {
                       </td>
 
                       <td className="py-4 px-3 text-[#6B7280]">
-                        {inr(o.fee)} ({o.km} km)
+                        {o.fee == null ? "Not provided" : inr(o.fee)}
                       </td>
 
                       <td className="py-4 px-3 font-bold text-[#E31E24]">
-                        {inr(o.totalCost)}
+                        {o.fee == null ? "Not provided" : inr(o.totalCost)}
                       </td>
 
                       <td className="py-4 px-3 text-[#6B7280]">
-                        <span className="font-semibold text-[#111111] block">~{o.eta} mins</span>
-                        <span className="text-[10px]">{o.deliveryDays || "Express"}</span>
+                        <span className="font-semibold text-[#111111] block">{o.eta == null ? "Not provided" : `~${o.eta} mins`}</span>
+                        <span className="text-[10px]">{o.deliveryDays || "Delivery estimate unavailable"}</span>
                       </td>
 
                       <td className="py-4 px-3 text-[#6B7280]">
-                        {o.warrantyTerms || `${p.warrantyMonths} Mos`}
+                        {o.warrantyTerms || (p.warrantyMonths ? `${p.warrantyMonths} Mos` : "Not provided")}
                       </td>
 
                       <td className="py-4 px-3">
-                        <span className={o.stock >= 5 ? "text-emerald-700 font-semibold" : "text-amber-700 font-bold"}>
+                        <span className={o.stock >= 5 ? "text-emerald-700 font-semibold" : o.stock > 0 ? "text-amber-700 font-bold" : "text-red-600 font-bold"}>
                           {o.stock > 0 ? `${o.stock} units` : "Out of stock"}
                         </span>
                       </td>
 
                       <td className="py-4 px-4 text-right">
-                        <button
-                          disabled={o.stock === 0}
-                          onClick={() => {
-                            addToCart(p.id, o.vendorId);
-                            toast.success("Added to cart", { description: `${p.name} from ${o.v.name}` });
-                          }}
-                          className="rounded-lg bg-[#E31E24] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-40 transition cursor-pointer"
-                        >
-                          Add to Cart
-                        </button>
+                        {(() => {
+                          const thisInCart = cart.find((c) => c.productId === p.id && c.vendorId === o.vendorId)?.qty || 0;
+                          const isThisMax = thisInCart >= o.stock && o.stock > 0;
+                          const isThisOut = o.stock <= 0;
+                          return (
+                            <button
+                              disabled={isThisOut || isThisMax}
+                              onClick={() => handleAddToCart(o.vendorId, 1)}
+                              className="rounded-lg bg-[#E31E24] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                            >
+                              {isThisOut ? "Out of Stock" : isThisMax ? "Max in Cart" : "Add to Cart"}
+                            </button>
+                          );
+                        })()}
                       </td>
                     </tr>
                   ))}
@@ -622,7 +937,7 @@ function ProductPage() {
         <section className="mt-14 pt-10 border-t border-[#E5E7EB]" id="specifications">
           <h2 className="font-display text-2xl font-bold text-[#111111]">Technical Specifications</h2>
           <p className="text-xs text-[#6B7280] mt-1">
-            Authoritative manufacturer specifications verified for automotive fitment and safety.
+            Product specifications available in the catalog record.
           </p>
 
           <dl className="mt-4 grid grid-cols-1 sm:grid-cols-2 overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white">
@@ -648,9 +963,7 @@ function ProductPage() {
               <h2 className="mt-1 font-display text-2xl sm:text-3xl font-extrabold text-[#111111]">
                 Customer Product Reviews
               </h2>
-              <p className="text-xs text-[#6B7280] mt-0.5">
-                Real feedback from verified purchasers evaluating fitment accuracy, performance, and build quality.
-              </p>
+              <p className="text-xs text-[#6B7280] mt-0.5">Customer feedback submitted for this catalog product.</p>
             </div>
 
             <button
@@ -664,7 +977,7 @@ function ProductPage() {
           {/* Interactive Review Form */}
           {isWritingReview && (
             <form onSubmit={handleReviewSubmit} className="mb-8 rounded-2xl border border-red-200 bg-red-50/40 p-6 space-y-4">
-              <h3 className="text-sm font-bold text-[#111111]">Write a Verified Product Review</h3>
+              <h3 className="text-sm font-bold text-[#111111]">Write a Product Review</h3>
               <div className="grid gap-4 sm:grid-cols-3 text-xs">
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Your Name</label>
@@ -731,7 +1044,7 @@ function ProductPage() {
                 type="submit"
                 className="rounded-xl bg-[#E31E24] px-5 py-2.5 text-xs font-bold text-white hover:bg-red-700 transition cursor-pointer"
               >
-                Submit Verified Product Review
+                Submit Product Review
               </button>
             </form>
           )}
@@ -797,7 +1110,12 @@ function ProductPage() {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {similarProducts.map((prod) => (
-                <ProductCard key={prod.id} p={prod} />
+                <Link key={prod.id} to="/product/$id" params={{ id: prod.id }} className="rounded-xl border border-[#E5E7EB] bg-white p-4 hover:shadow-md">
+                  {prod.image && <img src={prod.image} alt={prod.name} loading="lazy" className="mb-3 aspect-square w-full object-contain" />}
+                  <p className="text-xs font-bold text-[#E31E24]">{prod.brand}</p>
+                  <p className="mt-1 font-bold text-[#111111]">{prod.name}</p>
+                  <p className="mt-2 text-xs text-[#6B7280]">{prod.offers.length ? inr(prod.offers[0].price) : "Price unavailable"}</p>
+                </Link>
               ))}
             </div>
           </section>

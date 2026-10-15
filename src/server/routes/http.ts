@@ -12,8 +12,11 @@ export async function parseBody(req: IncomingMessage): Promise<any> {
   });
 }
 
-export function sendJson(res: ServerResponse, status: number, data: any) {
+export function sendJson(res: ServerResponse, status: number, data: any): boolean {
+  if (res.headersSent) return true;
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
   res.end(JSON.stringify(data));
+  return true;
 }
+

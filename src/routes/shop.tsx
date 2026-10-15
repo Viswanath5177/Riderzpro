@@ -1,10 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { SlidersHorizontal, Search, Check, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { SlidersHorizontal, Search, Check, X, ChevronLeft, ChevronRight, Package } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
-import { ProductCard } from "@/components/site/bits";
-import { bestOffer, bikes, getBike, products, ALL_PRODUCT_CATEGORIES, type Category } from "@/lib/data";
-import { useCatalogue } from "@/lib/catalogue";
+import { bestOffer, bikes, getBike, inr, mapDbProductToProduct, type Product } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -30,9 +28,83 @@ const CATS = [
 
 const PAGE_SIZE = 40;
 
+type ApiCatalogProduct = Product & {
+  sellerName?: string | null;
+  storeName?: string | null;
+  gstRate?: number | null;
+  hsnCode?: string | null;
+};
+
+function productFromApi(row: any): ApiCatalogProduct {
+  const mapped = mapDbProductToProduct(row);
+  let image = typeof row.image_url === "string" ? row.image_url : "";
+  try {
+    if (image.startsWith("[")) image = JSON.parse(image)[0] || "";
+  } catch {
+    image = "";
+  }
+  return {
+    ...mapped,
+    image,
+    category: row.category || row.category_name || mapped.category,
+    brand: row.brand || "Brand not provided",
+    fits: Array.isArray(row.compatible_vehicles) ? row.compatible_vehicles : [],
+    offers: row.seller_id && row.price != null
+      ? [{ vendorId: String(row.seller_id), price: Number(row.price), stock: Number(row.stock) || 0 }]
+      : [],
+    sellerName: row.seller_name || null,
+    storeName: row.store_name || null,
+    gstRate: row.gst_rate ?? null,
+    hsnCode: row.hsn_code ?? null,
+  };
+}
+
+function CatalogProductCard({ product }: { product: ApiCatalogProduct }) {
+  const offer = bestOffer(product);
+  const image = product.image.trim();
+  const seller = product.storeName || product.sellerName;
+
+  return (
+    <article className="relative overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-2xs transition hover:-translate-y-1 hover:shadow-md">
+      <Link to="/product/$id" params={{ id: product.id }} className="block">
+        <div className="relative aspect-square bg-[#F5F6F8] p-3">
+          {image ? (
+            <img src={image} alt={product.name} loading="lazy" className={`h-full w-full object-contain ${offer.stock <= 0 ? "opacity-60 grayscale" : ""}`} />
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-xs text-gray-500">
+              <Package className="h-8 w-8 text-gray-300" />
+              Product image unavailable
+            </div>
+          )}
+          {offer.stock <= 0 && (
+            <span className="absolute top-3 right-3 rounded-md bg-red-600 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white shadow-sm">
+              Out of Stock
+            </span>
+          )}
+        </div>
+        <div className="p-3">
+          <p className="truncate text-[10px] font-bold uppercase tracking-wide text-[#E31E24]">{product.category} · {product.brand}</p>
+          <h2 className="mt-1 line-clamp-2 min-h-10 text-sm font-bold text-[#111111]">{product.name}</h2>
+          <p className="mt-2 truncate text-[11px] text-[#6B7280]">Sold by {seller || "Seller details pending"}</p>
+          <p className="mt-2 text-base font-extrabold text-[#111111]">{product.offers.length ? inr(offer.price) : "Price unavailable"}</p>
+          <p className="mt-1 text-[11px] text-[#6B7280]">
+            {offer.stock > 0 ? (
+              <span className="text-emerald-700 font-semibold">{offer.stock} in stock</span>
+            ) : (
+              <span className="text-red-600 font-bold">Out of stock</span>
+            )}
+            {product.gstRate != null ? ` · GST ${product.gstRate}%` : " · GST details pending"}
+          </p>
+        </div>
+      </Link>
+    </article>
+  );
+}
+
 function Shop() {
-  const { activeBikeId, setActiveBikeId } = useStore();
-  const { products: catalogueProducts } = useCatalogue();
+  const { activeBikeId } = useStore();
+  const [catalogueProducts, setCatalogueProducts] = useState<ApiCatalogProduct[]>([]);
+  const [catalogueState, setCatalogueState] = useState<"loading" | "ready" | "error">("loading");
 
   const [q, setQ] = useState(() => {
     if (typeof window !== "undefined") {
@@ -58,6 +130,40 @@ function Shop() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setCatalogueState("loading");
+      const params = new URLSearchParams({ status: "approved" });
+      const serverCategory = subcat !== "All"
+        ? subcat
+        : cat === "EV Batteries"
+          ? "Battery"
+          : cat !== "All"
+            ? cat
+            : "";
+      if (serverCategory) params.set("category", serverCategory);
+      if (q.trim()) params.set("q", q.trim());
+      if (onlyFit && activeBikeId) params.set("fit_vehicle", activeBikeId);
+
+      try {
+        const response = await fetch(`/api/products?${params.toString()}`, { signal: controller.signal });
+        if (!response.ok) throw new Error(`Catalog request failed (${response.status})`);
+        const result = await response.json();
+        if (!result.success || !Array.isArray(result.data)) throw new Error("Catalog response was invalid");
+        setCatalogueProducts(result.data.map(productFromApi));
+        setCatalogueState("ready");
+      } catch (error) {
+        if (!controller.signal.aborted) setCatalogueState("error");
+      }
+    }, q.trim() ? 250 : 0);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [cat, subcat, q, onlyFit, activeBikeId]);
+
+  useEffect(() => {
     const handleUrl = () => {
       if (typeof window !== "undefined") {
         const p = new URLSearchParams(window.location.search);
@@ -73,8 +179,7 @@ function Shop() {
   }, []);
 
   const list = useMemo(() => {
-    const sourceProducts = catalogueProducts && catalogueProducts.length > 0 ? catalogueProducts : products;
-    let l = sourceProducts.filter((p) => {
+    let l = catalogueProducts.filter((p) => {
       const matchesCat =
         cat === "All" ||
         (cat === "Electric Bikes" && p.category === "Electric Bikes") ||
@@ -98,10 +203,15 @@ function Shop() {
           .includes(q.toLowerCase());
       return matchesCat && matchesSubcat && matchesVolt && matchesFit && matchesQ;
     });
-    if (sort === "low") l = [...l].sort((a, b) => bestOffer(a).price - bestOffer(b).price);
-    if (sort === "high") l = [...l].sort((a, b) => bestOffer(b).price - bestOffer(a).price);
+    if (sort === "low") l = [...l].sort((a, b) => (a.offers[0]?.price ?? Infinity) - (b.offers[0]?.price ?? Infinity));
+    if (sort === "high") l = [...l].sort((a, b) => (b.offers[0]?.price ?? -Infinity) - (a.offers[0]?.price ?? -Infinity));
     return l;
-  }, [catalogueProducts, q, cat, subcat, volt, onlyFit, activeBikeId, sort]);
+  }, [catalogueProducts, cat, subcat, volt, onlyFit, activeBikeId, sort]);
+
+  const categories = useMemo(
+    () => Array.from(new Set(catalogueProducts.map((product) => product.category))).sort(),
+    [catalogueProducts],
+  );
 
   const bike = activeBikeId ? getBike(activeBikeId) : null;
 
@@ -120,7 +230,7 @@ function Shop() {
               {cat === "All" ? "All Products & Spares" : cat}
             </h1>
             <p className="mt-1 text-sm text-[#6B7280]">
-              Browse high-grade electric bikes, genuine spares, accessories, and certified fast chargers.
+              Browse electric bikes, spares, accessories, and fast chargers listed in the catalog.
             </p>
           </div>
         </div>
@@ -159,8 +269,8 @@ function Shop() {
                 aria-label="Filter by product category"
                 className="h-10 rounded-lg border border-[#E5E7EB] bg-white px-3 text-xs font-semibold text-[#111111] outline-none cursor-pointer hover:border-gray-400 max-w-[200px]"
               >
-                <option value="All">All Categories ({ALL_PRODUCT_CATEGORIES.length})</option>
-                {ALL_PRODUCT_CATEGORIES.map((sc) => (
+                <option value="All">All Categories ({categories.length})</option>
+                {categories.map((sc) => (
                   <option key={sc} value={sc}>{sc}</option>
                 ))}
               </select>
@@ -267,7 +377,14 @@ function Shop() {
         </div>
 
         {/* Product Cards Grid */}
-        {list.length === 0 ? (
+        {catalogueState === "loading" ? (
+          <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-white p-12 text-center text-sm text-[#6B7280]">Loading products from the catalog…</div>
+        ) : catalogueState === "error" ? (
+          <div className="mt-8 rounded-2xl border border-dashed border-[#E5E7EB] bg-white p-12 text-center">
+            <p className="font-display text-xl font-bold text-[#111111]">Catalog unavailable</p>
+            <p className="mt-2 text-sm text-[#6B7280]">We couldn’t load products from the catalog API. Please try again shortly.</p>
+          </div>
+        ) : list.length === 0 ? (
           <div className="mt-8 rounded-2xl border border-dashed border-[#E5E7EB] bg-white p-12 text-center">
             <p className="font-display text-xl font-bold text-[#111111]">No matching products found</p>
             <p className="mt-2 text-sm text-[#6B7280]">
@@ -291,7 +408,7 @@ function Shop() {
           <>
             <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {list.slice(0, visibleCount).map((p) => (
-                <ProductCard key={p.id} p={p} />
+                <CatalogProductCard key={p.id} product={p} />
               ))}
             </div>
 

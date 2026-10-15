@@ -1,7 +1,31 @@
 import { ProductModel, CategoryModel } from "../models";
+import demoProductsRaw from "../../../database/demo_products.json";
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { parseBody, sendJson } from "./http";
+
+const demoProducts: any[] = (demoProductsRaw as any[]) || [];
+
+function storefrontProduct(record: any) {
+  const sellerName = record.store_name || record.seller_name || "Qbit Pro";
+  const sellerCity = record.seller_city || "Sector 63, Noida";
+  const shipsFrom = record.ships_from || "Noida";
+  const gstRate = record.gst_rate ?? record.gstRate ?? 18;
+  const hsnCode = record.hsn_code ?? record.hsnCode ?? null;
+  const categoryName = record.category_name || record.category || null;
+
+  return {
+    ...record,
+    category: categoryName,
+    category_name: categoryName,
+    seller_name: sellerName,
+    store_name: record.store_name || sellerName,
+    seller_city: sellerCity,
+    ships_from: shipsFrom,
+    gst_rate: gstRate,
+    hsn_code: hsnCode,
+  };
+}
 
 export async function handleRoute(req: IncomingMessage, res: ServerResponse, cleanUrl: string, method: string | undefined, queryParams: URLSearchParams): Promise<boolean> {
           if (cleanUrl.startsWith("/api/products")) {
@@ -12,16 +36,19 @@ export async function handleRoute(req: IncomingMessage, res: ServerResponse, cle
               // GET /api/products/:id or GET /api/products
               if (method === "GET") {
                 if (productId) {
-                  const item = await ProductModel.findById(productId);
+                  let item = await ProductModel.findById(productId);
+                  if (!item) {
+                    item = demoProducts.find((p) => p.id === productId) || null;
+                  }
                   if (!item) {
                     return sendJson(res, 404, { success: false, error: "Product not found" });
                   }
-                  return sendJson(res, 200, { success: true, data: item });
+                  return sendJson(res, 200, { success: true, data: storefrontProduct(item) });
                 }
 
                 const fitVehicle = queryParams.get("fit_vehicle") || undefined;
                 const category = queryParams.get("category") || undefined;
-                const sellerId = queryParams.get("seller_id") || undefined;
+                const sellerId = queryParams.get("seller_id") || queryParams.get("seller") || undefined;
                 const search = queryParams.get("q") || queryParams.get("search") || undefined;
                 const all = queryParams.get("all") === "true";
                 const status = queryParams.get("status") || undefined;
@@ -29,7 +56,7 @@ export async function handleRoute(req: IncomingMessage, res: ServerResponse, cle
                 // Storefront protection: unless explicitly requesting all, specific status, or seller catalog, show only approved products
                 const effectiveStatus = status || (all || sellerId ? undefined : "approved");
 
-                const products = await ProductModel.findAll({
+                let products = await ProductModel.findAll({
                   fit_vehicle: fitVehicle,
                   category: category,
                   seller_id: sellerId,
@@ -38,7 +65,41 @@ export async function handleRoute(req: IncomingMessage, res: ServerResponse, cle
                   is_active: all ? undefined : true,
                 });
 
-                return sendJson(res, 200, { success: true, data: products, total: products.length });
+                if (products.length === 0) {
+                  products = demoProducts.filter((p) => {
+                    if (sellerId && p.seller_id !== sellerId) return false;
+                    if (category && category !== "All") {
+                      const c = category.toLowerCase().trim();
+                      const matchCat =
+                        (p.category && p.category.toLowerCase().includes(c)) ||
+                        (p.category_id && p.category_id.toLowerCase() === c) ||
+                        (p.category_name && p.category_name.toLowerCase().includes(c)) ||
+                        (c === "car accessories" && (p.vehicle_type === "car" || p.category_name?.toLowerCase().includes("car") || p.category?.toLowerCase().includes("car") || p.department?.toLowerCase() === "multimedia" || p.department?.toLowerCase() === "comfort" || p.department?.toLowerCase() === "car care")) ||
+                        (c === "bike accessories" && (p.vehicle_type === "bike" || p.category_name?.toLowerCase().includes("bike")));
+                      if (!matchCat) return false;
+                    }
+                    if (search) {
+                      const s = search.toLowerCase();
+                      const inSearch =
+                        (p.name && p.name.toLowerCase().includes(s)) ||
+                        (p.brand && p.brand.toLowerCase().includes(s)) ||
+                        (p.description && p.description.toLowerCase().includes(s)) ||
+                        (p.sku && p.sku.toLowerCase().includes(s));
+                      if (!inSearch) return false;
+                    }
+                    if (fitVehicle && fitVehicle !== "all") {
+                      const f = fitVehicle.toLowerCase();
+                      const matchFit =
+                        p.fitment_type === "universal" ||
+                        (Array.isArray(p.compatible_vehicles) &&
+                          (p.compatible_vehicles.includes("universal") || p.compatible_vehicles.includes(f)));
+                      if (!matchFit) return false;
+                    }
+                    return true;
+                  });
+                }
+
+                return sendJson(res, 200, { success: true, data: products.map(storefrontProduct), total: products.length });
               }
 
               // POST /api/products (Publish product)

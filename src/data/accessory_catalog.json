@@ -2650,9 +2650,15 @@
       "features": [
         "Kick mat + pockets"
       ],
-      "imageUrls": [],
-      "imageStatus": "No image provided",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/Organiser-1.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/Organiser-2.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/Organiser-3.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/Organiser-4.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/Car-Seat-Organisied-5.jpg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 5,
       "status": "Planned",
       "sourceCatalog": "category-catalogue",
       "missing": [
@@ -2766,9 +2772,15 @@
       "features": [
         "Premium look"
       ],
-      "imageUrls": [],
-      "imageStatus": "No image provided",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/Organiser-1.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/Organiser-2.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/Organiser-3.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/Organiser-4.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/Car-Seat-Organisied-5.jpg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 5,
       "status": "Planned",
       "sourceCatalog": "category-catalogue",
       "missing": [
@@ -4202,9 +4214,12 @@
       "features": [
         "Scratch free lining"
       ],
-      "imageUrls": [],
-      "imageStatus": "No image provided",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/SPARKO-SILVER-BODY-COVER.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/WhatsApp Image 2023-11-28 at 4.35.40 PM.jpeg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 2,
       "status": "Planned",
       "sourceCatalog": "category-catalogue",
       "missing": [
@@ -4260,9 +4275,12 @@
       "features": [
         "Mirror pockets, elastic hem"
       ],
-      "imageUrls": [],
-      "imageStatus": "No image provided",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/TRILAYER-BODY-COVER.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/WhatsApp Image 2023-11-28 at 4.35.40 PM (1).jpeg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 2,
       "status": "Planned",
       "sourceCatalog": "category-catalogue",
       "missing": [
@@ -4666,9 +4684,11 @@
       "features": [
         "Breathable, good for hot climate"
       ],
-      "imageUrls": [],
-      "imageStatus": "No image provided",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/PADDED-PLUS02.jpg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 1,
       "status": "Planned",
       "sourceCatalog": "category-catalogue",
       "missing": [
@@ -6712,9 +6732,17 @@
       "features": [
         "Ergonomic contour"
       ],
-      "imageUrls": [],
-      "imageStatus": "No image provided",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/neckrest-1.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/neckrest-2.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/neckrest-3.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/neckrest-4.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/neckrest-5.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/neckrest-6.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/neckrest-7.jpg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 7,
       "status": "Planned",
       "sourceCatalog": "category-catalogue",
       "missing": [
@@ -6770,9 +6798,17 @@
       "features": [
         "Bundle offer"
       ],
-      "imageUrls": [],
-      "imageStatus": "No image provided",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/neckrest-1.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/neckrest-2.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/neckrest-3.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/neckrest-4.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/neckrest-5.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/neckrest-6.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/neckrest-7.jpg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 7,
       "status": "Planned",
       "sourceCatalog": "category-catalogue",
       "missing": [
@@ -6828,9 +6864,12 @@
       "features": [
         "Set of 2 front seats"
       ],
-      "imageUrls": [],
-      "imageStatus": "No image provided",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/Memory-Foam-Orthopedic-C-Neckrest-Black-1.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/Memory-Foam-Orthopedic-C-Neckrest-Black-2.jpg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 2,
       "status": "Planned",
       "sourceCatalog": "category-catalogue",
       "missing": [
@@ -7796,9 +7835,13 @@
       "features": [
         "12V socket powered"
       ],
-      "imageUrls": [],
-      "imageStatus": "No image provided",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/vent-sheet.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/vent-sheet02.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/WhatsApp Image 2025-04-10 at 13.28.33.jpeg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 3,
       "status": "Planned",
       "sourceCatalog": "category-catalogue",
       "missing": [
@@ -7912,9 +7955,12 @@
       "features": [
         "Non slip base, washable cover"
       ],
-      "imageUrls": [],
-      "imageStatus": "No image provided",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/second-angle-3-1.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/gree-3-in-1.jpg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 2,
       "status": "Planned",
       "sourceCatalog": "category-catalogue",
       "missing": [
@@ -8712,9 +8758,11 @@
       "features": [
         "Auto cut off, LED light"
       ],
-      "imageUrls": [],
-      "imageStatus": "No image provided",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/tire-inflator-1.jpg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 1,
       "status": "Planned",
       "sourceCatalog": "category-catalogue",
       "missing": [
@@ -9673,9 +9721,13 @@
       "bestseller": false,
       "description": null,
       "features": [],
-      "imageUrls": [],
-      "imageStatus": "Stock placeholder only",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/vent-sheet.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/vent-sheet02.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/WhatsApp Image 2025-04-10 at 13.28.33.jpeg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 3,
       "status": "Listed",
       "sourceCatalog": "main-catalogue",
       "missing": [
@@ -9714,9 +9766,12 @@
         "Model-cut mirror pockets and antenna slot",
         "Buckle-and-strap underbody fastening"
       ],
-      "imageUrls": [],
-      "imageStatus": "Stock placeholder only",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/TRILAYER-BODY-COVER.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/WhatsApp Image 2023-11-28 at 4.35.40 PM (1).jpeg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 2,
       "status": "Listed",
       "sourceCatalog": "main-catalogue",
       "missing": [
@@ -10510,9 +10565,11 @@
         "Headrest, armrest and third-row pieces included where applicable",
         "Free fitting at any Riderzpro garage"
       ],
-      "imageUrls": [],
-      "imageStatus": "Stock placeholder only",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/PADDED-PLUS02.jpg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 1,
       "status": "Listed",
       "sourceCatalog": "main-catalogue",
       "missing": [
@@ -11737,9 +11794,12 @@
       "bestseller": false,
       "description": null,
       "features": [],
-      "imageUrls": [],
-      "imageStatus": "Stock placeholder only",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/Cup-tissue-tan-1.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/Cup-tissue-tan.jpg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 2,
       "status": "Listed",
       "sourceCatalog": "main-catalogue",
       "missing": [
@@ -11860,9 +11920,11 @@
         "CANbus decoder included, no dash errors",
         "Aimed on a beam setter before handover"
       ],
-      "imageUrls": [],
-      "imageStatus": "Stock placeholder only",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/led-head-lamp.png"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 1,
       "status": "Listed",
       "sourceCatalog": "main-catalogue",
       "missing": [
@@ -14579,9 +14641,11 @@
         "Built-in 4-channel amp plus 4 V pre-outs for a DSP",
         "Model-specific frame and harness — no cutting"
       ],
-      "imageUrls": [],
-      "imageStatus": "Stock placeholder only",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/android--1.jpg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 1,
       "status": "Listed",
       "sourceCatalog": "main-catalogue",
       "missing": [
@@ -22687,9 +22751,11 @@
         "Zero-odour butyl — not asphalt",
         "Measured average 4–6 dB cabin noise reduction"
       ],
-      "imageUrls": [],
-      "imageStatus": "Stock placeholder only",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/damping-sheet.jpg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 1,
       "status": "Listed",
       "sourceCatalog": "main-catalogue",
       "missing": [
@@ -23790,9 +23856,11 @@
         "1 Sheet 54\" x 35.4\" (1372mm x 900mm)",
         "Total coverage 13.28 sq ft (1.23 m2)"
       ],
-      "imageUrls": [],
-      "imageStatus": "No image",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/damping-sheet.jpg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 1,
       "status": "Held back",
       "sourceCatalog": "main-catalogue",
       "missing": [
@@ -27088,9 +27156,13 @@
       "bestseller": false,
       "description": null,
       "features": [],
-      "imageUrls": [],
-      "imageStatus": "Stock placeholder only",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/duster.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/duste1.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/burssh-duster.jpg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 3,
       "status": "Listed",
       "sourceCatalog": "main-catalogue",
       "missing": [
@@ -27160,9 +27232,11 @@
       "bestseller": false,
       "description": null,
       "features": [],
-      "imageUrls": [],
-      "imageStatus": "Stock placeholder only",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/CAR-ODOUR-ELIMINATOR.jpg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 1,
       "status": "Listed",
       "sourceCatalog": "main-catalogue",
       "missing": [
@@ -27232,9 +27306,11 @@
       "bestseller": false,
       "description": null,
       "features": [],
-      "imageUrls": [],
-      "imageStatus": "Stock placeholder only",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/STEERING-WHEEL-DINING-TRAY.jpg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 1,
       "status": "Listed",
       "sourceCatalog": "main-catalogue",
       "missing": [
@@ -27314,9 +27390,12 @@
         "Battery clamps, 8 m air hose and inflation kit included",
         "Carry case with tyre deflators"
       ],
-      "imageUrls": [],
-      "imageStatus": "Stock placeholder only",
-      "photoLinkCount": 0,
+      "imageUrls": [
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/Small-Inflator-1.jpg",
+        "https://autoform-image.s3.ap-south-1.amazonaws.com/products/tire-inflator-1.jpg"
+      ],
+      "imageStatus": "Photo links included (Autoform India)",
+      "photoLinkCount": 2,
       "status": "Listed",
       "sourceCatalog": "main-catalogue",
       "missing": [

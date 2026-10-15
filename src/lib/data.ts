@@ -8,6 +8,7 @@ import heroBike from "@/assets/hero-bike.jpg";
 import scooterImg from "@/assets/scooter.jpg";
 import catalog from "@/data/accessory_catalog.json";
 import vehicleCatalog from "../../web/data/ev_two_wheeler_catalog.json";
+import demoProductsJson from "../../database/demo_products.json";
 
 export type Bike = { id: string; make: string; model: string; years: number[]; voltage: number; wmi: string };
 export type Car = { id: string; make: string; model: string; years: number[]; batteryKWh?: number };
@@ -238,6 +239,28 @@ export const vendors: Vendor[] = [
   { id: "v4", name: "Ampere Auto Hebbal", area: "Hebbal", lat: 13.0358, lng: 77.597, rating: 4.7, prepMins: 15 },
   { id: "v5", name: "GreenWheels Whitefield", area: "Whitefield", lat: 12.9698, lng: 77.75, rating: 4.4, prepMins: 30 },
   { id: "v6", name: "Riderz Dealer Malleshwaram", area: "Malleshwaram", lat: 13.0035, lng: 77.5709, rating: 4.9, prepMins: 10 },
+  {
+    id: "usr_seller_qbit",
+    name: "Qbit Pro",
+    area: "Sector 63, Noida",
+    lat: 28.628,
+    lng: 77.378,
+    rating: 4.8,
+    reviewCount: 142,
+    prepMins: 20,
+    isVerified: true,
+    verificationBadge: "Verified Seller · Noida Hub",
+    description: "Official authorized dealer & distributor for Blaupunkt, Recoil, and Riderzpro car accessories.",
+    deliveryCoverage: "Delhi NCR & Pan India",
+    businessHours: "Mon-Sat: 09:30 AM - 07:00 PM",
+    phone: "+91 120 456 7890",
+    email: "support@qbitpro.com",
+    address: "H-Block, Sector 63, Noida, Uttar Pradesh 201301",
+    gstin: "09AAACQ1234F1Z5",
+    shippingPolicy: "Ships from Noida. Same-day dispatch for Delhi NCR orders.",
+    returnPolicy: "10-day replacement warranty.",
+    commissionRate: 0.08,
+  },
 ];
 
 export const ALL_PRODUCT_CATEGORIES = Array.from(
@@ -426,7 +449,47 @@ const catalogProducts: Product[] = (catalog.products as any[]).map((p, i) => {
   };
 });
 
-export const products: Product[] = [...coreProducts, ...uploadedBrandProducts, ...catalogProducts];
+export const demoCatalogProducts: Product[] = ((demoProductsJson as any[]) || []).map((p) => {
+  const basePrice = Number(p.price) || 0;
+  const mrpPrice = Number(p.mrp) || Math.round(basePrice * 1.15);
+  const primaryImage = (Array.isArray(p.image_urls) && p.image_urls[0]) || p.image_url || "";
+  const sellerId = p.seller_id || "usr_seller_qbit";
+  const stock = Number(p.stock) || 0;
+
+  return {
+    id: p.id,
+    name: p.name,
+    brand: p.brand || "Riderzpro",
+    category: p.category || p.category_name || "Car Accessories",
+    subcategory: p.department || p.category || "Accessories",
+    subcategories: [p.category, p.department, ...(p.features || [])].filter(Boolean),
+    vehicleType: (p.vehicle_type as any) || "car",
+    image: primaryImage,
+    warrantyMonths: typeof p.warranty === "string" ? (parseInt(p.warranty) || 12) : 12,
+    weightKg: Number(p.weight_kg) || 1,
+    fits: Array.isArray(p.compatible_vehicles) ? p.compatible_vehicles : ["universal"],
+    description: p.description || "",
+    mrp: mrpPrice,
+    sku: p.sku,
+    offers: [
+      {
+        vendorId: sellerId,
+        price: basePrice,
+        mrp: mrpPrice,
+        stock: stock,
+        condition: "new" as const,
+        warrantyMonths: typeof p.warranty === "string" ? (parseInt(p.warranty) || 12) : 12,
+        warrantyTerms: p.warranty || "2 Years Manufacturer Warranty",
+        shippingCharge: 0,
+        dispatchHours: 2,
+        deliveryDays: "Tomorrow",
+        status: stock > 0 ? "active" : "out_of_stock",
+      },
+    ],
+  };
+});
+
+export const products: Product[] = [...demoCatalogProducts, ...coreProducts, ...uploadedBrandProducts, ...catalogProducts];
 
 export const riders: Rider[] = [
   { id: "r1", name: "Ravi Kumar", phone: "+91 98450 12345", vehicle: "Ather Rizta", plate: "KA 01 EV 4521", rating: 4.9, avatar: "RK" },
@@ -525,6 +588,22 @@ export function getVendorOffers(vendorId: string): { product: Product; offer: Ve
 }
 
 export const getVendor = (id: string): Vendor => {
+  if (id === "usr_seller_qbit") {
+    return (
+      vendors.find((v) => v.id === "usr_seller_qbit") || {
+        id: "usr_seller_qbit",
+        name: "Qbit Pro",
+        area: "Sector 63, Noida",
+        lat: 28.628,
+        lng: 77.378,
+        rating: 4.8,
+        prepMins: 20,
+        reviewCount: 142,
+        isVerified: true,
+        verificationBadge: "Verified Seller · Noida Hub",
+      }
+    );
+  }
   const dynamic = getCatalogueVendor(id);
   if (dynamic) return dynamic;
   return (
@@ -554,7 +633,11 @@ export const getVendor = (id: string): Vendor => {
 };
 
 export const getProduct = (id: string): Product | undefined => {
-  return getCatalogueProduct(id) || products.find((p) => p.id === id);
+  return (
+    demoCatalogProducts.find((p) => p.id === id) ||
+    getCatalogueProduct(id) ||
+    products.find((p) => p.id === id)
+  );
 };
 
 export function mapDbProductToProduct(row: any): Product {
@@ -636,9 +719,11 @@ export const DELIVERY_PER_KM = 12;
 export const GST_RATE = 0.18;
 
 export function deliveryFee(km: number) {
+  if (km > 100) return 0; // FREE Delivery on express courier
   return Math.round(DELIVERY_BASE + km * DELIVERY_PER_KM);
 }
 export function etaMinutes(km: number, prepMins: number) {
+  if (km > 100) return 1440; // Next-day delivery (24 hrs)
   return Math.round(prepMins + (km / 22) * 60 + 5);
 }
 
