@@ -336,8 +336,8 @@ export async function handleRoute(
       // POST /api/orders (Customer checkout)
       if (method === "POST") {
         const body = await parseBody(req);
-        const orderNum = `RZ-${Math.floor(100000 + Math.random() * 900000)}`;
-        const orderId = `ord_${(await import("node:crypto")).randomBytes(8).toString("hex")}`;
+        const orderNum = body.order_number || body.order_id || `RZ-${Math.floor(100000 + Math.random() * 900000)}`;
+        const orderId = body.order_id || `ord_${(await import("node:crypto")).randomBytes(8).toString("hex")}`;
         const custId = body.customer_id || "cst_guest";
         const sellerId = body.seller_id || "usr_seller_qbit";
         const totalAmount = body.total_amount || body.total || 0;

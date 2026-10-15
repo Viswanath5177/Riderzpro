@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore, quoteCart, ORDER_STEPS, type Order } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
 import { getProduct, getVendor, inr, products } from "@/lib/data";
 import type { AddressRef } from "@/lib/logistics/types";
 import { cn } from "@/lib/utils";
@@ -73,6 +74,8 @@ export function CartDrawer() {
     }
   };
 
+  const { user } = useAuth();
+
   const handleCheckout = () => {
     if (cart.length === 0) {
       toast.error("Your cart is empty");
@@ -93,6 +96,45 @@ export function CartDrawer() {
         setIsSubmitting(false);
         setRecentPlacedOrder(order);
         toast.success(`Order #${order.id} placed successfully!`);
+
+        // Send order to backend API to persist line items and trigger confirmation email via Resend
+        const customerEmail = user?.email || userProfile?.email || "customer@riderzpro.com";
+        const customerName = user?.name || address.name || userProfile?.name || "Customer";
+        const lineItems = cart.map((c) => {
+          const p = getProduct(c.productId);
+          return {
+            id: c.productId,
+            name: p?.name || "Automotive Component",
+            category: p?.category || "Automotive",
+            price: p?.price || 0,
+            qty: c.qty,
+          };
+        });
+
+        fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            order_id: order.id,
+            order_number: order.id,
+            customer_id: user?.id || "cst_aakash",
+            customer_name: customerName,
+            customer_email: customerEmail,
+            seller_id: "usr_seller_qbit",
+            total_amount: order.total,
+            payment_method: paymentMethod,
+            shipping_address: address,
+            items: lineItems,
+          }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            console.log("[CartDrawer] Order synced to backend:", data);
+            toast.info(`Confirmation email sent to ${customerEmail}`);
+          })
+          .catch((err) => {
+            console.warn("[CartDrawer] Backend order sync failed:", err);
+          });
       } catch (e) {
         setIsSubmitting(false);
         toast.error("Checkout failed. Please try again.");

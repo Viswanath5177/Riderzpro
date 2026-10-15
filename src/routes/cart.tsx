@@ -39,7 +39,7 @@ export const Route = createFileRoute("/cart")({
 
 function CartPage() {
   const { cart, setQty, placeOrderWithOptions, userProfile, inventoryStock, addToCart } = useStore();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
 
   const [paymentMethod, setPaymentMethod] = useState<string>("UPI");
@@ -125,6 +125,45 @@ function CartPage() {
         setIsSubmitting(false);
         setConfirmedOrder(order);
         toast.success(`Order ${order.id} placed successfully!`);
+
+        // Sync order to backend API to persist line items and trigger real confirmation email via Resend
+        const customerEmail = user?.email || userProfile?.email || "customer@riderzpro.com";
+        const customerName = user?.name || address.name || userProfile?.name || "Customer";
+        const lineItems = cart.map((c) => {
+          const p = getProduct(c.productId);
+          return {
+            id: c.productId,
+            name: p?.name || "Automotive Component",
+            category: p?.category || "Automotive",
+            price: p?.price || 0,
+            qty: c.qty,
+          };
+        });
+
+        fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            order_id: order.id,
+            order_number: order.id,
+            customer_id: user?.id || "cst_aakash",
+            customer_name: customerName,
+            customer_email: customerEmail,
+            seller_id: "usr_seller_qbit",
+            total_amount: order.total,
+            payment_method: paymentMethod,
+            shipping_address: address,
+            items: lineItems,
+          }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            console.log("[Checkout API] Order persisted to backend & confirmation email queued:", data);
+            toast.info(`Confirmation email sent to ${customerEmail}`);
+          })
+          .catch((err) => {
+            console.warn("[Checkout API] Backend sync warning:", err);
+          });
       } catch (err) {
         setIsSubmitting(false);
         toast.error("Error processing order. Please try again.");
