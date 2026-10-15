@@ -217,44 +217,7 @@ const DEFAULT_ADDRESS: AddressRef = {
 };
 
 export const DEFAULT_GARAGE: GarageBike[] = [];
-export const DEFAULT_NOTIFICATIONS: CustomerNotification[] = [
-  {
-    id: "notif_offer_01",
-    title: "🎉 Admin Special: Flat ₹500 OFF with Code VOLT500",
-    message: "Valid on all 48V, 60V and 72V lithium battery packs above ₹10,000. Verified marketplace promotion.",
-    time: "Today",
-    read: false,
-    type: "offer",
-    actionUrl: "/offers",
-  },
-  {
-    id: "notif_offer_02",
-    title: "⚡ Flash Discount: 10% OFF on Helmets & Protective Gear",
-    message: "Apply code GEAR10 at checkout to claim 10% instant discount on certified ISI and ECE 22.06 gear.",
-    time: "Yesterday",
-    read: false,
-    type: "offer",
-    actionUrl: "/offers",
-  },
-  {
-    id: "notif_offer_03",
-    title: "🚚 Zero Delivery Fee: Rapid Doorstep Delivery with FREESHIP",
-    message: "Free 3-hour doorstep delivery on all orders above ₹999 across all verified pin codes.",
-    time: "2 days ago",
-    read: false,
-    type: "offer",
-    actionUrl: "/offers",
-  },
-  {
-    id: "notif_offer_04",
-    title: "🔧 Spare Parts Bonanza: Flat ₹200 OFF with SPARE200",
-    message: "Save ₹200 on ceramic disc brake pads, wave rotors and Kevlar drive belts.",
-    time: "3 days ago",
-    read: true,
-    type: "offer",
-    actionUrl: "/offers",
-  },
-];
+export const DEFAULT_NOTIFICATIONS: CustomerNotification[] = [];
 export const DEFAULT_ORDERS: Order[] = [];
 export const DEFAULT_SHIPMENTS: NormalizedShipment[] = [];
 

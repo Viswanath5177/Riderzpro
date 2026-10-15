@@ -1,33 +1,33 @@
 import React from "react";
 import { Link } from "@tanstack/react-router";
-import { Tag, ArrowRight, Truck, Sparkles } from "lucide-react";
+import { ShieldCheck, ArrowRight, Truck, Sparkles } from "lucide-react";
 
 const promos = [
   {
-    tag: "LIMITED OFFER",
-    title: "Flat ₹500 off on batteries",
-    description: "Use coupon VOLT500 at checkout on lithium-ion and LiFePO4 packs above ₹10,000.",
-    cta: "Claim offer",
+    tag: "VERIFIED FITMENT",
+    title: "100% Fitment Guarantee",
+    description: "Every hardware item is validated against OEM EV dimensions and harness specs.",
+    cta: "Explore compatible parts",
     link: "/shop",
-    search: { cat: "Battery" },
-    icon: Tag,
+    search: {},
+    icon: ShieldCheck,
   },
   {
-    tag: "BENGALURU LOCAL",
+    tag: "EXPRESS DISPATCH",
     title: "Free delivery above ₹999",
-    description: "Automatically applied across all hub dispatches and doorstep express drop-offs.",
+    description: "Doorstep delivery across Bengaluru with safe high-voltage certified packaging.",
     cta: "Shop now",
     link: "/shop",
     search: {},
     icon: Truck,
   },
   {
-    tag: "GEAR & SAFETY",
-    title: "10% off on accessories",
-    description: "Protect your ride with certified alarms, waterproof covers, jackets and helmets.",
-    cta: "Explore gear",
+    tag: "AUTHORIZED SELLERS",
+    title: "Certified EV Vendors",
+    description: "Purchase directly from vetted battery manufacturers and authorized component hubs.",
+    cta: "Browse catalog",
     link: "/shop",
-    search: { cat: "Bike Accessories" },
+    search: {},
     icon: Sparkles,
   },
 ];

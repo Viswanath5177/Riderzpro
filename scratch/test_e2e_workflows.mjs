@@ -431,6 +431,28 @@ async function runTests() {
   assert(valIneligibleJson.valid === false, "Coupon rejected when cart contains only ineligible products");
 
   // ----------------------------------------------------
+  // CLEANUP: Purge test-generated records to keep dev.db pristine
+  // ----------------------------------------------------
+  console.log("\nPurging test-created records from dev.db...");
+  try {
+    const toDeleteIds = [manualProdPayload.id, bulkProd1?.id, bulkProd2?.id, bulkProd3?.id, rejectTestId].filter(Boolean);
+    for (const pid of toDeleteIds) {
+      await db.execute({ sql: "DELETE FROM product_vehicle_compatibility WHERE product_id = ?", args: [pid] });
+      await db.execute({ sql: "DELETE FROM product_specifications WHERE product_id = ?", args: [pid] });
+      await db.execute({ sql: "DELETE FROM product_approval_history WHERE product_id = ?", args: [pid] });
+      await db.execute({ sql: "DELETE FROM coupon_products WHERE product_id = ?", args: [pid] });
+      await db.execute({ sql: "DELETE FROM products WHERE id = ?", args: [pid] });
+    }
+    if (couponDb?.id) {
+      await db.execute({ sql: "DELETE FROM coupon_products WHERE coupon_id = ?", args: [couponDb.id] });
+      await db.execute({ sql: "DELETE FROM coupons WHERE id = ?", args: [couponDb.id] });
+    }
+    console.log("Cleanup complete: dev.db kept pristine without accumulating test records.");
+  } catch (cleanErr) {
+    console.warn("Cleanup warning:", cleanErr);
+  }
+
+  // ----------------------------------------------------
   // TEST SUMMARY
   // ----------------------------------------------------
   console.log("\n====================================================");

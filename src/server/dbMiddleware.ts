@@ -1865,7 +1865,17 @@ export function pgApiMiddleware() {
           }
         }
 
-        // Coupon Validation & Applicable Coupons: /api/coupons/applicable & /api/coupons/validate
+        // Coupon Validation & Applicable Coupons: /api/coupons, /api/coupons/applicable & /api/coupons/validate
+        if (cleanUrl === "/api/coupons" && method === "GET") {
+          const rows = await query(
+            `SELECT id, code, description, discount_type, discount_value, minimum_order_value, maximum_discount, starts_at, expires_at
+             FROM coupons
+             WHERE status = 'active'
+             ORDER BY created_at DESC`
+          );
+          return sendJson(res, 200, { success: true, coupons: rows.rows });
+        }
+
         if (cleanUrl === "/api/coupons/applicable") {
           const productId = queryParams.get("product_id");
           if (!productId) return sendJson(res, 200, { success: true, coupons: [] });
