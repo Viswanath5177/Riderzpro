@@ -1,38 +1,73 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { ShoppingCart, Check, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-import { products, bestOffer, inr, type Product } from "@/lib/data";
+import { products as staticProducts, bestOffer, inr, type Product } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
 type ProductTab = "batteries" | "chargers" | "spares" | "accessories";
 
 export function FeaturedProducts() {
   const [activeTab, setActiveTab] = useState<ProductTab>("batteries");
+  const [dbProducts, setDbProducts] = useState<Product[]>([]);
   const { addToCart, cart, activeBikeId } = useStore();
+
+  useEffect(() => {
+    fetch("/api/products")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+          const mapped: Product[] = data.data.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            brand: p.brand || "Vendor Certified",
+            category: (p.category_name || p.category || "Spare Parts") as any,
+            image: p.image_url || "/src/assets/parts.jpg",
+            desc: p.description || "",
+            fits: Array.isArray(p.compatible_vehicles) ? p.compatible_vehicles : ["Universal EV"],
+            rating: Number(p.rating) || 4.8,
+            reviewsCount: Number(p.reviews_count) || 12,
+            offers: [
+              {
+                vendorId: p.seller_id || "v_01",
+                price: Number(p.price) || 999,
+                mrp: Number(p.mrp) || Math.round(Number(p.price || 999) * 1.2),
+                deliveryDays: 2,
+                deliveryFee: 0,
+                stock: Number(p.stock ?? 10),
+                warrantyMonths: 12,
+                isRecommended: true,
+              },
+            ],
+          }));
+          setDbProducts(mapped);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const allAvailableProducts = dbProducts;
 
   const getFilteredProducts = (): Product[] => {
     switch (activeTab) {
       case "batteries":
-        return products.filter((p) => p.category === "Battery").slice(0, 8);
+        return allAvailableProducts.filter((p) => p.category.toLowerCase().includes("batter")).slice(0, 8);
       case "chargers":
-        return products.filter((p) => p.category === "Charger").slice(0, 8);
+        return allAvailableProducts.filter((p) => p.category.toLowerCase().includes("charg")).slice(0, 8);
       case "spares":
-        return products
+        return allAvailableProducts
           .filter((p) =>
-            ["Spare Parts", "Brakes", "Motor", "Controller", "BMS"].includes(p.category)
+            ["spare parts", "brakes", "motor", "controller", "bms", "brakes"].some((c) => p.category.toLowerCase().includes(c))
           )
           .slice(0, 8);
       case "accessories":
-        return products
+        return allAvailableProducts
           .filter((p) =>
-            ["Bike Accessories", "Car Accessories", "Riding Gear & Helmets"].includes(
-              p.category
-            )
+            ["accessories", "riding", "gear", "helmets"].some((c) => p.category.toLowerCase().includes(c))
           )
           .slice(0, 8);
       default:
-        return products.slice(0, 8);
+        return allAvailableProducts.slice(0, 8);
     }
   };
 
@@ -40,6 +75,10 @@ export function FeaturedProducts() {
 
   const handleAddToCart = (p: Product) => {
     const offer = bestOffer(p);
+    if (offer.stock === 0) {
+      toast.error("This product is currently out of stock.");
+      return;
+    }
     addToCart(p.id, offer.vendorId);
     toast.success("Added to cart", {
       description: `${p.name} added to your shopping bag.`,
@@ -86,10 +125,18 @@ export function FeaturedProducts() {
         </div>
 
         {/* Products Grid: 2 columns on mobile, 4 columns on desktop */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5">
+        {currentProducts.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-[#ececec] bg-white p-12 text-center">
+            <p className="text-sm font-semibold text-gray-500">No products available in this category yet.</p>
+            <p className="text-xs text-gray-400 mt-1">Verified vendor components will be featured here once cataloged.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5">
           {currentProducts.map((p) => {
             const offer = bestOffer(p);
             const isInCart = cart.some((c) => c.productId === p.id);
+            const isOutOfStock = offer.stock === 0;
+            const isLowStock = offer.stock <= 5 && offer.stock > 0;
 
             return (
               <div
@@ -109,13 +156,24 @@ export function FeaturedProducts() {
                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                     </Link>
+
+                    {/* Stock Badges */}
+                    {isLowStock ? (
+                      <span className="absolute top-2 right-2 rounded-md bg-amber-500 text-white text-[9.5px] font-bold px-1.5 py-0.5 shadow-xs">
+                        Hurry! Limited stock
+                      </span>
+                    ) : isOutOfStock ? (
+                      <span className="absolute top-2 right-2 rounded-md bg-gray-900 text-white text-[9.5px] font-bold px-1.5 py-0.5 shadow-xs">
+                        Out of Stock
+                      </span>
+                    ) : null}
                   </div>
 
                   {/* Compatible-with chip */}
                   <div className="mb-1.5 sm:mb-2">
                     <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200/80 px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-semibold text-emerald-800 truncate max-w-full">
                       <ShieldCheck className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-emerald-600 shrink-0" />
-                      <span className="truncate">Fits {p.fits.length ? `${p.fits.length} EVs` : "Universal"}</span>
+                      <span className="truncate">Fits {p.fits?.length ? `${p.fits.length} EVs` : "Universal"}</span>
                     </span>
                   </div>
 
@@ -138,13 +196,18 @@ export function FeaturedProducts() {
 
                   <button
                     onClick={() => handleAddToCart(p)}
-                    className={`flex h-8 sm:h-9 items-center justify-center gap-1 sm:gap-1.5 rounded-xl px-2.5 sm:px-3.5 text-[11px] sm:text-xs font-semibold transition active:scale-95 cursor-pointer shrink-0 ${
-                      isInCart
-                        ? "bg-emerald-600 text-white"
-                        : "bg-[#e11d2a] hover:bg-[#c91823] text-white shadow-xs"
+                    disabled={isOutOfStock}
+                    className={`flex h-8 sm:h-9 items-center justify-center gap-1 sm:gap-1.5 rounded-xl px-2.5 sm:px-3.5 text-[11px] sm:text-xs font-semibold transition active:scale-95 shrink-0 ${
+                      isOutOfStock
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+                        : isInCart
+                        ? "bg-emerald-600 text-white cursor-pointer"
+                        : "bg-[#e11d2a] hover:bg-[#c91823] text-white shadow-xs cursor-pointer"
                     }`}
                   >
-                    {isInCart ? (
+                    {isOutOfStock ? (
+                      <span>Sold Out</span>
+                    ) : isInCart ? (
                       <>
                         <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                         <span className="hidden xs:inline">Added</span>
@@ -161,6 +224,7 @@ export function FeaturedProducts() {
             );
           })}
         </div>
+        )}
       </div>
     </section>
   );

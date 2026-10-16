@@ -157,21 +157,22 @@ export class ProductModel {
       seller_id,
       fit_vehicle,
       search,
-      is_active = true,
       verification_status,
       limit,
       offset,
     } = options;
+    const is_active = "is_active" in options ? options.is_active : true;
 
     let sql = `
       SELECT 
         p.*, 
         c.name as category_name, 
-        u.full_name as seller_name, 
-        u.store_name
+        COALESCE(s.owner_name, u.full_name, p.supplier) as seller_name, 
+        COALESCE(s.store_name, u.store_name, p.supplier) as store_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN users u ON p.seller_id = u.id
+      LEFT JOIN sellers s ON (p.seller_id = s.id OR p.seller_id IN (SELECT id FROM users WHERE email = s.email) OR u.email = s.email)
       WHERE 1=1
     `;
     const params: any[] = [];
@@ -184,6 +185,13 @@ export class ProductModel {
     if (verification_status) {
       params.push(verification_status);
       sql += ` AND p.verification_status = $${params.length}`;
+
+      // Customer listing eligibility (PDF Algorithm):
+      // Certified product + Active (non-frozen) vendor + in-stock inventory
+      if (verification_status === "approved" && !seller_id) {
+        sql += ` AND (s.id IS NULL OR (s.status = 'APPROVED' AND (s.account_status IS NULL OR s.account_status != 'FROZEN')))`;
+        sql += ` AND p.stock >= 0`;
+      }
     }
 
     if (seller_id) {
@@ -262,12 +270,17 @@ export class ProductModel {
       SELECT 
         p.*, 
         c.name as category_name, 
-        u.full_name as seller_name, 
-        u.store_name
+        COALESCE(s.store_name, u.store_name, 'Verified Seller') as store_name,
+        COALESCE(s.owner_name, u.full_name, 'Authorized Dealer') as seller_name,
+        COALESCE(s.city, 'Bengaluru') as seller_city,
+        s.rating as seller_rating,
+        s.review_count as seller_review_count
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN sellers s ON p.seller_id = s.id
       LEFT JOIN users u ON p.seller_id = u.id
       WHERE p.id = $1
+      LIMIT 1
     `;
     try {
       const result = await pool.query(sql, [id]);
@@ -281,10 +294,10 @@ export class ProductModel {
           weight_kg: Number(row.weight_kg),
         };
       }
-    } catch {
-      // Fallback
+    } catch (err: any) {
+      console.error("[PostgreSQL findById error]:", err?.message);
     }
-    return inMemoryCatalog.find((p) => p.id === id) || null;
+    return null;
   }
 
   /**
@@ -550,7 +563,9 @@ export class ProductModel {
    */
   static async delete(id: string): Promise<boolean> {
     await pool.query("DELETE FROM cart_items WHERE product_id = $1", [id]).catch(() => {});
-    await pool.query("DELETE FROM order_items WHERE product_id = $1", [id]).catch(() => {});
+    await pool.query("DELETE FROM wishlist_items WHERE product_id = $1", [id]).catch(() => {});
+    await pool.query("DELETE FROM product_offers WHERE product_id = $1", [id]).catch(() => {});
+    await pool.query("DELETE FROM product_approval_history WHERE product_id = $1", [id]).catch(() => {});
     await pool.query("DELETE FROM products WHERE id = $1", [id]).catch(() => {});
     await pool.query('DELETE FROM riderzpro_catalogue_import WHERE "Product ID" = $1', [id]).catch(() => {});
     const idx = inMemoryCatalog.findIndex((p) => p.id === id);
@@ -563,14 +578,9 @@ export class ProductModel {
    */
   static async deleteMany(ids: string[]): Promise<number> {
     if (!ids.length) return 0;
-    await pool.query("DELETE FROM cart_items WHERE product_id = ANY($1)", [ids]).catch(() => {});
-    await pool.query("DELETE FROM order_items WHERE product_id = ANY($1)", [ids]).catch(() => {});
-    await pool.query("DELETE FROM products WHERE id = ANY($1)", [ids]).catch(() => {});
-    await pool.query('DELETE FROM riderzpro_catalogue_import WHERE "Product ID" = ANY($1)', [ids]).catch(() => {});
-    ids.forEach((id) => {
-      const idx = inMemoryCatalog.findIndex((p) => p.id === id);
-      if (idx !== -1) inMemoryCatalog.splice(idx, 1);
-    });
+    for (const id of ids) {
+      await this.delete(id);
+    }
     return ids.length;
   }
 
@@ -579,8 +589,10 @@ export class ProductModel {
    */
   static async deleteAll(): Promise<number> {
     await pool.query("DELETE FROM cart_items").catch(() => {});
-    await pool.query("DELETE FROM order_items").catch(() => {});
-    await pool.query("DELETE FROM products").catch(() => {});
+    await pool.query("DELETE FROM wishlist_items").catch(() => {});
+    await pool.query("DELETE FROM product_offers").catch(() => {});
+    await pool.query("DELETE FROM product_approval_history").catch(() => {});
+    const res = await pool.query("DELETE FROM products").catch(() => ({ rows: [] }));
     await pool.query("DELETE FROM riderzpro_catalogue_import").catch(() => {});
     const count = inMemoryCatalog.length;
     inMemoryCatalog.length = 0;

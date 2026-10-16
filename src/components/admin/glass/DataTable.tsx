@@ -37,6 +37,7 @@ export interface DataTableProps<T> {
   keyExtractor?: (item: T) => string | number;
   selectable?: boolean;
   actions?: React.ReactNode;
+  bulkActions?: (selectedIds: string[], clearSelection: () => void) => React.ReactNode;
   exportFileName?: string;
   emptyMessage?: string;
   emptyTitle?: string;
@@ -59,6 +60,7 @@ export function DataTable<T extends Record<string, any>>({
   keyExtractor,
   selectable = true,
   actions,
+  bulkActions,
   exportFileName = "export",
   emptyMessage = "No matching records found",
   emptyTitle,
@@ -245,6 +247,26 @@ export function DataTable<T extends Record<string, any>>({
           {actions}
         </div>
       </div>
+
+      {/* Bulk Actions Banner */}
+      {selectedIds.size > 0 && bulkActions && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 px-4 py-2.5 animate-in fade-in duration-150">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-gray-900">
+              {selectedIds.size} item{selectedIds.size > 1 ? "s" : ""} selected
+            </span>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="text-xs font-semibold text-gray-500 hover:text-gray-900 hover:underline cursor-pointer ml-1"
+            >
+              Clear selection
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            {bulkActions(Array.from(selectedIds).map(String), () => setSelectedIds(new Set()))}
+          </div>
+        </div>
+      )}
 
       {/* High-Contrast Data Table Card */}
       <div className="rounded-3xl border border-[#E5E7EB] bg-white overflow-hidden shadow-xs">

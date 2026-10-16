@@ -7,7 +7,7 @@ import { CategoryGrid } from "@/components/site/landing/CategoryGrid";
 import { HowItWorks } from "@/components/site/landing/HowItWorks";
 import { FeaturedProducts } from "@/components/site/landing/FeaturedProducts";
 import { WhyRiderzpro } from "@/components/site/landing/WhyRiderzpro";
-import { OffersBanner } from "@/components/site/landing/OffersBanner";
+import { VendorSection } from "@/components/site/landing/VendorSection";
 import { FinalCTA } from "@/components/site/landing/FinalCTA";
 
 export const Route = createFileRoute("/")({
@@ -60,10 +60,10 @@ function LandingPage() {
       {/* E. Why Riderzpro: 4 benefit cards + slim stats strip */}
       <WhyRiderzpro />
 
-      {/* F. Current Offers: Slim banner row with 3 promo cards */}
-      <OffersBanner />
+      {/* F. Vendor Section: Marketplace Partner Network with Become a Vendor & Vendor Sign In */}
+      <VendorSection />
 
-      {/* G. Final CTA: Single red band with Pick my bike button */}
+      {/* H. Final CTA: Single red band with Pick my bike button */}
       <FinalCTA />
     </SiteLayout>
   );

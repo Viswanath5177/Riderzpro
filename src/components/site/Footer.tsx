@@ -147,15 +147,7 @@ export function Footer() {
               LinkedIn
             </a>
 
-            {/* Small DEV-only Admin text link */}
-            {isDevAdminEnabled && (
-              <Link
-                to="/admin/login"
-                className="text-[#6b7280] hover:text-[#e11d2a] font-medium transition"
-              >
-                Admin
-              </Link>
-            )}
+
           </div>
         </div>
       </div>

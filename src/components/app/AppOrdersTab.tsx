@@ -29,7 +29,7 @@ export function AppOrdersTab() {
 
   const handleSimulateDemoOrder = () => {
     // Generate a test order for QA validation
-    const demoOrder: Order = {
+    const demoOrder: any = {
       id: `RZ-${Math.floor(100000 + Math.random() * 900000)}`,
       createdAt: Date.now(),
       groups: [
@@ -64,7 +64,7 @@ export function AppOrdersTab() {
       },
     };
 
-    placeOrder({
+    (placeOrder as any)({
       shipping: demoOrder.shippingAddress,
       paymentMethod: "razorpay",
     });

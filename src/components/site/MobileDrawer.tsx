@@ -18,6 +18,8 @@ import {
   LogOut,
 } from "lucide-react";
 import { Logo } from "./bits";
+import { useAuth } from "@/lib/auth";
+import { toast } from "sonner";
 
 interface MobileDrawerProps {
   isOpen: boolean;
@@ -46,6 +48,7 @@ export function MobileDrawer({
   const [isShopExpanded, setIsShopExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+  const { openCustomerLoginModal } = useAuth();
 
   if (!isOpen) return null;
 
@@ -130,23 +133,39 @@ export function MobileDrawer({
             )}
           </div>
 
-          <Link
-            to="/garage"
-            onClick={onClose}
-            className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#111111] hover:bg-[#f7f7f8] transition"
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              if (isAuthenticated) {
+                navigate({ to: "/garage" });
+              } else {
+                openCustomerLoginModal({ redirectTo: "/garage" });
+                toast.info("Please sign in to access My Garage.");
+              }
+            }}
+            className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#111111] hover:bg-[#f7f7f8] transition cursor-pointer text-left"
           >
             <Bike className="h-4 w-4 text-[#6b7280]" />
             <span>My Garage</span>
-          </Link>
+          </button>
 
-          <Link
-            to="/orders"
-            onClick={onClose}
-            className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#111111] hover:bg-[#f7f7f8] transition"
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              if (isAuthenticated) {
+                navigate({ to: "/orders" });
+              } else {
+                openCustomerLoginModal({ redirectTo: "/orders" });
+                toast.info("Please sign in to view your Orders.");
+              }
+            }}
+            className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#111111] hover:bg-[#f7f7f8] transition cursor-pointer text-left"
           >
             <Package className="h-4 w-4 text-[#6b7280]" />
             <span>Orders</span>
-          </Link>
+          </button>
 
           <Link
             to="/offers"
@@ -208,14 +227,17 @@ export function MobileDrawer({
               </div>
             </div>
           ) : (
-            <Link
-              to="/login"
-              onClick={onClose}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#e11d2a] text-xs font-semibold text-white transition hover:bg-[#c91823]"
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                openCustomerLoginModal();
+              }}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#e11d2a] text-xs font-semibold text-white transition hover:bg-[#c91823] cursor-pointer"
             >
               <User className="h-3.5 w-3.5" />
               <span>Sign in</span>
-            </Link>
+            </button>
           )}
         </div>
       </div>

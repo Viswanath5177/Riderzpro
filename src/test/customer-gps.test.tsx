@@ -272,7 +272,7 @@ describe("Customer GPS / Delivery Location Feature (Requirement 18 Suite)", { ti
       formattedAddress: "Outer Ring Rd, Bellandur, Bengaluru, 560103",
     });
 
-    let activeLocation: LocationArea | null = null;
+    let activeLocation: any = null;
     function TestConsumer() {
       const { userLocation } = useStore();
       activeLocation = userLocation;
@@ -386,7 +386,7 @@ describe("Customer GPS / Delivery Location Feature (Requirement 18 Suite)", { ti
 
   // 15, 16 & 17. Order integration and multiple order isolation
   it("15, 16 & 17. normalizes location and applies GPS destination independently to created orders", () => {
-    const rawGpsLoc: LocationArea = {
+    const rawGpsLoc: any = {
       id: "gps_test_1",
       name: "Koramangala 4th Block",
       city: "Bengaluru",

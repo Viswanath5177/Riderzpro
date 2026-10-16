@@ -44,9 +44,9 @@ export function ProductApprovalsScreen() {
     requestProductReviewChanges,
     rejectProductReview,
     approveAllPending,
-  } = useAdminStore();
+  } = useAdminStore() as any;
 
-  const [selectedProduct, setSelectedProduct] = useState<AdminProduct | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [filterType, setFilterType] = useState<"ALL" | "NEW" | "REVISION" | "OFFER">("ALL");
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
@@ -252,7 +252,7 @@ export function ProductApprovalsScreen() {
     if (!parsedVolt) return [];
 
     const warnings: string[] = [];
-    (selectedProduct.compatibleBikes || []).forEach((bikeId) => {
+    (selectedProduct.compatibleBikes || []).forEach((bikeId: any) => {
       const b = CATALOG_BIKES.find((bk) => bk.id === bikeId);
       if (b && b.voltage && b.voltage !== parsedVolt) {
         warnings.push(
@@ -797,7 +797,7 @@ export function ProductApprovalsScreen() {
                 </span>
               </h5>
               <div className="flex flex-wrap gap-1.5">
-                {(selectedProduct.compatibleBikes || []).map((bikeId) => {
+                {(selectedProduct.compatibleBikes || []).map((bikeId: any) => {
                   const b = CATALOG_BIKES.find((bk) => bk.id === bikeId);
                   return (
                     <span

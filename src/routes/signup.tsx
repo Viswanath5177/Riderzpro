@@ -1,29 +1,47 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { AuthPage } from "@/components/auth/AuthPage";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { VendorSignupFlow } from "@/components/vendor/VendorSignupFlow";
 
 export type SignUpSearch = {
   redirect?: string;
+  role?: "customer" | "vendor";
 };
 
 export const Route = createFileRoute("/signup")({
   validateSearch: (search: Record<string, unknown>): SignUpSearch => {
     const rawRedirect = search["redirect"];
+    const rawRole = search["role"];
     return {
       redirect: typeof rawRedirect === "string" ? rawRedirect : undefined,
+      role: rawRole === "vendor" ? "vendor" : "customer",
     };
+  },
+  beforeLoad: async ({ search }) => {
+    if (search.role !== "vendor") {
+      throw redirect({
+        to: "/",
+        search: {
+          openLogin: "customer",
+          redirect: (search as any)?.redirect || "/dashboard/customer",
+        },
+      });
+    }
   },
   head: () => ({
     meta: [
-      { title: "Create account — Riderzpro" },
-      { name: "description", content: "Sign up for a customer account on Riderzpro." },
-      { property: "og:title", content: "Create account — Riderzpro" },
-      { property: "og:description", content: "Get parts that fit, delivered by riders you can track." },
+      { title: "Vendor Registration — RiderzPro" },
+      {
+        name: "description",
+        content: "Register as an approved EV vendor or supplier on RiderzPro.",
+      },
     ],
   }),
-  component: SignUpRouteComponent,
+  component: SignUpPage,
 });
 
-function SignUpRouteComponent() {
-  const search = Route.useSearch();
-  return <AuthPage initialMode="signup" redirectPath={search.redirect} />;
+function SignUpPage() {
+  return (
+    <div className="min-h-screen bg-[#F5F7FA]">
+      <VendorSignupFlow />
+    </div>
+  );
 }

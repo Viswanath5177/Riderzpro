@@ -8,13 +8,6 @@ export const Route = createFileRoute("/admin")({
 });
 
 function AdminRouteWrapper() {
-  const location = useLocation();
-  const isLoginPage = location.pathname.startsWith("/admin/login");
-
-  if (isLoginPage) {
-    return <Outlet />;
-  }
-
   return (
     <AdminRouteGuard>
       <AdminStoreProvider>

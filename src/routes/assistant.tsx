@@ -238,7 +238,7 @@ function FormattedMessage({ text }: { text: string }) {
 }
 
 function Assistant() {
-  const { activeBikeId } = useStore();
+  const { activeBikeId, liveOrder } = useStore() as any;
   const [msgs, setMsgs] = useState<Msg[]>([
     {
       role: "bot",

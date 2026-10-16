@@ -10,15 +10,17 @@ import {
   Play,
   Pause,
   RotateCcw,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { DeliveryMap } from "@/components/map/DeliveryMap";
 import { TrackingStatusPanel } from "@/components/map/TrackingStatusPanel";
 import { useDeliveryTracking } from "@/components/map/useDeliveryTracking";
+import { useSimulationControls } from "@/components/map/useSimulationControls";
 import type { DeliveryTrackingData } from "@/components/map/types";
 import { getProduct, getVendor, inr, riders } from "@/lib/data";
-import { ORDER_STEPS, useStore } from "@/lib/store";
+import { ORDER_STEPS, useStore, type Order } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { DownloadInvoiceButton } from "@/components/common/DownloadInvoiceButton";
 
@@ -64,6 +66,8 @@ function Track() {
   const { id } = Route.useParams();
   const { orders, advanceOrder, updateOrderStatus, role, userProfile } = useStore();
 
+  // Simulation controls permission check (admin server role or ?demo=1 URL parameter)
+  const canSimulate = useSimulationControls();
   const [localSimStatus, setLocalSimStatus] = useState<number>(3);
   const [autoPlay, setAutoPlay] = useState<boolean>(false);
 
@@ -100,13 +104,14 @@ function Track() {
   }, [tracking?.status, connectionState, targetOrder, updateOrderStatus]);
 
   // Demo order resolution: use targetOrder from store if found, else synthesize a fallback demo order
-  const demoOrder = targetOrder || {
+  const demoOrder: Order = targetOrder || {
     id: id || "RZ-849201",
     createdAt: Date.now() - 1000 * 60 * 18,
     groups: [
       {
         vendorId: "v1",
         items: [{ productId: "p1", qty: 1 }],
+        subtotal: 1250,
         km: 18.4,
         fee: 45,
         eta: 25,
@@ -121,7 +126,7 @@ function Track() {
     status: localSimStatus,
     riderId: riders[0]?.id || "r1",
     customerName: userProfile?.name || "Customer",
-    customerPhone: userProfile?.phone || "+91 98765 43210",
+    customerPhone: userProfile?.phone || "+91 98490 12345",
     shippingAddress: {
       name: userProfile?.name || "Customer",
       street: "Amaravati Capital Complex, Sector 4",
@@ -155,9 +160,9 @@ function Track() {
     setAutoPlay(false);
   }, [targetOrder, updateOrderStatus]);
 
-  // Auto-play simulation timer
+  // Auto-play simulation timer (only runs when simulation controls are permitted)
   useEffect(() => {
-    if (!autoPlay) return;
+    if (!canSimulate || !autoPlay) return;
     const interval = setInterval(() => {
       if (currentStatus >= 5) {
         setAutoPlay(false);
@@ -166,9 +171,9 @@ function Track() {
       }
     }, 2800);
     return () => clearInterval(interval);
-  }, [autoPlay, currentStatus, handleNextStep]);
+  }, [canSimulate, autoPlay, currentStatus, handleNextStep]);
 
-  // 1. If real backend tracking data is active and loaded
+  // 1. If real backend tracking data is active and loaded (available for all users)
   if (tracking) {
     const statusText = isArrived
       ? "Rider Arrived!"
@@ -198,7 +203,8 @@ function Track() {
 
             <div className="flex items-center gap-2">
               <DownloadInvoiceButton order={targetOrder || demoOrder} orderId={id} variant="dark" size="sm" />
-              {targetOrder && targetOrder.status < 5 && (
+              {/* Simulation button gated behind canSimulate */}
+              {canSimulate && targetOrder && targetOrder.status < 5 && (
                 <button
                   type="button"
                   onClick={() => advanceOrder(targetOrder.id)}
@@ -250,7 +256,104 @@ function Track() {
     );
   }
 
-  // 2. Interactive Map Simulation (for store orders, testing, and offline telemetry)
+  // 2. If simulation controls are NOT permitted (normal customer view with no ?demo=1 and not admin)
+  if (!canSimulate) {
+    if (connectionState === "connecting" && !trackingError) {
+      return (
+        <SiteLayout>
+          <div className="mx-auto max-w-4xl px-4 py-24 text-center">
+            <div className="inline-flex items-center justify-center p-4 rounded-3xl bg-red-50 text-[#E31E24] mb-4 shadow-2xs">
+              <RefreshCw className="h-8 w-8 animate-spin" />
+            </div>
+            <h2 className="text-2xl font-bold font-display text-gray-900">
+              Connecting to Live Courier Telemetry...
+            </h2>
+            <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
+              Establishing secure real-time GPS telemetry link with RiderzPro Logistics fleet.
+            </p>
+          </div>
+        </SiteLayout>
+      );
+    }
+
+    return (
+      <SiteLayout>
+        <div className="mx-auto max-w-3xl px-4 py-16 sm:py-24 text-center">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-amber-50 text-amber-600 border border-amber-200 mb-5 shadow-xs">
+            <AlertCircle className="h-8 w-8" />
+          </div>
+          <h1 className="font-display text-2xl sm:text-4xl font-extrabold text-foreground tracking-tight">
+            Live tracking is not available for this order yet
+          </h1>
+          <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-lg mx-auto">
+            {targetOrder
+              ? `Order #${targetOrder.id} has been received and is being prepared by the vendor. Live GPS courier tracking will become active once dispatched.`
+              : `We could not find active courier dispatch information for "${id}". Real-time tracking will start as soon as a delivery partner is assigned.`}
+          </p>
+
+          {targetOrder && (
+            <div className="mt-8 text-left rounded-3xl border border-border bg-card p-6 shadow-card max-w-xl mx-auto space-y-4">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <div>
+                  <span className="font-mono text-xs font-bold text-primary">#{targetOrder.id}</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Placed on {new Date(targetOrder.createdAt).toLocaleString("en-IN")}
+                  </p>
+                </div>
+                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                  {ORDER_STEPS[targetOrder.status] || "Processing"}
+                </span>
+              </div>
+
+              {/* Step indicator */}
+              <div className="py-2">
+                <ol className="flex items-center justify-between text-xs">
+                  {ORDER_STEPS.slice(0, 4).map((step, idx) => (
+                    <li key={step} className="flex flex-col items-center">
+                      <span
+                        className={cn(
+                          "grid h-6 w-6 place-items-center rounded-full text-[10px] font-bold",
+                          idx <= targetOrder.status
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground"
+                        )}
+                      >
+                        {idx + 1}
+                      </span>
+                      <span className="mt-1 text-[10px] font-medium text-muted-foreground">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
+              <div className="border-t border-border/60 pt-3 flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Total: <strong className="text-foreground">{inr(targetOrder.total)}</strong></span>
+                <span className="text-xs text-muted-foreground">Paid via {targetOrder.payment}</span>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              to="/dashboard/customer"
+              search={{ tab: "orders" } as any}
+              className="rounded-2xl bg-[#E31E24] px-6 py-3 text-xs sm:text-sm font-semibold text-white shadow-xs hover:bg-red-700 transition"
+            >
+              Back to My Orders
+            </Link>
+            <Link
+              to="/shop"
+              className="rounded-2xl border border-border bg-card px-6 py-3 text-xs sm:text-sm font-semibold hover:border-primary transition"
+            >
+              Browse Spare Parts
+            </Link>
+          </div>
+        </div>
+      </SiteLayout>
+    );
+  }
+
+  // 3. Interactive Map Simulation (only rendered when canSimulate is true: admin session or ?demo=1 presenter override)
   const progress =
     currentStatus <= 1
       ? 0.0
@@ -313,7 +416,6 @@ function Track() {
     is_arrived: progress >= 0.98,
     is_route_deviating: false,
   };
-
   return (
     <SiteLayout>
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
