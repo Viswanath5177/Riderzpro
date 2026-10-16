@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { isMobileDevice } from "@/lib/native/app";
 
 export type AuthSearch = {
   mode?: "signin" | "signup";
@@ -26,6 +27,10 @@ function AuthRouteComponent() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (isMobileDevice()) {
+      navigate({ to: "/app", search: { tab: "account" }, replace: true });
+      return;
+    }
     const params = new URLSearchParams();
     if (search.redirect) params.set("redirect", search.redirect);
     const qs = params.toString() ? `?${params.toString()}` : "";

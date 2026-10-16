@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { isMobileDevice } from "@/lib/native/app";
 import {
   Phone,
   Mail,
@@ -62,6 +63,17 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
+
+  useEffect(() => {
+    if (isMobileDevice()) {
+      navigate({ to: "/app", search: { tab: "account" }, replace: true });
+    }
+  }, [navigate]);
+
+  if (typeof window !== "undefined" && isMobileDevice()) {
+    return null;
+  }
+
   const { userProfile, setRole, signIn, updateUserProfile, addBike } = useStore();
   const { signInWithPassword, signInWithOtp } = useVendorAuth();
   const { setAdminSession, login: adminLogin } = useAdminAuth();

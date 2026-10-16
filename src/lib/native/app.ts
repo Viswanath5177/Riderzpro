@@ -254,3 +254,45 @@ export function isNativePlatform(): boolean {
 export function getNativePlatform(): string {
   return Capacitor.getPlatform();
 }
+
+export function isMobileDevice(): boolean {
+  if (typeof window === "undefined") return false;
+
+  // 1. Native Capacitor platform is always mobile
+  if (Capacitor.isNativePlatform()) return true;
+
+  // 2. Already on the mobile customer app route or subroute
+  if (window.location.pathname.startsWith("/app")) return true;
+
+  // 3. Explicit mobile query param override
+  if (/[?&](platform=mobile|mode=app|mobile=true)/i.test(window.location.search)) return true;
+
+  // 4. Stored session indicator
+  try {
+    if (sessionStorage.getItem("riderzpro_mobile_client") === "true") return true;
+  } catch {}
+
+  // 5. User-agent string detection (phones, tablets, mobile browsers)
+  const ua = navigator.userAgent || "";
+  const isMobileUA =
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|Silk|Kindle/i.test(
+      ua
+    ) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  // 6. Viewport width check (phones/tablets up to 840px wide)
+  const isNarrowScreen = window.innerWidth <= 840;
+  const hasTouchCapability =
+    (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0) ||
+    "ontouchstart" in window;
+
+  const isMobile = isMobileUA || (isNarrowScreen && hasTouchCapability) || isNarrowScreen;
+
+  if (isMobile) {
+    try {
+      sessionStorage.setItem("riderzpro_mobile_client", "true");
+    } catch {}
+  }
+
+  return isMobile;
+}
+

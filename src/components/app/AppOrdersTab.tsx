@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from "react";
-import { Link } from "@tanstack/react-router";
+import React, { useState } from "react";
 import {
   Package,
   MapPin,
@@ -14,272 +13,207 @@ import {
   Sparkles,
   Zap,
   X,
+  Phone,
 } from "lucide-react";
 import { useStore, type Order } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
+import { inr, bikes, getBike } from "@/lib/data";
 import { DownloadInvoiceButton } from "@/components/common/DownloadInvoiceButton";
 import { DeliveryMap } from "@/components/map/DeliveryMap";
 import { toast } from "sonner";
 
-export function AppOrdersTab() {
+export function AppOrdersTab({ onTriggerLogin }: { onTriggerLogin?: () => void }) {
   const { orders, placeOrder, cart } = useStore();
+  const { isAuthenticated } = useAuth();
   const [selectedOrderForMap, setSelectedOrderForMap] = useState<Order | null>(null);
 
-  // If there are no orders yet in the store, provide a convenient demo order option
   const activeOrders = orders && orders.length > 0 ? orders : [];
 
   const handleSimulateDemoOrder = () => {
-    // Generate a test order for QA validation
-    const demoOrder: Order = {
-      id: `RZ-${Math.floor(100000 + Math.random() * 900000)}`,
-      createdAt: Date.now(),
-      groups: [
-        {
-          vendorId: "v_voltride_01",
-          items: [
-            {
-              productId: "prod_li_48v_30ah",
-              qty: 1,
-              price: 24500,
-            },
-          ],
-          fee: 150,
-          subtotal: 24500,
-          km: 5,
-          eta: 25,
-        },
-      ],
-      itemsTotal: 24500,
-      deliveryTotal: 150,
-      tax: 4410,
-      total: 29060,
-      eta: 25,
-      payment: "Razorpay (Test)",
-      status: 2, // Packed
-      customerName: "Harshitha QA",
-      shippingAddress: {
-        name: "Harshitha QA",
-        street: "Connaught Place, Central Delhi",
-        city: "Delhi",
-        state: "Delhi",
-        pincode: "110001",
-        phone: "+91 98765 00001",
-      },
-    };
-
-    placeOrder("Razorpay (Test)");
-
-    toast.success(`Created QA Demo Order ${demoOrder.id}`, {
-      description: "Ready for Seller Pack -> Rider Pickup -> Map Tracking verification",
+    placeOrder("UPI · Paid Online");
+    toast.success("Created Demo Customer Order!", {
+      description: "Order is ready for Seller Pack -> Live GPS tracking verification",
     });
   };
 
+  const getStatusBadge = (status: number) => {
+    switch (status) {
+      case 0:
+      case 1:
+        return { label: "PLACED & CONFIRMED", bg: "bg-blue-50 text-blue-700 border-blue-200" };
+      case 2:
+        return { label: "PACKED BY SELLER", bg: "bg-amber-50 text-amber-700 border-amber-200" };
+      case 3:
+      case 4:
+        return { label: "OUT FOR DELIVERY", bg: "bg-purple-50 text-purple-700 border-purple-200" };
+      case 5:
+        return { label: "DELIVERED", bg: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+      default:
+        return { label: "PROCESSING", bg: "bg-gray-50 text-gray-700 border-gray-200" };
+    }
+  };
+
   return (
-    <div className="space-y-4 pb-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-white">My Orders & Tracking</h2>
-          <p className="text-xs text-zinc-400">
-            Real-time delivery telemetry and GST invoices
-          </p>
-        </div>
-        <button
-          onClick={handleSimulateDemoOrder}
-          className="flex items-center gap-1 rounded-lg bg-zinc-800 px-2.5 py-1 text-[11px] font-bold text-zinc-300 border border-zinc-700 hover:bg-zinc-700 active:scale-95 transition"
-        >
-          <Sparkles className="h-3 w-3 text-amber-400" />
-          <span>New QA Order</span>
-        </button>
-      </div>
-
-      {/* Full-Height Tracking Modal (Stretch Goal) */}
-      {selectedOrderForMap && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-[#14161a]">
-          <div className="flex items-center justify-between border-b border-zinc-800 bg-[#14161a] p-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px))]">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-600 text-white">
-                <Navigation className="h-4 w-4" />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-white">
-                  Live Tracking • {selectedOrderForMap.id}
-                </h3>
-                <p className="text-[10px] text-zinc-400">
-                  Noida Hub → {selectedOrderForMap.shippingAddress?.city || "Delhi"}
-                </p>
-              </div>
+    <div className="space-y-3.5 pb-6">
+      {/* Auth Banner if guest */}
+      {!isAuthenticated && (
+        <div className="flex items-center justify-between rounded-2xl bg-amber-50 p-3.5 border border-amber-200/90 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-xl bg-amber-400 grid place-items-center text-gray-950 font-bold shrink-0">
+              <Phone className="h-4 w-4" />
             </div>
+            <div>
+              <p className="text-xs font-bold text-gray-900">Sign in to track orders</p>
+              <p className="text-[11px] text-gray-500">Sync orders across your phone and web</p>
+            </div>
+          </div>
+          {onTriggerLogin && (
             <button
-              onClick={() => setSelectedOrderForMap(null)}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+              onClick={onTriggerLogin}
+              className="rounded-xl bg-red-600 px-3 py-1.5 text-xs font-bold text-white shadow-2xs"
             >
-              <X className="h-4 w-4" />
+              Sign In
             </button>
-          </div>
-
-          <div className="relative flex-1">
-            <DeliveryMap
-              orderId={selectedOrderForMap.id}
-              className="h-full w-full"
-            />
-          </div>
-
-          <div className="border-t border-zinc-800 bg-[#14161a] p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-[10px] uppercase font-bold text-zinc-400">Recipient</span>
-                <p className="text-xs font-bold text-white">
-                  {selectedOrderForMap.shippingAddress?.name || "Customer"}
-                </p>
-                <p className="text-[10px] text-zinc-400">
-                  {selectedOrderForMap.shippingAddress?.street}
-                </p>
-              </div>
-              <DownloadInvoiceButton
-                order={selectedOrderForMap}
-                size="sm"
-                variant="dark"
-              />
-            </div>
-          </div>
+          )}
         </div>
       )}
 
-      {/* Orders List */}
-      {activeOrders.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-zinc-800 p-8 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-900 text-zinc-500">
-            <Package className="h-6 w-6" />
-          </div>
-          <h3 className="mt-3 text-sm font-bold text-zinc-200">No active orders found</h3>
-          <p className="mt-1 text-xs text-zinc-400">
-            You haven't placed any orders yet. Place a test order or browse catalog.
+      {/* Header */}
+      <div className="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-2xs flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-extrabold text-gray-900 tracking-tight">Your Orders</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Real-time Delhi 30-min delivery & live map telemetry
           </p>
-          <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
-            <button
-              onClick={handleSimulateDemoOrder}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-red-600/30"
-            >
-              <Zap className="h-3.5 w-3.5" />
-              <span>Create Demo Order</span>
-            </button>
-            <Link
-              to="/shop"
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-zinc-800 px-4 py-2 text-xs font-semibold text-zinc-200 hover:bg-zinc-700"
-            >
-              <span>Browse Shop</span>
-            </Link>
+        </div>
+
+        <button
+          onClick={handleSimulateDemoOrder}
+          className="inline-flex items-center gap-1 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200/80 px-2.5 py-1.5 text-xs font-bold text-red-600 transition"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          <span>Demo Order</span>
+        </button>
+      </div>
+
+      {/* Order List */}
+      {activeOrders.length === 0 ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-2xs">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-600 border border-red-100">
+            <Package className="h-7 w-7" />
           </div>
+          <h3 className="text-sm font-extrabold text-gray-900">No active orders yet</h3>
+          <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto">
+            Browse our EV battery catalog or tap the button below to simulate a demo order.
+          </p>
+          <button
+            onClick={handleSimulateDemoOrder}
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-red-600/30 transition active:scale-95"
+          >
+            <span>Create Demo Order</span>
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
         </div>
       ) : (
         <div className="space-y-3">
           {activeOrders.map((order) => {
-            const statusLabel =
-              order.status === 5
-                ? "DELIVERED"
-                : order.status === 4
-                ? "OUT_FOR_DELIVERY"
-                : order.status === 3
-                ? "PICKED_UP"
-                : order.status === 2
-                ? "PACKED"
-                : order.status === 1
-                ? "ACCEPTED"
-                : "CONFIRMED";
-
-            const isDelivered = order.status === 5;
-            const isOut = order.status >= 3;
+            const badge = getStatusBadge(order.status);
+            const totalQty = order.groups
+              ? order.groups.reduce((acc, g) => acc + g.items.reduce((s, it) => s + it.qty, 0), 0)
+              : 1;
 
             return (
               <div
                 key={order.id}
-                className="overflow-hidden rounded-xl bg-zinc-900/90 border border-zinc-800 shadow-md"
+                className="rounded-2xl bg-white border border-gray-200/90 p-4 shadow-2xs space-y-3"
               >
-                {/* Order Top Bar */}
-                <div className="flex items-center justify-between border-b border-zinc-800/80 bg-zinc-900 px-3.5 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-600/20 text-red-400">
-                      <Truck className="h-3.5 w-3.5" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-zinc-100">{order.id}</span>
-                      <div className="text-[10px] text-zinc-500">
-                        {new Date(order.createdAt).toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </div>
-                    </div>
+                {/* Top Row: Order ID & Status Badge */}
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-400 block uppercase tracking-wider">
+                      ORDER ID
+                    </span>
+                    <span className="text-xs font-black text-gray-900 font-mono">{order.id}</span>
                   </div>
 
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                      isDelivered
-                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                        : isOut
-                        ? "bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse"
-                        : "bg-blue-500/20 text-blue-400 border border-blue-500/30"
-                    }`}
-                  >
-                    {statusLabel.replace(/_/g, " ")}
+                  <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase border ${badge.bg}`}>
+                    {badge.label}
                   </span>
                 </div>
 
-                {/* Body Details */}
-                <div className="p-3.5 space-y-3">
-                  {/* Delivery Location */}
-                  <div className="flex items-start gap-2 text-xs">
-                    <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" />
-                    <div className="text-zinc-300">
-                      <span className="font-semibold text-white">
-                        {order.shippingAddress?.name || "Customer"}
-                      </span>
-                      <p className="text-[11px] text-zinc-400">
-                        {order.shippingAddress?.street}, {order.shippingAddress?.city}{" "}
-                        {order.shippingAddress?.pincode}
-                      </p>
-                    </div>
+                {/* Middle Info: Destination & ETA */}
+                <div className="flex items-center justify-between text-xs text-gray-600">
+                  <div className="flex items-center gap-1.5 truncate max-w-[200px]">
+                    <MapPin className="h-3.5 w-3.5 text-red-600 shrink-0" />
+                    <span className="truncate font-semibold text-gray-800">
+                      {order.shippingAddress?.street || "Connaught Place, Delhi"}
+                    </span>
                   </div>
 
-                  {/* Pricing row */}
-                  <div className="flex items-center justify-between rounded-lg bg-zinc-800/50 p-2.5 text-xs">
-                    <div>
-                      <span className="text-[10px] text-zinc-400 block">Total Amount</span>
-                      <span className="font-bold text-white">
-                        ₹{(order.total || 0).toLocaleString("en-IN")}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-zinc-400 block">Payment</span>
-                      <span className="font-semibold text-emerald-400 text-[11px]">
-                        {order.payment || "Paid via Razorpay"}
-                      </span>
-                    </div>
+                  <div className="flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg">
+                    <Clock className="h-3 w-3" />
+                    <span>{order.eta || 25}m ETA</span>
                   </div>
+                </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 pt-1">
-                    <button
-                      onClick={() => setSelectedOrderForMap(order)}
-                      className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-red-600 py-2 text-xs font-bold text-white shadow-md shadow-red-600/30 active:scale-95 transition"
-                    >
-                      <Navigation className="h-3.5 w-3.5" />
-                      <span>{isDelivered ? "View Route Map" : "Track Live GPS"}</span>
-                    </button>
+                {/* Total and Items */}
+                <div className="flex items-center justify-between pt-1 text-xs">
+                  <span className="text-gray-500 font-medium">
+                    {totalQty} {totalQty === 1 ? "item" : "items"} • {order.payment || "UPI"}
+                  </span>
+                  <span className="text-sm font-extrabold text-gray-900 font-mono">
+                    {inr(order.total)}
+                  </span>
+                </div>
 
-                    <DownloadInvoiceButton
-                      order={order}
-                      size="sm"
-                      variant="dark"
-                      label="Invoice"
-                    />
-                  </div>
+                {/* Action Buttons: Live Map and Invoice */}
+                <div className="pt-2 border-t border-gray-100 flex items-center gap-2">
+                  <button
+                    onClick={() => setSelectedOrderForMap(order)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-2xs transition active:scale-95"
+                  >
+                    <Navigation className="h-3.5 w-3.5" />
+                    <span>Track Live GPS</span>
+                  </button>
+
+                  <DownloadInvoiceButton
+                    order={order}
+                    className="flex items-center justify-center gap-1 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold transition"
+                  />
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Live Map Modal */}
+      {selectedOrderForMap && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs">
+          <div className="relative w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[85vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <div>
+                <h3 className="text-sm font-extrabold text-gray-900">
+                  Live Dispatch Tracking • {selectedOrderForMap.id}
+                </h3>
+                <p className="text-[11px] text-emerald-600 font-bold">
+                  ● Rider En-Route (30-min express)
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedOrderForMap(null)}
+                className="h-8 w-8 rounded-full bg-gray-100 grid place-items-center text-gray-500 hover:bg-gray-200"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Map Container */}
+            <div className="flex-1 relative">
+              <DeliveryMap orderId={selectedOrderForMap.id} className="h-full w-full" />
+            </div>
+          </div>
         </div>
       )}
     </div>

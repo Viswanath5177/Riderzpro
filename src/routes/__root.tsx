@@ -20,7 +20,7 @@ import { VendorStoreProvider } from "../lib/vendor/vendorStore";
 import { VendorAuthProvider } from "../lib/vendorAuth";
 import { StoreProvider } from "../lib/store";
 import { Toaster } from "../components/ui/sonner";
-import { initNativeApp } from "../lib/native/app";
+import { initNativeApp, isMobileDevice } from "../lib/native/app";
 
 function NotFoundComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -36,6 +36,9 @@ function NotFoundComponent() {
 
   // Handle legacy vendor dashboard route alias
   if (/^\/dashboard\/vendor\/?$/i.test(pathname)) {
+    if (typeof window !== "undefined" && isMobileDevice()) {
+      return <Navigate to="/app" replace />;
+    }
     return <Navigate to="/vendor/dashboard" replace />;
   }
 
@@ -163,6 +166,20 @@ function RootComponent() {
 
   useEffect(() => {
     const cleanup = initNativeApp();
+
+    if (typeof window !== "undefined" && isMobileDevice()) {
+      const p = window.location.pathname;
+      if (
+        p.startsWith("/vendor") ||
+        p.startsWith("/dashboard/vendor") ||
+        p === "/login" ||
+        p === "/auth" ||
+        p === "/dashboards"
+      ) {
+        window.location.replace("/app");
+      }
+    }
+
     return () => {
       cleanup();
     };

@@ -20,6 +20,8 @@ import { useStore } from "@/lib/store";
 import { getProduct } from "@/lib/data";
 import { getMyOrders, formatPaise, type ApiOrder } from "@/lib/api/orders";
 import { getPaymentBadgeProps, getOrderStatusBadgeProps, isOrderActive } from "@/lib/orderStatus";
+import { isMobileDevice } from "@/lib/native/app";
+import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/orders")({
   head: () => ({
@@ -38,6 +40,18 @@ type FilterTab = "all" | "active" | "delivered" | "cancelled";
 const PAGE_SIZE = 10;
 
 function OrdersPage() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isMobileDevice()) {
+      navigate({ to: "/app", search: { tab: "orders" }, replace: true });
+    }
+  }, [navigate]);
+
+  if (typeof window !== "undefined" && isMobileDevice()) {
+    return null;
+  }
+
   const { isAuthenticated, user } = useAuth();
   const { syncApiOrders } = useStore();
 

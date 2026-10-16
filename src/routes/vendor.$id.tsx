@@ -1,5 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState, useMemo, useEffect } from "react";
+import { isMobileDevice } from "@/lib/native/app";
 import {
   Store,
   MapPin,
@@ -47,6 +48,18 @@ export const Route = createFileRoute("/vendor/$id")({
 });
 
 export function VendorShopPage() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isMobileDevice()) {
+      navigate({ to: "/app", replace: true });
+    }
+  }, [navigate]);
+
+  if (typeof window !== "undefined" && isMobileDevice()) {
+    return null;
+  }
+
   const { id } = Route.useParams();
   const vendor = getVendor(id);
   const { addToCart } = useStore();

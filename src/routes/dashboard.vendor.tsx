@@ -56,9 +56,11 @@ import { ProductFormPage } from "@/components/vendor/ProductFormPage";
 import { getCurrentRole, getCurrentUser } from "@/lib/auth";
 import { useStore, type Order } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { isMobileDevice } from "@/lib/native/app";
 
 export const Route = createFileRoute("/dashboard/vendor")({
   beforeLoad: async () => {
+    if (isMobileDevice()) throw redirect({ to: "/app" });
     const role = await getCurrentRole();
     if (!role) throw redirect({ to: "/login", search: { redirect: "/dashboard/vendor" } });
     if (role === "customer") throw redirect({ to: "/dashboard/customer" });

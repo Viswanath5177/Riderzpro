@@ -18,9 +18,11 @@ import { BookingModal } from "@/components/dashboard/BookingModal";
 import { AddBikeModal } from "@/components/dashboard/AddBikeModal";
 import { getCurrentRole } from "@/lib/auth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { isMobileDevice } from "@/lib/native/app";
 
 export const Route = createFileRoute("/dashboard/customer")({
   beforeLoad: async () => {
+    if (isMobileDevice()) throw redirect({ to: "/app", search: { tab: "account" } });
     const role = await getCurrentRole();
     if (!role) throw redirect({ to: "/login", search: { redirect: "/dashboard/customer" } });
     if (role === "PRODUCT_ADMIN") throw redirect({ to: "/admin/products" });
@@ -43,6 +45,9 @@ export const Route = createFileRoute("/dashboard/customer")({
 });
 
 function CustomerDashboardRoute() {
+  if (typeof window !== "undefined" && isMobileDevice()) {
+    return null;
+  }
   return (
     <ProtectedRoute>
       <CustomerDashboard />

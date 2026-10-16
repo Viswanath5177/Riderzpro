@@ -42,6 +42,8 @@ import { MissingFieldsChecklist } from "@/components/checkout/MissingFieldsCheck
 import { ServiceabilityBanner } from "@/components/checkout/ServiceabilityBanner";
 
 
+import { isMobileDevice } from "@/lib/native/app";
+
 export const Route = createFileRoute("/cart")({
   head: () => ({
     meta: [
@@ -62,9 +64,20 @@ export const Route = createFileRoute("/cart")({
 });
 
 function CartPage() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isMobileDevice()) {
+      navigate({ to: "/app", replace: true });
+    }
+  }, [navigate]);
+
+  if (typeof window !== "undefined" && isMobileDevice()) {
+    return null;
+  }
+
   const { cart, setQty, userProfile, inventoryStock, clearCart, addToCart, userLocation, placeOrderWithOptions } = useStore();
   const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
 
   // Ref to prevent double-submit
   const isSubmittingRef = useRef(false);

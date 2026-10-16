@@ -1,5 +1,5 @@
-// src/components/common/CartDrawer.tsx
-import { Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   X,
   Minus,
@@ -13,14 +13,25 @@ import {
 import { toast } from "sonner";
 import { useStore, quoteCart } from "@/lib/store";
 import { inr, products } from "@/lib/data";
+import { useAuth } from "@/lib/auth";
+import { MobileOtpModal } from "@/components/app/MobileOtpModal";
+import { isMobileDevice } from "@/lib/native/app";
+import { createOrder } from "@/lib/api/orders";
 
 export function CartDrawer() {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const [isOtpOpen, setIsOtpOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const {
     isCartOpen,
     setIsCartOpen,
     cart,
     setQty,
     addToCart,
+    clearCart,
+    placeOrderWithOptions,
+    userProfile,
     inventoryStock,
   } = useStore();
 
@@ -274,17 +285,144 @@ export function CartDrawer() {
               <p className="text-[11px] text-gray-500">Total Amount</p>
               <p className="text-lg font-extrabold text-[#E31E24] font-mono leading-tight">{inr(quote.total)}</p>
             </div>
-            <Link
-              to="/cart"
-              onClick={() => setIsCartOpen(false)}
-              className="flex-1 py-3 px-6 rounded-2xl bg-[#E31E24] hover:bg-red-700 text-white text-xs sm:text-sm font-bold text-center shadow-md active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer"
+            <button
+              disabled={isSubmitting}
+              onClick={async () => {
+                if (!isAuthenticated) {
+                  setIsOtpOpen(true);
+                  return;
+                }
+
+                if (isMobileDevice()) {
+                  setIsSubmitting(true);
+                  try {
+                    const payload = {
+                      items: cart.map((c) => ({
+                        productId: c.productId,
+                        vendorId: c.vendorId,
+                        qty: c.qty,
+                      })),
+                      contact: {
+                        name: userProfile?.name && userProfile.name !== "Guest Rider" ? userProfile.name : "Customer",
+                        phone: userProfile?.phone || "9876543210",
+                        email: userProfile?.email || "customer@riderzpro.in",
+                      },
+                      shippingAddress: {
+                        street: userProfile?.address || "Flat 402, Green Glen Layout, Connaught Place",
+                        locality: "Connaught Place",
+                        city: userProfile?.city || "Delhi",
+                        state: "Delhi",
+                        pincode: "110001",
+                      },
+                      paymentMethod: "COD" as const,
+                    };
+
+                    const newOrder = await createOrder(payload);
+
+                    try {
+                      placeOrderWithOptions({
+                        payment: "Cash on Delivery",
+                        paymentStatus: "COD_PENDING",
+                        shippingAddress: {
+                          name: userProfile?.name || "Customer",
+                          street: userProfile?.address || "Flat 402, Green Glen Layout, Connaught Place",
+                          city: userProfile?.city || "Delhi",
+                          state: "Delhi",
+                          pincode: "110001",
+                          phone: userProfile?.phone || "9876543210",
+                        },
+                      });
+                    } catch {}
+
+                    clearCart();
+                    setIsCartOpen(false);
+                    toast.success("Order Placed Successfully! ⚡ 30m Express Dispatch", {
+                      description: `Order ID: ${newOrder.orderNumber || newOrder.id}`,
+                    });
+                    navigate({ to: "/app", search: { tab: "orders" }, replace: true });
+                  } catch (e) {
+                    toast.error("Failed to place order. Please try again.");
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                  return;
+                }
+
+                setIsCartOpen(false);
+                navigate({ to: "/cart" as never });
+              }}
+              className="flex-1 py-3 px-6 rounded-2xl bg-[#E31E24] hover:bg-red-700 disabled:opacity-50 text-white text-xs sm:text-sm font-bold text-center shadow-md active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>Proceed to checkout</span>
+              <span>{isSubmitting ? "Placing Order..." : isMobileDevice() ? "⚡ Confirm & Place Order" : "Proceed to checkout"}</span>
               <ArrowRight className="h-4 w-4" />
-            </Link>
+            </button>
           </div>
         )}
       </div>
+
+      {/* Customer Mobile OTP Verification Modal */}
+      <MobileOtpModal
+        isOpen={isOtpOpen}
+        onClose={() => setIsOtpOpen(false)}
+        onSuccess={() => {
+          if (isMobileDevice()) {
+            setIsOtpOpen(false);
+            // Trigger 1-click mobile order placement after OTP verified
+            setTimeout(async () => {
+              try {
+                const payload = {
+                  items: cart.map((c) => ({
+                    productId: c.productId,
+                    vendorId: c.vendorId,
+                    qty: c.qty,
+                  })),
+                  contact: {
+                    name: "Customer",
+                    phone: "9876543210",
+                    email: "customer@riderzpro.in",
+                  },
+                  shippingAddress: {
+                    street: "Flat 402, Green Glen Layout, Connaught Place",
+                    locality: "Connaught Place",
+                    city: "Delhi",
+                    state: "Delhi",
+                    pincode: "110001",
+                  },
+                  paymentMethod: "COD" as const,
+                };
+                const newOrder = await createOrder(payload);
+                try {
+                  placeOrderWithOptions({
+                    payment: "Cash on Delivery",
+                    paymentStatus: "COD_PENDING",
+                    shippingAddress: {
+                      name: "Customer",
+                      street: "Flat 402, Green Glen Layout, Connaught Place",
+                      city: "Delhi",
+                      state: "Delhi",
+                      pincode: "110001",
+                      phone: "9876543210",
+                    },
+                  });
+                } catch {}
+                clearCart();
+                setIsCartOpen(false);
+                toast.success("Order Placed Successfully! ⚡ 30m Express Dispatch", {
+                  description: `Order ID: ${newOrder.orderNumber || newOrder.id}`,
+                });
+                navigate({ to: "/app", search: { tab: "orders" }, replace: true });
+              } catch {
+                toast.error("Failed to place order.");
+              }
+            }, 300);
+          } else {
+            setIsCartOpen(false);
+            navigate({ to: "/cart" as never });
+          }
+        }}
+        title="Login to Place Order"
+        subtitle="Verify your mobile number to complete Delhi express delivery"
+      />
     </div>
   );
 }

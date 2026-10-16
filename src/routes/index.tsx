@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { isNativePlatform } from "@/lib/native/app";
+import { isMobileDevice } from "@/lib/native/app";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { Hero } from "@/components/site/landing/Hero";
 import { CategoryGrid } from "@/components/site/landing/CategoryGrid";
@@ -30,25 +30,16 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
-function isMobilePhoneClient(): boolean {
-  if (typeof window === "undefined") return false;
-  if (isNativePlatform()) return true;
-  const isMobileUA = /iPhone|iPod|Android.*Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
-    navigator.userAgent
-  );
-  return isMobileUA || (window.innerWidth <= 768 && "ontouchstart" in window);
-}
-
 function LandingPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (isMobilePhoneClient()) {
+    if (isMobileDevice()) {
       navigate({ to: "/app", replace: true });
     }
   }, [navigate]);
 
-  if (typeof window !== "undefined" && isMobilePhoneClient()) {
+  if (typeof window !== "undefined" && isMobileDevice()) {
     return null;
   }
 
