@@ -22,7 +22,7 @@ export type AppTab = "home" | "categories" | "orders" | "account";
 
 export function AppShell({ initialTab = "home" }: { initialTab?: AppTab }) {
   const [activeTab, setActiveTab] = useState<AppTab>(initialTab);
-  const { cart, activeBikeId, openCart, orders } = useStore();
+  const { cart, activeBikeId, setIsCartOpen, orders } = useStore();
 
   const cartCount = cart.reduce((s, c) => s + c.qty, 0);
   const activeOrdersCount = orders ? orders.filter((o) => o.status < 5).length : 0;
@@ -46,7 +46,7 @@ export function AppShell({ initialTab = "home" }: { initialTab?: AppTab }) {
           </div>
 
           <button
-            onClick={openCart}
+            onClick={() => setIsCartOpen(true)}
             aria-label="Open Shopping Cart"
             className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800 text-zinc-200 border border-zinc-700 transition active:scale-90 hover:bg-zinc-700"
           >

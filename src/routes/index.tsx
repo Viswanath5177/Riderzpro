@@ -30,16 +30,25 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
+function isMobilePhoneClient(): boolean {
+  if (typeof window === "undefined") return false;
+  if (isNativePlatform()) return true;
+  const isMobileUA = /iPhone|iPod|Android.*Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
+  return isMobileUA || (window.innerWidth <= 768 && "ontouchstart" in window);
+}
+
 function LandingPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (isNativePlatform()) {
+    if (isMobilePhoneClient()) {
       navigate({ to: "/app", replace: true });
     }
   }, [navigate]);
 
-  if (typeof window !== "undefined" && isNativePlatform()) {
+  if (typeof window !== "undefined" && isMobilePhoneClient()) {
     return null;
   }
 

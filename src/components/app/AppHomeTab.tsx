@@ -14,7 +14,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { products, bikes, getBike } from "@/lib/data";
+import { products, bikes, getBike, bestOffer, inr, type Product } from "@/lib/data";
 import { toast } from "sonner";
 
 export function AppHomeTab({
@@ -34,13 +34,14 @@ export function AppHomeTab({
   const featured = products
     .filter((p) => {
       if (!activeBikeId) return true;
-      return !p.compatibleBikeIds || p.compatibleBikeIds.includes(activeBikeId);
+      return !p.fits || p.fits.length === 0 || p.fits.includes(activeBikeId);
     })
     .slice(0, 8);
 
-  const handleAddToCart = (e: React.MouseEvent, product: (typeof products)[0]) => {
+  const handleAddToCart = (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
-    addToCart(product, 1);
+    const offer = bestOffer(product);
+    addToCart(product.id, offer.vendorId, 1);
     toast.success(`Added ${product.name} to cart`, {
       description: "Ready for Delhi express 30-min dispatch",
       duration: 2000,
@@ -60,7 +61,7 @@ export function AppHomeTab({
               Selected Vehicle
             </div>
             <div className="text-sm font-bold text-white">
-              {activeBike ? `${activeBike.brand} ${activeBike.model}` : "All Vehicles (Universal)"}
+              {activeBike ? `${activeBike.make} ${activeBike.model}` : "All Vehicles (Universal)"}
             </div>
           </div>
         </div>
@@ -72,7 +73,7 @@ export function AppHomeTab({
           <option value="">Switch Bike</option>
           {bikes.map((b) => (
             <option key={b.id} value={b.id}>
-              {b.brand} {b.model}
+              {b.make} {b.model}
             </option>
           ))}
         </select>
@@ -192,7 +193,8 @@ export function AppHomeTab({
 
         <div className="grid grid-cols-2 gap-2.5">
           {featured.map((p) => {
-            const inCart = cart.some((c) => c.product.id === p.id);
+            const offer = bestOffer(p);
+            const inCart = cart.some((c) => c.productId === p.id);
             return (
               <div
                 key={p.id}
@@ -207,7 +209,7 @@ export function AppHomeTab({
                       loading="lazy"
                     />
                     <div className="absolute top-1.5 left-1.5 rounded bg-zinc-900/80 px-1.5 py-0.5 text-[9px] font-bold text-red-400 backdrop-blur">
-                      ₹{p.price.toLocaleString("en-IN")}
+                      {inr(offer.price)}
                     </div>
                   </div>
 

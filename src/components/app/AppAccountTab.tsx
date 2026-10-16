@@ -22,7 +22,7 @@ import { useStore } from "@/lib/store";
 import { toast } from "sonner";
 
 export function AppAccountTab({ onOpenOrders }: { onOpenOrders: () => void }) {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, signOut } = useAuth();
   const { userProfile } = useStore();
   const navigate = useNavigate();
 
@@ -189,8 +189,7 @@ export function AppAccountTab({ onOpenOrders }: { onOpenOrders: () => void }) {
               </span>
             </div>
             <p className="mt-0.5 text-[11px] text-zinc-400">
-              {userProfile?.shippingAddress?.street || "Flat 402, Green Glen Layout, Connaught Place"}
-              , {userProfile?.shippingAddress?.city || "New Delhi"}, {userProfile?.shippingAddress?.pincode || "110001"}
+              {userProfile?.address || "Flat 402, Green Glen Layout, Connaught Place"}, {userProfile?.city || "New Delhi"}, 110001
             </p>
           </div>
         </div>

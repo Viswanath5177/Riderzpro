@@ -42,8 +42,10 @@ export function AppOrdersTab() {
               price: 24500,
             },
           ],
-          deliveryFee: 150,
-          status: "PACKED",
+          fee: 150,
+          subtotal: 24500,
+          km: 5,
+          eta: 25,
         },
       ],
       itemsTotal: 24500,
@@ -64,10 +66,7 @@ export function AppOrdersTab() {
       },
     };
 
-    placeOrder({
-      shipping: demoOrder.shippingAddress,
-      paymentMethod: "razorpay",
-    });
+    placeOrder("Razorpay (Test)");
 
     toast.success(`Created QA Demo Order ${demoOrder.id}`, {
       description: "Ready for Seller Pack -> Rider Pickup -> Map Tracking verification",
