@@ -98,6 +98,13 @@ export const Route = createFileRoute("/$id")({
       });
     }
 
+    if (lowerId.startsWith("cst_")) {
+      throw redirect({
+        to: "/dashboard/customer",
+        search: { tab: (search as any)?.tab || "overview" },
+      });
+    }
+
     const role = await getCurrentRole();
     const user = await getCurrentUser();
 
@@ -125,14 +132,10 @@ export const Route = createFileRoute("/$id")({
     }
 
     if (role === "customer") {
-      // IDOR protection: if user is logged in as customer A, cannot access customer B's dashboard
-      if (user.id !== params.id) {
-        throw redirect({
-          to: "/$id",
-          params: { id: user.id },
-          search: { tab: search["tab"] || "overview" },
-        });
-      }
+      throw redirect({
+        to: "/dashboard/customer",
+        search: { tab: search["tab"] || "overview" },
+      });
     }
   },
   head: () => ({

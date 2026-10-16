@@ -1,0 +1,108 @@
+name: riderzpro
+description: Car & Bike Accessories marketplace with EV two-wheelers, guaranteed fitment, and live delivery tracking.
+version: 1.0.0+1
+publish_to: none
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management & routing
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+  go_router: ^13.2.0
+
+  # Data layer
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.9.0
+  dio: ^5.4.3
+  web_socket_channel: ^2.4.0
+
+  # Storage
+  flutter_secure_storage: ^9.0.0
+  shared_preferences: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # UI / fonts
+  google_fonts: ^6.2.1
+  flutter_animate: ^4.5.0
+  shimmer: ^3.0.0
+  lottie: ^3.1.0
+  cached_network_image: ^3.3.1
+
+  # Map & location
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  geolocator: ^11.1.0
+  geocoding: ^3.0.0
+
+  # Media & sharing
+  url_launcher: ^6.3.0
+  share_plus: ^10.1.4
+  image_picker: ^1.1.2
+
+  # Payments
+  razorpay_flutter: ^1.3.7
+
+  # Speech
+  speech_to_text: ^7.0.0
+
+  # Notifications
+  firebase_core: ^3.6.0
+  firebase_messaging: ^15.1.3
+  flutter_local_notifications: ^17.2.2
+
+  # Misc
+  intl: ^0.19.0
+  equatable: ^2.0.5
+  collection: ^1.18.0
+  path_provider: ^2.1.4
+  connectivity_plus: ^6.0.5
+  package_info_plus: ^8.1.1
+  haptic_feedback: ^0.5.1+1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.12
+  freezed: ^2.5.2
+  json_serializable: ^6.8.0
+  riverpod_generator: ^2.4.3
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.0
+  mocktail: ^1.0.4
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/brand/icon.png"
+  adaptive_icon_background: "#14161A"
+  adaptive_icon_foreground: "assets/brand/icon.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+
+flutter_native_splash:
+  color: "#14161A"
+  image: "assets/brand/splash.jpg"
+  android: true
+  ios: true
+  fullscreen: true
+  android_12:
+    color: "#14161A"
+    image: "assets/brand/splash.jpg"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/brand/
+    - assets/photos/
+    - assets/data/
+    - assets/mock/
+    - assets/lottie/
+    - assets/catalogue/
+

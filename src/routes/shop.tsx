@@ -20,6 +20,9 @@ export const Route = createFileRoute("/shop")({
   component: Shop,
 });
 
+import { useNavigate } from "@tanstack/react-router";
+import { isMobileDevice } from "@/lib/native/app";
+
 const CATS = [
   "All",
   "Electric Bikes",
@@ -31,6 +34,18 @@ const CATS = [
 const PAGE_SIZE = 40;
 
 function Shop() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isMobileDevice()) {
+      navigate({ to: "/app", search: { tab: "categories" }, replace: true });
+    }
+  }, [navigate]);
+
+  if (typeof window !== "undefined" && isMobileDevice()) {
+    return null;
+  }
+
   const { activeBikeId, setActiveBikeId } = useStore();
   const { products: catalogueProducts } = useCatalogue();
 

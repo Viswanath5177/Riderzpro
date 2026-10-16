@@ -73,10 +73,23 @@ interface ActiveCoupon {
   productId?: string;
 }
 
+import { isMobileDevice } from "@/lib/native/app";
+
 function CartPage() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isMobileDevice()) {
+      navigate({ to: "/app", replace: true });
+    }
+  }, [navigate]);
+
+  if (typeof window !== "undefined" && isMobileDevice()) {
+    return null;
+  }
+
   const { cart, setQty, clearCart, placeOrderWithOptions, inventoryStock, addToCart, setUserLocation } = useStore();
   const { user, isAuthenticated, openCustomerLoginModal } = useAuth();
-  const navigate = useNavigate();
 
   const [paymentMethod, setPaymentMethod] = useState<string>("UPI");
   const [isSubmitting, setIsSubmitting] = useState(false);

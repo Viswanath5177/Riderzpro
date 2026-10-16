@@ -1,6 +1,8 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { VendorDashboard } from "@/components/vendor/VendorDashboard";
 import { getCurrentRole, getCurrentUser } from "@/lib/auth";
+import { isMobileDevice } from "@/lib/native/app";
 
 export const VENDOR_ALLOWED_TABS = [
   "overview",
@@ -36,6 +38,10 @@ export const Route = createFileRoute("/vendor/$id")({
   beforeLoad: async ({ params, search }) => {
     if (typeof window === "undefined") {
       return;
+    }
+
+    if (isMobileDevice()) {
+      throw redirect({ to: "/app" });
     }
 
     const lowerId = params.id.toLowerCase();
@@ -91,6 +97,16 @@ function VendorDashboardRoute() {
   const { id } = Route.useParams();
   const search = Route.useSearch();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isMobileDevice()) {
+      navigate({ to: "/app", replace: true });
+    }
+  }, [navigate]);
+
+  if (typeof window !== "undefined" && isMobileDevice()) {
+    return null;
+  }
 
   const handleTabChange = (newTab: string) => {
     navigate({

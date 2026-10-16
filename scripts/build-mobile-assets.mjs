@@ -105,7 +105,7 @@ ${preloadsHtml}
           }
         }
       },
-      matches:$R[7]=[$R[8]={i:"__root__ ",u:Date.now(),s:"success",ssr:!0}]
+      matches:$R[7]=[$R[8]={i:"__root__",u:Date.now(),s:"success",ssr:!0}]
     })($R["tsr"]);
     $_TSR.e();
   </script>

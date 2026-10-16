@@ -1,19 +1,26 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { getCurrentRole, getCurrentUser } from "@/lib/auth";
+import { isMobileDevice } from "@/lib/native/app";
 
 export const Route = createFileRoute("/dashboard/vendor")({
   beforeLoad: async () => {
     if (typeof window === "undefined") {
       return;
     }
+    if (isMobileDevice()) {
+      throw redirect({ to: "/app" });
+    }
     const role = await getCurrentRole();
     const user = await getCurrentUser();
-    if (!role || role === "customer" || !user) {
-      throw redirect({ to: "/vendor/login", search: { redirect: "/dashboard/vendor" } });
+    if (!role || !user) {
+      throw redirect({ to: "/login", search: { redirect: "/dashboard/vendor" } });
     }
     if (role === "SUPER_ADMIN" || role === "super_admin" || role === "ADMIN" || role === "admin") {
       throw redirect({ to: "/admin/$id", params: { id: user.id }, search: { tab: "overview" } });
+    }
+    if (role === "customer") {
+      throw redirect({ to: "/$id", params: { id: user.id }, search: { tab: "overview" } });
     }
     let tab = "overview";
     if (typeof window !== "undefined") {

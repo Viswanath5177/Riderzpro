@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { isNativePlatform } from "@/lib/native/app";
+import { isMobileDevice } from "@/lib/native/app";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { Hero } from "@/components/site/landing/Hero";
 import { CategoryGrid } from "@/components/site/landing/CategoryGrid";
@@ -34,12 +34,12 @@ function LandingPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (isNativePlatform()) {
+    if (isMobileDevice()) {
       navigate({ to: "/app", replace: true });
     }
   }, [navigate]);
 
-  if (typeof window !== "undefined" && isNativePlatform()) {
+  if (typeof window !== "undefined" && isMobileDevice()) {
     return null;
   }
 

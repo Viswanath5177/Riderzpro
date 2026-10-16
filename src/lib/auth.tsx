@@ -383,8 +383,27 @@ async function hashPassword(plain: string): Promise<string> {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("riderzpro_auth_user");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.id) return parsed;
+        }
+      } catch {}
+    }
+    return null;
+  });
+  const [loading, setLoading] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("riderzpro_auth_user");
+        if (raw) return false;
+      } catch {}
+    }
+    return true;
+  });
 
   // Customer Login Modal state & controls
   const [isCustomerLoginModalOpen, setIsCustomerLoginModalOpen] = useState(false);
