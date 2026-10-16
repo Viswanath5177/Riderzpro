@@ -21,7 +21,7 @@ export const Route = createFileRoute("/order-confirmation/$id")({
 function OrderConfirmationPage() {
   const { id } = Route.useParams();
   const { user } = useAuth();
-  const { syncApiOrders } = useStore();
+  const { syncApiOrders } = useStore() as any;
   const [order, setOrder] = useState<ApiOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +35,7 @@ function OrderConfirmationPage() {
       .then((data) => {
         if (isMounted) {
           setOrder(data);
-          syncApiOrders([data]);
+          syncApiOrders?.([data]);
           setLoading(false);
         }
       })

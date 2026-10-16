@@ -19,34 +19,7 @@ interface Review {
 }
 
 export function ReviewsSection({ vendor }: ReviewsSectionProps) {
-  const [reviews, setReviews] = useState<Review[]>([
-    {
-      id: "REV-101",
-      customerName: "Karthik R.",
-      rating: 5,
-      productName: "VoltRide 60V 30Ah Li-ion Pack",
-      date: "2 days ago",
-      comment: "Super fast dispatch! Direct fit on my Ola S1 Pro and getting 115 km range with zero throttle lag.",
-      vendorReply: "Thank you Karthik! Glad you are enjoying the smooth performance.",
-    },
-    {
-      id: "REV-102",
-      customerName: "Pooja V.",
-      rating: 4,
-      productName: "ChargeMax 3.3kW Fast Charger",
-      date: "5 days ago",
-      comment: "Solid build quality, charges in under 2 hours. Wire length could be slightly longer.",
-    },
-    {
-      id: "REV-103",
-      customerName: "Anonymous Rider",
-      rating: 1,
-      productName: "Wave Disc Brake Rotor",
-      date: "1 week ago",
-      comment: "Fake seller scam company!!! (Spam review)",
-      isFlagged: false,
-    },
-  ]);
+  const [reviews, setReviews] = useState<Review[]>([]);
 
   const [replyingReviewId, setReplyingReviewId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
@@ -82,7 +55,16 @@ export function ReviewsSection({ vendor }: ReviewsSectionProps) {
 
       {/* Reviews List */}
       <div className="space-y-4">
-        {reviews.map((rev) => (
+        {reviews.length === 0 ? (
+          <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center">
+            <MessageSquare className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-gray-700">No customer reviews yet</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Verified buyer reviews and ratings will appear here once delivered orders are reviewed.
+            </p>
+          </div>
+        ) : (
+          reviews.map((rev) => (
           <div
             key={rev.id}
             className="rounded-3xl border border-gray-200 bg-white p-5 shadow-2xs space-y-3"
@@ -175,7 +157,8 @@ export function ReviewsSection({ vendor }: ReviewsSectionProps) {
               </div>
             )}
           </div>
-        ))}
+        ))
+        )}
       </div>
     </div>
   );

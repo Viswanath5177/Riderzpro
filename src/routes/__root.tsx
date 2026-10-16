@@ -16,30 +16,24 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../lib/auth";
 import { AdminAuthProvider } from "../lib/adminAuth";
-import { VendorStoreProvider } from "../lib/vendor/vendorStore";
-import { VendorAuthProvider } from "../lib/vendorAuth";
 import { StoreProvider } from "../lib/store";
 import { Toaster } from "../components/ui/sonner";
 import { initNativeApp, isMobileDevice } from "../lib/native/app";
+import { CustomerLoginModal } from "../components/auth/CustomerLoginModal";
 
 function NotFoundComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  // Block direct URL access for unhandled technician/workshop routes
+  // Block direct URL access for unhandled vendor/technician routes
   if (
-    /^\/(technician|workshop|dashboards|dashboard\/(rider|workshop))/i.test(
+    /^\/(vendor|technician|workshop|dashboards|dashboard\/(vendor|rider|workshop))/i.test(
       pathname
     )
   ) {
-    return <Navigate to="/" replace />;
-  }
-
-  // Handle legacy vendor dashboard route alias
-  if (/^\/dashboard\/vendor\/?$/i.test(pathname)) {
     if (typeof window !== "undefined" && isMobileDevice()) {
       return <Navigate to="/app" replace />;
     }
-    return <Navigate to="/vendor/dashboard" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return (
@@ -190,14 +184,11 @@ function RootComponent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <AuthProvider>
         <AdminAuthProvider>
-          <VendorStoreProvider>
-            <VendorAuthProvider>
-              <StoreProvider>
-                <Outlet />
-                <Toaster position="top-center" />
-              </StoreProvider>
-            </VendorAuthProvider>
-          </VendorStoreProvider>
+          <StoreProvider>
+            <Outlet />
+            <CustomerLoginModal />
+            <Toaster position="top-right" closeButton />
+          </StoreProvider>
         </AdminAuthProvider>
       </AuthProvider>
     </QueryClientProvider>

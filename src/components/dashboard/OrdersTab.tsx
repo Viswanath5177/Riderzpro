@@ -1,56 +1,82 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { Package, ArrowRight, Check, MapPin, Download, RefreshCw, ShoppingBag, Eye, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore, ORDER_STEPS, type Order } from "@/lib/store";
 import { getProduct, getVendor, inr } from "@/lib/data";
-import { fetchDeliveries, checkLogisticsDelivery } from "@/lib/api";
-import { DownloadInvoiceButton } from "@/components/common/DownloadInvoiceButton";
+import { useAuth } from "@/lib/auth";
 
 export function OrdersTab() {
-  const { orders, deleteOrder, clearOrders } = useStore();
-  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { clearOrders, deleteOrder } = useStore();
   const [filter, setFilter] = useState<"all" | "active" | "delivered">("all");
-  const [verifiedDeliveries, setVerifiedDeliveries] = useState<Record<string, boolean>>({});
-  const [checkingOrderId, setCheckingOrderId] = useState<string | null>(null);
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<any | null>(null);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    let isMounted = true;
-    fetchDeliveries({ limit: 100 })
+  const fetchOrders = () => {
+    setIsLoading(true);
+    const query = user?.id ? `?customer_id=${encodeURIComponent(user.id)}` : "";
+    fetch(`/api/orders${query}`, { credentials: "include" })
+      .then((r) => r.json())
       .then((res) => {
-        if (isMounted && res?.items) {
-          const map: Record<string, boolean> = {};
-          res.items.forEach((d) => {
-            if (d.order_id) map[d.order_id] = true;
-            if (d.id) map[d.id] = true;
-          });
-          setVerifiedDeliveries(map);
+        if (res.success && Array.isArray(res.data)) {
+          const mapped: Order[] = res.data.map((o: any) => ({
+            id: o.order_number || o.id,
+            createdAt: o.created_at || new Date().toISOString(),
+            payment: o.payment_method || "UPI",
+            status: (
+              o.status === "completed" || o.status === "delivered" ? 5 :
+              o.status === "shipped" || o.status === "in_transit" ? 4 :
+              o.status === "picked_up" ? 3 :
+              o.status === "packed" ? 2 :
+              o.status === "processing" || o.status === "accepted" ? 1 :
+              0
+            ) as any,
+            total: Number(o.total_amount) || 0,
+            itemsTotal: Number(o.total_amount) || 0,
+            deliveryTotal: 0,
+            tax: 0,
+            shippingAddress: {
+              name: o.recipient_name || o.customer_name || user?.name || "Customer",
+              street: [o.delivery_address, o.delivery_instructions ? `(Instructions: ${o.delivery_instructions})` : ""].filter(Boolean).join(" "),
+              city: "Bengaluru",
+              pincode: "560038",
+              phone: o.recipient_phone || o.customer_phone || "+91 98765 43210",
+            },
+            groups: [
+              {
+                vendorId: o.seller_id || "sel_volthub_01",
+                items: Array.isArray(o.items) && o.items.length > 0
+                  ? o.items.map((it: any) => ({
+                      productId: it.product_id,
+                      qty: Number(it.quantity) || 1,
+                      price: Number(it.unit_price) || 0,
+                    }))
+                  : [
+                      {
+                        productId: "prod_generic",
+                        qty: 1,
+                        price: Number(o.total_amount) || 0,
+                      },
+                    ],
+              },
+            ],
+          }));
+          setOrders(mapped);
         }
       })
-      .catch(() => {});
-    return () => {
-      isMounted = false;
-    };
-  }, [orders]);
-
-  const handleTrackOrder = async (order: Order) => {
-    const canonicalId = order.id;
-    setCheckingOrderId(canonicalId);
-    try {
-      const delivery = await checkLogisticsDelivery(canonicalId);
-      if (delivery) {
-        navigate({ to: "/track/$id", params: { id: canonicalId } });
-      } else {
-        toast.info("Live tracking is not available for this order yet.", {
-          description: "Your order is being processed. Live GPS tracking will become active once dispatched.",
-        });
-      }
-    } catch {
-      toast.info("Live tracking is not available for this order yet.");
-    } finally {
-      setCheckingOrderId(null);
-    }
+      .catch((err) => {
+        console.error("Failed to load customer orders:", err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   };
+
+  useEffect(() => {
+    fetchOrders();
+  }, [user?.id]);
 
   const filteredOrders = orders.filter((o) => {
     if (filter === "active") return o.status < 5;
@@ -60,6 +86,85 @@ export function OrdersTab() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
+      {/* Invoice modal */}
+      {selectedInvoiceOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-lg bg-white rounded-3xl border border-gray-200 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div>
+                <p className="text-base font-bold text-gray-900 font-display">Tax Invoice & Receipt</p>
+                <p className="text-xs text-gray-500 font-mono">Invoice #{selectedInvoiceOrder.id}</p>
+              </div>
+              <button
+                onClick={() => setSelectedInvoiceOrder(null)}
+                className="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="text-xs space-y-3">
+              <div className="flex justify-between text-gray-600">
+                <span>Date: {new Date(selectedInvoiceOrder.createdAt).toLocaleDateString("en-IN")}</span>
+                <span>Payment: {selectedInvoiceOrder.payment}</span>
+              </div>
+
+              <div className="border border-gray-100 rounded-2xl p-3 bg-gray-50 divide-y divide-gray-100">
+                {selectedInvoiceOrder.groups.map((g: any) => {
+                  const v = getVendor(g.vendorId);
+                  return (
+                    <div key={g.vendorId} className="py-2 first:pt-0 last:pb-0">
+                      <p className="font-bold text-gray-800">{v?.name || "Verified EV Vendor"}</p>
+                      {g.items.map((it: any) => {
+                        const p = getProduct(it.productId);
+                        return (
+                          <div key={it.productId} className="flex justify-between text-gray-600 mt-1">
+                            <span>{it.qty} × {p?.name || "EV Spare"}</span>
+                            <span className="font-semibold text-gray-900">{inr(it.price * it.qty)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="space-y-1.5 pt-2">
+                <div className="flex justify-between text-gray-500">
+                  <span>Subtotal</span>
+                  <span>{inr(selectedInvoiceOrder.itemsTotal)}</span>
+                </div>
+                <div className="flex justify-between text-gray-500">
+                  <span>Doorstep Delivery (GPS Logged)</span>
+                  <span>{inr(selectedInvoiceOrder.deliveryTotal)}</span>
+                </div>
+                <div className="flex justify-between text-gray-500">
+                  <span>GST (18% Statutory EV Tax)</span>
+                  <span>{inr(selectedInvoiceOrder.tax)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-sm text-gray-900 pt-2 border-t border-gray-100">
+                  <span>Total Amount Paid</span>
+                  <span className="text-primary">{inr(selectedInvoiceOrder.total)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  toast.success(`Invoice ${selectedInvoiceOrder.id}.pdf downloaded`);
+                  setSelectedInvoiceOrder(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-emerald-600 transition flex items-center gap-1.5"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span>Download PDF Receipt</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-200">
         <div>
@@ -170,7 +275,7 @@ export function OrdersTab() {
                   <div className="text-right">
                     <p className="text-base font-extrabold text-gray-900">{inr(o.total)}</p>
                     <span className="text-[11px] text-gray-500">
-                      {o.groups.reduce((s, g) => s + g.items.reduce((n, i) => n + i.qty, 0), 0)} items total
+                      {o.groups.reduce((s: number, g: any) => s + g.items.reduce((n: number, i: any) => n + (i.qty || 0), 0), 0)} items total
                     </span>
                   </div>
                 </div>
@@ -186,9 +291,9 @@ export function OrdersTab() {
                           <div
                             className={`h-6 w-6 rounded-full grid place-items-center text-[10px] font-bold transition-all ${
                               isCurrent
-                                ? "bg-[#E31E24] text-white ring-4 ring-red-100 scale-105"
+                                ? "bg-primary text-white ring-4 ring-emerald-100 scale-105"
                                 : isPassed
-                                ? "bg-[#E31E24] text-white"
+                                ? "bg-emerald-600 text-white"
                                 : "bg-gray-100 text-gray-400"
                             }`}
                           >
@@ -209,7 +314,7 @@ export function OrdersTab() {
 
                 {/* Items & Vendor Summary */}
                 <div className="p-3 rounded-2xl bg-gray-50 border border-gray-100 space-y-2 text-xs">
-                  {o.groups.map((g) => {
+                  {o.groups.map((g: any) => {
                     const v = getVendor(g.vendorId);
                     return (
                       <div key={g.vendorId} className="flex flex-wrap items-center justify-between gap-2">
@@ -218,7 +323,7 @@ export function OrdersTab() {
                           <span className="text-gray-400 ml-2">({g.km} km away · ~{g.eta} min dispatch)</span>
                         </div>
                         <div className="text-gray-600">
-                          {g.items.map((it) => {
+                          {g.items.map((it: any) => {
                             const p = getProduct(it.productId);
                             return (
                               <span key={it.productId} className="inline-block mr-2 font-medium">
@@ -235,16 +340,18 @@ export function OrdersTab() {
                 {/* Action buttons */}
                 <div className="pt-2 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <DownloadInvoiceButton
-                      order={o}
-                      variant="outline"
-                      size="sm"
-                      label="Download Tax Invoice"
-                    />
+                    <button
+                      onClick={() => setSelectedInvoiceOrder(o)}
+                      className="px-3 py-1.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>View Invoice</span>
+                    </button>
                     <button
                       onClick={() => {
                         if (window.confirm(`Are you sure you want to delete order ${o.id}?`)) {
                           deleteOrder(o.id);
+                          setOrders((prev) => prev.filter((item) => item.id !== o.id));
                           toast.success(`Order ${o.id} deleted`);
                         }
                       }}
@@ -256,36 +363,14 @@ export function OrdersTab() {
                     </button>
                   </div>
 
-                  {verifiedDeliveries[o.id] || (o.shipmentId && verifiedDeliveries[o.shipmentId]) || o.status >= 3 ? (
-                    <button
-                      type="button"
-                      onClick={() => handleTrackOrder(o)}
-                      disabled={checkingOrderId === o.id}
-                      className="px-4 py-2 rounded-xl bg-[#E31E24] text-white text-xs font-semibold shadow-xs hover:bg-red-700 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-75"
-                      title="Track live courier on GPS map"
-                    >
-                      {checkingOrderId === o.id ? (
-                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <MapPin className="h-3.5 w-3.5" />
-                      )}
-                      <span>{checkingOrderId === o.id ? "Connecting..." : "Track Live GPS Courier"}</span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        toast.info("Live tracking is not available for this order yet.", {
-                          description: "Live courier tracking activates once the vendor dispatches your order.",
-                        })
-                      }
-                      className="px-4 py-2 rounded-xl bg-gray-100 text-gray-500 text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer hover:bg-gray-200"
-                      title="Live tracking is not available for this order yet."
-                    >
-                      <MapPin className="h-3.5 w-3.5 text-gray-400" />
-                      <span>Live tracking not available yet</span>
-                    </button>
-                  )}
+                  <Link
+                    to="/track/$id"
+                    params={{ id: o.id }}
+                    className="px-4 py-2 rounded-xl bg-[#E31E24] text-white text-xs font-semibold shadow-xs hover:bg-red-700 transition flex items-center gap-1.5"
+                  >
+                    <MapPin className="h-3.5 w-3.5" />
+                    <span>Track Live GPS Courier</span>
+                  </Link>
                 </div>
               </div>
             );

@@ -1,11 +1,3 @@
-# Python & Backend
-__pycache__/
-*.pyc
-.pytest_cache/
-*.db
-*.sqlite
-.env
-
 # Logs
 logs
 *.log
@@ -15,7 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Node & Build artifacts
+# Node / Build artifacts
 node_modules/
 dist/
 dist-ssr/
@@ -24,7 +16,6 @@ dist-ssr/
 .tanstack/**
 .nitro/
 *.local
-*.apk
 
 # Environment & Config
 .env
@@ -39,13 +30,10 @@ __pycache__/
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
-.env
-.env.*
-!.env.example
 database/*.db
 database/*.db-*
-*.sqlite
-*.db
+*.db-shm
+*.db-wal
 
 # Editor directories and files
 .vscode/*
@@ -57,4 +45,3 @@ database/*.db-*
 *.njsproj
 *.sln
 *.sw?
-scratch/

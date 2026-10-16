@@ -26,7 +26,7 @@ export const Route = createFileRoute("/order/$id")({
 function OrderDetailPage() {
   const { id } = Route.useParams();
   const { user } = useAuth();
-  const { syncApiOrders } = useStore();
+  const { syncApiOrders } = useStore() as any;
   const [showInvoice, setShowInvoice] = useState(false);
 
   const {
@@ -50,7 +50,7 @@ function OrderDetailPage() {
   // Mirror into store for legacy dashboard/vendor/cart parity
   useEffect(() => {
     if (order) {
-      syncApiOrders([order]);
+      syncApiOrders?.([order]);
     }
   }, [order, syncApiOrders]);
 

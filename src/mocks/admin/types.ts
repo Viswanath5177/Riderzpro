@@ -35,7 +35,7 @@ export interface AdminSeller {
   email: string;
   city: "Bengaluru" | "Hyderabad" | "Chennai" | "Pune" | "Mumbai";
   gstin: string;
-  kycStatus: "Approved" | "Pending" | "Rejected" | "Changes Requested" | "Suspended";
+  kycStatus: "Approved" | "Pending" | "Rejected";
   rejectionReason?: string;
   commissionRate: number; // e.g. 12%
   rating: number;
@@ -43,7 +43,6 @@ export interface AdminSeller {
   activeProductsCount: number;
   bankAccount: string;
   joinedDate: string;
-  vendorRecord?: any;
 }
 
 export interface AdminRider {
@@ -75,7 +74,7 @@ export interface AdminProduct {
   discountPrice?: number;
   stock: number;
   minStockThreshold: number;
-  status: "Active" | "Low Stock" | "Pending Review" | "Out of Stock";
+  status: "Active" | "Low Stock" | "Pending Review" | "Out of Stock" | "Rejected";
   warrantyMonths: number;
   specs: Record<string, string>;
   compatibleBikes: string[];
@@ -83,8 +82,11 @@ export interface AdminProduct {
   rating: number;
   reviewsCount: number;
   salesCount: number;
+  verificationStatus?: "approved" | "pending_approval" | "rejected";
+  rejectionReason?: string;
   vendorProductRecord?: any;
   pendingRevision?: any;
+  [key: string]: any;
 }
 
 export interface AdminOrderItem {

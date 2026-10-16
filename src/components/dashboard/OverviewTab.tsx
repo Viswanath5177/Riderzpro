@@ -1,25 +1,26 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import {
   Bike,
   Package,
-  Wrench,
-  Truck,
-  Plus,
-  ScanLine,
-  Zap,
   ShoppingBag,
-  ChevronRight,
+  Wrench,
+  Clock,
+  Zap,
+  Truck,
+  ScanLine,
   Copy,
   Check,
+  ChevronRight,
   ShieldCheck,
+  MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useStore, ORDER_STEPS } from "@/lib/store";
-import { Link } from "@tanstack/react-router";
-import { getBike, getProduct, inr, products, riders } from "@/lib/data";
+import { useStore } from "@/lib/store";
+import { inr } from "@/lib/data";
 import { cn } from "@/lib/utils";
-import { DeliveryMap } from "@/components/map/DeliveryMap";
 import type { CustomerTab } from "./CustomerLayout";
+import { VinSearchModal } from "./VinSearchModal";
 
 interface OverviewTabProps {
   onTabChange: (tab: CustomerTab) => void;
@@ -32,428 +33,305 @@ export function OverviewTab({
   onOpenBookingModal,
   onOpenAddBikeModal,
 }: OverviewTabProps) {
-  const {
-    userProfile,
-    garage,
-    activeBikeId,
-    orders,
-    addToCart,
-  } = useStore();
-
+  const { userProfile, garage, orders, userLocation } = useStore();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-
-  const activeBike = garage.find((b) => b.bikeId === activeBikeId) || garage[0];
-  const activeBikeMeta = activeBike ? getBike(activeBike.bikeId) : null;
-  const liveOrder = orders.find((o) => o.status < 5);
-
-  const recommendedParts = products
-    .filter((p) => (activeBike ? p.fits.includes(activeBike.bikeId) : true))
-    .slice(0, 4);
+  const [isVinSearchOpen, setIsVinSearchOpen] = useState(false);
 
   const copyCoupon = (code: string) => {
     navigator.clipboard?.writeText(code);
     setCopiedCode(code);
-    toast.success(`Coupon "${code}" copied!`);
+    toast.success(`Coupon code "${code}" copied to clipboard!`);
     setTimeout(() => setCopiedCode(null), 2500);
   };
 
-  const handleAddBikeClick = () => {
-    if (onOpenAddBikeModal) {
-      onOpenAddBikeModal();
-    } else {
-      onTabChange("garage");
-    }
-  };
-
-  const firstName = userProfile?.name?.trim() ? userProfile.name.trim().split(" ")[0] : "Rahul";
+  const displayName = userProfile.name ? userProfile.name.split(" ")[0] : "User";
 
   return (
-    <div className="space-y-5 sm:space-y-6 animate-in fade-in duration-200">
-      {/* 1. Welcome Greeting: Name only, no emoji, location is in header */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight font-display truncate">
-            Hi, {firstName}
+    <div className="space-y-6 animate-in fade-in duration-200">
+      {/* ─────────────────────────────────────────────────────────────
+          1. TOP GREETING & ADD BIKE BUTTON (Matches Screenshot 1)
+         ───────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#111111] font-display flex items-center gap-2">
+            <span>Hi, {displayName}</span>
+            <span role="img" aria-label="wave">👋</span>
           </h1>
+          <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+            <span className="flex items-center gap-1 text-gray-600 font-medium">
+              <MapPin className="h-3.5 w-3.5 text-[#E31E24]" />
+              {userLocation?.name || "Bengaluru"}, {userLocation?.city ? "KA" : "KA"}
+            </span>
+            <span>·</span>
+            <span className="flex items-center gap-1.5 text-emerald-600 font-semibold">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              EV Connected
+            </span>
+          </div>
         </div>
 
         <button
-          type="button"
-          onClick={handleAddBikeClick}
-          className="shrink-0 flex items-center gap-1 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full bg-red-50 hover:bg-red-100 text-xs sm:text-sm font-bold text-[#E31E24] border border-red-200/80 transition active:scale-95 cursor-pointer shadow-2xs"
+          onClick={onOpenAddBikeModal}
+          className="self-start sm:self-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-red-200 bg-white text-[#E31E24] hover:bg-red-50 text-xs font-bold transition shadow-2xs cursor-pointer active:scale-95"
         >
-          <Plus className="h-4 w-4" />
-          <span>{garage.length > 0 ? "My Garage" : "Add bike"}</span>
+          <span>+ Add Bike</span>
         </button>
       </div>
 
-      {/* 2. Connected Vehicle Card */}
-      {garage.length > 0 && activeBike ? (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#E31E24] via-[#DC2626] to-[#B91C1C] p-4.5 sm:p-6 text-white shadow-md">
-          <div className="relative z-10 flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider border border-white/20">
-                <Bike className="h-3.5 w-3.5 shrink-0" />
-                <span>Connected</span>
-              </span>
-              <h2 className="text-xl sm:text-2xl font-bold text-white mt-1.5 tracking-tight font-display truncate">
-                {activeBike.nickname || `${activeBikeMeta?.make} ${activeBikeMeta?.model}`}
-              </h2>
-              <p className="text-xs sm:text-sm text-red-100 mt-0.5 font-medium truncate">
-                {activeBikeMeta?.voltage}V Architecture - {activeBike.odoKm ? `${activeBike.odoKm} km` : "Ready to ride"}
-              </p>
-            </div>
+      {/* ─────────────────────────────────────────────────────────────
+          2. HERO CARD: MY EV GARAGE (Matches Screenshot 1)
+         ───────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-3xl border border-red-100 bg-gradient-to-r from-red-50/50 via-rose-50/30 to-red-50/40 p-6 sm:p-7 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 relative z-10">
+          <div className="space-y-2 max-w-xl">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100/70 text-[#E31E24] text-[11px] font-bold tracking-wider uppercase">
+              <Bike className="h-3.5 w-3.5" />
+              <span>MY EV GARAGE</span>
+            </span>
 
-            <div className="text-right shrink-0">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs sm:text-sm font-bold border border-white/25">
-                <Zap className="h-3.5 w-3.5 fill-white" />
-                <span>{activeBike.batteryHealth || 98}%</span>
-              </span>
-            </div>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-[#111111] font-display">
+              Add your electric scooter or bike
+            </h2>
+
+            <p className="text-xs sm:text-sm text-[#4B5563] leading-relaxed">
+              Select your vehicle to get 100% verified fitment spares, battery diagnostics, and doorstep care.
+            </p>
           </div>
 
-          <div className="relative z-10 mt-4 sm:mt-5 pt-3 border-t border-white/20 grid grid-cols-3 gap-2 sm:gap-2.5">
+          <div className="shrink-0">
             <button
-              type="button"
-              onClick={onOpenBookingModal}
-              className="py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl bg-white text-[#E31E24] hover:bg-red-50 text-xs sm:text-sm font-bold text-center transition active:scale-95 flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+              onClick={onOpenAddBikeModal}
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[#E31E24] hover:bg-red-700 text-white text-xs sm:text-sm font-bold shadow-xs active:scale-95 transition cursor-pointer"
             >
-              <Wrench className="h-3.5 w-3.5 shrink-0" />
-              <span>Service</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onTabChange("shop")}
-              className="py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs sm:text-sm font-bold text-center transition active:scale-95 flex items-center justify-center gap-1.5 border border-white/25 cursor-pointer"
-            >
-              <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
-              <span>Parts</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onTabChange("garage")}
-              className="py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm font-bold text-center transition active:scale-95 cursor-pointer"
-            >
-              Garage
+              <span>+ Add Vehicle</span>
             </button>
           </div>
-        </div>
-      ) : (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-50 via-white to-red-50/40 p-4.5 sm:p-6 border border-red-200/90 shadow-2xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
-            <div className="space-y-1">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-100 text-[#E31E24] text-xs font-bold uppercase tracking-wider">
-                <Bike className="h-3.5 w-3.5 shrink-0" />
-                <span>My Garage</span>
-              </span>
-              <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">
-                Add your bike
-              </h3>
-              <p className="text-xs sm:text-sm text-gray-600 max-w-sm">
-                Get verified fitment spares and technician visits.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleAddBikeClick}
-              className="self-start sm:self-auto shrink-0 px-4 py-2 sm:py-2.5 rounded-xl bg-[#E31E24] hover:bg-red-700 text-white text-xs sm:text-sm font-bold transition active:scale-95 shadow-xs flex items-center gap-1.5 cursor-pointer"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Add Vehicle</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 3. Quick Actions Grid */}
-      <div>
-        <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-gray-500 mb-2.5">
-          Quick Actions
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
-          <button
-            type="button"
-            onClick={() => onTabChange("shop")}
-            className="p-3.5 sm:p-4 rounded-2xl bg-white border border-gray-200/90 hover:border-gray-300 text-left transition active:scale-98 shadow-2xs flex flex-col justify-between h-28 sm:h-32 cursor-pointer group"
-          >
-            <span className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-red-50 text-[#E31E24] grid place-items-center mb-1.5 group-hover:scale-105 transition shrink-0">
-              <ShoppingBag className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
-            </span>
-            <div>
-              <p className="text-xs sm:text-sm font-bold text-gray-900 leading-tight">Shop Spares</p>
-              <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5 truncate">Batteries & chargers</p>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={onOpenBookingModal}
-            className="p-3.5 sm:p-4 rounded-2xl bg-white border border-gray-200/90 hover:border-gray-300 text-left transition active:scale-98 shadow-2xs flex flex-col justify-between h-28 sm:h-32 cursor-pointer group"
-          >
-            <span className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-blue-50 text-blue-600 grid place-items-center mb-1.5 group-hover:scale-105 transition shrink-0">
-              <Wrench className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
-            </span>
-            <div>
-              <p className="text-xs sm:text-sm font-bold text-gray-900 leading-tight">Doorstep Service</p>
-              <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5 truncate">Certified visit ₹299</p>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onTabChange("orders")}
-            className="p-3.5 sm:p-4 rounded-2xl bg-white border border-gray-200/90 hover:border-gray-300 text-left transition active:scale-98 shadow-2xs flex flex-col justify-between h-28 sm:h-32 cursor-pointer group"
-          >
-            <span className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-emerald-50 text-emerald-600 grid place-items-center mb-1.5 group-hover:scale-105 transition shrink-0">
-              <Truck className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
-            </span>
-            <div>
-              <p className="text-xs sm:text-sm font-bold text-gray-900 leading-tight">My Orders</p>
-              <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5 truncate">
-                {liveOrder ? "1 active dispatch" : `${orders.length} orders`}
-              </p>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onTabChange("garage")}
-            className="p-3.5 sm:p-4 rounded-2xl bg-white border border-gray-200/90 hover:border-gray-300 text-left transition active:scale-98 shadow-2xs flex flex-col justify-between h-28 sm:h-32 cursor-pointer group"
-          >
-            <span className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-purple-50 text-purple-600 grid place-items-center mb-1.5 group-hover:scale-105 transition shrink-0">
-              <ScanLine className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
-            </span>
-            <div>
-              <p className="text-xs sm:text-sm font-bold text-gray-900 leading-tight">VIN Fitment</p>
-              <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5 truncate">Vehicle lookup</p>
-            </div>
-          </button>
         </div>
       </div>
 
-      {/* 4. Active Delivery Status or Promo Banner */}
-      {liveOrder ? (
-        <div className="rounded-2xl border border-red-200/80 bg-red-50/40 p-4 sm:p-4.5 shadow-2xs space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="relative flex h-2.5 w-2.5 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#E31E24] opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#E31E24]" />
-              </span>
-              <span className="text-xs sm:text-sm font-bold text-gray-900 truncate">
-                Delivery in Progress (ETA ~{Math.max(5, liveOrder.eta)} mins)
-              </span>
-            </div>
-            <span className="text-xs font-mono font-bold text-gray-700 shrink-0">
-              {liveOrder.id}
-            </span>
-          </div>
+      {/* ─────────────────────────────────────────────────────────────
+          3. QUICK ACTIONS (4 Cards: Shop Spares, Doorstep Service, My Orders, VIN Fitment)
+         ───────────────────────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+          QUICK ACTIONS
+        </p>
 
-          <div className="overflow-hidden rounded-xl border border-gray-200">
-            <DeliveryMap orderId={liveOrder.id} className="aspect-video w-full" />
-          </div>
-
-          <div className="flex items-center justify-between text-xs sm:text-sm text-gray-600 bg-white p-3 rounded-xl border border-gray-200/70">
-            <div className="flex items-center gap-2 min-w-0">
-              <Truck className="h-4 w-4 text-[#E31E24] shrink-0" />
-              <span className="truncate">Status: <strong className="text-gray-900">{ORDER_STEPS[liveOrder.status]}</strong></span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Action 1: Shop Spares */}
+          <div
+            onClick={() => onTabChange("shop")}
+            className="p-5 rounded-2xl bg-white border border-gray-100 shadow-2xs hover:shadow-md hover:border-red-200 transition-all duration-200 cursor-pointer group flex items-start gap-4"
+          >
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-red-50 text-[#E31E24] shrink-0 group-hover:scale-105 transition-transform">
+              <ShoppingBag className="h-5 w-5" />
             </div>
-            <Link
-              to="/track/$id"
-              params={{ id: liveOrder.id }}
-              className="text-xs sm:text-sm font-bold text-[#E31E24] hover:underline flex items-center gap-0.5 shrink-0"
-            >
-              <span>Track Live</span>
-              <ChevronRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-gray-200 bg-white p-3.5 sm:p-4 shadow-2xs flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-red-50 text-[#E31E24] shrink-0">
-              <Zap className="h-5 w-5" />
-            </span>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="px-1.5 py-0.5 rounded bg-red-100 text-[#E31E24] text-[10px] font-bold shrink-0">
-                  SPECIAL
-                </span>
-                <span className="text-xs sm:text-sm font-bold text-gray-900 truncate">₹200 Off First Visit</span>
-              </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-bold text-[#111111] group-hover:text-[#E31E24] transition-colors">
+                Shop Spares
+              </h3>
               <p className="text-xs text-gray-500 mt-0.5 truncate">
-                Valid on all doorstep visits.
+                Batteries &amp; chargers
               </p>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => copyCoupon("RIDERZ200")}
-            className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl border border-dashed border-[#E31E24] bg-red-50/50 text-[#E31E24] text-xs font-mono font-bold hover:bg-red-50 transition cursor-pointer"
-          >
-            {copiedCode === "RIDERZ200" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-            <span>RIDERZ200</span>
-          </button>
-        </div>
-      )}
-
-      {/* 5. Doorstep Service Packages */}
-      <div>
-        <div className="flex items-center justify-between mb-2.5 sm:mb-3">
-          <div>
-            <h3 className="text-sm sm:text-base font-bold text-gray-900">Doorstep Care</h3>
-            <p className="text-xs text-gray-500">Certified technicians at your location</p>
-          </div>
-          <button
-            type="button"
+          {/* Action 2: Doorstep Service */}
+          <div
             onClick={onOpenBookingModal}
-            className="text-xs sm:text-sm font-bold text-[#E31E24] hover:underline flex items-center gap-0.5"
+            className="p-5 rounded-2xl bg-white border border-gray-100 shadow-2xs hover:shadow-md hover:border-blue-200 transition-all duration-200 cursor-pointer group flex items-start gap-4"
+          >
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-50 text-blue-600 shrink-0 group-hover:scale-105 transition-transform">
+              <Wrench className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-bold text-[#111111] group-hover:text-blue-600 transition-colors">
+                Doorstep Service
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5 truncate">
+                Certified visit ₹299
+              </p>
+            </div>
+          </div>
+
+          {/* Action 3: My Orders */}
+          <div
+            onClick={() => onTabChange("orders")}
+            className="p-5 rounded-2xl bg-white border border-gray-100 shadow-2xs hover:shadow-md hover:border-emerald-200 transition-all duration-200 cursor-pointer group flex items-start gap-4"
+          >
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-50 text-emerald-600 shrink-0 group-hover:scale-105 transition-transform">
+              <Truck className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-bold text-[#111111] group-hover:text-emerald-600 transition-colors">
+                My Orders
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5 truncate">
+                {orders.length} past orders
+              </p>
+            </div>
+          </div>
+
+          {/* Action 4: VIN Fitment */}
+          <div
+            onClick={() => setIsVinSearchOpen(true)}
+            className="p-5 rounded-2xl bg-white border border-gray-100 shadow-2xs hover:shadow-md hover:border-purple-200 transition-all duration-200 cursor-pointer group flex items-start gap-4"
+          >
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-purple-50 text-purple-600 shrink-0 group-hover:scale-105 transition-transform">
+              <ScanLine className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-bold text-[#111111] group-hover:text-purple-600 transition-colors">
+                VIN Fitment
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5 truncate">
+                17-digit decoder
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          4. PROMO BANNER (SPECIAL: ₹200 Off First Visit / RIDERZ200)
+         ───────────────────────────────────────────────────────────── */}
+      <div className="rounded-2xl border border-red-100 bg-white p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+        <div className="flex items-center gap-3.5">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-red-50 text-[#E31E24] shrink-0">
+            <Zap className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-md bg-red-50 text-[#E31E24] text-[10px] font-bold uppercase tracking-wider">
+                SPECIAL
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-[#111111]">
+                ₹200 Off First Visit
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Valid on all doorstep service bookings.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => copyCoupon("RIDERZ200")}
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-dashed border-red-300 bg-red-50/40 text-[#E31E24] hover:bg-red-100/60 transition self-start sm:self-auto cursor-pointer"
+          title="Copy coupon code"
+        >
+          {copiedCode === "RIDERZ200" ? (
+            <Check className="h-3.5 w-3.5 text-emerald-600" />
+          ) : (
+            <Copy className="h-3.5 w-3.5" />
+          )}
+          <span className="font-mono text-xs font-bold">RIDERZ200</span>
+        </button>
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          5. DOORSTEP TECHNICIAN CARE (3 Cards + Book Visit > Action)
+         ───────────────────────────────────────────────────────────── */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-[#111111] font-display">
+              Doorstep Technician Care
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Certified technicians at your location
+            </p>
+          </div>
+
+          <button
+            onClick={onOpenBookingModal}
+            className="text-xs font-bold text-[#E31E24] hover:underline flex items-center gap-1 cursor-pointer"
           >
             <span>Book Visit</span>
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-3.5 w-3.5" />
           </button>
         </div>
 
-        <div className="space-y-2 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-3">
-          <div className="p-3 sm:p-4 rounded-2xl bg-white border border-gray-200/90 shadow-2xs flex items-center sm:flex-col justify-between sm:justify-between gap-3">
-            <div className="flex items-center sm:block gap-3 min-w-0">
-              <span className="h-9 w-9 rounded-xl bg-red-50 text-[#E31E24] grid place-items-center shrink-0">
-                <Wrench className="h-4.5 w-4.5" />
-              </span>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h4 className="text-xs sm:text-sm font-bold text-gray-900 truncate">General Care</h4>
-                  <span className="sm:hidden text-xs font-bold text-[#E31E24] font-mono shrink-0">₹299</span>
-                </div>
-                <p className="text-[11px] sm:text-xs text-gray-500 truncate sm:line-clamp-2 mt-0.5">
-                  Brakes, tire wear, electrical harnesses & torque.
-                </p>
-                <span className="hidden sm:block text-sm font-bold text-[#E31E24] font-mono mt-1.5">₹299</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onOpenBookingModal}
-              className="shrink-0 sm:w-full py-1.5 sm:py-2 px-3 rounded-xl bg-red-50 hover:bg-[#E31E24] hover:text-white text-[#E31E24] text-xs font-bold transition text-center cursor-pointer active:scale-95"
-            >
-              Book
-            </button>
-          </div>
-
-          <div className="p-3 sm:p-4 rounded-2xl bg-white border border-gray-200/90 shadow-2xs flex items-center sm:flex-col justify-between sm:justify-between gap-3">
-            <div className="flex items-center sm:block gap-3 min-w-0">
-              <span className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 grid place-items-center shrink-0">
-                <Zap className="h-4.5 w-4.5" />
-              </span>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h4 className="text-xs sm:text-sm font-bold text-gray-900 truncate">Battery Check</h4>
-                  <span className="sm:hidden text-xs font-bold text-[#E31E24] font-mono shrink-0">₹399</span>
-                </div>
-                <p className="text-[11px] sm:text-xs text-gray-500 truncate sm:line-clamp-2 mt-0.5">
-                  Cell balance test and thermal seal audit.
-                </p>
-                <span className="hidden sm:block text-sm font-bold text-[#E31E24] font-mono mt-1.5">₹399</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onOpenBookingModal}
-              className="shrink-0 sm:w-full py-1.5 sm:py-2 px-3 rounded-xl bg-red-50 hover:bg-[#E31E24] hover:text-white text-[#E31E24] text-xs font-bold transition text-center cursor-pointer active:scale-95"
-            >
-              Book
-            </button>
-          </div>
-
-          <div className="p-3 sm:p-4 rounded-2xl bg-white border border-gray-200/90 shadow-2xs flex items-center sm:flex-col justify-between sm:justify-between gap-3">
-            <div className="flex items-center sm:block gap-3 min-w-0">
-              <span className="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-600 grid place-items-center shrink-0">
-                <ShieldCheck className="h-4.5 w-4.5" />
-              </span>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h4 className="text-xs sm:text-sm font-bold text-gray-900 truncate">Brake Overhaul</h4>
-                  <span className="sm:hidden text-xs font-bold text-[#E31E24] font-mono shrink-0">₹249</span>
-                </div>
-                <p className="text-[11px] sm:text-xs text-gray-500 truncate sm:line-clamp-2 mt-0.5">
-                  Pad replacement, fluid flush and calibration.
-                </p>
-                <span className="hidden sm:block text-sm font-bold text-[#E31E24] font-mono mt-1.5">₹249</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onOpenBookingModal}
-              className="shrink-0 sm:w-full py-1.5 sm:py-2 px-3 rounded-xl bg-red-50 hover:bg-[#E31E24] hover:text-white text-[#E31E24] text-xs font-bold transition text-center cursor-pointer active:scale-95"
-            >
-              Book
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 6. Spares List */}
-      <div>
-        <div className="flex items-center justify-between mb-2.5 sm:mb-3">
-          <div>
-            <h3 className="text-sm sm:text-base font-bold text-gray-900">
-              {activeBikeMeta ? `Parts for ${activeBikeMeta.model}` : "Recommended Spares"}
-            </h3>
-            <p className="text-xs text-gray-500">Guaranteed fitment</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => onTabChange("shop")}
-            className="text-xs sm:text-sm font-bold text-[#E31E24] hover:underline flex items-center gap-0.5"
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Service Card 1: 24-Point General Care */}
+          <div
+            onClick={onOpenBookingModal}
+            className="p-5 rounded-2xl bg-white border border-gray-100 shadow-2xs hover:shadow-md hover:border-red-200 transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-4"
           >
-            <span>View all</span>
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
-          {recommendedParts.map((p) => (
-            <div
-              key={p.id}
-              className="p-3 rounded-2xl bg-white border border-gray-200/90 shadow-2xs flex flex-col justify-between group"
-            >
-              <div>
-                <div className="aspect-square rounded-xl overflow-hidden bg-gray-50/80 mb-2 flex items-center justify-center p-2">
-                  <img
-                    src={p.image}
-                    alt={p.name}
-                    className="h-full w-full object-contain group-hover:scale-105 transition"
-                  />
-                </div>
-                <span className="text-[11px] font-bold text-[#E31E24] uppercase tracking-wider block truncate">
-                  {p.brand}
-                </span>
-                <h4 className="text-xs font-bold text-gray-900 line-clamp-2 mt-0.5 leading-snug min-h-[32px]">
-                  {p.name}
-                </h4>
+            <div className="space-y-3">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-red-50 text-[#E31E24]">
+                <Wrench className="h-5 w-5" />
               </div>
-
-              <div className="mt-2.5 pt-2 border-t border-gray-100 flex items-center justify-between gap-1">
-                <span className="text-xs sm:text-sm font-bold text-gray-900 font-mono truncate">
-                  {inr(p.offers[0]?.price || 999)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const vendorId = p.offers[0]?.vendorId || "v1";
-                    addToCart(p.id, vendorId);
-                    toast.success("Added to cart");
-                  }}
-                  className="shrink-0 px-2.5 py-1 rounded-lg bg-[#E31E24] hover:bg-red-700 text-white text-xs font-bold transition active:scale-95 cursor-pointer shadow-2xs"
-                >
-                  Add
-                </button>
+              <div>
+                <h3 className="text-sm font-bold text-[#111111]">
+                  24-Point General Care
+                </h3>
+                <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                  Brakes, tire wear, electrical harnesses &amp; torque check.
+                </p>
               </div>
             </div>
-          ))}
+            <div className="pt-3 border-t border-gray-50 flex items-center justify-between">
+              <span className="text-sm font-extrabold text-[#111111]">₹299</span>
+              <span className="text-xs font-bold text-[#E31E24] hover:underline">Book →</span>
+            </div>
+          </div>
+
+          {/* Service Card 2: Battery & BMS Check */}
+          <div
+            onClick={onOpenBookingModal}
+            className="p-5 rounded-2xl bg-white border border-gray-100 shadow-2xs hover:shadow-md hover:border-blue-200 transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-4"
+          >
+            <div className="space-y-3">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-600">
+                <Zap className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[#111111]">
+                  Battery &amp; BMS Check
+                </h3>
+                <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                  Cell balance test, voltage audit &amp; thermal seal check.
+                </p>
+              </div>
+            </div>
+            <div className="pt-3 border-t border-gray-50 flex items-center justify-between">
+              <span className="text-sm font-extrabold text-[#111111]">₹399</span>
+              <span className="text-xs font-bold text-[#E31E24] hover:underline">Book →</span>
+            </div>
+          </div>
+
+          {/* Service Card 3: Brake Overhaul */}
+          <div
+            onClick={onOpenBookingModal}
+            className="p-5 rounded-2xl bg-white border border-gray-100 shadow-2xs hover:shadow-md hover:border-emerald-200 transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-4"
+          >
+            <div className="space-y-3">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-600">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[#111111]">
+                  Brake Overhaul
+                </h3>
+                <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                  Pad replacement, fluid flush &amp; rotor alignment.
+                </p>
+              </div>
+            </div>
+            <div className="pt-3 border-t border-gray-50 flex items-center justify-between">
+              <span className="text-sm font-extrabold text-[#111111]">₹249</span>
+              <span className="text-xs font-bold text-[#E31E24] hover:underline">Book →</span>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Global VIN Search Modal */}
+      <VinSearchModal
+        isOpen={isVinSearchOpen}
+        onClose={() => setIsVinSearchOpen(false)}
+      />
     </div>
   );
 }

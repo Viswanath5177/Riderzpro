@@ -29,26 +29,7 @@ interface Claim {
 }
 
 export function ReturnsSection({ vendor }: ReturnsSectionProps) {
-  const [claims, setClaims] = useState<Claim[]>([
-    {
-      id: "CLM-84920",
-      orderId: "RZ-849201",
-      productName: "VoltRide 60V 30Ah Li-ion Pack",
-      customerName: "Aakash S.",
-      reason: "BMS not balancing cell group 4 during 60V rapid charge",
-      requestedDate: "Today, 10:30 AM",
-      status: "Pending Vendor Review",
-    },
-    {
-      id: "CLM-79342",
-      orderId: "RZ-793420",
-      productName: "ChargeMax 3.3kW Fast Charger",
-      customerName: "Rahul M.",
-      reason: "Type-2 latch pin cracked in transit packaging",
-      requestedDate: "Yesterday",
-      status: "Replacement Approved",
-    },
-  ]);
+  const [claims, setClaims] = useState<Claim[]>([]);
 
   const [activeDisputeClaim, setActiveDisputeClaim] = useState<Claim | null>(null);
   const [disputeNote, setDisputeNote] = useState("");
@@ -96,7 +77,16 @@ export function ReturnsSection({ vendor }: ReturnsSectionProps) {
 
       {/* Claims List */}
       <div className="space-y-4">
-        {claims.map((claim) => (
+        {claims.length === 0 ? (
+          <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center">
+            <ShieldAlert className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-gray-700">No return or warranty claims</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Active customer return requests and warranty claims will appear here.
+            </p>
+          </div>
+        ) : (
+          claims.map((claim) => (
           <div
             key={claim.id}
             className="rounded-3xl border border-gray-200 bg-white p-5 shadow-2xs space-y-3"
@@ -151,7 +141,8 @@ export function ReturnsSection({ vendor }: ReturnsSectionProps) {
               )}
             </div>
           </div>
-        ))}
+        ))
+        )}
       </div>
 
       {/* Dispute Modal */}

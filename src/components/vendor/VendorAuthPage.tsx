@@ -144,8 +144,8 @@ function VendorSignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }
   const navigate = useNavigate();
 
   const [tab, setTab] = useState<"password" | "otp">("password");
-  const [identifier, setIdentifier] = useState("9000000001");
-  const [password, setPassword] = useState("Vendor@123");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 

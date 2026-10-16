@@ -1,26 +1,28 @@
-import React, { useEffect } from "react";
-import { useNavigate, useRouter } from "@tanstack/react-router";
+import React from "react";
+import { Navigate, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import { Zap } from "lucide-react";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading } = useAuth();
-  const navigate = useNavigate();
-  const router = useRouter();
+  const { isAuthenticated, loading, setUser } = useAuth();
+  const currentPath = useRouterState({
+    select: (s) => s.location.pathname + (s.location.searchStr ? `?${s.location.searchStr}` : ""),
+  });
 
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      const loc = router.state.location;
-      const currentPath = loc.pathname + (loc.searchStr ? `?${loc.searchStr}` : "");
-      navigate({
-        to: "/auth",
-        search: { redirect: currentPath } as any,
-        replace: true,
-      });
+  // Sync user from local storage if auth context is still synchronizing
+  React.useEffect(() => {
+    if (!isAuthenticated && typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("riderzpro_auth_user");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.id) setUser(parsed);
+        }
+      } catch {}
     }
-  }, [loading, isAuthenticated, navigate, router]);
+  }, [isAuthenticated, setUser]);
 
-  if (loading || !isAuthenticated) {
+  if (loading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
         <div className="flex flex-col items-center gap-4">
@@ -28,10 +30,20 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
             <Zap className="h-6 w-6 text-primary" fill="currentColor" />
           </div>
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <p className="text-xs font-medium text-muted-foreground">Checking session...</p>
+          <p className="text-xs font-medium text-muted-foreground">Checking authentication...</p>
         </div>
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    const hasStoredUser =
+      typeof window !== "undefined" &&
+      Boolean(localStorage.getItem("riderzpro_auth_user") || sessionStorage.getItem("riderzpro_auth_user"));
+    if (!hasStoredUser) {
+      return <Navigate to="/" replace />;
+    }
+    return <Navigate to="/" search={{ openLogin: "customer", redirect: currentPath }} replace />;
   }
 
   return <>{children}</>;

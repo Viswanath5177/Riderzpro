@@ -19,6 +19,7 @@ export default defineConfig({
   vite: {
     resolve: {
       alias: {
+        "@": fileURLToPath(new URL("./src", import.meta.url)),
         "cloudflare:workers": fileURLToPath(new URL("./node_modules/nitro/dist/presets/cloudflare/runtime/shims/workers.dev.mjs", import.meta.url)),
       },
     },

@@ -1,10 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
   Search,
   Bell,
-  Sun,
-  Moon,
   Menu,
   ChevronRight,
   ShieldCheck,
@@ -15,6 +13,7 @@ import {
 import { useAdminAuth } from "@/lib/adminAuth";
 import { useAdminStore } from "@/mocks/admin/adminStore";
 import { cn } from "@/lib/utils";
+import { DashboardNotificationBell } from "@/components/common/DashboardNotificationBell";
 
 export interface AdminTopBarProps {
   onOpenCommandPalette: () => void;
@@ -23,12 +22,28 @@ export interface AdminTopBarProps {
 
 export function AdminTopBar({ onOpenCommandPalette, onOpenMobileMenu }: AdminTopBarProps) {
   const { adminUser, logout } = useAdminAuth();
-  const { theme, toggleTheme, notifications } = useAdminStore();
   const location = useLocation();
   const pathname = location.pathname;
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [dbNotifications, setDbNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+
+  // Fetch live notifications including seller registrations
+  useEffect(() => {
+    fetch("/api/admin/notifications")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setDbNotifications(res.data);
+          setUnreadCount(res.unreadCount ?? res.data.length);
+        }
+      })
+      .catch((err) => {
+        console.log("[Admin TopBar Notif fetch notice]:", err.message);
+      });
+  }, []);
 
   // Generate breadcrumb from path
   const segments = pathname.split("/").filter(Boolean);
@@ -55,17 +70,6 @@ export function AdminTopBar({ onOpenCommandPalette, onOpenMobileMenu }: AdminTop
         </nav>
       </div>
 
-      {/* Center: Live delivery pill (exact match to landing page hero pill) */}
-      <div className="hidden md:flex items-center">
-        <span className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50/90 px-3.5 py-1.5 text-xs font-semibold text-[#111111] shadow-2xs dark:border-white/10 dark:bg-white/5 dark:text-white">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E31E24]" />
-            <span className="relative h-2 w-2 rounded-full bg-[#E31E24]" />
-          </span>
-          128 riders delivering in Bengaluru now
-        </span>
-      </div>
-
       {/* Right Controls: Command Palette, Bell, Theme, Avatar */}
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Command Palette Trigger Button (Ctrl/Cmd+K) */}
@@ -89,58 +93,8 @@ export function AdminTopBar({ onOpenCommandPalette, onOpenMobileMenu }: AdminTop
           <Search className="h-4 w-4" />
         </button>
 
-        {/* Light/Dark Toggle */}
-        <button
-          onClick={toggleTheme}
-          title={theme === "dark" ? "Switch to Light Theme" : "Switch to Dark Theme"}
-          className="flex h-9 w-9 items-center justify-center rounded-2xl border border-[#E5E7EB] bg-gray-50 text-[#4B5563] hover:text-[#111111] hover:bg-gray-100 transition cursor-pointer dark:border-white/15 dark:bg-white/10 dark:text-zinc-300 dark:hover:text-white"
-        >
-          {theme === "dark" ? <Sun className="h-4 w-4 text-amber-300" /> : <Moon className="h-4 w-4 text-zinc-700" />}
-        </button>
-
-        {/* Notification Bell with Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            aria-label="Notifications"
-            className="relative flex h-9 w-9 items-center justify-center rounded-2xl border border-[#E5E7EB] bg-gray-50 text-[#4B5563] hover:text-[#111111] hover:bg-gray-100 transition cursor-pointer dark:border-white/15 dark:bg-white/10 dark:text-zinc-300 dark:hover:text-white"
-          >
-            <Bell className="h-4 w-4" />
-            <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#E31E24] px-1 text-[9px] font-bold text-white shadow-xs">
-              4
-            </span>
-          </button>
-
-          {showNotifications && (
-            <div className="admin-glass-card absolute right-0 top-12 z-50 w-80 rounded-3xl border border-[#E5E7EB] bg-white p-4 shadow-xl backdrop-blur-3xl animate-in fade-in duration-150 dark:border-white/20 dark:bg-zinc-950/95">
-              <div className="flex items-center justify-between border-b border-gray-100 pb-2 mb-3 dark:border-white/10">
-                <p className="text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-white">System Alerts</p>
-                <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-[#E31E24]">
-                  4 Unread
-                </span>
-              </div>
-
-              <div className="space-y-2 text-xs">
-                {notifications.slice(0, 3).map((n) => (
-                  <div key={n.id} className="rounded-2xl border border-gray-100 bg-gray-50/80 p-2.5 dark:border-white/10 dark:bg-white/[0.04]">
-                    <p className="font-bold text-[#111111] truncate dark:text-white">{n.title}</p>
-                    <p className="mt-1 text-[11px] text-[#6B7280] line-clamp-2 dark:text-zinc-400">{n.body}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-3 pt-2 border-t border-gray-100 text-center dark:border-white/10">
-                <Link
-                  to="/admin/notifications"
-                  onClick={() => setShowNotifications(false)}
-                  className="text-xs font-semibold text-[#E31E24] hover:underline"
-                >
-                  View all alerts →
-                </Link>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Universal Dashboard Notification Bell */}
+        <DashboardNotificationBell role={adminUser?.role || "admin"} />
 
         {/* User Menu Trigger */}
         <div className="relative">
@@ -150,20 +104,20 @@ export function AdminTopBar({ onOpenCommandPalette, onOpenMobileMenu }: AdminTop
             className="flex items-center gap-2 rounded-2xl border border-[#E5E7EB] bg-gray-50 p-1 pr-2.5 hover:border-gray-300 transition cursor-pointer dark:border-white/15 dark:bg-white/10"
           >
             <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#E31E24] text-xs font-bold text-white shadow-xs">
-              VM
+              {(adminUser?.name || "Admin").substring(0, 2).toUpperCase()}
             </div>
             <span className="hidden sm:inline text-xs font-bold text-[#111111] dark:text-white">
-              Vikram
+              {adminUser?.name?.split(" ")[0] || "Admin"}
             </span>
           </button>
 
           {showUserMenu && (
             <div className="admin-glass-card absolute right-0 top-12 z-50 w-56 rounded-3xl border border-[#E5E7EB] bg-white p-2 shadow-xl backdrop-blur-3xl animate-in fade-in duration-150 text-xs dark:border-white/20 dark:bg-zinc-950/95">
               <div className="p-3 border-b border-gray-100 dark:border-white/10">
-                <p className="font-bold text-[#111111] dark:text-white">{adminUser?.name || "Vikram Malhotra"}</p>
+                <p className="font-bold text-[#111111] dark:text-white">{adminUser?.name || "Administrator"}</p>
                 <p className="text-[11px] text-[#6B7280] dark:text-zinc-400">{adminUser?.email || "admin@riderzpro.com"}</p>
                 <span className="mt-1.5 inline-block rounded-md bg-red-50 border border-red-200 px-2 py-0.5 text-[10px] font-bold text-[#E31E24]">
-                  Super Admin
+                  {adminUser?.roleTitle || "Administrator"}
                 </span>
               </div>
 

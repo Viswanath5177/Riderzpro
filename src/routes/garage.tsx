@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import { 
   Bike, Check, ScanLine, Trash2, ShoppingBag, ShieldCheck, 
@@ -12,6 +12,7 @@ import { SiteLayout } from "@/components/site/SiteLayout";
 import { bikes, cars, decodeVin, getBike, inr, type Product } from "@/lib/data";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useStore } from "@/lib/store";
+import { getCurrentRole } from "@/lib/auth";
 
 interface GarageVehicle {
   id: string;
@@ -28,6 +29,15 @@ interface GarageVehicle {
 }
 
 export const Route = createFileRoute("/garage")({
+  beforeLoad: async () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const role = await getCurrentRole();
+    if (!role) {
+      throw redirect({ to: "/", search: { openLogin: "customer", redirect: "/garage" } });
+    }
+  },
   head: () => ({
     meta: [
       { title: "My Garage & Compatible Parts — Riderzpro" },
@@ -54,42 +64,7 @@ function GaragePage() {
   const [selectedYear, setSelectedYear] = useState(2023);
 
   // PostgreSQL Customer Garage Vehicles
-  const [garageVehicles, setGarageVehicles] = useState<GarageVehicle[]>([
-    {
-      id: "gar_ola_s1pro",
-      vehicle_id: "ola-s1pro",
-      make: "Ola",
-      model: "S1 Pro Gen 2",
-      year: 2023,
-      vin: "P6R1S1PR2PN000001",
-      vehicle_type: "bike",
-      voltage: 60,
-      is_active: true,
-    },
-    {
-      id: "gar_ather_450x",
-      vehicle_id: "ather-450x",
-      make: "Ather",
-      model: "450X Gen 3",
-      year: 2024,
-      vin: "MD9A450XAN1234567",
-      vehicle_type: "bike",
-      voltage: 48,
-      is_active: false,
-    },
-    {
-      id: "gar_tata_nexon",
-      vehicle_id: "tata-nexon-ev",
-      make: "Tata",
-      model: "Nexon.ev Empowered",
-      year: 2024,
-      vin: "MAT1234NEXON56789",
-      vehicle_type: "car",
-      voltage: 400,
-      battery_kwh: 40.5,
-      is_active: false,
-    },
-  ]);
+  const [garageVehicles, setGarageVehicles] = useState<GarageVehicle[]>([]);
 
   // Live products retrieved directly from PostgreSQL
   const [dbProducts, setDbProducts] = useState<Product[]>([]);
@@ -105,7 +80,7 @@ function GaragePage() {
     try {
       const res = await fetch("/api/garage?customer_id=usr_customer_demo");
       const json = await res.json();
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+      if (json.success && Array.isArray(json.data)) {
         setGarageVehicles(json.data);
       }
     } catch (err: any) {
@@ -337,13 +312,13 @@ function GaragePage() {
           <div>
             <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider mb-1">
               <Database className="h-3.5 w-3.5" />
-              <span>PostgreSQL Connected: public.customer_garage &bull; public.products</span>
+              <span>Registered Vehicles &bull; Verified Components</span>
             </div>
             <h1 className="font-display text-4xl sm:text-6xl text-foreground font-extrabold tracking-tight">
-              My Garage & Compatible Parts
+              My Garage &amp; Compatible Parts
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Manage your registered electric vehicles in PostgreSQL. All vendor uploads are retrieved and filtered live to fit your active vehicle.
+              Manage your registered electric vehicles. All vendor components are retrieved and filtered live to fit your active vehicle.
             </p>
           </div>
 
@@ -352,13 +327,13 @@ function GaragePage() {
             onClick={() => {
               fetchGarageFromDb();
               fetchProductsFromDb();
-              toast.success("Refreshed garage and products live from PostgreSQL!");
+              toast.success("Refreshed garage and compatible products!");
             }}
             disabled={isSyncingDb}
             className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-bold hover:bg-muted text-foreground transition-all cursor-pointer shadow-xs"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isSyncingDb ? "animate-spin text-primary" : ""}`} />
-            <span>Sync with PostgreSQL</span>
+            <span>Sync Catalog</span>
           </button>
         </div>
 
@@ -438,7 +413,7 @@ function GaragePage() {
               onClick={handleAddManualVehicle}
               className="w-full rounded-xl border border-primary/40 bg-primary/10 hover:bg-primary hover:text-primary-foreground py-2.5 text-xs font-bold text-primary transition-all cursor-pointer"
             >
-              + Save Vehicle to PostgreSQL Garage
+              + Save Vehicle to Garage
             </button>
           </div>
 
@@ -454,8 +429,14 @@ function GaragePage() {
             </div>
 
             {garageVehicles.length === 0 ? (
-              <div className="rounded-3xl border border-dashed border-border p-10 text-center text-muted-foreground">
-                No vehicles stored in your garage yet. Add one to see tailored parts!
+              <div className="rounded-3xl border border-dashed border-border bg-card/60 p-10 text-center shadow-2xs">
+                <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-3">
+                  <Bike className="h-6 w-6" />
+                </div>
+                <h3 className="font-bold text-base text-foreground">No Registered Vehicles in Garage</h3>
+                <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                  Decode your vehicle VIN or select your electric two-wheeler / car to register it and view custom-fit compatible spare parts.
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-3">
@@ -535,13 +516,13 @@ function GaragePage() {
             <div>
               <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider mb-1">
                 <Sparkles className="h-4 w-4" />
-                <span>Live Vendor Catalogue &bull; Stored in PostgreSQL</span>
+                <span>Live Vendor Catalog &bull; Genuine Components</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground">
-                Compatible Parts & Upgrades for {activeVehicle ? `${activeVehicle.make} ${activeVehicle.model}` : "Your Vehicles"}
+                Compatible Parts &amp; Upgrades for {activeVehicle ? `${activeVehicle.make} ${activeVehicle.model}` : "Your Vehicles"}
               </h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                These items are stored in PostgreSQL table <code className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono">riderzpro.products</code> and retrieved live according to vehicle fitment.
+                These items are verified by RiderzPro and retrieved live according to vehicle fitment.
               </p>
             </div>
 
@@ -555,7 +536,7 @@ function GaragePage() {
           {/* Compatible Parts Grid */}
           {isLoadingProducts ? (
             <div className="py-12 text-center text-muted-foreground text-sm">
-              Loading compatible products from PostgreSQL database...
+              Loading compatible products from catalog...
             </div>
           ) : compatibleProducts.length === 0 ? (
             <div className="py-12 text-center text-muted-foreground text-sm border border-dashed rounded-2xl p-6">
@@ -670,7 +651,7 @@ function GaragePage() {
               </Link>
               <span>&bull;</span>
               <Link to="/dashboard/customer" className="text-primary font-bold hover:underline inline-flex items-center gap-1">
-                Go to Customer Dashboard <ArrowRight className="h-3.5 w-3.5" />
+                Go to Dashboard <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>

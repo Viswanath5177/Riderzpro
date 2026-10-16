@@ -14,7 +14,8 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
-import { getCurrentRole, signOut as endServerSession } from "@/lib/auth";
+import { getCurrentRole, signOut as endServerSession, useAuth } from "@/lib/auth";
+import { getProduct } from "@/lib/data";
 import { Logo } from "./bits";
 
 export interface NavCategory {
@@ -41,8 +42,9 @@ export const STORE_CATEGORIES: NavCategory[] = [
  * Contains no hardcoded or mock default details.
  */
 export function Navbar() {
-  const { cart, userProfile, isLoggedIn, signOut, signIn, setRole } = useStore();
+  const { cart, userProfile, isLoggedIn, signOut, signIn, setRole, role } = useStore();
   const navigate = useNavigate();
+  const { user, openCustomerLoginModal } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
@@ -57,7 +59,9 @@ export function Navbar() {
     return () => { active = false; };
   }, [setRole, signIn, signOut]);
 
-  const cartCount = cart.reduce((s, c) => s + c.qty, 0);
+  const cartCount = cart
+    .filter((c) => Boolean(getProduct(c.productId)))
+    .reduce((s, c) => s + c.qty, 0);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,8 +75,7 @@ export function Navbar() {
   const handleCartClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!isLoggedIn) {
-      toast.info("Please sign in to view your orders and delivery tracking");
-      navigate({ to: "/login", search: { redirect: "/dashboard/customer?tab=orders" } as any });
+      openCustomerLoginModal({ redirectTo: "/dashboard/customer?tab=orders" });
     } else {
       navigate({ to: "/dashboard/customer", search: { tab: "orders" } as any });
     }
@@ -81,19 +84,28 @@ export function Navbar() {
   const handleCarClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!isLoggedIn) {
-      toast.info("Please sign in to access your registered vehicle & garage");
-      navigate({ to: "/login", search: { redirect: "/dashboard/customer?tab=garage" } as any });
+      openCustomerLoginModal({ redirectTo: "/dashboard/customer?tab=garage" });
     } else {
       navigate({ to: "/dashboard/customer", search: { tab: "garage" } as any });
     }
   };
 
   const handleSignOut = async () => {
-    await endServerSession();
-    signOut();
     setIsAccountMenuOpen(false);
-    toast.info("You have signed out successfully");
-    navigate({ to: "/" });
+    toast.info("Signing out...", { duration: 1500 });
+    try {
+      signOut();
+      await endServerSession();
+    } catch {}
+    try {
+      localStorage.removeItem("riderzpro_auth_user");
+      localStorage.removeItem("riderzpro_auth_token");
+      localStorage.removeItem("riderzpro_token");
+      localStorage.removeItem("riderzpro_admin_session");
+      localStorage.removeItem("riderzpro-v7");
+      sessionStorage.clear();
+    } catch {}
+    window.location.href = "/";
   };
 
   const displayName = userProfile?.name?.trim()
@@ -176,13 +188,14 @@ export function Navbar() {
 
           {/* Authentication: Sign In button OR Account Dropdown */}
           {!isLoggedIn ? (
-            <Link
-              to="/login"
+            <button
+              type="button"
+              onClick={() => openCustomerLoginModal()}
               id="navbar-signin-btn"
               className="inline-flex items-center justify-center rounded-full bg-[#E31E24] px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-red-700 active:scale-95 cursor-pointer"
             >
               Sign In
-            </Link>
+            </button>
           ) : (
             <div className="relative">
               <button
@@ -206,12 +219,12 @@ export function Navbar() {
                   </div>
                   <div className="py-1 space-y-0.5">
                     <Link
-                      to="/dashboard/customer"
+                      to={user?.role === "seller" || role === "seller" || userProfile?.role === "seller" ? "/dashboard/vendor" : "/dashboard/customer"}
                       onClick={() => setIsAccountMenuOpen(false)}
                       className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition"
                     >
                       <LayoutDashboard className="h-3.5 w-3.5 text-gray-500" />
-                      <span>Customer Dashboard</span>
+                      <span>{user?.role === "seller" || role === "seller" || userProfile?.role === "seller" ? "Vendor Dashboard" : "Customer Dashboard"}</span>
                     </Link>
                     <button
                       onClick={(e) => {
@@ -375,13 +388,16 @@ export function Navbar() {
                 <span>Sell on RiderzPro (Vendor Portal) →</span>
               </Link>
               {!isLoggedIn ? (
-                <Link
-                  to="/login"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center justify-center rounded-lg bg-[#E31E24] py-2.5 text-xs font-semibold text-white shadow-2xs mt-2"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    openCustomerLoginModal();
+                  }}
+                  className="flex items-center justify-center rounded-lg bg-[#E31E24] py-2.5 text-xs font-semibold text-white shadow-2xs mt-2 w-full cursor-pointer"
                 >
                   Sign In to Account
-                </Link>
+                </button>
               ) : (
                 <button
                   onClick={() => {

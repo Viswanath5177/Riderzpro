@@ -112,29 +112,24 @@ async function setup() {
     CREATE INDEX IF NOT EXISTS idx_saved_items_customer ON saved_items(customer_id);
   `);
 
-  // 6. Seed Customer Garage with Initial Demo Vehicles for usr_customer_demo
-  console.log('Checking customer_garage seed data...');
-  const garageCount = await client.query(`SELECT count(*) FROM customer_garage WHERE customer_id = 'usr_customer_demo'`);
-  if (parseInt(garageCount.rows[0].count) === 0) {
-    console.log('Seeding customer_garage for usr_customer_demo...');
-    await client.query(`
-      INSERT INTO customer_garage (id, customer_id, vehicle_id, make, model, year, vin, vehicle_type, voltage, battery_kwh, is_active)
-      VALUES 
-        ('gar_ola_s1pro', 'usr_customer_demo', 'ola-s1pro', 'Ola', 'S1 Pro Gen 2', 2023, 'P6R1S1PR2PN000001', 'bike', 60, 4.0, TRUE),
-        ('gar_ather_450x', 'usr_customer_demo', 'ather-450x', 'Ather', '450X Gen 3', 2024, 'MD9A450XAN1234567', 'bike', 48, 3.7, FALSE),
-        ('gar_tata_nexon', 'usr_customer_demo', 'tata-nexon-ev', 'Tata', 'Nexon.ev Empowered', 2024, 'MAT1234NEXON56789', 'car', 400, 40.5, FALSE);
-    `);
-  }
+  // 6. Customer Garage (Start clean without mock vehicles)
+  console.log('Customer garage table verified clean.');
 
-  // 7. Seed Initial Catalog Products if products table only has 1 or few items
+  // Ensure seller users exist in users table so products_seller_id_fkey is satisfied
+  await client.query(`
+    INSERT INTO users (id, email, phone, password_hash, full_name, role)
+    VALUES ('usr_seller_01', 'seller@volthub.com', '+91 91111 22222', '$2a$10$dummyHashForSeller01SeedPlaceholder', 'VoltHub Indiranagar', 'seller')
+    ON CONFLICT (email) DO NOTHING;
+  `);
+
+  // 7. Seed Initial Catalog Products if products table is empty
   const productCount = await client.query(`SELECT count(*) FROM products`);
   console.log(`Current products in DB: ${productCount.rows[0].count}`);
   
-  // Seed sample products matching our pages so the customer garage immediately has rich parts
   const initialProductsSeed = [
     {
       id: 'prod_rzp_sc_001',
-      seller_id: 'usr_seller_01',
+      seller_id: 'sel_volthub_01',
       category_id: 'cat_accessories',
       name: 'Custom Fit Leatherette Seat Cover',
       brand: 'Riderz Armor',
@@ -145,7 +140,7 @@ async function setup() {
       discount_percent: 30,
       stock: 45,
       moq: 1,
-      supplier: 'Autotech Premium Ltd.',
+      supplier: 'VoltHub EV Components',
       variant_model: 'Custom Fit Leatherette Seat Cover',
       material: 'PU leatherette',
       fitment_size: 'Model specific (Swift, Creta, Nexon)',
@@ -159,7 +154,7 @@ async function setup() {
     },
     {
       id: 'prod_rzp_sc_002',
-      seller_id: 'usr_seller_01',
+      seller_id: 'sel_apex_02',
       category_id: 'cat_accessories',
       name: 'Custom Fit Fabric Breathable Seat Cover',
       brand: 'ComfortCraft Auto',
@@ -170,7 +165,7 @@ async function setup() {
       discount_percent: 28,
       stock: 30,
       moq: 1,
-      supplier: 'ComfortCraft Auto',
+      supplier: 'Apex EV Spares & Batteries',
       variant_model: 'Custom Fit Fabric Seat Cover',
       material: 'Jacquard / velvet fabric',
       fitment_size: 'Model specific',
@@ -184,7 +179,7 @@ async function setup() {
     },
     {
       id: 'prod_volt_60v_30ah',
-      seller_id: 'usr_seller_01',
+      seller_id: 'sel_volthub_01',
       category_id: 'cat_batteries',
       name: 'VoltRide 60V 30Ah Li-ion Battery Pack',
       brand: 'VoltRide',
@@ -195,7 +190,7 @@ async function setup() {
       discount_percent: 12,
       stock: 14,
       moq: 1,
-      supplier: 'VoltRide Tech',
+      supplier: 'VoltHub EV Components',
       variant_model: '60V 30Ah NMC Module',
       material: 'Aviation Aluminum IP67',
       fitment_size: 'OEM Bay Mount',
@@ -209,7 +204,7 @@ async function setup() {
     },
     {
       id: 'prod_chargemax_3kw',
-      seller_id: 'usr_seller_01',
+      seller_id: 'sel_volthub_01',
       category_id: 'cat_chargers',
       name: 'ChargeMax 3.3kW Portable Fast Charger',
       brand: 'ChargeMax',
@@ -220,7 +215,7 @@ async function setup() {
       discount_percent: 15,
       stock: 22,
       moq: 1,
-      supplier: 'ChargeMax Electronics',
+      supplier: 'VoltHub EV Components',
       variant_model: '3.3kW Level-2 Portable',
       material: 'Flame Retardant Polycarbonate',
       fitment_size: 'Compact Trunk Fit',
@@ -234,7 +229,7 @@ async function setup() {
     },
     {
       id: 'prod_brembo_rotor',
-      seller_id: 'usr_seller_01',
+      seller_id: 'sel_apex_02',
       category_id: 'cat_brakes',
       name: 'Wave Disc Brake Rotor 220mm High Heat Dissipation',
       brand: 'Brembo',
@@ -245,7 +240,7 @@ async function setup() {
       discount_percent: 20,
       stock: 35,
       moq: 1,
-      supplier: 'Brembo Racing Ind.',
+      supplier: 'Apex EV Spares & Batteries',
       variant_model: '220mm Wave Performance',
       material: '420 High Carbon Stainless Steel',
       fitment_size: '220mm 4-Bolt OEM Hub',
@@ -272,6 +267,7 @@ async function setup() {
         $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, TRUE
       )
       ON CONFLICT (id) DO UPDATE SET
+        seller_id = EXCLUDED.seller_id,
         name = EXCLUDED.name,
         brand = EXCLUDED.brand,
         sku = EXCLUDED.sku,
@@ -300,6 +296,21 @@ async function setup() {
       p.image_url, p.verification_status
     ]);
   }
+
+  // Create vendor_notifications table for approval/rejection and order alerts
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS vendor_notifications (
+      id VARCHAR(64) PRIMARY KEY DEFAULT ('vnotif_' || substr(md5(random()::text || clock_timestamp()::text), 1, 16)),
+      seller_id VARCHAR(64) NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      message TEXT NOT NULL,
+      type VARCHAR(64) NOT NULL,
+      product_id VARCHAR(64),
+      is_read BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_vendor_notifications_seller ON vendor_notifications(seller_id);
+  `);
 
   console.log('Database tables successfully verified and seeded!');
   await client.end();

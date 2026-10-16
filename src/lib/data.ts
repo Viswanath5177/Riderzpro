@@ -1,16 +1,81 @@
-import battery1 from "@/assets/battery-1.jpg";
-import battery2 from "@/assets/battery-2.jpg";
-import battery3 from "@/assets/battery-3.jpg";
-import charger from "@/assets/charger.jpg";
-import parts from "@/assets/parts.jpg";
 
-import heroBike from "@/assets/hero-bike.jpg";
-import scooterImg from "@/assets/scooter.jpg";
-import catalog from "@/data/accessory_catalog.json";
-import vehicleCatalog from "../../web/data/ev_two_wheeler_catalog.json";
 
-export type Bike = { id: string; make: string; model: string; years: number[]; voltage: number; wmi: string };
+export type Bike = { id: string; make: string; model: string; years: number[]; voltage: number; wmi: string; batteryKwh?: number; brand?: string };
 export type Car = { id: string; make: string; model: string; years: number[]; batteryKWh?: number };
+
+export type LocationSource = "gps" | "search" | "saved" | "hub";
+
+export type LocationArea = {
+  id: string;
+  name: string;
+  city: string;
+  state?: string;
+  description?: string;
+  lat: number;
+  lng: number;
+  pincode?: string;
+  tag?: string;
+  isPopular?: boolean;
+  latitude?: number;
+  longitude?: number;
+  state?: string;
+  area?: string;
+  address?: string;
+  source?: LocationSource;
+};
+
+export type NormalizedLocation = {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  address: string;
+  area: string;
+  city: string;
+  state: string;
+  pincode?: string;
+  source: LocationSource;
+};
+
+export function toNormalizedLocation(
+  loc: LocationArea,
+  fallbackSource: LocationSource = "hub"
+): NormalizedLocation {
+  const latitude = loc.latitude ?? loc.lat;
+  const longitude = loc.longitude ?? loc.lng;
+  const city = loc.city || "Bengaluru";
+  const state = loc.state || "Karnataka";
+  const area = loc.area || loc.name;
+  const address = loc.address || `${loc.name}, ${city}`;
+
+  return {
+    id: loc.id,
+    name: loc.name,
+    latitude,
+    longitude,
+    address,
+    area,
+    city,
+    state,
+    pincode: loc.pincode,
+    source: loc.source || fallbackSource,
+  };
+}
+
+export const ALL_PRODUCT_CATEGORIES: string[] = [
+  "Battery",
+  "Charger",
+  "BMS",
+  "Motor",
+  "Controller",
+  "Brakes",
+  "Accessory",
+  "Electric Bikes",
+  "Car Accessories",
+  "Bike Accessories",
+  "Riding Gear & Helmets",
+  "Spare Parts"
+];
 
 export type VendorOffer = {
   vendorId: string;
@@ -124,22 +189,16 @@ export type Category =
   | "Bike Accessories"
   | "Riding Gear & Helmets"
   | "Spare Parts"
+  | "EV Batteries"
   | string;
-
 export type Product = {
   id: string;
   name: string;
   brand: string;
   category: Category;
-  isAccessoryProduct?: boolean;
-  subcategory?: string;
-  subcategories?: string[];
   image: string;
-  imageFallback?: string;
   voltage?: number;
   capacityAh?: number;
-  batteryCapacityKwh?: number;
-  batterySpec?: string;
   chemistry?: string;
   warrantyMonths: number;
   rangeKm?: number;
@@ -151,6 +210,11 @@ export type Product = {
   department?: string;
   availability?: string;
   priceType?: string;
+  price?: number;
+  subcategory?: string;
+  subcategories?: string[];
+  isAccessoryProduct?: boolean;
+  compatibleBikeIds?: string[];
   isAccessory?: boolean;
   accessoryDetails?: {
     type?: string;
@@ -159,6 +223,10 @@ export type Product = {
     powerRating?: string;
   };
   verificationStatus?: "pending_approval" | "approved" | "rejected";
+  rejectionReason?: string;
+  sellerId?: string;
+  sellerName?: string;
+  sellerEmail?: string;
   variantModel?: string;
   material?: string;
   fitmentSize?: string;
@@ -172,75 +240,6 @@ export type Product = {
 export type Rider = { id: string; name: string; phone: string; vehicle: string; plate: string; rating: number; avatar: string };
 
 export const CUSTOMER_LOCATION = { lat: 12.9716, lng: 77.5946, label: "MG Road, Bengaluru" };
-
-export type LocationSource = "gps" | "search" | "saved" | "hub";
-
-export type LocationArea = {
-  id: string;
-  name: string;
-  city: string;
-  lat: number;
-  lng: number;
-  pincode?: string;
-  tag?: string;
-  isPopular?: boolean;
-  // Normalized Location Properties
-  latitude?: number;
-  longitude?: number;
-  address?: string;
-  area?: string;
-  state?: string;
-  source?: LocationSource;
-  accuracy?: number;
-  timestamp?: number;
-};
-
-export interface NormalizedLocation {
-  id: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-  address: string;
-  area: string;
-  city: string;
-  state: string;
-  pincode?: string;
-  source: LocationSource;
-  accuracy?: number;
-  timestamp?: number;
-  tag?: string;
-  isPopular?: boolean;
-}
-
-export function toNormalizedLocation(
-  loc: LocationArea,
-  fallbackSource: LocationSource = "hub"
-): NormalizedLocation {
-  const latitude = loc.latitude ?? loc.lat;
-  const longitude = loc.longitude ?? loc.lng;
-  const city = loc.city || "Bengaluru";
-  const state = loc.state || "Karnataka";
-  const area = loc.area || loc.name;
-  const address = loc.address || `${loc.name}, ${city}`;
-
-  return {
-    id: loc.id,
-    name: loc.name,
-    latitude,
-    longitude,
-    address,
-    area,
-    city,
-    state,
-    pincode: loc.pincode,
-    source: loc.source || fallbackSource,
-    accuracy: loc.accuracy,
-    timestamp: loc.timestamp,
-    tag: loc.tag,
-    isPopular: loc.isPopular,
-  };
-}
-
 
 export const DEFAULT_LOCATION: LocationArea = {
   id: "indiranagar",
@@ -268,6 +267,11 @@ export const POPULAR_LOCATIONS: LocationArea[] = [
   { id: "banashankari", name: "Banashankari", city: "Bengaluru", lat: 12.9150, lng: 77.5736, pincode: "560070", tag: "South Corridor", isPopular: false },
   { id: "marathahalli", name: "Marathahalli", city: "Bengaluru", lat: 12.9591, lng: 77.6974, pincode: "560037", tag: "East Junction", isPopular: false },
   { id: "yelahanka", name: "Yelahanka", city: "Bengaluru", lat: 13.1007, lng: 77.5963, pincode: "560064", tag: "North Suburbs", isPopular: false },
+  { id: "hyderabad-hitec", name: "HITEC City / Madhapur", city: "Hyderabad", lat: 17.4474, lng: 78.3762, pincode: "500081", tag: "Cyberabad Hub", isPopular: true },
+  { id: "chennai-omr", name: "OMR / Adyar", city: "Chennai", lat: 13.0012, lng: 80.2565, pincode: "600020", tag: "South Metro", isPopular: true },
+  { id: "mumbai-bkc", name: "BKC / Bandra", city: "Mumbai", lat: 19.0657, lng: 72.8687, pincode: "400051", tag: "Financial Hub", isPopular: true },
+  { id: "delhi-ncr", name: "Connaught Place / Gurgaon", city: "Delhi NCR", lat: 28.6315, lng: 77.2167, pincode: "110001", tag: "Capital Region", isPopular: true },
+  { id: "pune-hinjewadi", name: "Hinjewadi / Kothrud", city: "Pune", lat: 18.5913, lng: 73.7389, pincode: "411057", tag: "Auto Corridor", isPopular: true },
 ];
 
 export const bikes: Bike[] = [
@@ -288,53 +292,42 @@ export const cars: Car[] = [
   { id: "byd-atto3", make: "BYD", model: "Atto 3", years: [2022, 2023, 2024, 2025], batteryKWh: 60.48 },
 ];
 
-export const vendors: Vendor[] = [
-  { id: "v1", name: "VoltHub Indiranagar", area: "Indiranagar", lat: 12.9784, lng: 77.6408, rating: 4.8, prepMins: 15 },
-  { id: "v2", name: "ChargeKart Koramangala", area: "Koramangala", lat: 12.9352, lng: 77.6245, rating: 4.6, prepMins: 20 },
-  { id: "v3", name: "EV Spares Jayanagar", area: "Jayanagar", lat: 12.925, lng: 77.5938, rating: 4.5, prepMins: 25 },
-  { id: "v4", name: "Ampere Auto Hebbal", area: "Hebbal", lat: 13.0358, lng: 77.597, rating: 4.7, prepMins: 15 },
-  { id: "v5", name: "GreenWheels Whitefield", area: "Whitefield", lat: 12.9698, lng: 77.75, rating: 4.4, prepMins: 30 },
-  { id: "v6", name: "Riderz Dealer Malleshwaram", area: "Malleshwaram", lat: 13.0035, lng: 77.5709, rating: 4.9, prepMins: 10 },
-];
-
-export const ALL_PRODUCT_CATEGORIES = Array.from(
-  new Set(
-    catalog.products
-      .map((p) => p.category)
-      .filter((c): c is string => Boolean(c && typeof c === "string" && c.trim() !== ""))
-  )
-).sort((a, b) => a.localeCompare(b));
+export const vendors: Vendor[] = [];
 
 const img = { b1: battery1, b2: battery2, b3: battery3, ch: charger, pt: parts };
 
 type Seed = Omit<Product, "offers" | "id"> & { base: number; vendors: string[] };
-const coreSeeds: Seed[] = [
-  { name: "VoltRide 60V 30Ah Li-ion Pack", brand: "VoltRide", category: "Battery", subcategory: "EV Accessories", vehicleType: "bike", image: img.b1, voltage: 60, capacityAh: 30, chemistry: "NMC", warrantyMonths: 36, rangeKm: 110, weightKg: 13, fits: ["ola-s1pro", "bajaj-chetak", "hero-vida-v1"], description: "High-density NMC pack with smart BMS, IP67 casing and fast-charge support.", base: 62000, vendors: ["v1", "v2", "v6"] },
-  { name: "VoltEdge 48V 50Ah LiFePO4", brand: "VoltEdge", category: "Battery", subcategory: "EV Accessories", vehicleType: "bike", image: img.b2, voltage: 48, capacityAh: 50, chemistry: "LiFePO4", warrantyMonths: 48, rangeKm: 120, weightKg: 18, fits: ["ather-450x", "tvs-iqube"], description: "Ultra-safe LiFePO4 chemistry with 3000+ cycles. Built for daily commuters and fleets.", base: 54000, vendors: ["v1", "v3", "v4"] },
-  { name: "Titan 72V 120Ah Motorcycle Module", brand: "Titan Energy", category: "Battery", subcategory: "EV Accessories", vehicleType: "bike", image: img.b3, voltage: 72, capacityAh: 120, chemistry: "NMC", warrantyMonths: 36, rangeKm: 180, weightKg: 38, fits: ["revolt-rv400"], description: "High-capacity module for performance EV motorcycles with CAN-bus communication.", base: 98000, vendors: ["v2", "v4", "v5"] },
-  { name: "VoltRide 60V 24Ah City Pack", brand: "VoltRide", category: "Battery", subcategory: "EV Accessories", vehicleType: "bike", image: img.b1, voltage: 60, capacityAh: 24, chemistry: "NMC", warrantyMonths: 24, rangeKm: 85, weightKg: 11, fits: ["ola-s1pro", "hero-vida-v1"], description: "Lightweight swap-friendly pack for city riders.", base: 46000, vendors: ["v1", "v5"] },
-  { name: "VoltEdge 48V 30Ah Compact", brand: "VoltEdge", category: "Battery", subcategory: "EV Accessories", vehicleType: "bike", image: img.b2, voltage: 48, capacityAh: 30, chemistry: "LiFePO4", warrantyMonths: 36, rangeKm: 75, weightKg: 12, fits: ["ather-450x", "tvs-iqube"], description: "Compact LiFePO4 replacement with plug-and-play connectors.", base: 36000, vendors: ["v3", "v6"] },
-  { name: "Titan 72V 60Ah Sport", brand: "Titan Energy", category: "Battery", subcategory: "EV Accessories", vehicleType: "bike", image: img.b3, voltage: 72, capacityAh: 60, chemistry: "NMC", warrantyMonths: 24, rangeKm: 120, weightKg: 22, fits: ["revolt-rv400"], description: "Sport-tuned discharge curve for quick acceleration.", base: 72000, vendors: ["v4", "v6"] },
-  { name: "ChargeMax 3.3kW Fast Charger", brand: "ChargeMax", category: "Charger", subcategory: "EV Accessories", vehicleType: "both", image: img.ch, voltage: 60, warrantyMonths: 12, weightKg: 3, fits: ["ola-s1pro", "bajaj-chetak", "hero-vida-v1"], description: "3.3kW portable fast charger with Type-2 connector and LED status.", base: 14500, vendors: ["v1", "v2", "v3", "v6"] },
-  { name: "ChargeMax 48V Home Charger", brand: "ChargeMax", category: "Charger", subcategory: "EV Accessories", vehicleType: "both", image: img.ch, voltage: 48, warrantyMonths: 12, weightKg: 2, fits: ["ather-450x", "tvs-iqube"], description: "Smart home charger with auto cut-off and temperature protection.", base: 7800, vendors: ["v3", "v4"] },
-  { name: "SmartBMS 16S 60A Board", brand: "Daly", category: "BMS", subcategory: "Utilities", vehicleType: "both", image: img.ch, voltage: 60, warrantyMonths: 12, weightKg: 0.4, fits: ["ola-s1pro", "bajaj-chetak", "hero-vida-v1"], description: "Bluetooth BMS with cell balancing, over-current and thermal protection.", base: 4200, vendors: ["v2", "v5"] },
-  { name: "QS 3000W 72V Hub Motor", brand: "QS Motor", category: "Motor", subcategory: "Utilities", vehicleType: "bike", image: img.pt, voltage: 72, warrantyMonths: 18, weightKg: 9, fits: ["revolt-rv400"], description: "Brushless hub motor rated 3kW continuous with hall sensors.", base: 28000, vendors: ["v4", "v5"] },
-  { name: "Kelly 72V 80A Controller", brand: "Kelly", category: "Controller", subcategory: "Utilities", vehicleType: "bike", image: img.pt, voltage: 72, warrantyMonths: 12, weightKg: 1.6, fits: ["revolt-rv400"], description: "Programmable sinusoidal controller with regen braking.", base: 9500, vendors: ["v2", "v4"] },
-  { name: "Wave Disc Brake Rotor 220mm", brand: "Brembo", category: "Brakes", subcategory: "Utilities", vehicleType: "bike", image: img.pt, warrantyMonths: 6, weightKg: 0.8, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "Stainless wave rotor for improved heat dissipation.", base: 2400, vendors: ["v1", "v3", "v6"] },
-  { name: "Ather 450X Gen 3 Smart Electric Scooter", brand: "Ather Energy", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/1280x720/n/cw/ec/196337/450x-right-side-view-2.png?isig=0&q=90", voltage: 48, capacityAh: 78, chemistry: "Li-ion", warrantyMonths: 36, rangeKm: 150, weightKg: 108, fits: ["ather-450x"], description: "Flagship 450X with Warp Mode, 7-inch TFT touchscreen and IP67 battery pack.", base: 145000, vendors: ["v1", "v6"] },
-  { name: "Ather Konarc", brand: "Ather", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/1280x720/n/cw/ec/209108/konarc-right-side-view-16.jpeg?isig=0&q=90", warrantyMonths: 0, weightKg: 0, fits: [], description: "Starting ex-showroom price from the supplied catalog; city and variant pricing may differ.", base: 99999, vendors: ["v1", "v6"] },
-  { name: "Ather 450", brand: "Ather", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/1280x720/n/cw/ec/196337/450x-right-side-view-2.png?isig=0&q=90", warrantyMonths: 0, weightKg: 0, fits: [], description: "Starting ex-showroom price from the supplied catalog; confirm the selected battery and city price.", base: 135999, vendors: ["v1", "v6"] },
-  { name: "Ather Rizta", brand: "Ather", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/1280x720/n/cw/ec/168965/rizta-right-side-view-4.png?isig=0&q=90", warrantyMonths: 0, weightKg: 0, fits: [], description: "Rizta S starting ex-showroom price from the supplied catalog; other variants are priced separately.", base: 121999, vendors: ["v1", "v6"] },
-  { name: "Ather 450S", brand: "Ather", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/1280x720/n/cw/ec/149605/450s-right-side-view-2.png?isig=0&q=90", warrantyMonths: 0, rangeKm: 161, weightKg: 0, fits: [], description: "Starting ex-showroom listing price; verify current price and availability with a dealer. Claimed range: 161 km. Top speed: 90 km/h. Charging time: 5.15 hours.", base: 127888, vendors: ["v1", "v6"] },
-  { name: "Ather 450 Apex", brand: "Ather", category: "Electric Bikes", vehicleType: "bike", image: "https://imgd.aeplcdn.com/1280x720/n/cw/ec/167915/450-apex-right-side-view.png?isig=0&q=90", warrantyMonths: 0, rangeKm: 165, weightKg: 0, fits: [], description: "Starting ex-showroom listing price; verify current price and availability with a dealer. Claimed range: 165 km. Top speed: 100 km/h. Charging time: 5.15 hours.", base: 194946, vendors: ["v1", "v6"] },
-  { name: "TVS iQube 2.3 kWh", brand: "TVS", category: "Electric Bikes", vehicleType: "bike", image: "https://www.tvsmotor.com/electric-scooters/tvs-iqube/-/media/Vehicles/Feature/Iqube/Variant/Comparison/23new.webp?h=820&la=en&w=1200", voltage: 52, capacityAh: 44, chemistry: "Li-ion", warrantyMonths: 36, rangeKm: 114, weightKg: 109, fits: [], description: "TVS iQube electric scooter with 2.3 kWh battery and up to 114 km IDC range. Price and availability can vary by city.", base: 116310, vendors: ["v2", "v6"] },
-  { name: "TVS X Electric Scooter", brand: "TVS", category: "Electric Bikes", vehicleType: "bike", image: "https://www.tvsmotor.com/U388_Assets/images/360images/28.webp", voltage: 72, capacityAh: 53, chemistry: "Li-ion", warrantyMonths: 36, rangeKm: 140, weightKg: 140, fits: [], description: "Premium electric scooter with 3.8 kWh battery, 140 km IDC range and 105 km/h top speed. Starting ex-showroom price; final price varies by city.", base: 266141, vendors: ["v2", "v6"] },
-  { name: "TVS Orbiter V2 Electric Scooter", brand: "TVS", category: "Electric Bikes", vehicleType: "bike", image: "https://asset.autocarindia.com/static/image-galleries/images/20251216_111800_4c55f888.png?q=75&w=728", voltage: 48, capacityAh: 65, chemistry: "Li-ion", warrantyMonths: 60, rangeKm: 158, weightKg: 112, fits: [], description: "TVS Orbiter V2 with 3.1 kWh battery and up to 158 km IDC range. Price and availability can vary by city.", base: 103650, vendors: ["v2", "v6"] },
-  { name: "Revolt RV400 Electric Motorcycle", brand: "Revolt Motors", category: "Electric Bikes", vehicleType: "bike", image: heroBike, batteryCapacityKwh: 3.24, chemistry: "NMC", warrantyMonths: 36, rangeKm: 150, weightKg: 115, fits: ["revolt-rv400"], description: "AI-enabled electric performance motorcycle with a 3.24 kWh NMC battery, MyRevolt connectivity and 85 km/h top speed.", base: 139000, vendors: ["v4", "v6"] },
-  { name: "Ola S1 Pro Gen 2 Hyperdrive Scooter", brand: "Ola Electric", category: "Electric Bikes", vehicleType: "bike", image: scooterImg, voltage: 60, capacityAh: 68, chemistry: "NMC", warrantyMonths: 36, rangeKm: 195, weightKg: 116, fits: ["ola-s1pro"], description: "11kW peak power, 120 km/h top speed, MoveOS 4 navigation and cruise control.", base: 129000, vendors: ["v2", "v5"] },
+const seeds: Seed[] = [
+  { name: "VoltRide 60V 30Ah Li-ion Pack", brand: "VoltRide", category: "Battery", image: img.b1, voltage: 60, capacityAh: 30, chemistry: "NMC", warrantyMonths: 36, rangeKm: 110, weightKg: 13, fits: ["ola-s1pro", "bajaj-chetak", "hero-vida-v1"], description: "High-density NMC pack with smart BMS, IP67 casing and fast-charge support.", base: 62000, vendors: ["v1", "v2", "v6"] },
+  { name: "VoltEdge 48V 50Ah LiFePO4", brand: "VoltEdge", category: "Battery", image: img.b2, voltage: 48, capacityAh: 50, chemistry: "LiFePO4", warrantyMonths: 48, rangeKm: 120, weightKg: 18, fits: ["ather-450x", "tvs-iqube"], description: "Ultra-safe LiFePO4 chemistry with 3000+ cycles. Built for daily commuters and fleets.", base: 54000, vendors: ["v1", "v3", "v4"] },
+  { name: "Titan 72V 120Ah Motorcycle Module", brand: "Titan Energy", category: "Battery", image: img.b3, voltage: 72, capacityAh: 120, chemistry: "NMC", warrantyMonths: 36, rangeKm: 180, weightKg: 38, fits: ["revolt-rv400"], description: "High-capacity module for performance EV motorcycles with CAN-bus communication.", base: 98000, vendors: ["v2", "v4", "v5"] },
+  { name: "VoltRide 60V 24Ah City Pack", brand: "VoltRide", category: "Battery", image: img.b1, voltage: 60, capacityAh: 24, chemistry: "NMC", warrantyMonths: 24, rangeKm: 85, weightKg: 11, fits: ["ola-s1pro", "hero-vida-v1"], description: "Lightweight swap-friendly pack for city riders.", base: 46000, vendors: ["v1", "v5"] },
+  { name: "VoltEdge 48V 30Ah Compact", brand: "VoltEdge", category: "Battery", image: img.b2, voltage: 48, capacityAh: 30, chemistry: "LiFePO4", warrantyMonths: 36, rangeKm: 75, weightKg: 12, fits: ["ather-450x", "tvs-iqube"], description: "Compact LiFePO4 replacement with plug-and-play connectors.", base: 36000, vendors: ["v3", "v6"] },
+  { name: "Titan 72V 60Ah Sport", brand: "Titan Energy", category: "Battery", image: img.b3, voltage: 72, capacityAh: 60, chemistry: "NMC", warrantyMonths: 24, rangeKm: 120, weightKg: 22, fits: ["revolt-rv400"], description: "Sport-tuned discharge curve for quick acceleration.", base: 72000, vendors: ["v4", "v6"] },
+  { name: "ChargeMax 3.3kW Fast Charger", brand: "ChargeMax", category: "Charger", image: img.ch, voltage: 60, warrantyMonths: 12, weightKg: 3, fits: ["ola-s1pro", "bajaj-chetak", "hero-vida-v1"], description: "3.3kW portable fast charger with Type-2 connector and LED status.", base: 14500, vendors: ["v1", "v2", "v3", "v6"] },
+  { name: "ChargeMax 48V Home Charger", brand: "ChargeMax", category: "Charger", image: img.ch, voltage: 48, warrantyMonths: 12, weightKg: 2, fits: ["ather-450x", "tvs-iqube"], description: "Smart home charger with auto cut-off and temperature protection.", base: 7800, vendors: ["v3", "v4"] },
+  { name: "SmartBMS 16S 60A Board", brand: "Daly", category: "BMS", image: img.ch, voltage: 60, warrantyMonths: 12, weightKg: 0.4, fits: ["ola-s1pro", "bajaj-chetak", "hero-vida-v1"], description: "Bluetooth BMS with cell balancing, over-current and thermal protection.", base: 4200, vendors: ["v2", "v5"] },
+  { name: "QS 3000W 72V Hub Motor", brand: "QS Motor", category: "Motor", image: img.pt, voltage: 72, warrantyMonths: 18, weightKg: 9, fits: ["revolt-rv400"], description: "Brushless hub motor rated 3kW continuous with hall sensors.", base: 28000, vendors: ["v4", "v5"] },
+  { name: "Kelly 72V 80A Controller", brand: "Kelly", category: "Controller", image: img.pt, voltage: 72, warrantyMonths: 12, weightKg: 1.6, fits: ["revolt-rv400"], description: "Programmable sinusoidal controller with regen braking.", base: 9500, vendors: ["v2", "v4"] },
+  { name: "Wave Disc Brake Rotor 220mm", brand: "Brembo", category: "Brakes", image: img.pt, warrantyMonths: 6, weightKg: 0.8, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "Stainless wave rotor for improved heat dissipation.", base: 2400, vendors: ["v1", "v3", "v6"] },
+  { name: "Ather 450X Gen 3 Smart Electric Scooter", brand: "Ather Energy", category: "Electric Bikes", image: scooterImg, voltage: 48, capacityAh: 78, chemistry: "Li-ion", warrantyMonths: 36, rangeKm: 150, weightKg: 108, fits: ["ather-450x"], description: "Flagship 450X with Warp Mode, 7-inch TFT touchscreen and IP67 battery pack.", base: 145000, vendors: ["v1", "v6"] },
+  { name: "Revolt RV400 Electric Motorcycle", brand: "Revolt Motors", category: "Electric Bikes", image: heroBike, voltage: 72, capacityAh: 60, chemistry: "Li-ion", warrantyMonths: 36, rangeKm: 150, weightKg: 115, fits: ["revolt-rv400"], description: "AI-enabled electric performance motorcycle with MyRevolt connectivity and 85 km/h top speed.", base: 139000, vendors: ["v4", "v6"] },
+  { name: "Ola S1 Pro Gen 2 Hyperdrive Scooter", brand: "Ola Electric", category: "Electric Bikes", image: scooterImg, voltage: 60, capacityAh: 68, chemistry: "NMC", warrantyMonths: 36, rangeKm: 195, weightKg: 116, fits: ["ola-s1pro"], description: "11kW peak power, 120 km/h top speed, MoveOS 4 navigation and cruise control.", base: 129000, vendors: ["v2", "v5"] },
+  { name: "70mai 4K Dual HDR Smart Dashcam with GPS & ADAS", brand: "70mai", category: "Car Accessories", image: img.pt, warrantyMonths: 12, weightKg: 0.6, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "Ultra 4K front & 1080P rear HDR dashcam with parking surveillance and night owl vision.", base: 8999, vendors: ["v1", "v2", "v3"] },
+  { name: "Digital Fast Tire Inflator 150PSI Auto Cut-Off", brand: "Michelin Auto", category: "Car Accessories", image: img.pt, warrantyMonths: 18, weightKg: 0.8, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "High-precision digital tire inflator for cars, e-bikes and motorcycles with LED torch.", base: 3499, vendors: ["v2", "v4", "v6"] },
+  { name: "ChargeMax Level-2 Home EV Wallbox 7.4kW Type-2 AC", brand: "ChargeMax", category: "Car Accessories", image: img.ch, voltage: 230, warrantyMonths: 36, weightKg: 4.5, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "7.4kW single-phase fast wall charger compatible with all Type-2 electric cars and high-capacity e-scooters.", base: 28500, vendors: ["v1", "v3", "v6"] },
+  { name: "All-Weather Heavy Duty EV Scooter Cover", brand: "Riderz Armor", category: "Bike Accessories", image: img.pt, warrantyMonths: 12, weightKg: 1.1, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "100% waterproof heat-resistant cover with double-stitched seams and anti-theft lock holes.", base: 1299, vendors: ["v1", "v4", "v5"] },
+  { name: "Anti-Theft Disc Brake Lock with 110dB Siren Alarm", brand: "Kovix Security", category: "Bike Accessories", image: img.pt, warrantyMonths: 24, weightKg: 0.5, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "Hardened stainless alloy body with motion vibration sensor and waterproof 110dB alarm.", base: 1850, vendors: ["v2", "v3", "v6"] },
+  { name: "Waterproof Handlebar Phone Mount with 15W Qi Fast Charging", brand: "Bobo Auto", category: "Bike Accessories", image: img.pt, warrantyMonths: 12, weightKg: 0.35, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "Aluminum alloy vibration damper with IP66 wireless fast-charging pad and USB-C port.", base: 2199, vendors: ["v1", "v2", "v5"] },
+  { name: "Brembo Ceramic Sintered Brake Pads (Front + Rear)", brand: "Brembo", category: "Spare Parts", image: img.pt, warrantyMonths: 6, weightKg: 0.4, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "hero-vida-v1"], description: "High-friction ceramic sintered brake pads for quiet, fade-free braking.", base: 1650, vendors: ["v1", "v3", "v6"] },
+  { name: "Gates Carbon Drive High-Tensile Kevlar Belt", brand: "Gates Auto", category: "Spare Parts", image: img.pt, warrantyMonths: 12, weightKg: 0.3, fits: ["ather-450x", "revolt-rv400"], description: "Polyurethane and carbon tensile cord belt designed for instantaneous EV torque.", base: 4200, vendors: ["v2", "v4", "v6"] },
+  { name: "SMK Titan Carbon ECE 22.06 Smart Bluetooth Helmet", brand: "SMK Helmets", category: "Riding Gear & Helmets", image: img.pt, warrantyMonths: 24, weightKg: 1.45, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "ECE 22.06 certified composite carbon fiber shell with integrated Sena Bluetooth speakers and pinlock visor.", base: 11999, vendors: ["v1", "v2", "v6"] },
+  { name: "Rynox Air GT4 All-Weather Armored Riding Jacket", brand: "Rynox Gear", category: "Riding Gear & Helmets", image: img.pt, warrantyMonths: 12, weightKg: 1.8, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "CE Level 2 Safe-Tech armors at shoulders, elbows and back with 3D mesh ventilation and rain liner.", base: 7250, vendors: ["v1", "v3", "v4"] },
+  { name: "ViaTerra Holeshot Carbon Knuckle Touchscreen Gloves", brand: "ViaTerra Gear", category: "Riding Gear & Helmets", image: img.pt, warrantyMonths: 6, weightKg: 0.25, fits: ["ather-450x", "ola-s1pro", "tvs-iqube", "bajaj-chetak", "revolt-rv400", "hero-vida-v1"], description: "Perforated goat skin leather with molded carbon fiber knuckle guards and capacitive smartphone touch fingertips.", base: 2899, vendors: ["v2", "v5", "v6"] },
+  { name: "Motul Motocool Expert EV Organic Coolant 1L", brand: "Motul", category: "Spare Parts", image: img.pt, warrantyMonths: 24, weightKg: 1.1, fits: ["ola-s1pro", "ather-450x"], description: "Hybrid organic coolant engineered for electric motor and stator thermal management down to -37°C.", base: 650, vendors: ["v1", "v2", "v3", "v4"] },
 ];
 
-const coreProducts: Product[] = coreSeeds.map((s, i) => {
+export const products: Product[] = seeds.map((s, i) => {
   const { base, vendors: vs, ...rest } = s;
   return {
     ...rest,
@@ -360,137 +353,10 @@ const coreProducts: Product[] = coreSeeds.map((s, i) => {
   };
 });
 
-const requestedVehicleBrands = new Set(["Ola Electric", "Ampere", "Komaki", "Revolt", "VIDA (Hero)"]);
-const verifiedBatterySpecs: Record<string, Partial<Pick<Product, "voltage" | "capacityAh" | "batteryCapacityKwh" | "batterySpec" | "chemistry">>> = {
-  "ampere-magnus-gmax": { batteryCapacityKwh: 3, chemistry: "LFP" },
-  "ampere-nexus-explus": { batteryCapacityKwh: 3, chemistry: "LFP" },
-  "ampere-reo-vyb": { batteryCapacityKwh: 1.44, chemistry: "LFP" },
-  "ampere-reo": { batteryCapacityKwh: 1.44, chemistry: "LFP" },
-  "ampere-nexus": { batteryCapacityKwh: 3, chemistry: "LFP" },
-  "ampere-magnus-neo": { batteryCapacityKwh: 2.3, chemistry: "LFP" },
-  "komaki-xgt-cat-2-0": { batterySpec: "Variant options: 60/72 V, 20–45 Ah; gel or lithium-ion battery." },
-  "komaki-xgt-km": { voltage: 60, capacityAh: 34, chemistry: "Graphene" },
-  "komaki-xr7": { chemistry: "LiFePO4" },
-  "komaki-mg-pro": { batterySpec: "Battery chemistry and capacity vary by MG Pro variant." },
-  "komaki-ranger": { chemistry: "LiFePO4" },
-  "komaki-mx16-pro": { batteryCapacityKwh: 4.5, chemistry: "LiFePO4" },
-  "ola-s1-z": { batteryCapacityKwh: 3.1 },
-  "ola-s1-x-plus": { batteryCapacityKwh: 4 },
-  "ola-s1-pro-plus": { batteryCapacityKwh: 5.2 },
-  "ola-electric-s1-x-plus": { batteryCapacityKwh: 4 },
-  "ola-electric-s1-pro-sport": { batterySpec: "Battery variants: 4 kWh or 5.2 kWh; this catalog listing does not specify which one." },
-  "ola-electric-roadster": { batteryCapacityKwh: 3.5 },
-  "ola-electric-roadster-x": { batteryCapacityKwh: 2.5 },
-  "ola-electric-roadster-pro": { batteryCapacityKwh: 8 },
-  "revolt-rv1": { batteryCapacityKwh: 2.2, chemistry: "LFP" },
-  "revolt-rv1-plus": { batteryCapacityKwh: 3.24, chemistry: "NMC" },
-  "revolt-rv400-brz": { batteryCapacityKwh: 3.24, chemistry: "NMC" },
-  "revolt-blazex": { batteryCapacityKwh: 3.24, chemistry: "NMC" },
-  "revolt-rvx": { batteryCapacityKwh: 3.24, chemistry: "NMC" },
-  "vida-vx2-go": { batteryCapacityKwh: 2.2 },
-  "vida-vx2-plus": { batteryCapacityKwh: 3.4 },
-  "vida-hero-v2": { batteryCapacityKwh: 3.94 },
-};
-
-function higherResolutionBikeImage(url: string): string {
-  return url
-    .replace(/\/272x153\//, "/1280x720/")
-    .replace(/\/0x0\//, "/1280x720/")
-    .replace(/([?&]q=)80\b/, (_match, prefix: string) => `${prefix}90`);
-}
-
-const uploadedBrandProducts: Product[] = vehicleCatalog.products
-  .filter((item) => requestedVehicleBrands.has(item.brand) && !(item.brand === "Revolt" && item.model === "RV400"))
-  .map((item, index) => {
-    const variant = item.variant && !["Base", "Base / listing entry"].includes(item.variant) ? ` ${item.variant}` : "";
-    const battery = verifiedBatterySpecs[item.id] ?? {};
-    const sourceImage = typeof item.image_url === "string" ? item.image_url : "";
-    const image = higherResolutionBikeImage(sourceImage);
-    const specs = [
-      battery.batteryCapacityKwh ? `${battery.batteryCapacityKwh} kWh ${battery.chemistry ?? ""} battery` : "",
-      battery.batterySpec ?? "",
-      battery.voltage && battery.capacityAh ? `${battery.voltage} V ${battery.capacityAh} Ah ${battery.chemistry ?? ""} battery` : "",
-      item.claimed_range_km ? `${item.claimed_range_km} km claimed range` : "",
-      item.top_speed_kmh ? `${item.top_speed_kmh} km/h top speed` : "",
-      item.charging_time_text ? `${item.charging_time_text} charging time` : "",
-    ].filter(Boolean);
-
-    return {
-      id: `catalog-${item.id}`,
-      name: `${item.brand} ${item.model}${variant}`,
-      brand: item.brand,
-      category: "Electric Bikes",
-      vehicleType: "bike",
-      image,
-      ...(image !== sourceImage ? { imageFallback: sourceImage } : {}),
-      ...battery,
-      ...(typeof item.claimed_range_km === "number" ? { rangeKm: item.claimed_range_km } : {}),
-      warrantyMonths: 0,
-      weightKg: 0,
-      fits: [],
-      description: [item.price_note, ...specs].filter(Boolean).join(" "),
-      offers: [{ vendorId: vendors[index % vendors.length].id, price: item.price_inr, stock: 10 }],
-    };
-  });
-
-const catalogBrandNames = new Map<string, string>();
-const catalogProducts: Product[] = (catalog.products as any[]).map((p, i) => {
-  const basePrice = Math.round(Number(p.price) || Number(p.mrp) || 999);
-  const primaryImage = p.imageUrls && p.imageUrls.length > 0 && p.imageUrls[0] ? p.imageUrls[0].trim() : "";
-  const v1 = vendors[i % vendors.length].id;
-  const v2 = vendors[(i + 2) % vendors.length].id;
-  const v3 = vendors[(i + 4) % vendors.length].id;
-
-  const stock1 = p.stock !== null && p.stock !== undefined ? Number(p.stock) : ((i * 7) % 19 + 3);
-  const stock2 = (i * 5) % 14 + 2;
-  const stock3 = (i * 3) % 11 + 1;
-  const fitText = String(p.fits || "").toLowerCase();
-  const verifiedBikeFits = bikes
-    .filter((bike) => {
-      const model = bike.model.toLowerCase();
-      return fitText.includes(model);
-    })
-    .map((bike) => bike.id);
-  const rawBrand = String(p.brand || "Riderzpro").trim() || "Riderzpro";
-  const brandKey = rawBrand.toLocaleLowerCase();
-  const brand = catalogBrandNames.get(brandKey) || rawBrand;
-  catalogBrandNames.set(brandKey, brand);
-  const vehicleType = ["car", "bike", "both"].includes(p.vehicleType)
-    ? (p.vehicleType as "car" | "bike" | "both")
-    : undefined;
-
-  return {
-    id: p.id,
-    name: p.name,
-    brand,
-    category: String(p.category || "Accessories").trim() || "Accessories",
-    isAccessoryProduct: true,
-    subcategory: p.category || "Accessories",
-    subcategories: [p.category, p.department, ...(p.features || [])].filter(Boolean) as string[],
-    vehicleType,
-    image: primaryImage,
-    warrantyMonths: typeof p.warranty === "string" ? parseInt(p.warranty) || 12 : 12,
-    weightKg: 1,
-    fits: verifiedBikeFits,
-    description:
-      p.description?.trim() ||
-      (p.features && p.features.length > 0 ? p.features.join(". ") : `${p.name} from ${p.brand || "Riderzpro"}. Official catalog component.`),
-    offers: [
-      { vendorId: v1, price: basePrice, stock: stock1 },
-      { vendorId: v2, price: Math.round((basePrice * 1.05) / 10) * 10, stock: stock2 },
-      { vendorId: v3, price: Math.round((basePrice * 0.96) / 10) * 10, stock: stock3 },
-    ],
-  };
-});
-
-export const products: Product[] = [...coreProducts, ...uploadedBrandProducts, ...catalogProducts];
-
 export const riders: Rider[] = [
   { id: "r1", name: "Ravi Kumar", phone: "+91 98450 12345", vehicle: "Ather Rizta", plate: "KA 01 EV 4521", rating: 4.9, avatar: "RK" },
   { id: "r2", name: "Salma Begum", phone: "+91 99000 54321", vehicle: "TVS iQube", plate: "KA 03 EV 1180", rating: 4.8, avatar: "SB" },
 ];
-
-import { getCatalogueProduct, getCatalogueVendor } from "./catalogue";
 
 // Initial Verified Product Reviews
 export const initialProductReviews: ProductReview[] = [];
@@ -581,37 +447,36 @@ export function getVendorOffers(vendorId: string): { product: Product; offer: Ve
   return results;
 }
 
-export const getVendor = (id: string): Vendor => {
-  const dynamic = getCatalogueVendor(id);
-  if (dynamic) return dynamic;
-  return (
-    vendors.find((v) => v.id === id) || {
-      id: id || "v1",
-      name: "Riderzpro Certified",
-      area: "Bengaluru",
-      lat: 12.9784,
-      lng: 77.6408,
-      rating: 4.9,
-      reviewCount: 150,
-      prepMins: 15,
-      isVerified: true,
-      verificationBadge: "Official Marketplace Partner",
-      description: "Official authorized dealer on RiderzPro marketplace.",
-      deliveryCoverage: "All Bengaluru",
-      businessHours: "Mon-Sat: 09:00 AM - 08:00 PM",
-      phone: "+91 80 4000 1122",
-      email: "support@riderzpro.com",
-      address: "MG Road, Bengaluru 560001",
-      gstin: "29AABCR0000Z1Z0",
-      shippingPolicy: "Express delivery across city.",
-      commissionRate: 0.1,
-    }
-  );
-};
+export const getVendor = (id: string): Vendor =>
+  vendors.find((v) => v.id === id) || {
+    id: id || "v1",
+    name: "Riderzpro Certified",
+    area: "Bengaluru",
+    lat: 12.9784,
+    lng: 77.6408,
+    rating: 4.9,
+    reviewCount: 150,
+    prepMins: 15,
+    isVerified: true,
+    verificationBadge: "Official Marketplace Partner",
+    description: "Official authorized dealer on RiderzPro marketplace.",
+    deliveryCoverage: "All Bengaluru",
+    businessHours: "Mon-Sat: 09:00 AM - 08:00 PM",
+    phone: "+91 80 4000 1122",
+    email: "support@riderzpro.com",
+    address: "MG Road, Bengaluru 560001",
+    gstin: "29AABCR0000Z1Z0",
+    shippingPolicy: "Express delivery across city.",
+    returnPolicy: "7-day replacement warranty.",
+    commissionRate: 0.10,
+  };
+const dynamicProductsMap = new Map<string, Product>();
 
-export const getProduct = (id: string): Product | undefined => {
-  return getCatalogueProduct(id) || products.find((p) => p.id === id);
-};
+export function registerDynamicProduct(p: Product) {
+  dynamicProductsMap.set(p.id, p);
+}
+
+export const getProduct = (id: string) => dynamicProductsMap.get(id) || products.find((p) => p.id === id);
 
 export function mapDbProductToProduct(row: any): Product {
   let primaryImg = parts;
@@ -639,7 +504,26 @@ export function mapDbProductToProduct(row: any): Product {
   const mrpPrice = Number(row.mrp) || Math.round(offerPrice * 1.15);
   const voltMatch = row.description?.match(/(\d+)V/i)?.[1];
 
-  return {
+  let offersList = [
+    {
+      vendorId: row.seller_id || "v1",
+      price: offerPrice,
+      stock: Number(row.stock) || 0,
+    },
+  ];
+
+  if (row.offers && Array.isArray(row.offers) && row.offers.length > 0) {
+    offersList = row.offers.map((o: any) => ({
+      vendorId: o.vendorId || o.vendor_id || row.seller_id || "v1",
+      price: Number(o.price) || offerPrice,
+      stock: Number(o.stock) || 0,
+      shippingCharge: o.shippingCharge !== undefined ? Number(o.shippingCharge) : undefined,
+      deliveryDays: o.deliveryDays,
+      warrantyTerms: o.warrantyTerms,
+    }));
+  }
+
+  const mapped: Product = {
     id: row.id,
     name: row.name,
     brand: row.brand || "Riderzpro Certified",
@@ -651,14 +535,12 @@ export function mapDbProductToProduct(row: any): Product {
     description: row.description || "",
     voltage: voltMatch ? Number(voltMatch) : undefined,
     mrp: mrpPrice,
-    offers: [
-      {
-        vendorId: row.seller_id || "v1",
-        price: offerPrice,
-        stock: Number(row.stock) || 0,
-      },
-    ],
+    offers: offersList,
     verificationStatus: row.verification_status || "approved",
+    rejectionReason: row.rejection_reason || undefined,
+    sellerId: row.seller_id,
+    sellerName: row.seller_name || row.store_name,
+    sellerEmail: row.seller_email,
     sku: row.sku,
     variantModel: row.variant_model,
     vehicleType: row.vehicle_type || (row.category_name?.toLowerCase().includes("car") ? "car" : "universal"),
@@ -666,14 +548,17 @@ export function mapDbProductToProduct(row: any): Product {
     availability: row.availability || undefined,
     priceType: row.price_type || undefined,
   };
+  registerDynamicProduct(mapped);
+  return mapped;
 }
 
-
 export const getBike = (id: string) => bikes.find((b) => b.id === id);
-export const bestOffer = (p: Product) => {
-  if (!p || !p.offers || p.offers.length === 0) return { vendorId: "v1", price: 999, stock: 5 };
-  return [...p.offers].sort((a, b) => a.price - b.price)[0];
-};
+export const bestOffer = (p: Product) =>
+  [...(p.offers || [])].sort((a, b) => a.price - b.price)[0] || {
+    vendorId: "v1",
+    price: 0,
+    stock: 0,
+  };
 
 export const inr = (n: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
@@ -688,16 +573,12 @@ export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; ln
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
-export const DELIVERY_FLAT_FEE = 150;
 export const DELIVERY_BASE = 40;
 export const DELIVERY_PER_KM = 12;
 export const GST_RATE = 0.18;
 
-export function deliveryFee(km: number = 0) {
-  if (km > 0) {
-    return Math.round(DELIVERY_BASE + km * DELIVERY_PER_KM);
-  }
-  return DELIVERY_FLAT_FEE;
+export function deliveryFee(km: number) {
+  return Math.round(DELIVERY_BASE + km * DELIVERY_PER_KM);
 }
 export function etaMinutes(km: number, prepMins: number) {
   return Math.round(prepMins + (km / 22) * 60 + 5);
@@ -706,7 +587,6 @@ export function etaMinutes(km: number, prepMins: number) {
 export type Fitment = "compatible" | "incompatible" | "unknown";
 export function fitmentFor(p: Product, bikeId?: string | null): Fitment {
   if (!bikeId) return "unknown";
-  if (!p.fits.length) return "unknown";
   return p.fits.includes(bikeId) ? "compatible" : "incompatible";
 }
 

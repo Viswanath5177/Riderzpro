@@ -534,7 +534,7 @@ export function VendorRouteGuard({
       <Navigate
         to="/login"
         search={
-          wasExplicitlySignedOut ? { role: "vendor" } : { redirect: currentPath, role: "vendor" }
+          (wasExplicitlySignedOut ? {} : { redirect: currentPath }) as any
         }
         replace
       />

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
-import { bikes, products, inr } from "@/lib/data";
+import { products, inr } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 interface ChatMessage {
@@ -44,17 +44,15 @@ export function AiChatbotWidget() {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const activeGarageBike = garage.find((g) => g.bikeId === activeBikeId) || garage[0];
-  const matchedBike = bikes.find((b) => b.id === (activeGarageBike?.bikeId || activeBikeId));
-  const activeBikeLabel = activeGarageBike?.nickname || (matchedBike ? `${matchedBike.make} ${matchedBike.model}` : "Ather 450X");
+  const activeBike = garage[0];
   const liveOrder = orders.find((o) => o.status < 5);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "m-1",
       sender: "ai",
-      text: `Hello ${userProfile.name ? userProfile.name.split(" ")[0] : "Aakash"}! 👋 I'm your RiderzPro AI Fitment & Support Copilot.\n\nI can verify parts compatibility for your ${
-        activeBikeLabel
+      text: `Hello ${userProfile.name ? userProfile.name.split(" ")[0] : "User"}! 👋 I'm your RiderzPro AI Fitment & Support Copilot.\n\nI can verify parts compatibility for your ${
+        activeBike?.nickname || "EV"
       }, track real-time courier dispatches, or recommend certified fast chargers. How can I help you today?`,
       time: "Just now",
     },
@@ -73,7 +71,7 @@ export function AiChatbotWidget() {
     "🛠️ Book 24-point battery check",
   ];
 
-  const handleSend = async (textToSend?: string) => {
+  const handleSend = (textToSend?: string) => {
     const query = (textToSend || input).trim();
     if (!query) return;
 
@@ -88,170 +86,81 @@ export function AiChatbotWidget() {
     if (!textToSend) setInput("");
     setIsTyping(true);
 
-    try {
-      const activeBikeName = matchedBike ? `${matchedBike.make} ${matchedBike.model}` : activeBikeLabel;
-      const historyPayload = messages.slice(-4).map((m) => ({
-        role: m.sender === "user" ? "user" : "assistant",
-        content: m.text,
-      }));
-
-      let res: Response | null = null;
-      try {
-        res = await fetch("/api/assistant", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            query,
-            vehicle_model: activeBikeName,
-            order_id: liveOrder?.id || "",
-            history: historyPayload,
-          }),
-        });
-      } catch {
-        res = null;
-      }
-
-      if (!res || !res.ok) {
-        try {
-          res = await fetch("http://127.0.0.1:8000/api/v1/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              query,
-              vehicle_model: activeBikeName,
-              history: historyPayload,
-            }),
-          });
-        } catch {
-          res = null;
-        }
-      }
-
-      if (!res || !res.ok) throw new Error("AI API error");
-      const data = await res.json();
-
-      const recs: ChatMessage["recommendations"] = [];
-      if (Array.isArray(data.compatible_batteries) && data.compatible_batteries.length > 0) {
-        for (const b of data.compatible_batteries.slice(0, 2)) {
-          const matched = products.find((p) => p.name.toLowerCase() === b.name?.toLowerCase());
-          recs.push({
-            id: matched?.id || b.id || "bat-1",
-            name: b.name || "Certified Battery Pack",
-            price: b.price || 48000,
-            image: matched?.image || products[0].image,
-            vendorId: matched?.offers[0]?.vendorId || "v1",
-          });
-        }
-      }
-      if (Array.isArray(data.compatible_parts) && data.compatible_parts.length > 0) {
-        for (const p of data.compatible_parts.slice(0, 2)) {
-          const matched = products.find((prod) => prod.name.toLowerCase() === p.name?.toLowerCase());
-          recs.push({
-            id: matched?.id || p.id || "part-1",
-            name: p.name || "Certified Spare Part",
-            price: p.price || 2499,
-            image: matched?.image || products[1].image,
-            vendorId: matched?.offers[0]?.vendorId || "v1",
-          });
-        }
-      }
-
-      let action: ChatMessage["action"] | undefined = undefined;
-      const respLow = (data.response || "").toLowerCase();
-      if (respLow.includes("track") || respLow.includes("rzp-") || respLow.includes("rz-")) {
-        action = { type: "track", label: "Open Live GPS Tracker →" };
-      } else if (respLow.includes("technician") || respLow.includes("diagnostic")) {
-        action = { type: "garage", label: "Book Doorstep Technician →" };
-      }
-
-      const reply: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        sender: "ai",
-        text: data.response || "Here are verified details for your request.",
-        time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-        recommendations: recs.length > 0 ? recs : undefined,
-        action,
-      };
-
+    // Simulate AI response based on query
+    setTimeout(() => {
       setIsTyping(false);
+      const q = query.toLowerCase();
+
+      let reply: ChatMessage;
+
+      if (q.includes("track") || q.includes("order") || q.includes("rz-")) {
+        const orderId = liveOrder ? liveOrder.id : "RZ-849201";
+        reply = {
+          id: `ai-${Date.now()}`,
+          sender: "ai",
+          text: `Here is the live dispatch status for order **#${orderId}**:\n\n• **Status:** Courier Picked Up (Milestone 4/6)\n• **Courier Provider:** RiderzPro Fleet (GPS Live)\n• **Assigned Rider:** Suresh K. (Rating: 4.9 ★)\n• **ETA:** ~25 mins to Bellandur\n\nYou can inspect live telemetry or call the rider directly below.`,
+          time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+          action: {
+            type: "track",
+            label: "Open Live GPS Tracker →",
+          },
+        };
+      } else if (q.includes("charger") || q.includes("charging")) {
+        const charger = products.find((p) => p.category === "Charger") || products[0];
+        reply = {
+          id: `ai-${Date.now()}`,
+          sender: "ai",
+          text: `For your Ather 450X (48V architecture), I recommend the **ChargeMax 48V Fast Charger** with auto temperature cutoff, or the **ChargeMax 3.3kW Fast Charger** for 60V architectures.\n\nHere are verified compatible chargers ready for 25-minute Indiranagar dispatch:`,
+          time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+          recommendations: [
+            {
+              id: charger.id,
+              name: charger.name,
+              price: charger.offers[0]?.price || 14500,
+              image: charger.image,
+              vendorId: charger.offers[0]?.vendorId || "v1",
+            },
+          ],
+        };
+      } else if (q.includes("battery") || q.includes("pack") || q.includes("nmc") || q.includes("lifepo4")) {
+        const battery = products.find((p) => p.category === "Battery") || products[0];
+        reply = {
+          id: `ai-${Date.now()}`,
+          sender: "ai",
+          text: `We offer both **NMC (High energy density)** and **LiFePO4 (Ultra-safe 3000+ cycle)** battery packs with integrated Smart BMS.\n\n• **VoltRide 60V 30Ah NMC**: 110 km range, 36-month warranty.\n• **VoltEdge 48V 50Ah LiFePO4**: 120 km range, 48-month warranty (100% Ather compatible).`,
+          time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+          recommendations: [
+            {
+              id: battery.id,
+              name: battery.name,
+              price: battery.offers[0]?.price || 62000,
+              image: battery.image,
+              vendorId: battery.offers[0]?.vendorId || "v1",
+            },
+          ],
+        };
+      } else if (q.includes("service") || q.includes("health") || q.includes("diagnostic") || q.includes("bms")) {
+        reply = {
+          id: `ai-${Date.now()}`,
+          sender: "ai",
+          text: `We have a **Monsoon Special 24-Point Comprehensive Battery & BMS Diagnostic** available with zero booking fee using coupon code **EVSAFE**.\n\nA certified technician visits your doorstep in Bellandur, tests cell balancing drift, checks thermal sensors, and validates water seal integrity.`,
+          time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+          action: {
+            type: "garage",
+            label: "Book Doorstep Technician (₹299 FREE) →",
+          },
+        };
+      } else {
+        reply = {
+          id: `ai-${Date.now()}`,
+          sender: "ai",
+          text: `I've analyzed your question regarding "${query}". All our components come with verified VIN fitment guarantee and 25-minute express local dispatch in Bengaluru.\n\nWould you like me to recommend matching spare parts, track your live order, or check battery health?`,
+          time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+        };
+      }
+
       setMessages((prev) => [...prev, reply]);
-      return;
-    } catch {
-      // Local fallback simulation if Python backend is offline
-      setTimeout(() => {
-        setIsTyping(false);
-        const q = query.toLowerCase();
-        let reply: ChatMessage;
-
-        if (q.includes("track") || q.includes("order") || q.includes("rz-") || q.includes("rzp-")) {
-          const orderId = liveOrder ? liveOrder.id : "RZ-849201";
-          reply = {
-            id: `ai-${Date.now()}`,
-            sender: "ai",
-            text: `Here is the live dispatch status for order **#${orderId}**:\n\n• **Status:** Courier Picked Up (Milestone 4/6)\n• **Courier Provider:** RiderzPro Fleet (GPS Live)\n• **Assigned Rider:** Suresh K. (Rating: 4.9 ★)\n• **ETA:** ~25 mins to Bellandur\n\nYou can inspect live telemetry or call the rider directly below.`,
-            time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-            action: {
-              type: "track",
-              label: "Open Live GPS Tracker →",
-            },
-          };
-        } else if (q.includes("charger") || q.includes("charging")) {
-          const charger = products.find((p) => p.category === "Charger") || products[0];
-          reply = {
-            id: `ai-${Date.now()}`,
-            sender: "ai",
-            text: `For your Ather 450X (48V architecture), I recommend the **ChargeMax 48V Fast Charger** with auto temperature cutoff, or the **ChargeMax 3.3kW Fast Charger** for 60V architectures.\n\nHere are verified compatible chargers ready for 25-minute Indiranagar dispatch:`,
-            time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-            recommendations: [
-              {
-                id: charger.id,
-                name: charger.name,
-                price: charger.offers[0]?.price || 14500,
-                image: charger.image,
-                vendorId: charger.offers[0]?.vendorId || "v1",
-              },
-            ],
-          };
-        } else if (q.includes("battery") || q.includes("pack") || q.includes("nmc") || q.includes("lifepo4")) {
-          const battery = products.find((p) => p.category === "Battery") || products[0];
-          reply = {
-            id: `ai-${Date.now()}`,
-            sender: "ai",
-            text: `We offer both **NMC (High energy density)** and **LiFePO4 (Ultra-safe 3000+ cycle)** battery packs with integrated Smart BMS.\n\n• **VoltRide 60V 30Ah NMC**: 110 km range, 36-month warranty.\n• **VoltEdge 48V 50Ah LiFePO4**: 120 km range, 48-month warranty (100% Ather compatible).`,
-            time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-            recommendations: [
-              {
-                id: battery.id,
-                name: battery.name,
-                price: battery.offers[0]?.price || 62000,
-                image: battery.image,
-                vendorId: battery.offers[0]?.vendorId || "v1",
-              },
-            ],
-          };
-        } else if (q.includes("service") || q.includes("health") || q.includes("diagnostic") || q.includes("bms")) {
-          reply = {
-            id: `ai-${Date.now()}`,
-            sender: "ai",
-            text: `We have a **Monsoon Special 24-Point Comprehensive Battery & BMS Diagnostic** available with zero booking fee using coupon code **EVSAFE**.\n\nA certified technician visits your doorstep in Bellandur, tests cell balancing drift, checks thermal sensors, and validates water seal integrity.`,
-            time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-            action: {
-              type: "garage",
-              label: "Book Doorstep Technician (₹299 FREE) →",
-            },
-          };
-        } else {
-          reply = {
-            id: `ai-${Date.now()}`,
-            sender: "ai",
-            text: `I've analyzed your question regarding "${query}". All our components come with verified VIN fitment guarantee and 25-minute express local dispatch in Bengaluru.\n\nWould you like me to recommend matching spare parts, track your live order, or check battery health?`,
-            time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-          };
-        }
-
-        setMessages((prev) => [...prev, reply]);
-      }, 600);
-    }
+    }, 700);
   };
 
   const handleReset = () => {

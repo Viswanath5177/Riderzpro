@@ -1,18 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  ChevronDown,
-  Copy,
-  Upload,
-  Trash2,
-  Image as ImageIcon,
-  Loader2,
-  Sparkles,
-  ExternalLink,
-  FileCode,
-  CheckCircle2,
+import { 
+  ArrowLeft, ArrowRight, Check, ChevronDown, Copy, 
+  Upload, Trash2, Image as ImageIcon, Loader2, Sparkles,
+  ExternalLink, FileCode, CheckCircle2
 } from "lucide-react";
 import { toast } from "sonner";
 import { bikes, cars, inr, type Product, type Category } from "@/lib/data";
@@ -37,11 +27,9 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
   // ----------------------------------------------------
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
-  const [vehicleType, setVehicleType] = useState<"Car" | "Bike" | "Universal" | "Commercial">(
-    "Car",
-  );
-  const [department, setDepartment] = useState("Accessories");
-  const [categoryInput, setCategoryInput] = useState("Cushions");
+  const [vehicleType, setVehicleType] = useState<"Car" | "Bike" | "Universal" | "Commercial">("Car");
+  const [department, setDepartment] = useState("");
+  const [categoryInput, setCategoryInput] = useState("");
   const [sku, setSku] = useState("");
   const [description, setDescription] = useState("");
   const [keyFeatures, setKeyFeatures] = useState("");
@@ -49,29 +37,27 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
   // ----------------------------------------------------
   // STEP 2: Pricing & Inventory
   // ----------------------------------------------------
-  const [sellingPrice, setSellingPrice] = useState<number | "">(3599);
-  const [mrp, setMrp] = useState<number | "">(3999);
-  const [stock, setStock] = useState<number | "">(25);
-  const [availability, setAvailability] = useState<
-    "In Stock" | "Out of Stock" | "Pre-Order" | "Made to Order"
-  >("In Stock");
+  const [sellingPrice, setSellingPrice] = useState<number | "">("");
+  const [mrp, setMrp] = useState<number | "">("");
+  const [stock, setStock] = useState<number | "">("");
+  const [availability, setAvailability] = useState<"In Stock" | "Out of Stock" | "Pre-Order" | "Made to Order">("In Stock");
 
   // ----------------------------------------------------
   // STEP 3: Vehicle Compatibility
   // ----------------------------------------------------
   const [fitmentType, setFitmentType] = useState<"universal" | "specific" | "vin">("universal");
   const [vin, setVin] = useState("");
-  const [optionsVariants, setOptionsVariants] = useState("Black, Beige, Pack of 1");
-  const [selectedMake, setSelectedMake] = useState("Tata");
-  const [selectedModel, setSelectedModel] = useState("Nexon.ev");
+  const [optionsVariants, setOptionsVariants] = useState("");
+  const [selectedMake, setSelectedMake] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
 
   // ----------------------------------------------------
   // STEP 4: Images & Product Specifications
   // ----------------------------------------------------
-  const [primaryImageUrl, setPrimaryImageUrl] = useState("/src/assets/parts.jpg");
+  const [primaryImageUrl, setPrimaryImageUrl] = useState("");
   const [secondaryImageUrl, setSecondaryImageUrl] = useState("");
-  const [warranty, setWarranty] = useState("1 year");
-  const [deliveryDetails, setDeliveryDetails] = useState("3–5 business days");
+  const [warranty, setWarranty] = useState("");
+  const [deliveryDetails, setDeliveryDetails] = useState("");
   const [installationPrice, setInstallationPrice] = useState<number | "">("");
   const [installationTime, setInstallationTime] = useState("");
   const [weightKg, setWeightKg] = useState<number | "">("");
@@ -88,22 +74,30 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
       setSku(product.sku || (product.id ? `SKU-${product.id.toUpperCase()}` : "RZP-001"));
       setDescription(product.description || "");
       const offer = product.offers?.[0];
-      if (offer) {
-        setSellingPrice(offer.price);
-        setMrp(Math.round(offer.price * 1.15));
-        setStock(offer.stock);
-        setAvailability(offer.stock > 0 ? "In Stock" : "Out of Stock");
-      }
+      const prodPrice = offer?.price ?? (product as any).price ?? "";
+      const prodMrp = (product as any).mrp ?? (typeof prodPrice === "number" ? Math.round(prodPrice * 1.15) : "");
+      const prodStock = offer?.stock ?? (product as any).stock ?? "";
+      setSellingPrice(prodPrice);
+      setMrp(prodMrp);
+      setStock(prodStock);
+      setAvailability(prodStock > 0 ? "In Stock" : "Out of Stock");
       if (product.image) setPrimaryImageUrl(product.image);
       if (product.warrantyMonths) setWarranty(`${product.warrantyMonths / 12} year`);
       if (product.variantModel) setOptionsVariants(product.variantModel);
-      if (product.category) setCategoryInput(product.category);
+      if (product.category) {
+        setCategoryInput(product.category);
+        if (product.category.includes("Batter")) setDepartment("EV Batteries");
+        else if (product.category.includes("Charg")) setDepartment("Smart Chargers");
+        else if (product.category.includes("Brak")) setDepartment("Braking & Safety");
+        else if (product.category.includes("BMS")) setDepartment("BMS Systems");
+        else if (product.category.includes("Motor")) setDepartment("Motors & Controllers");
+        else if (product.category.includes("Part")) setDepartment("Spare Parts");
+      }
     }
   }, [product]);
 
   // Derived financial calculation for Step 2
-  const numSellingPrice =
-    typeof sellingPrice === "number" ? sellingPrice : Number(sellingPrice) || 0;
+  const numSellingPrice = typeof sellingPrice === "number" ? sellingPrice : Number(sellingPrice) || 0;
   const numMrp = typeof mrp === "number" ? mrp : Number(mrp) || 0;
   const platformFee = Math.round(numSellingPrice * 0.05);
   const estimatedPayout = Math.max(0, numSellingPrice - platformFee);
@@ -147,6 +141,14 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
       }
       if (!description.trim()) {
         toast.error("Description is required.");
+        return false;
+      }
+      if (!department.trim()) {
+        toast.error("Department is required.");
+        return false;
+      }
+      if (!categoryInput.trim()) {
+        toast.error("Category is required.");
         return false;
       }
     }
@@ -220,13 +222,13 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
     toast.success("Product data copied to clipboard as JSON!");
   };
 
-  // Submit and Publish product to PostgreSQL database
+  // Submit and Publish product to database
   const handleSubmitToDatabase = async () => {
     setIsSaving(true);
-    const toastId = toast.loading("Saving and publishing product to PostgreSQL database...");
+    const toastId = toast.loading("Publishing product...");
 
     const prodId = product ? product.id : `prod_${Math.random().toString(36).substring(2, 10)}`;
-
+    
     // Compatible vehicles list based on fitment type
     let compatibleList: string[] = [];
     if (fitmentType === "universal") {
@@ -247,22 +249,18 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
       const cleanMake = selectedMake.toLowerCase().trim();
       const cleanModelNoSpecial = selectedModel.toLowerCase().replace(/[^a-z0-9]/g, "");
       const cleanModelHyphen = selectedModel.toLowerCase().replace(/[^a-z0-9]/g, "-");
-      compatibleList = Array.from(
-        new Set(
-          [
-            `${cleanMake}-${cleanModelNoSpecial}`,
-            `${cleanMake}-${cleanModelHyphen}`,
-            cleanMake,
-            cleanModelHyphen,
-            cleanModelNoSpecial,
-            fitmentType === "vin" && vin ? `vin:${vin.toUpperCase().trim()}` : null,
-          ].filter(Boolean) as string[],
-        ),
-      );
+      compatibleList = Array.from(new Set([
+        `${cleanMake}-${cleanModelNoSpecial}`,
+        `${cleanMake}-${cleanModelHyphen}`,
+        cleanMake,
+        cleanModelHyphen,
+        cleanModelNoSpecial,
+        fitmentType === "vin" && vin ? `vin:${vin.toUpperCase().trim()}` : null,
+      ].filter(Boolean) as string[]));
     }
 
     const categoryMap: Record<string, string> = {
-      Accessories: "cat_accessories",
+      "Accessories": "cat_accessories",
       "Spare Parts": "cat_parts",
       "EV Batteries": "cat_batteries",
       "Smart Chargers": "cat_chargers",
@@ -274,14 +272,14 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
 
     const allImages = secondaryImageUrl ? [primaryImageUrl, secondaryImageUrl] : [primaryImageUrl];
 
-    const fitmentNote =
-      fitmentType === "universal"
-        ? "Universal fit for all electric bikes and cars"
-        : `Compatible with ${selectedMake} ${selectedModel}${vin ? ` (VIN: ${vin})` : ""}`;
+    const fitmentNote = fitmentType === "universal" 
+      ? "Universal fit for all electric bikes and cars" 
+      : `Compatible with ${selectedMake} ${selectedModel}${vin ? ` (VIN: ${vin})` : ""}`;
     const fullDescription = `${description}\n\nKey Features:\n${keyFeatures}\n\nFitment: ${fitmentNote} | Vehicle Type: ${vehicleType} | Department: ${department} | SKU: ${sku} | Warranty: ${warranty} | Delivery: ${deliveryDetails}${dimensions ? ` | Dimensions: ${dimensions}` : ""}`;
 
     const payload = {
       id: prodId,
+      seller_id: sellerId || "usr_seller_01",
       category_id: categoryId,
       name,
       brand,
@@ -289,8 +287,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
       description: fullDescription,
       price: numSellingPrice,
       mrp: numMrp || Math.round(numSellingPrice * 1.15),
-      discount_percent:
-        numMrp > numSellingPrice ? Math.round(((numMrp - numSellingPrice) / numMrp) * 100) : 0,
+      discount_percent: numMrp > numSellingPrice ? Math.round(((numMrp - numSellingPrice) / numMrp) * 100) : 0,
       stock: typeof stock === "number" ? stock : 0,
       moq: 1,
       supplier: brand || "Riderzpro Certified",
@@ -323,10 +320,10 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
       }
 
       toast.success(
-        isEdit
-          ? `Product "${name}" updated successfully!`
+        isEdit 
+          ? `Product "${name}" updated successfully!` 
           : `Product "${name}" submitted for approval! Product Admin will review specifications before public display.`,
-        { id: toastId },
+        { id: toastId }
       );
 
       const savedProductItem: Product = {
@@ -341,7 +338,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
         description: fullDescription,
         offers: [
           {
-            vendorId: sellerId || "v1",
+            vendorId: sellerId || "",
             price: numSellingPrice,
             stock: typeof stock === "number" ? stock : 0,
           },
@@ -362,6 +359,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
 
   return (
     <div className="rounded-3xl border border-zinc-800 bg-[#09090b] text-zinc-100 p-6 sm:p-10 shadow-2xl transition-all max-w-4xl mx-auto">
+      
       {/* ---------------------------------------------------- */}
       {/* FORM HEADER                                          */}
       {/* ---------------------------------------------------- */}
@@ -376,9 +374,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
         </div>
 
         <p className="text-xs text-zinc-400 -mt-1">
-          {isEdit
-            ? "Update and modify product listing in Riderzpro store."
-            : "Create a product listing for your Riderzpro store."}
+          {isEdit ? "Update and modify product listing in Riderzpro store." : "Create a product listing for your Riderzpro store."}
         </p>
 
         {/* 5-Segment Progress Bar */}
@@ -480,6 +476,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
                     onChange={(e) => setDepartment(e.target.value)}
                     className="w-full appearance-none rounded-2xl border border-zinc-800 bg-[#000000] px-4 py-3 text-sm text-zinc-100 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400/30 cursor-pointer transition-colors"
                   >
+                    <option value="">Select Department</option>
                     <option value="Accessories">Accessories</option>
                     <option value="Spare Parts">Spare Parts</option>
                     <option value="EV Batteries">EV Batteries</option>
@@ -598,22 +595,22 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
                   required
                   min="1"
                   value={sellingPrice}
-                  onChange={(e) =>
-                    setSellingPrice(e.target.value === "" ? "" : Number(e.target.value))
-                  }
-                  placeholder="3599"
+                  onChange={(e) => setSellingPrice(e.target.value === "" ? "" : Number(e.target.value))}
+                  placeholder="e.g. 3599"
                   className="w-full rounded-2xl border border-zinc-800 bg-[#000000] px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400/30 transition-colors font-medium"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-zinc-200 block mb-1.5">MRP (₹)</label>
+                <label className="text-xs font-semibold text-zinc-200 block mb-1.5">
+                  MRP (₹)
+                </label>
                 <input
                   type="number"
                   min="1"
                   value={mrp}
                   onChange={(e) => setMrp(e.target.value === "" ? "" : Number(e.target.value))}
-                  placeholder="3999"
+                  placeholder="e.g. 3999"
                   className="w-full rounded-2xl border border-zinc-800 bg-[#000000] px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400/30 transition-colors"
                 />
               </div>
@@ -666,8 +663,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
                 Illustrative net after a 5% platform fee, before other applicable adjustments.
                 {numSellingPrice > 0 && (
                   <span className="block mt-1 font-semibold text-emerald-400">
-                    Net Payout: ₹{estimatedPayout.toLocaleString("en-IN")} (Platform Fee: -₹
-                    {platformFee.toLocaleString("en-IN")})
+                    Net Payout: ₹{estimatedPayout.toLocaleString("en-IN")} (Platform Fee: -₹{platformFee.toLocaleString("en-IN")})
                   </span>
                 )}
               </p>
@@ -675,8 +671,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
 
             {/* Disclaimer */}
             <p className="text-xs text-zinc-500 leading-relaxed pt-2">
-              The final form should also include applicable tax classification and HSN code when
-              verified. These are not inferred from the selling price.
+              The final form should also include applicable tax classification and HSN code when verified. These are not inferred from the selling price.
             </p>
           </div>
 
@@ -717,8 +712,10 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
           <div className="space-y-5">
             {/* Fitment Type Radio Options */}
             <div>
-              <label className="text-xs font-semibold text-zinc-200 block mb-3">Fitment type</label>
-
+              <label className="text-xs font-semibold text-zinc-200 block mb-3">
+                Fitment type
+              </label>
+              
               <div className="space-y-3">
                 {[
                   { id: "universal", label: "Universal fit" },
@@ -746,14 +743,13 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
             {fitmentType === "specific" && (
               <div className="grid grid-cols-2 gap-4 p-4 rounded-2xl border border-zinc-800 bg-zinc-950/60">
                 <div>
-                  <label className="text-xs font-semibold text-zinc-400 block mb-1.5">
-                    Vehicle Make
-                  </label>
+                  <label className="text-xs font-semibold text-zinc-400 block mb-1.5">Vehicle Make</label>
                   <select
                     value={selectedMake}
                     onChange={(e) => setSelectedMake(e.target.value)}
                     className="w-full rounded-xl border border-zinc-800 bg-[#000000] px-3 py-2 text-xs text-zinc-200 focus:border-amber-400 focus:outline-none cursor-pointer"
                   >
+                    <option value="">Select Make</option>
                     <option value="Tata">Tata</option>
                     <option value="Ola">Ola</option>
                     <option value="Ather">Ather</option>
@@ -764,14 +760,13 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-zinc-400 block mb-1.5">
-                    Vehicle Model
-                  </label>
+                  <label className="text-xs font-semibold text-zinc-400 block mb-1.5">Vehicle Model</label>
                   <select
                     value={selectedModel}
                     onChange={(e) => setSelectedModel(e.target.value)}
                     className="w-full rounded-xl border border-zinc-800 bg-[#000000] px-3 py-2 text-xs text-zinc-200 focus:border-amber-400 focus:outline-none cursor-pointer"
                   >
+                    <option value="">Select Model</option>
                     <option value="Nexon.ev">Nexon.ev</option>
                     <option value="S1 Pro">S1 Pro</option>
                     <option value="450X">450X</option>
@@ -786,7 +781,9 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
             {/* Vehicle VIN */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-zinc-200">Vehicle VIN</label>
+                <label className="text-xs font-semibold text-zinc-200">
+                  Vehicle VIN
+                </label>
                 <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-800/80 px-2 py-0.5 rounded-full">
                   Optional
                 </span>
@@ -799,8 +796,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
                 className="w-full rounded-2xl border border-zinc-800 bg-[#000000] px-4 py-3 text-sm font-mono text-zinc-100 placeholder:text-zinc-600 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400/30 transition-colors"
               />
               <p className="text-xs text-zinc-500 mt-1.5">
-                Leave blank for universal accessories. Verify compatibility rather than relying on
-                VIN format alone.
+                Leave blank for universal accessories. Verify compatibility rather than relying on VIN format alone.
               </p>
             </div>
 
@@ -850,12 +846,9 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
             <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
               1. Basic Information
             </p>
-            <h2 className="text-base sm:text-lg font-bold text-white">
-              4. Images & Product Specifications
-            </h2>
+            <h2 className="text-base sm:text-lg font-bold text-white">4. Images & Product Specifications</h2>
             <p className="text-xs text-zinc-400">
-              Add up to two product images. Use valid image URLs or upload files to the configured
-              image-storage backend.
+              Add up to two product images. Use valid image URLs or upload files to the configured image-storage backend.
             </p>
           </div>
 
@@ -863,7 +856,9 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
             {/* Primary Image URL */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-zinc-200">Primary image URL</label>
+                <label className="text-xs font-semibold text-zinc-200">
+                  Primary image URL
+                </label>
                 <button
                   type="button"
                   onClick={() => primaryFileInputRef.current?.click()}
@@ -889,14 +884,8 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
               />
               {primaryImageUrl && (
                 <div className="mt-2 flex items-center gap-2">
-                  <img
-                    src={primaryImageUrl}
-                    alt="Primary"
-                    className="h-10 w-10 rounded-lg object-cover border border-zinc-800"
-                  />
-                  <span className="text-xs text-zinc-400 truncate max-w-sm">
-                    Image preview ready
-                  </span>
+                  <img src={primaryImageUrl} alt="Primary" className="h-10 w-10 rounded-lg object-cover border border-zinc-800" />
+                  <span className="text-xs text-zinc-400 truncate max-w-sm">Image preview ready</span>
                 </div>
               )}
             </div>
@@ -932,14 +921,8 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
               />
               {secondaryImageUrl && (
                 <div className="mt-2 flex items-center gap-2">
-                  <img
-                    src={secondaryImageUrl}
-                    alt="Secondary"
-                    className="h-10 w-10 rounded-lg object-cover border border-zinc-800"
-                  />
-                  <span className="text-xs text-zinc-400 truncate max-w-sm">
-                    Secondary image ready
-                  </span>
+                  <img src={secondaryImageUrl} alt="Secondary" className="h-10 w-10 rounded-lg object-cover border border-zinc-800" />
+                  <span className="text-xs text-zinc-400 truncate max-w-sm">Secondary image ready</span>
                 </div>
               )}
             </div>
@@ -947,7 +930,9 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
             {/* Warranty & Delivery Details (2 Columns) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-semibold text-zinc-200 block mb-1.5">Warranty</label>
+                <label className="text-xs font-semibold text-zinc-200 block mb-1.5">
+                  Warranty
+                </label>
                 <input
                   type="text"
                   value={warranty}
@@ -981,9 +966,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
                   type="number"
                   min="0"
                   value={installationPrice}
-                  onChange={(e) =>
-                    setInstallationPrice(e.target.value === "" ? "" : Number(e.target.value))
-                  }
+                  onChange={(e) => setInstallationPrice(e.target.value === "" ? "" : Number(e.target.value))}
                   placeholder="Optional"
                   className="w-full rounded-2xl border border-zinc-800 bg-[#000000] px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400/30 transition-colors"
                 />
@@ -1036,8 +1019,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
 
             {/* Preservation Note */}
             <p className="text-xs text-zinc-500 leading-relaxed pt-1">
-              Accept images under 5 MB each. Preserve original quality; do not automatically
-              compress images.
+              Accept images under 5 MB each. Preserve original quality; do not automatically compress images.
             </p>
           </div>
 
@@ -1085,9 +1067,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
                 {brand || "Brand not entered"} · {categoryInput || "Category not entered"}
               </p>
               <p className="text-lg font-extrabold text-white mt-2">
-                {numSellingPrice > 0
-                  ? `₹${numSellingPrice.toLocaleString("en-IN")}`
-                  : "Price not entered"}
+                {numSellingPrice > 0 ? `₹${numSellingPrice.toLocaleString("en-IN")}` : "Price not entered"}
               </p>
             </div>
 
@@ -1106,11 +1086,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
               <div className="flex justify-between py-1 border-b border-zinc-900">
                 <span className="text-zinc-500 font-medium">Vehicle fitment</span>
                 <span className="text-zinc-200">
-                  {fitmentType === "universal"
-                    ? "Universal"
-                    : fitmentType === "specific"
-                      ? `${selectedMake} ${selectedModel}`
-                      : "VIN-specific"}
+                  {fitmentType === "universal" ? "Universal" : fitmentType === "specific" ? `${selectedMake} ${selectedModel}` : "VIN-specific"}
                 </span>
               </div>
 
@@ -1128,16 +1104,12 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
 
               <div className="flex justify-between py-1 border-b border-zinc-900">
                 <span className="text-zinc-500 font-medium">Primary image</span>
-                <span className="text-zinc-200 truncate max-w-xs">
-                  {primaryImageUrl ? "Provided" : "Not provided"}
-                </span>
+                <span className="text-zinc-200 truncate max-w-xs">{primaryImageUrl ? "Provided" : "Not provided"}</span>
               </div>
 
               <div className="flex justify-between py-1 border-b border-zinc-900">
                 <span className="text-zinc-500 font-medium">Secondary image</span>
-                <span className="text-zinc-200">
-                  {secondaryImageUrl ? "Provided" : "Not provided"}
-                </span>
+                <span className="text-zinc-200">{secondaryImageUrl ? "Provided" : "Not provided"}</span>
               </div>
 
               <div className="flex justify-between py-1 border-b border-zinc-900">
@@ -1153,8 +1125,7 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
           </div>
 
           <p className="text-xs text-zinc-500 leading-relaxed">
-            This preview does not save or publish a product. Connect the form to your backend to
-            create the database record and publish it to the customer Garage page.
+            This preview does not save or publish a product. Connect the form to your backend to create the database record and publish it to the customer Garage page.
           </p>
 
           {/* Copy product data as JSON Button */}
@@ -1189,18 +1160,19 @@ export function ProductFormPage({ product, sellerId, onCancel, onSuccess }: Prod
               {isSaving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin text-black" />
-                  <span>Publishing to Database...</span>
+                  <span>Publishing...</span>
                 </>
               ) : (
                 <>
                   <Check className="h-4 w-4 text-black" />
-                  <span>{isEdit ? "Save Changes" : "Publish Product to Database"}</span>
+                  <span>{isEdit ? "Save Changes" : "Publish"}</span>
                 </>
               )}
             </button>
           </div>
         </div>
       )}
+
     </div>
   );
 }

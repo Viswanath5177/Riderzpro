@@ -1,20 +1,12 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/admin/login")({
-  validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
-    redirect: typeof search["redirect"] === "string" ? search["redirect"] : undefined,
-  }),
-  head: () => ({
-    meta: [
-      { title: "Redirecting to Login — RiderzPro" },
-      { name: "description", content: "Redirecting to RiderzPro unified sign-in page." },
-    ],
-  }),
-  component: AdminLoginRedirect,
+  beforeLoad: ({ search }: { search: Record<string, unknown> }) => {
+    const rawRedirect = search["redirect"];
+    const dest = typeof rawRedirect === "string" && !rawRedirect.includes("/login")
+      ? rawRedirect
+      : "/admin";
+    throw redirect({ to: "/vendor/login", search: { redirect: dest } });
+  },
+  component: () => null,
 });
-
-function AdminLoginRedirect() {
-  const search = Route.useSearch();
-  const target = search.redirect || "/admin";
-  return <Navigate to="/login" search={{ redirect: target }} replace />;
-}

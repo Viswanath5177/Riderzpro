@@ -218,9 +218,9 @@ export function initNativeApp(): () => void {
   // Set up native-specific Capacitor hooks
   if (Capacitor.isNativePlatform()) {
     // 1. Android Back Button listener
-    CapApp.addListener("backButton", async ({ canGoBack }) => {
+    CapApp.addListener("backButton", async ({ canGoBack }: { canGoBack: boolean }) => {
       await handleHardwareBackButton(canGoBack);
-    }).then((listener) => {
+    }).then((listener: any) => {
       cleanups.push(() => listener.remove());
     });
 
