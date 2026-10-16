@@ -14,14 +14,7 @@ export function SupportSection({ vendor }: SupportSectionProps) {
   const [message, setMessage] = useState("");
   const [submittedTickets, setSubmittedTickets] = useState<
     { id: string; subject: string; status: string; date: string }[]
-  >([
-    {
-      id: "TCK-492",
-      subject: "Query regarding T+7 NEFT settlement timing for weekend deliveries",
-      status: "Resolved",
-      date: "3 days ago",
-    },
-  ]);
+  >([]);
 
   const handleSubmitTicket = (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,21 +108,27 @@ export function SupportSection({ vendor }: SupportSectionProps) {
           <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-2xs space-y-3">
             <h4 className="font-display font-bold text-sm text-gray-900">Your Recent Tickets</h4>
             <div className="space-y-2">
-              {submittedTickets.map((t) => (
-                <div
-                  key={t.id}
-                  className="p-3 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-between text-xs"
-                >
-                  <div>
-                    <span className="font-mono font-bold text-gray-500 mr-2">{t.id}</span>
-                    <span className="font-semibold text-gray-800">{t.subject}</span>
-                    <p className="text-[10px] text-gray-400 mt-0.5">{t.date}</p>
+              {submittedTickets.length === 0 ? (
+                <p className="text-xs text-gray-400 py-4 text-center">
+                  No open or past support tickets.
+                </p>
+              ) : (
+                submittedTickets.map((t) => (
+                  <div
+                    key={t.id}
+                    className="p-3 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-between text-xs"
+                  >
+                    <div>
+                      <span className="font-mono font-bold text-gray-500 mr-2">{t.id}</span>
+                      <span className="font-semibold text-gray-800">{t.subject}</span>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{t.date}</p>
+                    </div>
+                    <span className="rounded-full bg-blue-50 text-blue-700 px-2 py-0.5 text-[10px] font-bold shrink-0">
+                      {t.status}
+                    </span>
                   </div>
-                  <span className="rounded-full bg-blue-50 text-blue-700 px-2 py-0.5 text-[10px] font-bold shrink-0">
-                    {t.status}
-                  </span>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 

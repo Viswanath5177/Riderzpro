@@ -51,6 +51,7 @@ import { StatusBadge } from "../glass/StatusBadge";
 import { useAdminStore } from "@/mocks/admin/adminStore";
 import { AdminOrder } from "@/mocks/admin/types";
 import { toast } from "sonner";
+import { SHOW_ADMIN_SELLERS } from "../mockFlags";
 
 // 7-day revenue trend data
 const REVENUE_DATA_7D = [
@@ -630,24 +631,26 @@ export function DashboardScreen() {
               </Link>
             </div>
 
-            {/* KYC Approvals */}
-            <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-3.5 space-y-2">
-              <div className="flex items-center justify-between font-bold text-amber-800">
-                <span className="flex items-center gap-1.5">
-                  <Store className="h-3.5 w-3.5" />
-                  Seller KYC Verification
-                </span>
-                <span className="font-mono text-[11px]">2 Pending</span>
+            {/* KYC Approvals (Only rendered if SHOW_ADMIN_SELLERS is enabled) */}
+            {SHOW_ADMIN_SELLERS && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-3.5 space-y-2">
+                <div className="flex items-center justify-between font-bold text-amber-800">
+                  <span className="flex items-center gap-1.5">
+                    <Store className="h-3.5 w-3.5" />
+                    Seller KYC Verification
+                  </span>
+                  <span className="font-mono text-[11px]">2 Pending</span>
+                </div>
+                <p className="text-[#6B7280] text-[11px] leading-relaxed">
+                  Telangana Smart Telematics & NeoRide EV spares await verification.
+                </p>
+                <Link to="/admin/sellers">
+                  <button className="w-full mt-1 rounded-xl border border-amber-300 bg-white hover:bg-amber-100 text-amber-900 font-semibold py-1.5 text-[11px] transition cursor-pointer">
+                    Review Seller Applications →
+                  </button>
+                </Link>
               </div>
-              <p className="text-[#6B7280] text-[11px] leading-relaxed">
-                Telangana Smart Telematics & NeoRide EV spares await verification.
-              </p>
-              <Link to="/admin/sellers">
-                <button className="w-full mt-1 rounded-xl border border-amber-300 bg-white hover:bg-amber-100 text-amber-900 font-semibold py-1.5 text-[11px] transition cursor-pointer">
-                  Review Seller Applications →
-                </button>
-              </Link>
-            </div>
+            )}
           </div>
         </div>
       </div>

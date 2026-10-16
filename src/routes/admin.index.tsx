@@ -16,6 +16,7 @@ import {
 import { AdminRouteGuard } from "@/lib/adminAuth";
 import { useAdminOrders } from "@/components/admin/adminOrdersApi";
 import { useAdminSellers } from "@/components/admin/adminSellersApi";
+import { SHOW_ADMIN_SELLERS } from "@/components/admin/mockFlags";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({
@@ -83,6 +84,9 @@ function AdminHomeDashboard() {
     if (o.status === "PACKED" && (!o.riderName || o.riderName.trim() === "")) return true;
     return false;
   }).length;
+
+  // 5. Delivered Orders
+  const deliveredOrders = orders.filter((o) => (o.status || "").toUpperCase() === "DELIVERED").length;
 
   return (
     <div className="space-y-6">
@@ -176,26 +180,47 @@ function AdminHomeDashboard() {
           </div>
         </Link>
 
-        {/* 3. Sellers (Approved / Pending) -> links to /admin/sellers */}
-        <Link
-          to="/admin/sellers"
-          className="rounded-3xl border border-gray-200 bg-white p-5 shadow-2xs hover:border-emerald-400/60 transition cursor-pointer group flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between text-gray-500 text-xs">
-            <span className="font-semibold">Merchants</span>
-            <span className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition">
-              <Store className="h-4 w-4" />
-            </span>
-          </div>
-          <p className="font-display text-3xl font-black text-gray-900 mt-3">
-            {isLoading && sellers.length === 0 ? "—" : sellers.length}
-          </p>
-          <div className="mt-3 flex items-center text-xs font-semibold text-gray-600">
-            <span className="text-emerald-700 font-bold">{approvedSellers} Approved</span>
-            <span className="mx-1.5">·</span>
-            <span className="text-amber-700 font-bold">{pendingSellers} Pending</span>
-          </div>
-        </Link>
+        {/* 3. Sellers (Approved / Pending) or Completed Deliveries */}
+        {SHOW_ADMIN_SELLERS ? (
+          <Link
+            to="/admin/sellers"
+            className="rounded-3xl border border-gray-200 bg-white p-5 shadow-2xs hover:border-emerald-400/60 transition cursor-pointer group flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between text-gray-500 text-xs">
+              <span className="font-semibold">Merchants</span>
+              <span className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition">
+                <Store className="h-4 w-4" />
+              </span>
+            </div>
+            <p className="font-display text-3xl font-black text-gray-900 mt-3">
+              {isLoading && sellers.length === 0 ? "—" : sellers.length}
+            </p>
+            <div className="mt-3 flex items-center text-xs font-semibold text-gray-600">
+              <span className="text-emerald-700 font-bold">{approvedSellers} Approved</span>
+              <span className="mx-1.5">·</span>
+              <span className="text-amber-700 font-bold">{pendingSellers} Pending</span>
+            </div>
+          </Link>
+        ) : (
+          <Link
+            to="/admin/orders"
+            className="rounded-3xl border border-gray-200 bg-white p-5 shadow-2xs hover:border-emerald-400/60 transition cursor-pointer group flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between text-gray-500 text-xs">
+              <span className="font-semibold">Delivered Orders</span>
+              <span className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition">
+                <CheckCircle2 className="h-4 w-4" />
+              </span>
+            </div>
+            <p className="font-display text-3xl font-black text-emerald-600 mt-3">
+              {isLoading && orders.length === 0 ? "—" : deliveredOrders}
+            </p>
+            <div className="mt-3 flex items-center text-xs font-bold text-emerald-600">
+              <span>Completed Deliveries</span>
+              <ArrowRight className="h-3.5 w-3.5 ml-1 group-hover:translate-x-1 transition" />
+            </div>
+          </Link>
+        )}
 
         {/* 4. Orders Needing Attention -> links to /admin/orders */}
         <Link
@@ -305,21 +330,23 @@ function AdminHomeDashboard() {
           <ArrowRight className="h-4 w-4 text-gray-400" />
         </Link>
 
-        <Link
-          to="/admin/sellers"
-          className="rounded-3xl border border-gray-200 bg-white p-5 shadow-2xs hover:border-gray-300 transition flex items-center justify-between"
-        >
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <Store className="h-5 w-5" />
+        {SHOW_ADMIN_SELLERS && (
+          <Link
+            to="/admin/sellers"
+            className="rounded-3xl border border-gray-200 bg-white p-5 shadow-2xs hover:border-gray-300 transition flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <Store className="h-5 w-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-gray-900">Seller Directory</h4>
+                <p className="text-xs text-gray-500">Inspect verified hubs, GST compliance & KYC</p>
+              </div>
             </div>
-            <div>
-              <h4 className="font-bold text-sm text-gray-900">Seller Directory</h4>
-              <p className="text-xs text-gray-500">Inspect verified hubs, GST compliance & KYC</p>
-            </div>
-          </div>
-          <ArrowRight className="h-4 w-4 text-gray-400" />
-        </Link>
+            <ArrowRight className="h-4 w-4 text-gray-400" />
+          </Link>
+        )}
       </div>
     </div>
   );

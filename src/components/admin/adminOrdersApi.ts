@@ -4,16 +4,14 @@
  * Joins order records with customer, seller, rider, payment, and status history.
  * Polling every 6 seconds, pausing on background tab, and highlighting status changes.
  *
- * Real API endpoint assumed: GET /api/admin/orders
+ * Real API endpoint: GET /api/admin/orders
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { USE_MOCK } from "./mockFlags";
 
-// ==========================================
-// CONFIGURATION & TOGGLE FLAG
-// ==========================================
-// Set VITE_USE_MOCK_ADMIN_ORDERS="true" to force mocks. Default is live.
-export const USE_MOCK = import.meta.env.VITE_USE_MOCK_ADMIN_ORDERS === "true";
+// Re-export mock toggle flag for UI components
+export { USE_MOCK };
 
 // ==========================================
 // TYPES & CONTRACT DEFINITIONS
@@ -45,26 +43,62 @@ export interface StatusHistoryEntry {
   source: "system" | "admin" | "seller" | "rider";
 }
 
+export interface AdminOrdersSummary {
+  total: number;
+  inProgress: number;
+  delivered: number;
+  awaitingSeller: number;
+  unassignedRider: number;
+}
+
 export interface AdminOrderJoined {
   id: string;
   orderNumber: string;
   createdAt: string;
+  status: OrderStatus;
   customerName: string;
-  customerPhone: string;
-  deliveryAddress: string;
-  city: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
+  city?: string;
+  seller?: {
+    id: string;
+    name: string;
+  };
   sellerId: string;
   sellerName: string;
-  sellerPhone: string;
-  sellerAddress: string;
-  status: OrderStatus;
+  sellerPhone?: string;
+  sellerAddress?: string;
+  rider?: {
+    id: string;
+    name: string;
+    phone: string;
+  } | null;
   riderName: string | null;
   riderPhone: string | null;
+  payment?: {
+    method: string;
+    status: PaymentStatus;
+  };
   paymentStatus: PaymentStatus;
   paymentMethod: string;
   amount: number;
   items: OrderItem[];
-  statusHistory: StatusHistoryEntry[];
+  statusHistory: StatusHistoryEntry[] | null;
+}
+
+export interface GetAdminOrdersParams {
+  status?: string;
+  seller?: string;
+  payment?: string;
+  q?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+export interface GetAdminOrdersResult {
+  orders: AdminOrderJoined[];
+  summary: AdminOrdersSummary;
+  nextCursor: string | null;
 }
 
 export class ApiError extends Error {
@@ -76,372 +110,128 @@ export class ApiError extends Error {
   }
 }
 
-// ==========================================
-// INITIAL MOCK ORDERS (Joined shape across all 9 statuses)
-// ==========================================
+export function normalizeAdminOrder(raw: any): AdminOrderJoined {
+  const sellerId = raw.seller?.id || raw.sellerId || raw.seller_id || "";
+  const sellerName = raw.seller?.name || raw.sellerName || raw.seller_name || "Seller Hub";
+  const sellerObj = { id: sellerId, name: sellerName };
 
-const now = Date.now();
+  const riderId = raw.rider?.id || raw.riderId || raw.rider_id || null;
+  const riderName = raw.rider?.name || raw.riderName || raw.rider_name || null;
+  const riderPhone = raw.rider?.phone || raw.riderPhone || raw.rider_phone || "";
+  const riderObj =
+    raw.rider !== undefined
+      ? raw.rider
+      : riderName
+        ? { id: riderId || "", name: riderName, phone: riderPhone }
+        : null;
 
-export const initialAdminOrders: AdminOrderJoined[] = [
-  {
-    id: "adm_ord_01",
-    orderNumber: "RP-ORD-9821",
-    createdAt: new Date(now - 4 * 60 * 1000).toISOString(), // 4 mins ago
-    customerName: "Rohan Sharma",
-    customerPhone: "+91 98765 11001",
-    deliveryAddress: "Flat 402, Lotus Boulevard, Sector 100, Noida, UP",
-    city: "Noida",
-    sellerId: "sel_noida_01",
-    sellerName: "Noida EV Spares & Care",
-    sellerPhone: "+91 98112 34567",
-    sellerAddress: "Shop 12, Sector 62 Electronic City, Noida, UP",
-    status: "PLACED", // Awaiting seller action
-    riderName: null, // Unassigned
-    riderPhone: null,
-    paymentStatus: "PAID",
-    paymentMethod: "UPI / Razorpay",
-    amount: 5799,
-    items: [
-      { name: "Ather 450X Ceramic Brake Pad Set", qty: 2, price: 1450 },
-      { name: "Fast Charger Cable 15A (Type 2)", qty: 1, price: 2899 },
-    ],
-    statusHistory: [
-      {
-        status: "PLACED",
-        timestamp: new Date(now - 4 * 60 * 1000).toISOString(),
-        note: "Customer placed order via UPI",
-        source: "system",
-      },
-    ],
-  },
-  {
-    id: "adm_ord_02",
-    orderNumber: "RP-ORD-9819",
-    createdAt: new Date(now - 14 * 60 * 1000).toISOString(),
-    customerName: "Pooja Verma",
-    customerPhone: "+91 98765 22002",
-    deliveryAddress: "House 18, Block B, Sector 50, Noida, UP",
-    city: "Noida",
-    sellerId: "sel_noida_01",
-    sellerName: "Noida EV Spares & Care",
-    sellerPhone: "+91 98112 34567",
-    sellerAddress: "Shop 12, Sector 62 Electronic City, Noida, UP",
-    status: "ACCEPTED",
-    riderName: null,
-    riderPhone: null,
-    paymentStatus: "PAID",
-    paymentMethod: "Credit Card",
-    amount: 4150,
-    items: [
-      { name: "Ola S1 Pro Heavy Duty Belt Drive", qty: 1, price: 3200 },
-      { name: "High-Visibility LED Handlebar Indicators", qty: 1, price: 950 },
-    ],
-    statusHistory: [
-      {
-        status: "PLACED",
-        timestamp: new Date(now - 14 * 60 * 1000).toISOString(),
-        note: "Order created",
-        source: "system",
-      },
-      {
-        status: "ACCEPTED",
-        timestamp: new Date(now - 10 * 60 * 1000).toISOString(),
-        note: "Accepted by Noida EV Spares",
-        source: "seller",
-      },
-    ],
-  },
-  {
-    id: "adm_ord_03",
-    orderNumber: "RP-ORD-9815",
-    createdAt: new Date(now - 28 * 60 * 1000).toISOString(),
-    customerName: "Amitabh Sen",
-    customerPhone: "+91 98765 33003",
-    deliveryAddress: "Villa 9, ATS Greens, Greater Noida West, UP",
-    city: "Noida",
-    sellerId: "sel_noida_01",
-    sellerName: "Noida EV Spares & Care",
-    sellerPhone: "+91 98112 34567",
-    sellerAddress: "Shop 12, Sector 62 Electronic City, Noida, UP",
-    status: "PACKED", // PACKED with no rider = Unassigned rider!
-    riderName: null,
-    riderPhone: null,
-    paymentStatus: "COD_PENDING",
-    paymentMethod: "Cash on Delivery",
-    amount: 1850,
-    items: [{ name: "Chetak Smart Key Fob Replacement", qty: 1, price: 1850 }],
-    statusHistory: [
-      {
-        status: "PLACED",
-        timestamp: new Date(now - 28 * 60 * 1000).toISOString(),
-        note: "Order placed (COD)",
-        source: "system",
-      },
-      {
-        status: "ACCEPTED",
-        timestamp: new Date(now - 22 * 60 * 1000).toISOString(),
-        note: "Merchant confirmed order",
-        source: "seller",
-      },
-      {
-        status: "PACKED",
-        timestamp: new Date(now - 8 * 60 * 1000).toISOString(),
-        note: "Parcel packed, awaiting rider broadcast",
-        source: "seller",
-      },
-    ],
-  },
-  {
-    id: "adm_ord_04",
-    orderNumber: "RP-ORD-9807",
-    createdAt: new Date(now - 45 * 60 * 1000).toISOString(),
-    customerName: "Vikas Patel",
-    customerPhone: "+91 98765 44004",
-    deliveryAddress: "Tower 3, Supertech Capetown, Sector 74, Noida, UP",
-    city: "Noida",
-    sellerId: "sel_noida_01",
-    sellerName: "Noida EV Spares & Care",
-    sellerPhone: "+91 98112 34567",
-    sellerAddress: "Shop 12, Sector 62 Electronic City, Noida, UP",
-    status: "RIDER_ASSIGNED",
-    riderName: "Rajesh Kumar",
-    riderPhone: "+91 98765 43210",
-    paymentStatus: "PAID",
-    paymentMethod: "UPI / Razorpay",
-    amount: 799,
-    items: [{ name: "Lithium Pack Thermal Insulation Wrap", qty: 1, price: 799 }],
-    statusHistory: [
-      {
-        status: "PLACED",
-        timestamp: new Date(now - 45 * 60 * 1000).toISOString(),
-        note: "Order placed",
-        source: "system",
-      },
-      {
-        status: "ACCEPTED",
-        timestamp: new Date(now - 40 * 60 * 1000).toISOString(),
-        note: "Order accepted",
-        source: "seller",
-      },
-      {
-        status: "PACKED",
-        timestamp: new Date(now - 25 * 60 * 1000).toISOString(),
-        note: "Packed with barcode slip",
-        source: "seller",
-      },
-      {
-        status: "RIDER_ASSIGNED",
-        timestamp: new Date(now - 12 * 60 * 1000).toISOString(),
-        note: "Rider Rajesh Kumar assigned for pickup",
-        source: "system",
-      },
-    ],
-  },
-  {
-    id: "adm_ord_05",
-    orderNumber: "RP-ORD-9799",
-    createdAt: new Date(now - 75 * 60 * 1000).toISOString(),
-    customerName: "Kavita Reddy",
-    customerPhone: "+91 98765 55005",
-    deliveryAddress: "Plot 88, Sector 15A, Noida, UP",
-    city: "Noida",
-    sellerId: "sel_noida_01",
-    sellerName: "Noida EV Spares & Care",
-    sellerPhone: "+91 98112 34567",
-    sellerAddress: "Shop 12, Sector 62 Electronic City, Noida, UP",
-    status: "PICKED_UP",
-    riderName: "Mohd. Shakeel",
-    riderPhone: "+91 98765 54321",
-    paymentStatus: "PAID",
-    paymentMethod: "UPI",
-    amount: 2200,
-    items: [{ name: "Ather 450X Idler Tension Pulley", qty: 2, price: 1100 }],
-    statusHistory: [
-      {
-        status: "PLACED",
-        timestamp: new Date(now - 75 * 60 * 1000).toISOString(),
-        note: "Order placed",
-        source: "system",
-      },
-      {
-        status: "ACCEPTED",
-        timestamp: new Date(now - 68 * 60 * 1000).toISOString(),
-        note: "Order accepted",
-        source: "seller",
-      },
-      {
-        status: "PACKED",
-        timestamp: new Date(now - 50 * 60 * 1000).toISOString(),
-        note: "Order packed",
-        source: "seller",
-      },
-      {
-        status: "RIDER_ASSIGNED",
-        timestamp: new Date(now - 35 * 60 * 1000).toISOString(),
-        note: "Rider assigned",
-        source: "system",
-      },
-      {
-        status: "PICKED_UP",
-        timestamp: new Date(now - 15 * 60 * 1000).toISOString(),
-        note: "OTP verified at merchant hub. Rider picked up parcel.",
-        source: "rider",
-      },
-    ],
-  },
-  {
-    id: "adm_ord_06",
-    orderNumber: "RP-ORD-9791",
-    createdAt: new Date(now - 110 * 60 * 1000).toISOString(),
-    customerName: "Sneha Nair",
-    customerPhone: "+91 98765 66006",
-    deliveryAddress: "C-12, Sector 44, Noida, UP",
-    city: "Noida",
-    sellerId: "sel_noida_01",
-    sellerName: "Noida EV Spares & Care",
-    sellerPhone: "+91 98112 34567",
-    sellerAddress: "Shop 12, Sector 62 Electronic City, Noida, UP",
-    status: "IN_TRANSIT",
-    riderName: "Deepak Rawat",
-    riderPhone: "+91 98765 67890",
-    paymentStatus: "PAID",
-    paymentMethod: "Net Banking",
-    amount: 3200,
-    items: [{ name: "Ola S1 Pro Heavy Duty Belt Drive", qty: 1, price: 3200 }],
-    statusHistory: [
-      {
-        status: "PLACED",
-        timestamp: new Date(now - 110 * 60 * 1000).toISOString(),
-        note: "Order placed",
-        source: "system",
-      },
-      {
-        status: "IN_TRANSIT",
-        timestamp: new Date(now - 20 * 60 * 1000).toISOString(),
-        note: "Rider on the way. Geofence tracking active.",
-        source: "rider",
-      },
-    ],
-  },
-  {
-    id: "adm_ord_07",
-    orderNumber: "RP-ORD-9783",
-    createdAt: new Date(now - 190 * 60 * 1000).toISOString(),
-    customerName: "Anand Sundaram",
-    customerPhone: "+91 98765 77007",
-    deliveryAddress: "12A, Indiranagar 100ft Road, Bengaluru, KA",
-    city: "Bengaluru",
-    sellerId: "sel_blr_01",
-    sellerName: "VoltHub Indiranagar",
-    sellerPhone: "+91 90000 00001",
-    sellerAddress: "14/2, 100 Feet Rd, HAL 2nd Stage, Indiranagar, Bengaluru",
-    status: "DELIVERED",
-    riderName: "Suresh Gowda",
-    riderPhone: "+91 98765 99887",
-    paymentStatus: "PAID",
-    paymentMethod: "UPI / Razorpay",
-    amount: 4350,
-    items: [{ name: "Ather 450X Ceramic Brake Pad Set", qty: 3, price: 1450 }],
-    statusHistory: [
-      {
-        status: "PLACED",
-        timestamp: new Date(now - 190 * 60 * 1000).toISOString(),
-        note: "Order placed",
-        source: "system",
-      },
-      {
-        status: "DELIVERED",
-        timestamp: new Date(now - 45 * 60 * 1000).toISOString(),
-        note: "Delivered to customer. OTP confirmed: 7891",
-        source: "rider",
-      },
-    ],
-  },
-  {
-    id: "adm_ord_08",
-    orderNumber: "RP-ORD-9772",
-    createdAt: new Date(now - 320 * 60 * 1000).toISOString(),
-    customerName: "Gaurav Mehta",
-    customerPhone: "+91 98765 88008",
-    deliveryAddress: "Tower B, Sector 93A, Noida, UP",
-    city: "Noida",
-    sellerId: "sel_noida_01",
-    sellerName: "Noida EV Spares & Care",
-    sellerPhone: "+91 98112 34567",
-    sellerAddress: "Shop 12, Sector 62 Electronic City, Noida, UP",
-    status: "REJECTED",
-    riderName: null,
-    riderPhone: null,
-    paymentStatus: "PAID", // Refunded or failed in status history
-    paymentMethod: "Credit Card",
-    amount: 8400,
-    items: [{ name: "Custom 72V Lithium BMS Controller Unit", qty: 1, price: 8400 }],
-    statusHistory: [
-      {
-        status: "PLACED",
-        timestamp: new Date(now - 320 * 60 * 1000).toISOString(),
-        note: "Order placed",
-        source: "system",
-      },
-      {
-        status: "REJECTED",
-        timestamp: new Date(now - 305 * 60 * 1000).toISOString(),
-        note: "Merchant rejected: Inventory discrepancy - component currently out of stock.",
-        source: "seller",
-      },
-    ],
-  },
-  {
-    id: "adm_ord_09",
-    orderNumber: "RP-ORD-9765",
-    createdAt: new Date(now - 480 * 60 * 1000).toISOString(),
-    customerName: "Neha Tiwari",
-    customerPhone: "+91 98765 99009",
-    deliveryAddress: "Apartment 5B, Sector 137, Noida, UP",
-    city: "Noida",
-    sellerId: "sel_noida_01",
-    sellerName: "Noida EV Spares & Care",
-    sellerPhone: "+91 98112 34567",
-    sellerAddress: "Shop 12, Sector 62 Electronic City, Noida, UP",
-    status: "CANCELLED",
-    riderName: null,
-    riderPhone: null,
-    paymentStatus: "FAILED",
-    paymentMethod: "UPI / Razorpay",
-    amount: 1750,
-    items: [{ name: "Universal Scooter Windshield Deflector", qty: 1, price: 1750 }],
-    statusHistory: [
-      {
-        status: "PLACED",
-        timestamp: new Date(now - 480 * 60 * 1000).toISOString(),
-        note: "Order initiated",
-        source: "system",
-      },
-      {
-        status: "CANCELLED",
-        timestamp: new Date(now - 475 * 60 * 1000).toISOString(),
-        note: "Payment authorization failed; cancelled by payment gateway.",
-        source: "system",
-      },
-    ],
-  },
-];
+  const paymentMethod = raw.payment?.method || raw.paymentMethod || raw.payment_method || "UPI";
+  const rawPayStatus = (
+    raw.payment?.status ||
+    raw.paymentStatus ||
+    raw.payment_status ||
+    "PENDING"
+  ).toUpperCase();
+  let paymentStatus: PaymentStatus = "PENDING";
+  if (rawPayStatus === "PAID") paymentStatus = "PAID";
+  else if (rawPayStatus === "COD_PENDING" || rawPayStatus === "COD") paymentStatus = "COD_PENDING";
+  else if (rawPayStatus === "FAILED") paymentStatus = "FAILED";
 
-const mockAdminOrdersState: AdminOrderJoined[] = [...initialAdminOrders];
+  const paymentObj = {
+    method: paymentMethod,
+    status: paymentStatus,
+  };
+
+  const rawStatus = (raw.status || raw.raw_status || raw.delivery_status || "PLACED").toUpperCase();
+  let status: OrderStatus = "PLACED";
+  if (
+    [
+      "PLACED",
+      "ACCEPTED",
+      "REJECTED",
+      "PACKED",
+      "RIDER_ASSIGNED",
+      "PICKED_UP",
+      "IN_TRANSIT",
+      "DELIVERED",
+      "CANCELLED",
+    ].includes(rawStatus)
+  ) {
+    status = rawStatus as OrderStatus;
+  } else if (rawStatus === "PENDING" || rawStatus === "CONFIRMED") {
+    status = "PLACED";
+  } else if (rawStatus === "READY_FOR_PICKUP") {
+    status = "PACKED";
+  }
+
+  const amount = Number(
+    raw.amount !== undefined ? raw.amount : raw.total_amount !== undefined ? raw.total_amount : 0,
+  );
+
+  return {
+    id: raw.id,
+    orderNumber: raw.orderNumber || raw.order_number || `RZ-${String(raw.id).slice(-6)}`,
+    createdAt: raw.createdAt || raw.created_at || new Date().toISOString(),
+    status,
+    customerName: raw.customerName || raw.customer_name || "Customer",
+    customerPhone: raw.customerPhone || raw.customer_phone || "",
+    deliveryAddress: raw.deliveryAddress || raw.delivery_address || "",
+    city: raw.city || "",
+    seller: sellerObj,
+    sellerId: sellerObj.id,
+    sellerName: sellerObj.name,
+    sellerPhone: raw.sellerPhone || raw.seller_phone || "",
+    sellerAddress: raw.sellerAddress || raw.seller_address || "",
+    rider: riderObj,
+    riderName: riderObj ? riderObj.name : null,
+    riderPhone: riderObj ? riderObj.phone : null,
+    payment: paymentObj,
+    paymentStatus,
+    paymentMethod,
+    amount,
+    items: Array.isArray(raw.items) ? raw.items : [],
+    statusHistory: Array.isArray(raw.statusHistory) ? raw.statusHistory : null,
+  };
+}
 
 // ==========================================
 // CORE API CALL: getAdminOrders
 // ==========================================
 
-export async function getAdminOrders(): Promise<AdminOrderJoined[]> {
+export async function getAdminOrders(params?: GetAdminOrdersParams): Promise<GetAdminOrdersResult> {
   if (USE_MOCK) {
-    await new Promise((r) => setTimeout(r, 200));
-    return [...mockAdminOrdersState].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+    const { getMockAdminOrders } = await import("./mocks/adminOrdersMock");
+    const rawMock = await getMockAdminOrders();
+    const normalized = rawMock.map(normalizeAdminOrder);
+    const summary: AdminOrdersSummary = {
+      total: normalized.length,
+      inProgress: normalized.filter((o) =>
+        ["ACCEPTED", "PACKED", "RIDER_ASSIGNED", "PICKED_UP", "IN_TRANSIT"].includes(o.status),
+      ).length,
+      delivered: normalized.filter((o) => o.status === "DELIVERED").length,
+      awaitingSeller: normalized.filter((o) => o.status === "PLACED").length,
+      unassignedRider: normalized.filter(
+        (o) => o.status === "PACKED" && (!o.riderName || o.riderName.trim() === ""),
+      ).length,
+    };
+    return {
+      orders: normalized,
+      summary,
+      nextCursor: null,
+    };
   }
 
-  const res = await fetch("/api/admin/orders", {
+  const queryParams = new URLSearchParams();
+  if (params?.status && params.status !== "ALL") queryParams.set("status", params.status);
+  if (params?.seller && params.seller !== "ALL") queryParams.set("seller", params.seller);
+  if (params?.payment && params.payment !== "ALL") queryParams.set("payment", params.payment);
+  if (params?.q && params.q.trim()) queryParams.set("q", params.q.trim());
+  if (params?.limit) queryParams.set("limit", String(params.limit));
+  if (params?.cursor) queryParams.set("cursor", params.cursor);
+
+  const url = `/api/admin/orders${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+
+  const res = await fetch(url, {
     method: "GET",
     credentials: "include",
     headers: {
@@ -460,10 +250,28 @@ export async function getAdminOrders(): Promise<AdminOrderJoined[]> {
   }
 
   const data = await res.json();
-  const rawOrders: AdminOrderJoined[] = Array.isArray(data) ? data : data.orders || [];
-  return rawOrders.sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  );
+  const rawOrders: any[] = Array.isArray(data) ? data : data.orders || [];
+  const normalizedOrders = rawOrders.map(normalizeAdminOrder);
+
+  const summary: AdminOrdersSummary = data.summary || {
+    total: normalizedOrders.length,
+    inProgress: normalizedOrders.filter((o) =>
+      ["ACCEPTED", "PACKED", "RIDER_ASSIGNED", "PICKED_UP", "IN_TRANSIT"].includes(o.status),
+    ).length,
+    delivered: normalizedOrders.filter((o) => o.status === "DELIVERED").length,
+    awaitingSeller: normalizedOrders.filter((o) => o.status === "PLACED").length,
+    unassignedRider: normalizedOrders.filter(
+      (o) => o.status === "PACKED" && (!o.riderName || o.riderName.trim() === ""),
+    ).length,
+  };
+
+  return {
+    orders: normalizedOrders.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    ),
+    summary,
+    nextCursor: data.nextCursor || null,
+  };
 }
 
 // ==========================================
@@ -474,20 +282,32 @@ export async function getAdminOrders(): Promise<AdminOrderJoined[]> {
 
 export interface UseAdminOrdersResult {
   orders: AdminOrderJoined[];
+  summary: AdminOrdersSummary;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
   statusChangedIds: Set<string>;
+  nextCursor: string | null;
 }
 
-export function useAdminOrders(): UseAdminOrdersResult {
+export function useAdminOrders(params?: GetAdminOrdersParams): UseAdminOrdersResult {
   const [orders, setOrders] = useState<AdminOrderJoined[]>([]);
+  const [summary, setSummary] = useState<AdminOrdersSummary>({
+    total: 0,
+    inProgress: 0,
+    delivered: 0,
+    awaitingSeller: 0,
+    unassignedRider: 0,
+  });
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusChangedIds, setStatusChangedIds] = useState<Set<string>>(new Set());
 
   const prevStatusesRef = useRef<Map<string, OrderStatus>>(new Map());
   const isFirstLoad = useRef(true);
+  const paramsRef = useRef(params);
+  paramsRef.current = params;
 
   const fetchOrders = useCallback(async (isSilent = false) => {
     if (!isSilent) {
@@ -496,12 +316,12 @@ export function useAdminOrders(): UseAdminOrdersResult {
     setError(null);
 
     try {
-      const fetched = await getAdminOrders();
+      const result = await getAdminOrders(paramsRef.current);
 
       // Check for status changes since previous poll
       if (!isFirstLoad.current) {
         const changed = new Set<string>();
-        fetched.forEach((ord) => {
+        result.orders.forEach((ord) => {
           const prev = prevStatusesRef.current.get(ord.id);
           if (prev !== undefined && prev !== ord.status) {
             changed.add(ord.id);
@@ -528,11 +348,13 @@ export function useAdminOrders(): UseAdminOrdersResult {
 
       // Update ref
       const nextMap = new Map<string, OrderStatus>();
-      fetched.forEach((ord) => nextMap.set(ord.id, ord.status));
+      result.orders.forEach((ord) => nextMap.set(ord.id, ord.status));
       prevStatusesRef.current = nextMap;
       isFirstLoad.current = false;
 
-      setOrders(fetched);
+      setOrders(result.orders);
+      setSummary(result.summary);
+      setNextCursor(result.nextCursor);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load admin orders";
       setError(msg);
@@ -548,7 +370,7 @@ export function useAdminOrders(): UseAdminOrdersResult {
     fetchOrders(false);
   }, [fetchOrders]);
 
-  // Polling every 6 seconds, pausing on background tab
+  // Polling every 6 seconds (between 5 and 10s), pausing on hidden tab
   useEffect(() => {
     const INTERVAL_MS = 6000;
     let timerId: NodeJS.Timeout | null = null;
@@ -593,9 +415,11 @@ export function useAdminOrders(): UseAdminOrdersResult {
 
   return {
     orders,
+    summary,
     loading,
     error,
     refetch: () => fetchOrders(false),
     statusChangedIds,
+    nextCursor,
   };
 }

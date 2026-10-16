@@ -38,15 +38,15 @@ export function PaymentsSection({ vendor }: PaymentsSectionProps) {
   // Compute Balances
   const pendingBalance = vendorSettlements
     .filter((s: Settlement) => s.status === "pending")
-    .reduce((sum: number, s: Settlement) => sum + s.netPayout, 38400);
+    .reduce((sum: number, s: Settlement) => sum + s.netPayout, 0);
 
   const processingBalance = vendorSettlements
     .filter((s: Settlement) => s.status === "processing")
-    .reduce((sum: number, s: Settlement) => sum + s.netPayout, 18500);
+    .reduce((sum: number, s: Settlement) => sum + s.netPayout, 0);
 
   const totalPaidOut = vendorSettlements
     .filter((s: Settlement) => s.status === "paid")
-    .reduce((sum: number, s: Settlement) => sum + s.netPayout, 245000);
+    .reduce((sum: number, s: Settlement) => sum + s.netPayout, 0);
 
   // Download CSV statement
   const handleDownloadStatement = () => {
@@ -162,9 +162,9 @@ export function PaymentsSection({ vendor }: PaymentsSectionProps) {
               </span>
             </div>
             <p className="text-xs text-gray-600 font-mono mt-1">
-              Account: {vendor.onboarding?.bank?.maskedAccountNumber || "XXXXXX1234"} · IFSC:{" "}
-              {vendor.onboarding?.bank?.ifscCode || "HDFC0001234"} ·{" "}
-              {vendor.onboarding?.bank?.bankName || "HDFC Bank"}
+              Account: {vendor.onboarding?.bank?.maskedAccountNumber || "—"} · IFSC:{" "}
+              {vendor.onboarding?.bank?.ifscCode || "—"} ·{" "}
+              {vendor.onboarding?.bank?.bankName || "—"}
             </p>
             <p className="text-[11px] text-gray-400 mt-0.5">
               Account Holder: {vendor.onboarding?.bank?.accountHolderName || vendor.storeName}
@@ -203,7 +203,14 @@ export function PaymentsSection({ vendor }: PaymentsSectionProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {vendorSettlements.map((s: Settlement) => (
+            {vendorSettlements.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="py-8 text-center text-gray-400 text-xs">
+                  No settlement cycles generated yet. Settlements generate every Tuesday on verified deliveries.
+                </td>
+              </tr>
+            ) : (
+              vendorSettlements.map((s: Settlement) => (
               <tr key={s.id} className="hover:bg-gray-50/70 transition">
                 <td className="py-3.5 px-4 font-mono font-bold text-gray-900">{s.id}</td>
                 <td className="py-3.5 px-4 text-gray-600">
@@ -242,7 +249,7 @@ export function PaymentsSection({ vendor }: PaymentsSectionProps) {
                   )}
                 </td>
               </tr>
-            ))}
+            )))}
           </tbody>
         </table>
       </div>

@@ -432,23 +432,23 @@ type Ctx = {
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
-const KEY = "riderzpro-v8";
+const KEY = "riderzpro-v9";
 
 const DEFAULT_PROFILE: UserProfile = {
-  name: "Rider",
+  name: "",
   phone: "",
   email: "",
-  city: "Bengaluru, KA",
+  city: "",
   address: "",
   points: 0,
 };
 
 const DEFAULT_ADDRESS: AddressRef = {
-  name: "Rider",
+  name: "",
   street: "",
-  city: "Delhi",
-  state: "Delhi",
-  pincode: "110001",
+  city: "",
+  state: "",
+  pincode: "",
   phone: "",
 };
 
@@ -475,7 +475,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       // Purge obsolete mock store versions
-      ["riderzpro-v7", "riderzpro-v6", "riderzpro-v5", "riderzpro_mock_orders"].forEach((oldKey) => {
+      ["riderzpro-v8", "riderzpro-v7", "riderzpro-v6", "riderzpro-v5", "riderzpro_mock_orders", "riderzpro_orders"].forEach((oldKey) => {
         try { localStorage.removeItem(oldKey); } catch {}
       });
       const auth = localStorage.getItem("riderzpro_auth");
@@ -500,7 +500,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      ["riderzpro-v7", "riderzpro-v6", "riderzpro-v5", "riderzpro_orders"].forEach((oldKey) => {
+      ["riderzpro-v8", "riderzpro-v7", "riderzpro-v6", "riderzpro-v5", "riderzpro_orders", "riderzpro_mock_orders"].forEach((oldKey) => {
         try { localStorage.removeItem(oldKey); } catch {}
       });
       const raw = localStorage.getItem(KEY);
@@ -1229,17 +1229,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setIsLoggedIn(false);
     localStorage.removeItem("riderzpro_auth_user");
     localStorage.removeItem("riderzpro_auth_token");
-    setOrders((prev) => prev.filter((o) => o.source !== "api"));
+    localStorage.removeItem(KEY);
+    setOrders([]);
+    setShipments([]);
+    setGarage([]);
+    setCart([]);
+    setServiceBookings([]);
+    setNotifications([]);
+    setUserProfile(DEFAULT_PROFILE);
     if (typeof window !== "undefined") {
       try {
-        sessionStorage.removeItem("riderzpro_orders_session");
-        // Clear all user-specific mock order keys
-        for (let i = sessionStorage.length - 1; i >= 0; i--) {
-          const key = sessionStorage.key(i);
-          if (key && key.startsWith("riderzpro_mock_orders_")) {
-            sessionStorage.removeItem(key);
-          }
-        }
+        sessionStorage.clear();
       } catch {
         // ignore
       }
