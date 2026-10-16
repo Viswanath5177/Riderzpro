@@ -37,14 +37,13 @@ import { AdminProduct } from "@/mocks/admin/types";
 import { bikes as CATALOG_BIKES } from "@/lib/data";
 
 export function ProductApprovalsScreen() {
-  const {
-    products,
-    sellers,
-    approveProductReview,
-    requestProductReviewChanges,
-    rejectProductReview,
-    approveAllPending,
-  } = useAdminStore() as any;
+  const store = useAdminStore() as any;
+  const products: AdminProduct[] = store.products || [];
+  const sellers: any[] = store.sellers || [];
+  const approveProductReview = store.approveProductReview;
+  const requestProductReviewChanges = store.requestProductReviewChanges;
+  const rejectProductReview = store.rejectProductReview;
+  const approveAllPending = store.approveAllPending;
 
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [filterType, setFilterType] = useState<"ALL" | "NEW" | "REVISION" | "OFFER">("ALL");
@@ -208,7 +207,7 @@ export function ProductApprovalsScreen() {
     );
     if (sameCat.length === 0) return { status: "normal", note: "First product in category" };
 
-    const avgPrice = sameCat.reduce((sum, p) => sum + (p.discountPrice || p.price), 0) / sameCat.length;
+    const avgPrice = sameCat.reduce((sum: number, p: AdminProduct) => sum + (p.discountPrice || p.price), 0) / sameCat.length;
     const currentPrice = selectedProduct.discountPrice || selectedProduct.price;
     const diffPct = Math.round(((currentPrice - avgPrice) / avgPrice) * 100);
 
@@ -340,7 +339,7 @@ export function ProductApprovalsScreen() {
       header: "Vendor Store",
       sortable: true,
       render: (p) => {
-        const seller = sellers.find((s) => s.id === p.sellerId);
+        const seller = sellers.find((s: any) => s.id === p.sellerId);
         return (
           <div>
             <p className="font-bold text-xs text-[#111111]">{p.sellerName || (seller as any)?.storeName || seller?.businessName || "Vendor"}</p>

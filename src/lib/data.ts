@@ -25,7 +25,6 @@ export type LocationArea = {
   isPopular?: boolean;
   latitude?: number;
   longitude?: number;
-  state?: string;
   area?: string;
   address?: string;
   source?: LocationSource;

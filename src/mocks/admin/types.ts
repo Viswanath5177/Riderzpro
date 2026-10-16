@@ -86,7 +86,6 @@ export interface AdminProduct {
   rejectionReason?: string;
   vendorProductRecord?: any;
   pendingRevision?: any;
-  [key: string]: any;
 }
 
 export interface AdminOrderItem {
