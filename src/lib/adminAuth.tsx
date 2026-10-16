@@ -16,7 +16,11 @@ export interface AdminAuthContextType {
   isAuthenticated: boolean;
   loading: boolean;
   adminUser: AdminUser | null;
-  login: (email: string, pass: string) => Promise<{ success: boolean; error?: string; requireOtp?: boolean }>;
+  serverRole: string | null;
+  login: (
+    email: string,
+    pass: string,
+  ) => Promise<{ success: boolean; error?: string; requireOtp?: boolean }>;
   verifyOtp: (code: string) => Promise<{ success: boolean; error?: string }>;
   loginWithDevBypass: () => void;
   logout: () => Promise<void>;
@@ -54,6 +58,7 @@ const AdminAuthContext = createContext<AdminAuthContextType | null>(null);
 
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+  const [serverRole, setServerRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [pendingUser, setPendingUser] = useState<AdminUser | null>(null);
 
@@ -62,29 +67,47 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       const meRes = await fetch("/api/auth/me", { credentials: "include" });
       if (meRes.ok) {
         const meData = await meRes.json();
-        if (meData?.authenticated && (meData.role === "SUPER_ADMIN" || meData.role === "ADMIN" || meData.role === "admin")) {
-          const userObj: AdminUser = {
-            id: meData.user?.id || "adm_session",
-            name: meData.user?.fullName || "Administrator",
-            email: meData.user?.email || "",
-            role: "admin",
-            roleTitle:
-              meData.role === "SUPER_ADMIN"
-                ? "Super Administrator"
-                : "Operations Administrator",
-            department:
-              meData.role === "SUPER_ADMIN"
-                ? "Executive Platform Oversight"
-                : "Seller Compliance & Product Catalog Moderation",
-          };
-          setAdminUser(userObj);
-          return userObj;
+        if (meData?.authenticated) {
+          const roleStr = String(meData.role || "").toLowerCase();
+          setServerRole(roleStr);
+          if (
+            roleStr === "super_admin" ||
+            roleStr === "admin" ||
+            roleStr === "product_admin" ||
+            roleStr === "seller_admin"
+          ) {
+            const userObj: AdminUser = {
+              id: meData.user?.id || "adm_session",
+              name: meData.user?.fullName || "Administrator",
+              email: meData.user?.email || "",
+              role: "admin",
+              roleTitle:
+                meData.role === "SUPER_ADMIN" || meData.role === "super_admin"
+                  ? "Super Administrator"
+                  : meData.role === "PRODUCT_ADMIN"
+                    ? "Product Administrator"
+                    : meData.role === "SELLER_ADMIN"
+                      ? "Seller Administrator"
+                      : "Operations Administrator",
+              department:
+                meData.role === "SUPER_ADMIN" || meData.role === "super_admin"
+                  ? "Executive Platform Oversight"
+                  : "Seller Compliance & Product Catalog Moderation",
+            };
+            setAdminUser(userObj);
+            return userObj;
+          } else {
+            setAdminUser(null);
+            return null;
+          }
         }
       }
       setAdminUser(null);
+      setServerRole(null);
       return null;
     } catch {
       setAdminUser(null);
+      setServerRole(null);
       return null;
     }
   }, []);
@@ -124,8 +147,10 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
           setPendingUser(userObj);
           return { success: true, requireOtp: true };
         }
-      } catch (err: any) {
-        return { success: false, error: err?.message || "Invalid admin credentials" };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Invalid admin credentials";
+        return { success: false, error: msg };
+      }
       }
 
       return { success: false, error: "Invalid admin credentials" };
@@ -168,6 +193,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       } catch {}
     }
     setAdminUser(null);
+    setServerRole(null);
     setPendingUser(null);
   }, []);
 
@@ -176,13 +202,14 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: Boolean(adminUser),
       loading,
       adminUser,
+      serverRole,
       login,
       verifyOtp,
       loginWithDevBypass,
       logout,
       refreshAdminSession,
     }),
-    [adminUser, loading, login, verifyOtp, loginWithDevBypass, logout, refreshAdminSession]
+    [adminUser, loading, serverRole, login, verifyOtp, loginWithDevBypass, logout, refreshAdminSession]
   );
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;
@@ -201,7 +228,7 @@ export function useAdminAuth() {
  * Redirects unauthenticated visits to /vendor/login with return path preserved.
  */
 export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading } = useAdminAuth();
+  const { isAuthenticated, loading, serverRole } = useAdminAuth();
   const location = useLocation();
 
   if (loading) {

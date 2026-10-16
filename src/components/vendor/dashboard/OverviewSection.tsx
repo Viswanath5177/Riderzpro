@@ -82,6 +82,9 @@ export function OverviewSection({ vendor, onNavigateTab }: OverviewSectionProps)
   const lowStockItems = products.filter((p) => p.stock <= 5);
   const lowStockCount = lowStockItems.length;
 
+  const isOrdersUnavailable = Boolean(ordersError && orders.length === 0);
+  const isInventoryUnavailable = Boolean(inventoryError && products.length === 0);
+
   return (
     <div className="space-y-6">
       {/* Top Banner: Real-time seller store overview */}
@@ -118,7 +121,7 @@ export function OverviewSection({ vendor, onNavigateTab }: OverviewSectionProps)
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs flex items-center justify-between gap-3 text-amber-800">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
-            <span>{ordersError || inventoryError}. Cached values remain displayed below.</span>
+            <span>{ordersError || inventoryError}. Data unavailable or cached.</span>
           </div>
           <button
             onClick={() => {
@@ -133,7 +136,7 @@ export function OverviewSection({ vendor, onNavigateTab }: OverviewSectionProps)
       )}
 
       {/* ACTION CENTER: Shows only if items need attention */}
-      {(newOrdersCount > 0 || lowStockCount > 0) && (
+      {(newOrdersCount > 0 || lowStockCount > 0) && !isOrdersUnavailable && !isInventoryUnavailable && (
         <div className="rounded-3xl border border-red-200 bg-gradient-to-r from-red-50 via-white to-orange-50 p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
@@ -196,9 +199,15 @@ export function OverviewSection({ vendor, onNavigateTab }: OverviewSectionProps)
               <Clock className="h-4 w-4" />
             </span>
           </div>
-          <p className="font-display text-2xl sm:text-3xl font-black text-gray-900 mt-3">
-            {isLoading && orders.length === 0 ? "—" : newOrdersCount}
-          </p>
+          {ordersLoading && orders.length === 0 ? (
+            <div className="h-8 w-16 bg-gray-100 rounded-lg animate-pulse mt-3" />
+          ) : isOrdersUnavailable ? (
+            <p className="font-display text-2xl sm:text-3xl font-black text-gray-400 mt-3">—</p>
+          ) : (
+            <p className="font-display text-2xl sm:text-3xl font-black text-gray-900 mt-3">
+              {newOrdersCount}
+            </p>
+          )}
           <div className="mt-2 flex items-center text-[11px] font-bold text-[#E11D2A]">
             <span>Status: PLACED</span>
             <ArrowRight className="h-3 w-3 ml-1 group-hover:translate-x-0.5 transition" />
@@ -216,9 +225,15 @@ export function OverviewSection({ vendor, onNavigateTab }: OverviewSectionProps)
               <Truck className="h-4 w-4" />
             </span>
           </div>
-          <p className="font-display text-2xl sm:text-3xl font-black text-gray-900 mt-3">
-            {isLoading && orders.length === 0 ? "—" : inProgressCount}
-          </p>
+          {ordersLoading && orders.length === 0 ? (
+            <div className="h-8 w-16 bg-gray-100 rounded-lg animate-pulse mt-3" />
+          ) : isOrdersUnavailable ? (
+            <p className="font-display text-2xl sm:text-3xl font-black text-gray-400 mt-3">—</p>
+          ) : (
+            <p className="font-display text-2xl sm:text-3xl font-black text-gray-900 mt-3">
+              {inProgressCount}
+            </p>
+          )}
           <p className="text-[11px] text-gray-400 mt-2 font-medium">Accepted to transit</p>
         </div>
 
@@ -230,9 +245,15 @@ export function OverviewSection({ vendor, onNavigateTab }: OverviewSectionProps)
               <CheckCircle2 className="h-4 w-4" />
             </span>
           </div>
-          <p className="font-display text-2xl sm:text-3xl font-black text-emerald-600 mt-3">
-            {isLoading && orders.length === 0 ? "—" : deliveredCount}
-          </p>
+          {ordersLoading && orders.length === 0 ? (
+            <div className="h-8 w-16 bg-gray-100 rounded-lg animate-pulse mt-3" />
+          ) : isOrdersUnavailable ? (
+            <p className="font-display text-2xl sm:text-3xl font-black text-gray-400 mt-3">—</p>
+          ) : (
+            <p className="font-display text-2xl sm:text-3xl font-black text-emerald-600 mt-3">
+              {deliveredCount}
+            </p>
+          )}
           <p className="text-[11px] text-gray-400 mt-2 font-medium">Completed orders</p>
         </div>
 
@@ -244,12 +265,19 @@ export function OverviewSection({ vendor, onNavigateTab }: OverviewSectionProps)
               <IndianRupee className="h-4 w-4" />
             </span>
           </div>
-          <p className="font-display text-xl sm:text-2xl font-black text-gray-900 mt-3 truncate">
-            {isLoading && orders.length === 0 ? "—" : inr(todaySalesAmount)}
-          </p>
+          {ordersLoading && orders.length === 0 ? (
+            <div className="h-8 w-24 bg-gray-100 rounded-lg animate-pulse mt-3" />
+          ) : isOrdersUnavailable ? (
+            <p className="font-display text-xl sm:text-2xl font-black text-gray-400 mt-3">—</p>
+          ) : (
+            <p className="font-display text-xl sm:text-2xl font-black text-gray-900 mt-3 truncate">
+              {inr(todaySalesAmount)}
+            </p>
+          )}
           <p className="text-[11px] text-gray-400 mt-2 font-medium">
-            {todayAcceptedOrDelivered.length}{" "}
-            {todayAcceptedOrDelivered.length === 1 ? "order" : "orders"} today
+            {isOrdersUnavailable
+              ? "Data unavailable"
+              : `${todayAcceptedOrDelivered.length} ${todayAcceptedOrDelivered.length === 1 ? "order" : "orders"} today`}
           </p>
         </div>
 
@@ -264,9 +292,15 @@ export function OverviewSection({ vendor, onNavigateTab }: OverviewSectionProps)
               <Boxes className="h-4 w-4" />
             </span>
           </div>
-          <p className="font-display text-2xl sm:text-3xl font-black text-rose-600 mt-3">
-            {isLoading && products.length === 0 ? "—" : lowStockCount}
-          </p>
+          {inventoryLoading && products.length === 0 ? (
+            <div className="h-8 w-16 bg-gray-100 rounded-lg animate-pulse mt-3" />
+          ) : isInventoryUnavailable ? (
+            <p className="font-display text-2xl sm:text-3xl font-black text-gray-400 mt-3">—</p>
+          ) : (
+            <p className="font-display text-2xl sm:text-3xl font-black text-rose-600 mt-3">
+              {lowStockCount}
+            </p>
+          )}
           <div className="mt-2 flex items-center text-[11px] font-bold text-rose-600">
             <span>&le; 5 units</span>
             <ArrowRight className="h-3 w-3 ml-1 group-hover:translate-x-0.5 transition" />
@@ -295,6 +329,8 @@ export function OverviewSection({ vendor, onNavigateTab }: OverviewSectionProps)
               <div key={i} className="h-16 w-full animate-pulse rounded-2xl bg-gray-100" />
             ))}
           </div>
+        ) : isOrdersUnavailable ? (
+          <p className="text-xs text-gray-400 py-6 text-center">— Data unavailable —</p>
         ) : orders.length === 0 ? (
           <p className="text-xs text-gray-400 py-6 text-center">No orders yet.</p>
         ) : (

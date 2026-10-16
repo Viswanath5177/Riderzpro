@@ -201,10 +201,10 @@ type Ctx = {
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
-const KEY = "riderzpro-v7";
+const KEY = "riderzpro-v9";
 
 const DEFAULT_PROFILE: UserProfile = {
-  name: "User",
+  name: "",
   phone: "",
   email: "",
   city: "",
@@ -213,7 +213,7 @@ const DEFAULT_PROFILE: UserProfile = {
 };
 
 const DEFAULT_ADDRESS: AddressRef = {
-  name: "User",
+  name: "",
   street: "",
   city: "",
   state: "",
@@ -242,7 +242,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<CustomerNotification[]>(DEFAULT_NOTIFICATIONS);
   const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [role, setRole] = useState<Role>("customer");
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  // Hydrates auth state and purges legacy mock user profiles
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      // Purge obsolete mock store versions
+      ["riderzpro-v8", "riderzpro-v7", "riderzpro-v6", "riderzpro-v5", "riderzpro_mock_orders", "riderzpro_orders"].forEach((oldKey) => {
+        try { localStorage.removeItem(oldKey); } catch {}
+      });
+      const auth = localStorage.getItem("riderzpro_auth");
+      const user = localStorage.getItem(KEY);
+      if (
+        user &&
+        (user.includes("RZ-849201") ||
+          user.includes("P6R1S1PR2PN000001") ||
+          user.includes("delivery_noida_delhi") ||
+          user.includes("delivery_vijayawada_amaravati_live"))
+      ) {
+        localStorage.removeItem(KEY);
+      }
+      return auth === "true";
+    }
+    return false;
+  });
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [userLocation, setUserLocation] = useState<LocationArea>(DEFAULT_LOCATION);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -250,6 +271,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
+      ["riderzpro-v8", "riderzpro-v7", "riderzpro-v6", "riderzpro-v5", "riderzpro_orders", "riderzpro_mock_orders"].forEach((oldKey) => {
+        try { localStorage.removeItem(oldKey); } catch {}
+      });
       const raw = localStorage.getItem(KEY);
       let storedUserEmail = "";
       let storedIsLoggedIn = false;

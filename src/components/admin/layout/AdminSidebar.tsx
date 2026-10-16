@@ -26,6 +26,7 @@ import {
 import { Logo } from "@/components/site/bits";
 import { useAdminAuth } from "@/lib/adminAuth";
 import { cn } from "@/lib/utils";
+import { SHOW_ADMIN_SELLERS } from "../mockFlags";
 
 export interface NavGroup {
   title: string;
@@ -126,11 +127,22 @@ export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: Adm
           icon: <LayoutDashboard className="h-4 w-4" />,
         },
         {
+          title: "Orders Board",
+          to: "/admin/orders",
+          icon: <Package className="h-4 w-4" />,
+        },
+        {
           title: "Sellers & KYC",
           to: `/admin/${adminId}?tab=vendors`,
           icon: <Store className="h-4 w-4" />,
           badge: pendingKycCount > 0 ? String(pendingKycCount) : undefined,
         },
+      ],
+    });
+
+    groups.push({
+      title: "Catalog & Fitment",
+      items: [
         {
           title: "Product Approvals",
           to: `/admin/${adminId}?tab=products`,

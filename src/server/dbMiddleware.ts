@@ -1,7 +1,22 @@
 import type { IncomingMessage, ServerResponse } from "http";
 import crypto from "node:crypto";
-import { initializeDatabaseSchema, query } from "./db";
+import { initializeDatabaseSchema, query, isPostgresAvailable } from "./db";
 import { ProductModel, CategoryModel, GarageModel, ServiceBookingModel } from "./models";
+import {
+  sendVendorApprovedEmail,
+  sendVendorRejectedEmail,
+  sendVendorMoreInfoEmail,
+  sendProductApprovalEmail,
+  sendCustomerOrderPlacedEmail,
+  sendVendorNewOrderEmail,
+} from "../lib/email.server";
+import { handleAuthRoute, getAuthenticatedUser, type AuthenticatedUser } from "./authRoutes";
+import { handleSuperAdminRoute, getVerifiedAdmin } from "./superAdminRoutes";
+import { createNotification, notifyAdminRole } from "./notifications";
+import { handleRoute as riderRoute } from "./routes/rider";
+import { handleRoute as deliveriesRoute } from "./routes/deliveries";
+import { handleRoute as paymentsRoute } from "./routes/payments";
+import { handleRoute as assistantRoute } from "./routes/assistant";
 import {
   sendVendorApprovedEmail,
   sendVendorRejectedEmail,
@@ -92,6 +107,7 @@ function isAdminRole(role?: string): boolean {
   const r = role.toLowerCase();
   return r === "admin" || r === "super_admin" || r === "superadmin";
 }
+
 
 let isDbInitialized = false;
 
@@ -3319,6 +3335,10 @@ export function pgApiMiddleware() {
           }
         }
 
+        if (await paymentsRoute(req, res, cleanUrl, method, queryParams)) return;
+        if (await assistantRoute(req, res, cleanUrl, method, queryParams)) return;
+        if (await riderRoute(req, res, cleanUrl, method)) return;
+        if (await deliveriesRoute(req, res, cleanUrl, method)) return;
         next();
       });
     },

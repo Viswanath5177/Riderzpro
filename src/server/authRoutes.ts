@@ -875,6 +875,7 @@ export async function handleAuthRoute(
         return true;
       }
 
+
       const tokenHash = sha256(token);
       const sessRes = await query(
         `SELECT user_id, user_role, expires_at 
@@ -1322,8 +1323,8 @@ export async function handleAuthRoute(
       const phone = (body.phone || "").trim();
       const password = (body.password || "riderzpro@123").trim();
 
-      if (!email || !fullName || !storeName) {
-        sendJson(res, 400, { success: false, error: "Owner name, email, and store name are required." });
+      if (!email || !fullName || !storeName || !password) {
+        sendJson(res, 400, { success: false, error: "Owner name, email, store name, and password are required." });
         return true;
       }
 

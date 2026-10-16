@@ -24,6 +24,7 @@ import {
   Command,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SHOW_ADMIN_SELLERS } from "../mockFlags";
 
 interface CommandItem {
   id: string;
@@ -38,7 +39,11 @@ const COMMANDS: CommandItem[] = [
   { id: "nav-dash", title: "Executive Dashboard", category: "Navigation", icon: <LayoutDashboard className="h-4 w-4" />, to: "/admin" },
   { id: "nav-orders", title: "Live Orders & Fulfillment", category: "Navigation", icon: <Package className="h-4 w-4" />, to: "/admin/orders", badge: "42 Active" },
   { id: "nav-customers", title: "Customers & EV Garages", category: "Navigation", icon: <Users className="h-4 w-4" />, to: "/admin/customers" },
-  { id: "nav-sellers", title: "Sellers & KYC Approval", category: "Navigation", icon: <Store className="h-4 w-4" />, to: "/admin/sellers", badge: "2 Pending" },
+  ...(SHOW_ADMIN_SELLERS
+    ? [
+        { id: "nav-sellers", title: "Sellers & KYC Approval", category: "Navigation" as const, icon: <Store className="h-4 w-4" />, to: "/admin/sellers", badge: "2 Pending" },
+      ]
+    : []),
   { id: "nav-riders", title: "Delivery Fleet & Live GPS", category: "Navigation", icon: <Bike className="h-4 w-4" />, to: "/admin/riders", badge: "142 Live" },
   { id: "nav-products", title: "Products & Parts Inventory", category: "Navigation", icon: <Box className="h-4 w-4" />, to: "/admin/products" },
   { id: "nav-fitment", title: "Bikes & VIN Compatibility Matrix", category: "Navigation", icon: <Wrench className="h-4 w-4" />, to: "/admin/fitment" },

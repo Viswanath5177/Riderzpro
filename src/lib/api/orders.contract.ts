@@ -43,7 +43,7 @@ export const OrderSellerSchema = z.object({
 
 export const OrderPaymentSchema = z.object({
   method: z.enum(["UPI", "CARD", "COD"]).or(z.string()),
-  status: z.enum(["PENDING", "PAID", "FAILED", "COD_DUE"]).or(z.string()),
+  status: z.enum(["PENDING", "PAID", "FAILED", "COD_DUE", "COD_PENDING"]).or(z.string()),
   amountDuePaise: z.number().int().nonnegative(),
 });
 
@@ -274,11 +274,10 @@ export function normalizeOrder(raw: unknown): NormalizedOrder {
             : Math.max(0, subtotalPaise - discountPaise) + deliveryPaise + taxPaise;
 
   // 8. Payment
-  let payment: {
-    method: "UPI" | "CARD" | "COD" | string;
-    status: "PENDING" | "PAID" | "FAILED" | "COD_DUE" | string;
-    amountDuePaise: number;
-  } = {
+  type PaymentMethod = NormalizedOrder["payment"]["method"];
+  type PaymentStatus = NormalizedOrder["payment"]["status"];
+
+  let payment: NormalizedOrder["payment"] = {
     method: "UPI",
     status: "PENDING",
     amountDuePaise: totalPaise,
@@ -287,26 +286,30 @@ export function normalizeOrder(raw: unknown): NormalizedOrder {
   if (r.payment && typeof r.payment === "object") {
     const p = r.payment as Record<string, unknown>;
     payment = {
-      method: (typeof p["method"] === "string" ? p["method"] : "UPI") as
-        "UPI" | "CARD" | "COD" | string,
-      status: (typeof p["status"] === "string" ? p["status"] : "PENDING") as
-        "PENDING" | "PAID" | "FAILED" | "COD_DUE" | string,
+      method: (typeof p["method"] === "string" ? p["method"] : "UPI") as PaymentMethod,
+      status: (typeof p["status"] === "string" ? p["status"] : "PENDING") as PaymentStatus,
       amountDuePaise:
         typeof p["amountDuePaise"] === "number" ? (p["amountDuePaise"] as number) : totalPaise,
     };
   } else {
     const rawMethod = String(r.payment_method || r.paymentMethod || "UPI").toUpperCase();
-    const method = rawMethod.includes("COD")
-      ? ("COD" as const)
+    const method: PaymentMethod = rawMethod.includes("COD")
+      ? "COD"
       : rawMethod.includes("CARD")
-        ? ("CARD" as const)
-        : ("UPI" as const);
+        ? "CARD"
+        : "UPI";
     const rawStatus = String(
       r.payment_status || r.paymentStatus || (method === "COD" ? "COD_DUE" : "PENDING"),
     ).toUpperCase();
-    const status = ["PENDING", "PAID", "FAILED", "COD_DUE"].includes(rawStatus)
-      ? (rawStatus as "PENDING" | "PAID" | "FAILED" | "COD_DUE")
-      : ("PENDING" as const);
+    const status: PaymentStatus = [
+      "PENDING",
+      "PAID",
+      "FAILED",
+      "COD_DUE",
+      "COD_PENDING",
+    ].includes(rawStatus)
+      ? rawStatus
+      : "PENDING";
 
     payment = {
       method,

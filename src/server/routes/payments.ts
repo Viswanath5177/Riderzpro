@@ -4,19 +4,39 @@ import { parseBody, sendJson } from "./http";
 import { query } from "../db";
 import { sendOrderConfirmationEmail } from "../../lib/email.server";
 
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || "rzp_test_5177RiderzProKey";
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "sathwik_rzp_secret_test_5177";
+function getRazorpayCredentials(): { keyId: string; keySecret: string } | null {
+  const keyId = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  if (!keyId || !keySecret) return null;
+  return { keyId, keySecret };
+}
+
+/** Constant-time compare for hex HMAC digests (no length leak via early return on mismatch). */
+function timingSafeEqualHex(expected: string, provided: string): boolean {
+  const a = Buffer.from(String(expected), "utf8");
+  const b = Buffer.from(String(provided), "utf8");
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
 
 export async function handleRoute(
   req: IncomingMessage,
   res: ServerResponse,
   cleanUrl: string,
   method: string | undefined,
-  queryParams?: URLSearchParams
+  _queryParams?: URLSearchParams
 ): Promise<boolean> {
   // 1. POST /api/payments/create-order
   if (cleanUrl === "/api/payments/create-order" && method === "POST") {
     try {
+      const creds = getRazorpayCredentials();
+      if (!creds) {
+        return sendJson(res, 503, {
+          success: false,
+          error: "Razorpay keys are not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.",
+        });
+      }
+
       const body = await parseBody(req);
       const rawAmount = Number(body.amount) || 0;
       const currency = body.currency || "INR";
@@ -24,7 +44,7 @@ export async function handleRoute(
       const receipt = body.receipt || `rcpt_${Date.now()}`;
       const notes = body.notes || {};
 
-      // Deterministic / Secure Razorpay order generation
+      // Deterministic order id for sandbox until live Razorpay Orders API is wired
       const rzpOrderId = `order_${crypto.randomBytes(8).toString("hex")}`;
 
       const orderPayload = {
@@ -40,8 +60,8 @@ export async function handleRoute(
         attempts: 0,
         notes,
         created_at: Math.floor(Date.now() / 1000),
-        key_id: RAZORPAY_KEY_ID,
-        key: RAZORPAY_KEY_ID,
+        key_id: creds.keyId,
+        key: creds.keyId,
       };
 
       return sendJson(res, 200, {
@@ -49,7 +69,7 @@ export async function handleRoute(
         order: orderPayload,
         order_id: rzpOrderId,
         id: rzpOrderId,
-        key: RAZORPAY_KEY_ID,
+        key: creds.keyId,
         amount: rawAmount,
         currency,
       });
@@ -62,6 +82,14 @@ export async function handleRoute(
   // 2. POST /api/payments/verify
   if (cleanUrl === "/api/payments/verify" && method === "POST") {
     try {
+      const creds = getRazorpayCredentials();
+      if (!creds) {
+        return sendJson(res, 503, {
+          success: false,
+          error: "Razorpay keys are not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.",
+        });
+      }
+
       const body = await parseBody(req);
       const {
         razorpay_order_id,
@@ -74,28 +102,39 @@ export async function handleRoute(
         shipping_address,
       } = body;
 
-      let signatureValid = false;
-
-      if (razorpay_order_id && razorpay_payment_id && razorpay_signature) {
-        const generatedSignature = crypto
-          .createHmac("sha256", RAZORPAY_KEY_SECRET)
-          .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-          .digest("hex");
-
-        signatureValid = generatedSignature === razorpay_signature;
-
-        // In test sandbox environments without a live webhook secret match, allow verified test tokens
-        if (!signatureValid && razorpay_signature.startsWith("test_sig_")) {
-          signatureValid = true;
-        }
-      } else if (razorpay_payment_id) {
-        // Direct test sandbox mock completion
-        signatureValid = true;
+      if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+        return sendJson(res, 400, {
+          success: false,
+          error: "Missing razorpay_order_id, razorpay_payment_id, or razorpay_signature",
+        });
       }
 
-      const effectiveOrderId = order_id || razorpay_order_id || `RZ-${Math.floor(100000 + Math.random() * 900000)}`;
+      // Reject known bypass tokens explicitly
+      if (String(razorpay_signature).startsWith("test_sig_")) {
+        return sendJson(res, 401, {
+          success: false,
+          error: "Invalid payment signature",
+          signature_verified: false,
+        });
+      }
 
-      // Update order in PostgreSQL if present
+      const generatedSignature = crypto
+        .createHmac("sha256", creds.keySecret)
+        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+        .digest("hex");
+
+      const signatureValid = timingSafeEqualHex(generatedSignature, String(razorpay_signature));
+
+      if (!signatureValid) {
+        return sendJson(res, 401, {
+          success: false,
+          error: "Invalid payment signature",
+          signature_verified: false,
+        });
+      }
+
+      const effectiveOrderId = order_id || razorpay_order_id;
+
       try {
         await query(
           `UPDATE orders
@@ -105,38 +144,37 @@ export async function handleRoute(
                razorpay_order_id = $2,
                updated_at = CURRENT_TIMESTAMP
            WHERE id = $3 OR order_number = $3`,
-          [razorpay_payment_id || "pay_test", razorpay_order_id || "", effectiveOrderId]
+          [razorpay_payment_id, razorpay_order_id, effectiveOrderId]
         );
       } catch (dbErr: any) {
-        // Non-blocking if table is using in-memory or fallback
         console.warn("[Payments API - DB update fallback]:", dbErr.message);
       }
 
-      // Send Order Confirmation Email with Invoice Link
-      const recipientEmail = customer_email || "aakash.sharma@riderzpro.com";
-      const invoiceUrl = `https://riderzpro.com/api/orders/${effectiveOrderId}/invoice?format=html`;
-
-      sendOrderConfirmationEmail(recipientEmail, {
-        orderId: effectiveOrderId,
-        customerName: customer_name || "Aakash Sharma",
-        orderTotal: Number(amount) || 48150,
-        paymentStatus: "PAID",
-        paymentMethod: "Razorpay (Verified)",
-        shippingAddress: shipping_address || {
-          street: "B-12, Barakhamba Road, Connaught Place",
-          city: "Delhi",
-          state: "Delhi",
-          pincode: "110001",
-        },
-        invoiceUrl,
-      }).catch((emailErr) => console.warn("[Payments API] Email send error:", emailErr?.message));
+      if (customer_email) {
+        const invoiceUrl = `https://riderzpro.com/api/orders/${effectiveOrderId}/invoice?format=html`;
+        const addr = shipping_address || {};
+        sendOrderConfirmationEmail(customer_email, {
+          orderId: effectiveOrderId,
+          customerName: customer_name || "Customer",
+          orderTotal: Number(amount) || 0,
+          paymentStatus: "PAID",
+          paymentMethod: "Razorpay (Verified)",
+          shippingAddress: {
+            street: String(addr.street || ""),
+            city: String(addr.city || "Delhi"),
+            state: String(addr.state || "Delhi"),
+            pincode: String(addr.pincode || ""),
+          },
+          invoiceUrl,
+        }).catch((emailErr) => console.warn("[Payments API] Email send error:", emailErr?.message));
+      }
 
       return sendJson(res, 200, {
         success: true,
         payment_status: "PAID",
         order_id: effectiveOrderId,
         payment_id: razorpay_payment_id,
-        signature_verified: signatureValid,
+        signature_verified: true,
         invoice_url: `/api/orders/${effectiveOrderId}/invoice?format=html`,
         message: "Payment signature verified and order marked as PAID",
       });
@@ -158,9 +196,15 @@ export async function handleRoute(
         shipping_address,
       } = body;
 
-      const effectiveOrderId = order_id || `RZ-${Math.floor(100000 + Math.random() * 900000)}`;
+      if (!order_id) {
+        return sendJson(res, 400, {
+          success: false,
+          error: "Missing order_id",
+        });
+      }
 
-      // Update order in PostgreSQL
+      const effectiveOrderId = order_id;
+
       try {
         await query(
           `UPDATE orders
@@ -174,24 +218,24 @@ export async function handleRoute(
         console.warn("[Payments API - DB update fallback]:", dbErr.message);
       }
 
-      // Send Order Confirmation Email
-      const recipientEmail = customer_email || "aakash.sharma@riderzpro.com";
-      const invoiceUrl = `https://riderzpro.com/api/orders/${effectiveOrderId}/invoice?format=html`;
-
-      sendOrderConfirmationEmail(recipientEmail, {
-        orderId: effectiveOrderId,
-        customerName: customer_name || "Aakash Sharma",
-        orderTotal: Number(amount) || 48150,
-        paymentStatus: "COD_PENDING",
-        paymentMethod: "Cash on Delivery (Doorstep)",
-        shippingAddress: shipping_address || {
-          street: "B-12, Barakhamba Road, Connaught Place",
-          city: "Delhi",
-          state: "Delhi",
-          pincode: "110001",
-        },
-        invoiceUrl,
-      }).catch((emailErr) => console.warn("[Payments API] Email send error:", emailErr?.message));
+      if (customer_email) {
+        const invoiceUrl = `https://riderzpro.com/api/orders/${effectiveOrderId}/invoice?format=html`;
+        const addr = shipping_address || {};
+        sendOrderConfirmationEmail(customer_email, {
+          orderId: effectiveOrderId,
+          customerName: customer_name || "Customer",
+          orderTotal: Number(amount) || 0,
+          paymentStatus: "COD_PENDING",
+          paymentMethod: "Cash on Delivery (Doorstep)",
+          shippingAddress: {
+            street: String(addr.street || ""),
+            city: String(addr.city || "Delhi"),
+            state: String(addr.state || "Delhi"),
+            pincode: String(addr.pincode || ""),
+          },
+          invoiceUrl,
+        }).catch((emailErr) => console.warn("[Payments API] Email send error:", emailErr?.message));
+      }
 
       return sendJson(res, 200, {
         success: true,
