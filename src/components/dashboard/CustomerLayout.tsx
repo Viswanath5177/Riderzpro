@@ -534,7 +534,10 @@ export function CustomerLayout({
                 </div>
                 <div className="text-left min-w-0 flex-1">
                   <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider leading-none">Delivering to</p>
-                  <p className="text-xs font-bold text-gray-900 truncate leading-tight mt-0.5">{userLocation?.name || "Select delivery location"}</p>
+                  <p className="text-xs font-bold text-gray-900 truncate leading-tight mt-0.5" title={userLocation?.name ? `${userLocation.name}${userLocation.city ? `, ${userLocation.city}` : ""}${userLocation.pincode ? ` (${userLocation.pincode})` : ""}` : undefined}>
+                    {userLocation?.name?.replace(/^(Home|Work|Saved|Other):\s*/i, "") || userLocation?.city || "Select delivery location"}
+                    {userLocation?.pincode ? ` (${userLocation.pincode})` : ""}
+                  </p>
                 </div>
                 <ChevronDown className="h-3.5 w-3.5 text-gray-400 group-hover:text-gray-700 shrink-0" />
               </button>

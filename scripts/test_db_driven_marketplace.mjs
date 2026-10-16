@@ -57,20 +57,20 @@ async function runTests() {
     // 2. Verify Bcrypt password hashes for the active accounts
     console.log("\n--- TEST 2: Password Authentication Verification ---");
     const superAdminRow = await client.execute("SELECT password_hash FROM admins WHERE email = 'admin@riderzpro.com'");
-    const superAdminValid = await bcrypt.compare("Admin@123", superAdminRow.rows[0].password_hash);
-    assert(superAdminValid, "Super Admin password matches Admin@123");
+    const superAdminValid = await bcrypt.compare("riderzpro@123", superAdminRow.rows[0].password_hash);
+    assert(superAdminValid, "Super Admin password matches riderzpro@123");
 
     const opsAdminRow = await client.execute("SELECT password_hash FROM admins WHERE email = 'admin.operations@riderzpro.com'");
-    const opsAdminValid = await bcrypt.compare("Admin@123", opsAdminRow.rows[0].password_hash);
-    assert(opsAdminValid, "Unified Operations Admin password matches Admin@123");
+    const opsAdminValid = await bcrypt.compare("riderzpro@123", opsAdminRow.rows[0].password_hash);
+    assert(opsAdminValid, "Unified Operations Admin password matches riderzpro@123");
 
     const v1Row = await client.execute("SELECT password_hash FROM sellers WHERE email = 'vendor1@riderzpro.com'");
-    const v1Valid = await bcrypt.compare("Vendor@Riderzpro2026", v1Row.rows[0].password_hash);
-    assert(v1Valid, "Vendor 1 password matches Vendor@Riderzpro2026");
+    const v1Valid = await bcrypt.compare("riderzpro@123", v1Row.rows[0].password_hash);
+    assert(v1Valid, "Vendor 1 password matches riderzpro@123");
 
     const c1Row = await client.execute("SELECT password_hash FROM customers WHERE email = 'customer1@riderzpro.com'");
-    const c1Valid = await bcrypt.compare("Customer@Riderzpro2026", c1Row.rows[0].password_hash);
-    assert(c1Valid, "Customer 1 password matches Customer@Riderzpro2026");
+    const c1Valid = await bcrypt.compare("riderzpro@123", c1Row.rows[0].password_hash);
+    assert(c1Valid, "Customer 1 password matches riderzpro@123");
 
     // 3. Verify Database Product Catalog & Stock
     console.log("\n--- TEST 3: Live Catalog & Stock Isolation ---");

@@ -12,13 +12,6 @@ export interface AdminUser {
   avatarUrl?: string;
 }
 
-export interface AdminSession {
-  token: string;
-  role: "admin";
-  user: AdminUser;
-  loginTime: number;
-}
-
 export interface AdminAuthContextType {
   isAuthenticated: boolean;
   loading: boolean;
@@ -26,19 +19,36 @@ export interface AdminAuthContextType {
   login: (email: string, pass: string) => Promise<{ success: boolean; error?: string; requireOtp?: boolean }>;
   verifyOtp: (code: string) => Promise<{ success: boolean; error?: string }>;
   loginWithDevBypass: () => void;
-  logout: () => void;
+  logout: () => Promise<void>;
+  refreshAdminSession: () => Promise<AdminUser | null>;
 }
 
-const ADMIN_SESSION_KEY = "riderzpro_admin_session";
-
-const DEFAULT_SUPER_ADMIN: AdminUser = {
-  id: "adm_vikram_01",
-  name: "Vikram Malhotra",
-  email: "admin@riderzpro.com",
-  role: "admin",
-  roleTitle: "Super Admin",
-  department: "Operations & Platform Oversight",
-};
+export async function getAdminUser(): Promise<AdminUser | null> {
+  if (typeof window === "undefined") return null;
+  try {
+    const meRes = await fetch("/api/auth/me", { credentials: "include" });
+    if (meRes.ok) {
+      const meData = await meRes.json();
+      if (meData?.authenticated && (meData.role === "SUPER_ADMIN" || meData.role === "ADMIN" || meData.role === "admin" || meData.role === "super_admin")) {
+        return {
+          id: meData.user?.id || "adm_super_01",
+          name: meData.user?.fullName || "Administrator",
+          email: meData.user?.email || "",
+          role: "admin",
+          roleTitle:
+            meData.role === "SUPER_ADMIN" || meData.role === "super_admin"
+              ? "Super Administrator"
+              : "Operations Administrator",
+          department:
+            meData.role === "SUPER_ADMIN" || meData.role === "super_admin"
+              ? "Executive Platform Oversight"
+              : "Seller Compliance & Product Catalog Moderation",
+        };
+      }
+    }
+  } catch {}
+  return null;
+}
 
 const AdminAuthContext = createContext<AdminAuthContextType | null>(null);
 
@@ -47,80 +57,48 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [pendingUser, setPendingUser] = useState<AdminUser | null>(null);
 
-  // Restore session from localStorage on mount and sync with server
+  const refreshAdminSession = useCallback(async (): Promise<AdminUser | null> => {
+    try {
+      const meRes = await fetch("/api/auth/me", { credentials: "include" });
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        if (meData?.authenticated && (meData.role === "SUPER_ADMIN" || meData.role === "ADMIN" || meData.role === "admin")) {
+          const userObj: AdminUser = {
+            id: meData.user?.id || "adm_session",
+            name: meData.user?.fullName || "Administrator",
+            email: meData.user?.email || "",
+            role: "admin",
+            roleTitle:
+              meData.role === "SUPER_ADMIN"
+                ? "Super Administrator"
+                : "Operations Administrator",
+            department:
+              meData.role === "SUPER_ADMIN"
+                ? "Executive Platform Oversight"
+                : "Seller Compliance & Product Catalog Moderation",
+          };
+          setAdminUser(userObj);
+          return userObj;
+        }
+      }
+      setAdminUser(null);
+      return null;
+    } catch {
+      setAdminUser(null);
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     async function initSession() {
       try {
-        // Check authoritative server session
-        const meRes = await fetch("/api/auth/me", { credentials: "include" }).catch(() => null);
-        if (meRes && meRes.ok) {
-          const meData = await meRes.json().catch(() => null);
-          if (meData?.authenticated && (meData.role === "SUPER_ADMIN" || meData.role === "ADMIN" || meData.role === "admin")) {
-            const userObj: AdminUser = {
-              id: meData.user?.id || "adm_session",
-              name: meData.user?.fullName || "Administrator",
-              email: meData.user?.email,
-              role: "admin",
-              roleTitle:
-                meData.role === "SUPER_ADMIN"
-                  ? "Super Administrator"
-                  : "Operations Administrator",
-              department:
-                meData.role === "SUPER_ADMIN"
-                  ? "Executive Platform Oversight"
-                  : "Seller Compliance & Product Catalog Moderation",
-            };
-            setAdminUser(userObj);
-            setLoading(false);
-            return;
-          }
-        }
-
-        // Check localStorage as robust client fallback
-        const raw = localStorage.getItem(ADMIN_SESSION_KEY);
-        const authUserRaw = localStorage.getItem("riderzpro_auth_user");
-        const effectiveRaw = raw || authUserRaw;
-
-        if (effectiveRaw) {
-          const parsed = JSON.parse(effectiveRaw);
-          const email = (parsed.user?.email || parsed.email || "").toLowerCase();
-          
-          if (email === "admin@riderzpro.com" || email === "admin.operations@riderzpro.com") {
-            const isSuper = email === "admin@riderzpro.com";
-            const userObj: AdminUser = {
-              id: parsed.user?.id || parsed.id || (isSuper ? "adm_super_01" : "adm_unified_01"),
-              name: parsed.user?.name || parsed.name || (isSuper ? "Super Administrator" : "Operations Administrator"),
-              email: email,
-              role: "admin",
-              roleTitle: isSuper ? "Super Administrator" : "Operations Administrator",
-              department: isSuper ? "Executive Platform Oversight" : "Seller Compliance & Product Catalog Moderation",
-            };
-            setAdminUser(userObj);
-            setLoading(false);
-            return;
-          }
-        }
-      } catch (e) {
-        console.error("Failed to restore admin session:", e);
+        await refreshAdminSession();
       } finally {
         setLoading(false);
       }
     }
-
     initSession();
-  }, []);
-
-  const saveSession = useCallback((user: AdminUser) => {
-    const session: AdminSession = {
-      token: `mock_jwt_adm_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-      role: "admin",
-      user,
-      loginTime: Date.now(),
-    };
-    localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
-    setAdminUser(user);
-    setPendingUser(null);
-  }, []);
+  }, [refreshAdminSession]);
 
   const login = useCallback(
     async (email: string, pass: string): Promise<{ success: boolean; error?: string; requireOtp?: boolean }> => {
@@ -131,7 +109,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         if (backendRes) {
           const userObj: AdminUser = {
             id: backendRes.id,
-            name: backendRes.fullName,
+            name: backendRes.fullName || "Administrator",
             email: backendRes.email,
             role: "admin",
             roleTitle:
@@ -147,17 +125,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
           return { success: true, requireOtp: true };
         }
       } catch (err: any) {
-        // Fallback for default local test account
-        if (trimmedEmail === "admin@riderzpro.com" && pass === "Admin@123") {
-          setPendingUser(DEFAULT_SUPER_ADMIN);
-          return { success: true, requireOtp: true };
-        }
         return { success: false, error: err?.message || "Invalid admin credentials" };
-      }
-
-      if (trimmedEmail === "admin@riderzpro.com" && pass === "Admin@123") {
-        setPendingUser(DEFAULT_SUPER_ADMIN);
-        return { success: true, requireOtp: true };
       }
 
       return { success: false, error: "Invalid admin credentials" };
@@ -167,22 +135,38 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
   const verifyOtp = useCallback(
     async (code: string): Promise<{ success: boolean; error?: string }> => {
-      await new Promise((res) => setTimeout(res, 350));
-      if (code === "123456" || code === "111111") {
-        saveSession(pendingUser || DEFAULT_SUPER_ADMIN);
+      // Complete OTP verification by refreshing authoritative server session
+      const refreshed = await refreshAdminSession();
+      if (refreshed) {
+        setPendingUser(null);
         return { success: true };
       }
-      return { success: false, error: "Invalid OTP code. Please enter 123456 for testing." };
+      if (pendingUser) {
+        setAdminUser(pendingUser);
+        setPendingUser(null);
+        return { success: true };
+      }
+      return { success: false, error: "Authentication verification failed." };
     },
-    [pendingUser, saveSession]
+    [pendingUser, refreshAdminSession]
   );
 
-  const loginWithDevBypass = useCallback(() => {
-    saveSession(DEFAULT_SUPER_ADMIN);
-  }, [saveSession]);
+  const loginWithDevBypass = useCallback(async () => {
+    await refreshAdminSession();
+  }, [refreshAdminSession]);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(ADMIN_SESSION_KEY);
+  const logout = useCallback(async () => {
+    try {
+      await fetch("/api/auth/signout", { method: "POST", credentials: "include" });
+    } catch {}
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("riderzpro_admin_session");
+      localStorage.removeItem("riderzpro_auth_user");
+      localStorage.removeItem("riderzpro_auth_token");
+      try {
+        sessionStorage.clear();
+      } catch {}
+    }
     setAdminUser(null);
     setPendingUser(null);
   }, []);
@@ -196,8 +180,9 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       verifyOtp,
       loginWithDevBypass,
       logout,
+      refreshAdminSession,
     }),
-    [adminUser, loading, login, verifyOtp, loginWithDevBypass, logout]
+    [adminUser, loading, login, verifyOtp, loginWithDevBypass, logout, refreshAdminSession]
   );
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;
@@ -213,7 +198,7 @@ export function useAdminAuth() {
 
 /**
  * Route guard for /admin/* paths.
- * Redirects unauthenticated visits to /login with return path preserved.
+ * Redirects unauthenticated visits to /vendor/login with return path preserved.
  */
 export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAdminAuth();
@@ -230,13 +215,7 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const hasLocalAdmin = typeof window !== "undefined" && (
-    localStorage.getItem("riderzpro_admin_session") !== null ||
-    localStorage.getItem("riderzpro_auth_user")?.includes("admin@riderzpro.com") ||
-    localStorage.getItem("riderzpro_auth_user")?.includes("admin.operations@riderzpro.com")
-  );
-
-  if (!isAuthenticated && !hasLocalAdmin) {
+  if (!isAuthenticated) {
     return <Navigate to="/vendor/login" search={{ redirect: location.pathname }} replace />;
   }
 

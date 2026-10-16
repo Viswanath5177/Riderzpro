@@ -61,6 +61,12 @@ export function translateToPostgres(text: string): string {
     })
     // Replace SQLite datetime('now') with CURRENT_TIMESTAMP
     .replace(/datetime\('now'\)/gi, "CURRENT_TIMESTAMP")
+    // Replace SQLite date('now', ...) and date('now')
+    .replace(/date\('now',\s*'([+-]?)(\d+)\s*(days?|months?|years?)'\)/gi, (_m, sign, amount, unit) => {
+      const s = sign === "-" ? "-" : "+";
+      return `(CURRENT_DATE ${s} INTERVAL '${amount} ${unit.toLowerCase()}')`;
+    })
+    .replace(/date\('now'\)/gi, "CURRENT_DATE")
     // Replace boolean comparison integer syntax (is_active = 1 -> is_active = true)
     .replace(/\b(is_active|is_verified|is_read|is_bestseller|is_default)\s*=\s*1\b/gi, "$1 = true")
     .replace(/\b(is_active|is_verified|is_read|is_bestseller|is_default)\s*=\s*0\b/gi, "$1 = false")

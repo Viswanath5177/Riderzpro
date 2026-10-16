@@ -31,7 +31,7 @@ import { inr, getBike } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 export function SettingsTab() {
-  const { userProfile, updateUserProfile, garage, orders, signOut: storeSignOut } = useStore();
+  const { userProfile, updateUserProfile, garage, orders, signOut: storeSignOut, setUserLocation } = useStore();
   const { signOut: authSignOut } = useAuth();
 
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -67,6 +67,7 @@ export function SettingsTab() {
   const [phone, setPhone] = useState(userProfile.phone || "");
   const [address, setAddress] = useState(userProfile.address || "");
   const [city, setCity] = useState(userProfile.city || "");
+  const [pincode, setPincode] = useState("560001");
   const [secondaryAddress, setSecondaryAddress] = useState("");
   const [deliveryInstruction, setDeliveryInstruction] = useState("");
 
@@ -93,7 +94,7 @@ export function SettingsTab() {
 
   const [isSaving, setIsSaving] = useState(false);
 
-  // Sync profile directly from database on mount
+  // Sync profile & addresses directly from database on mount
   useEffect(() => {
     fetch("/api/customer/profile", { credentials: "include" })
       .then((r) => r.json())
@@ -102,9 +103,28 @@ export function SettingsTab() {
           setName(d.profile.name || "User");
           setEmail(d.profile.email || "");
           setPhone(d.profile.phone || "");
-          setAddress(d.profile.address || "");
-          setCity(d.profile.city || "");
+          if (d.profile.address) setAddress(d.profile.address);
+          if (d.profile.city) setCity(d.profile.city);
           setHasPassword(Boolean(d.profile.hasPassword));
+        }
+      })
+      .catch(() => {});
+
+    fetch("/api/customer/addresses", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && Array.isArray(d.data) && d.data.length > 0) {
+          const def = d.data.find((a: any) => a.is_default) || d.data[0];
+          if (def) {
+            if (def.street_address) setAddress(def.street_address);
+            if (def.city) setCity(def.city);
+            if (def.pincode) setPincode(def.pincode);
+            if (def.delivery_instructions) setDeliveryInstruction(def.delivery_instructions);
+          }
+          const secondary = d.data.find((a: any) => !a.is_default || a.label?.toLowerCase() === "work");
+          if (secondary && secondary.id !== def?.id) {
+            setSecondaryAddress(secondary.street_address || "");
+          }
         }
       })
       .catch(() => {});
@@ -121,20 +141,95 @@ export function SettingsTab() {
     };
   }, [otpCountdown]);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+    const cleanName = name.trim() || "User";
+    const cleanPhone = phone.trim();
+    const cleanAddress = address.trim();
+    const cleanCity = city.trim();
+    const cleanPincode = pincode.trim() || "560001";
+
+    // 1. Update client state
     updateUserProfile({
-      name: name.trim() || "User",
-      phone: phone.trim(),
-      address: address.trim(),
-      city: city.trim(),
+      name: cleanName,
+      phone: cleanPhone,
+      address: cleanAddress,
+      city: cleanCity,
     });
 
-    setTimeout(() => {
+    try {
+      // 2. Persist to customer profile
+      await fetch("/api/customer/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name: cleanName,
+          phone: cleanPhone,
+          address: cleanAddress,
+          city: cleanCity,
+        }),
+      });
+
+      // 3. Save / Upsert primary delivery address in PostgreSQL customer_addresses
+      if (cleanAddress) {
+        await fetch("/api/customer/addresses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            fullName: cleanName,
+            phone: cleanPhone || "9876543210",
+            streetLocality: cleanAddress,
+            city: cleanCity || "Bengaluru",
+            state: "Karnataka",
+            pincode: cleanPincode,
+            label: "Home",
+            deliveryInstructions: deliveryInstruction.trim(),
+            isDefault: true,
+            upsertByLabel: true,
+          }),
+        });
+
+        // 4. Update site-wide location badge on top immediately
+        setUserLocation({
+          id: `addr_primary_${Date.now()}`,
+          name: cleanAddress,
+          city: cleanCity || "Bengaluru",
+          pincode: cleanPincode,
+          lat: 12.9716,
+          lng: 77.5946,
+          tag: "Home (Primary)",
+        });
+      }
+
+      // 5. If secondary address is provided, save it too
+      if (secondaryAddress.trim()) {
+        await fetch("/api/customer/addresses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            fullName: cleanName,
+            phone: cleanPhone || "9876543210",
+            streetLocality: secondaryAddress.trim(),
+            city: cleanCity || "Bengaluru",
+            state: "Karnataka",
+            pincode: cleanPincode,
+            label: "Work",
+            isDefault: false,
+            upsertByLabel: true,
+          }),
+        });
+      }
+
+      toast.success("Profile & Delivery Addresses saved successfully!");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save profile changes.");
+    } finally {
       setIsSaving(false);
-      toast.success("Profile updated successfully!");
-    }, 300);
+    }
   };
 
   // Send OTP for password creation/change
@@ -607,7 +702,9 @@ export function SettingsTab() {
                     <input
                       type="text"
                       placeholder="PIN Code"
-                      defaultValue="560001"
+                      value={pincode}
+                      onChange={(e) => setPincode(e.target.value)}
+                      maxLength={6}
                       className="w-full h-9 rounded-xl border border-gray-300 px-3 text-xs outline-none focus:border-[#E31E24] bg-white font-mono"
                     />
                   </div>

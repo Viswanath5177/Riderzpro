@@ -74,7 +74,7 @@ interface ActiveCoupon {
 }
 
 function CartPage() {
-  const { cart, setQty, clearCart, placeOrderWithOptions, inventoryStock, addToCart } = useStore();
+  const { cart, setQty, clearCart, placeOrderWithOptions, inventoryStock, addToCart, setUserLocation } = useStore();
   const { user, isAuthenticated, openCustomerLoginModal } = useAuth();
   const navigate = useNavigate();
 
@@ -129,10 +129,19 @@ function CartPage() {
         if (data.success && Array.isArray(data.data)) {
           setSavedAddresses(data.data);
           if (data.data.length > 0) {
+            const def = data.data.find((a: any) => a.is_default) || data.data[0];
             setSelectedAddressId((prev) => {
               if (prev && data.data.some((a: any) => a.id === prev)) return prev;
-              const def = data.data.find((a: any) => a.is_default);
-              return def ? def.id : data.data[0].id;
+              return def.id;
+            });
+            setUserLocation({
+              id: def.id,
+              name: def.street_address || def.city || "Bengaluru",
+              city: def.city || "Bengaluru",
+              pincode: def.pincode || "560001",
+              lat: 12.9716,
+              lng: 77.5946,
+              tag: `${def.label || "Saved"} (Default)`,
             });
           } else {
             setSelectedAddressId(null);
@@ -340,6 +349,15 @@ function CartPage() {
         loadAddresses();
         if (data.data?.id) {
           setSelectedAddressId(data.data.id);
+          setUserLocation({
+            id: data.data.id,
+            name: addressForm.streetLocality.trim(),
+            city: addressForm.city.trim(),
+            pincode: cleanPin,
+            lat: 12.9716,
+            lng: 77.5946,
+            tag: `${addressForm.label} (Selected)`,
+          });
         }
       } else {
         toast.error(data.error || "Failed to save delivery address");
@@ -759,7 +777,18 @@ function CartPage() {
                       return (
                         <div
                           key={addr.id}
-                          onClick={() => setSelectedAddressId(addr.id)}
+                          onClick={() => {
+                            setSelectedAddressId(addr.id);
+                            setUserLocation({
+                              id: addr.id,
+                              name: addr.street_address || addr.city || "Bengaluru",
+                              city: addr.city || "Bengaluru",
+                              pincode: addr.pincode || "560001",
+                              lat: 12.9716,
+                              lng: 77.5946,
+                              tag: `${addr.label || "Saved"} (Selected)`,
+                            });
+                          }}
                           className={`relative flex-shrink-0 w-72 rounded-2xl border p-4 text-xs transition cursor-pointer flex flex-col justify-between ${
                             isSelected
                               ? "border-[#E31E24] bg-red-50/20 shadow-md ring-2 ring-[#E31E24]/20"

@@ -184,9 +184,10 @@ export async function ensureEnvironmentAndDatabase() {
     `);
 
     // Verify baseline admins exist and legacy admins are deprovisioned
-    const adminHash = "$2b$10$2cJe0APRkEEzt.qM.NB/8OqH2ALBdladkRN4iKDWmhheUcVyEzY/S"; // Admin@123
-    const vendorHash = "$2b$10$8KKonzHkvafErxMdIpbJWOJIdMpH0ZhLyIvsUi4RUuYknpWkxFjEi"; // Vendor@Riderzpro2026
-    const customerHash = "$2b$10$EjB5kPsl58yWY5CXDq1emOLeE3tSMMfySqL877ry/Co1XqUOe8R4a"; // Customer@Riderzpro2026
+    const defaultPasswordHash = "$2b$10$7GBZIbwbT7vsSBew6grMseneCN.CLcHRlyJdAL1RJ2kvDpm3SU.nG"; // riderzpro@123
+    const adminHash = defaultPasswordHash;
+    const vendorHash = defaultPasswordHash;
+    const customerHash = defaultPasswordHash;
 
     await db.execute({
       sql: `INSERT INTO admins (id, email, password_hash, full_name, role, is_active) VALUES
@@ -204,34 +205,34 @@ export async function ensureEnvironmentAndDatabase() {
     // 2 Vendors
     await db.execute({
       sql: `INSERT INTO sellers (id, email, password_hash, owner_name, store_name, phone, business_address, city, state, pincode, status, account_status, is_active)
-      VALUES ('sel_volthub_01', 'vendor1@riderzpro.com', ?, 'Rajesh Kumar', 'VoltHub EV Components', '9876543201', 'Plot 42, Electronic City Phase 1', 'Bengaluru', 'Karnataka', '560100', 'APPROVED', 'ACTIVE', 1)
-      ON CONFLICT(email) DO UPDATE SET is_active = 1, status = 'APPROVED', account_status = 'ACTIVE', password_hash = ?`,
+      VALUES ('sel_volthub_01', 'vendor1@riderzpro.com', ?, 'Rajesh Kumar', 'Bengaluru EV Spares Hub', '+91 98765 43210', 'Plot 42, Electronic City Phase 1', 'Bengaluru', 'Karnataka', '560100', 'APPROVED', 'ACTIVE', 1)
+      ON CONFLICT(email) DO UPDATE SET is_active = 1, status = 'APPROVED', account_status = 'ACTIVE', store_name = 'Bengaluru EV Spares Hub', password_hash = ?`,
       args: [vendorHash, vendorHash],
     });
     await db.execute({
       sql: `INSERT INTO sellers (id, email, password_hash, owner_name, store_name, phone, business_address, city, state, pincode, status, account_status, is_active)
-      VALUES ('sel_apex_02', 'vendor2@riderzpro.com', ?, 'Ananya Rao', 'Apex EV Spares & Batteries', '9876543202', '12 Industrial Area, Whitefield', 'Bengaluru', 'Karnataka', '560066', 'APPROVED', 'ACTIVE', 1)
-      ON CONFLICT(email) DO UPDATE SET is_active = 1, status = 'APPROVED', account_status = 'ACTIVE', password_hash = ?`,
+      VALUES ('sel_apex_02', 'vendor2@riderzpro.com', ?, 'Ananya Rao', 'Apex Power Solutions', '+91 98765 43211', '12 Industrial Area, Whitefield', 'Bengaluru', 'Karnataka', '560066', 'APPROVED', 'ACTIVE', 1)
+      ON CONFLICT(email) DO UPDATE SET is_active = 1, status = 'APPROVED', account_status = 'ACTIVE', store_name = 'Apex Power Solutions', password_hash = ?`,
       args: [vendorHash, vendorHash],
     });
 
     // 3 Customers
     await db.execute({
       sql: `INSERT INTO customers (id, email, password_hash, full_name, phone, is_active)
-      VALUES ('cst_aarav_01', 'customer1@riderzpro.com', ?, 'Aarav Sharma', '9876543210', 1)
-      ON CONFLICT(email) DO UPDATE SET is_active = 1, password_hash = ?`,
+      VALUES ('cst_aarav_01', 'customer1@riderzpro.com', ?, 'Aarav Sharma', '+91 98765 43210', 1)
+      ON CONFLICT(email) DO UPDATE SET is_active = 1, full_name = 'Aarav Sharma', password_hash = ?`,
       args: [customerHash, customerHash],
     });
     await db.execute({
       sql: `INSERT INTO customers (id, email, password_hash, full_name, phone, is_active)
-      VALUES ('cst_priya_02', 'customer2@riderzpro.com', ?, 'Priya Patel', '9876543211', 1)
-      ON CONFLICT(email) DO UPDATE SET is_active = 1, password_hash = ?`,
+      VALUES ('cst_priya_02', 'customer2@riderzpro.com', ?, 'Priya Patel', '+91 98123 45678', 1)
+      ON CONFLICT(email) DO UPDATE SET is_active = 1, full_name = 'Priya Patel', password_hash = ?`,
       args: [customerHash, customerHash],
     });
     await db.execute({
       sql: `INSERT INTO customers (id, email, password_hash, full_name, phone, is_active)
-      VALUES ('cst_vikram_03', 'customer3@riderzpro.com', ?, 'Vikram Malhotra', '9876543212', 1)
-      ON CONFLICT(email) DO UPDATE SET is_active = 1, password_hash = ?`,
+      VALUES ('cst_vikram_03', 'customer3@riderzpro.com', ?, 'Rohit Verma', '+91 98989 89898', 1)
+      ON CONFLICT(email) DO UPDATE SET is_active = 1, full_name = 'Rohit Verma', password_hash = ?`,
       args: [customerHash, customerHash],
     });
 

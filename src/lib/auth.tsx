@@ -274,22 +274,6 @@ export async function getCurrentRole(): Promise<string | null> {
       }
     }
   } catch {}
-  try {
-    const usr = localStorage.getItem("riderzpro_auth_user");
-    if (usr) {
-      const parsed = JSON.parse(usr);
-      if (parsed?.email === "admin@riderzpro.com") return "SUPER_ADMIN";
-      if (parsed?.email === "admin.operations@riderzpro.com") return "ADMIN";
-      if (parsed?.role) return parsed.role;
-    }
-    const adm = localStorage.getItem("riderzpro_admin_session");
-    if (adm) {
-      const parsed = JSON.parse(adm);
-      if (parsed?.user?.email === "admin@riderzpro.com") return "SUPER_ADMIN";
-      if (parsed?.user?.email === "admin.operations@riderzpro.com") return "ADMIN";
-      if (parsed?.role) return parsed.role;
-    }
-  } catch {}
   return null;
 }
 
@@ -305,10 +289,6 @@ export async function getCurrentUser(): Promise<any> {
         return data.user;
       }
     }
-  } catch {}
-  try {
-    const usr = localStorage.getItem("riderzpro_auth_user");
-    if (usr) return JSON.parse(usr);
   } catch {}
   return null;
 }
@@ -424,37 +404,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function initAuth() {
       try {
-        // 1. Verify active HTTP-only cookie session with PostgreSQL backend
-        try {
-          const meRes = await fetch("/api/auth/me", { credentials: "include" });
-          if (meRes.ok) {
-            const meData = await meRes.json();
-            if (meData.authenticated && meData.user) {
-              const u: User = {
-                id: meData.user.id,
-                name: meData.user.fullName || meData.user.storeName || "Rider",
-                email: meData.user.email,
-                phone: meData.user.phone || "",
-                role: (meData.role || meData.user.role || "customer") as any,
-                storeName: meData.user.storeName,
-              };
-              setUser(u);
-              localStorage.setItem(AUTH_USER_KEY, JSON.stringify(u));
-              localStorage.setItem(AUTH_TOKEN_KEY, "session_active");
-              return;
-            }
+        const meRes = await fetch("/api/auth/me", { credentials: "include" });
+        if (meRes.ok) {
+          const meData = await meRes.json();
+          if (meData.authenticated && meData.user) {
+            const u: User = {
+              id: meData.user.id,
+              name: meData.user.fullName || meData.user.storeName || "Rider",
+              email: meData.user.email,
+              phone: meData.user.phone || "",
+              role: (meData.role || meData.user.role || "customer") as any,
+              storeName: meData.user.storeName,
+            };
+            setUser(u);
+            return;
           }
-        } catch {}
-
-        // 2. Fallback to localStorage session
-        const rawUser = localStorage.getItem(AUTH_USER_KEY);
-        const rawToken = localStorage.getItem(AUTH_TOKEN_KEY);
-        if (rawUser && rawToken) {
-          const parsed = JSON.parse(rawUser) as User;
-          setUser(parsed);
         }
+        setUser(null);
       } catch (e) {
         console.error("Failed to restore auth session:", e);
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -469,7 +438,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("riderzpro:signout", onSignOutEvent);
   }, []);
 
-  const signIn = useCallback(async (emailOrPhone: string, password: string, remember = true) => {
+  const signIn = useCallback(async (emailOrPhone: string, password: string, _remember = true) => {
     try {
       const res = await fetch("/api/auth/signin", {
         method: "POST",
@@ -492,16 +461,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: (data.role || dbUser.role || "customer") as any,
         storeName: dbUser.storeName,
       };
-
-      const token = `tok_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-
-      if (remember) {
-        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(sessionUser));
-        localStorage.setItem(AUTH_TOKEN_KEY, token);
-      } else {
-        sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(sessionUser));
-        sessionStorage.setItem(AUTH_TOKEN_KEY, token);
-      }
 
       setUser(sessionUser);
       return { success: true, redirectUrl: data.redirectUrl, role: data.role, user: dbUser };
@@ -538,10 +497,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: "customer",
       };
 
-      const token = `tok_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(sessionUser));
-      localStorage.setItem(AUTH_TOKEN_KEY, token);
-
       setUser(sessionUser);
       return { success: true };
     } catch (e: any) {
@@ -552,20 +507,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = useCallback(async () => {
     try {
-      const googleUser: User = {
-        id: "usr_google_aakash",
-        name: "User",
-        email: "aakash.sharma@gmail.com",
-        phone: "",
-        role: "customer",
-      };
-
-      const token = `tok_g_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(googleUser));
-      localStorage.setItem(AUTH_TOKEN_KEY, token);
-
-      setUser(googleUser);
-      return { success: true };
+      const res = await fetch("/api/auth/me", { credentials: "include" });
+      if (res.ok) {
+        const meData = await res.json();
+        if (meData.authenticated && meData.user) {
+          const sessionUser: User = {
+            id: meData.user.id,
+            name: meData.user.fullName || "User",
+            email: meData.user.email,
+            phone: meData.user.phone || "",
+            role: "customer",
+          };
+          setUser(sessionUser);
+          return { success: true };
+        }
+      }
+      return { success: false, error: "Google sign in failed" };
     } catch (e) {
       return { success: false, error: "Google sign in failed" };
     }

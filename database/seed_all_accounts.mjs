@@ -13,8 +13,8 @@ async function seedAll() {
 
   // 1. CONSOLIDATED ADMINISTRATORS
   const admins = [
-    { email: "admin@riderzpro.com", pass: "Admin@123", name: "Super Administrator", role: "SUPER_ADMIN" },
-    { email: "admin.operations@riderzpro.com", pass: "Admin@123", name: "Unified Operations Administrator", role: "ADMIN" },
+    { email: "admin@riderzpro.com", pass: "riderzpro@123", name: "Super Administrator", role: "SUPER_ADMIN" },
+    { email: "admin.operations@riderzpro.com", pass: "riderzpro@123", name: "Unified Operations Administrator", role: "ADMIN" },
   ];
 
   for (const a of admins) {

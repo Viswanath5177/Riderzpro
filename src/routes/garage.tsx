@@ -64,42 +64,7 @@ function GaragePage() {
   const [selectedYear, setSelectedYear] = useState(2023);
 
   // PostgreSQL Customer Garage Vehicles
-  const [garageVehicles, setGarageVehicles] = useState<GarageVehicle[]>([
-    {
-      id: "gar_ola_s1pro",
-      vehicle_id: "ola-s1pro",
-      make: "Ola",
-      model: "S1 Pro Gen 2",
-      year: 2023,
-      vin: "P6R1S1PR2PN000001",
-      vehicle_type: "bike",
-      voltage: 60,
-      is_active: true,
-    },
-    {
-      id: "gar_ather_450x",
-      vehicle_id: "ather-450x",
-      make: "Ather",
-      model: "450X Gen 3",
-      year: 2024,
-      vin: "MD9A450XAN1234567",
-      vehicle_type: "bike",
-      voltage: 48,
-      is_active: false,
-    },
-    {
-      id: "gar_tata_nexon",
-      vehicle_id: "tata-nexon-ev",
-      make: "Tata",
-      model: "Nexon.ev Empowered",
-      year: 2024,
-      vin: "MAT1234NEXON56789",
-      vehicle_type: "car",
-      voltage: 400,
-      battery_kwh: 40.5,
-      is_active: false,
-    },
-  ]);
+  const [garageVehicles, setGarageVehicles] = useState<GarageVehicle[]>([]);
 
   // Live products retrieved directly from PostgreSQL
   const [dbProducts, setDbProducts] = useState<Product[]>([]);
@@ -115,7 +80,7 @@ function GaragePage() {
     try {
       const res = await fetch("/api/garage?customer_id=usr_customer_demo");
       const json = await res.json();
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+      if (json.success && Array.isArray(json.data)) {
         setGarageVehicles(json.data);
       }
     } catch (err: any) {
@@ -464,8 +429,14 @@ function GaragePage() {
             </div>
 
             {garageVehicles.length === 0 ? (
-              <div className="rounded-3xl border border-dashed border-border p-10 text-center text-muted-foreground">
-                No vehicles stored in your garage yet. Add one to see tailored parts!
+              <div className="rounded-3xl border border-dashed border-border bg-card/60 p-10 text-center shadow-2xs">
+                <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-3">
+                  <Bike className="h-6 w-6" />
+                </div>
+                <h3 className="font-bold text-base text-foreground">No Registered Vehicles in Garage</h3>
+                <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                  Decode your vehicle VIN or select your electric two-wheeler / car to register it and view custom-fit compatible spare parts.
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-3">

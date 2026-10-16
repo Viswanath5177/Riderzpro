@@ -249,11 +249,11 @@ export async function handleSuperAdminRoute(
       // Date range filter clause for orders
       let dateFilterSql = "";
       if (timeRange === "7d") {
-        dateFilterSql = " AND o.created_at >= datetime('now', '-7 days')";
+        dateFilterSql = " AND o.created_at >= (CURRENT_TIMESTAMP - INTERVAL '7 days')";
       } else if (timeRange === "30d") {
-        dateFilterSql = " AND o.created_at >= datetime('now', '-30 days')";
+        dateFilterSql = " AND o.created_at >= (CURRENT_TIMESTAMP - INTERVAL '30 days')";
       } else if (timeRange === "90d") {
-        dateFilterSql = " AND o.created_at >= datetime('now', '-90 days')";
+        dateFilterSql = " AND o.created_at >= (CURRENT_TIMESTAMP - INTERVAL '90 days')";
       }
 
       // Vendor filtering

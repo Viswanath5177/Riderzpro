@@ -10,7 +10,7 @@ import {
   sendCustomerOrderPlacedEmail,
   sendVendorNewOrderEmail,
 } from "../lib/email.server";
-import { handleAuthRoute } from "./authRoutes";
+import { handleAuthRoute, getAuthenticatedUser, type AuthenticatedUser } from "./authRoutes";
 import { handleSuperAdminRoute, getVerifiedAdmin } from "./superAdminRoutes";
 import { createNotification, notifyAdminRole } from "./notifications";
 
@@ -55,17 +55,42 @@ function sha256(val: string): string {
   return crypto.createHash("sha256").update(val).digest("hex");
 }
 
-async function getAuthenticatedUser(req: IncomingMessage): Promise<{ id: string; role: string; email?: string } | null> {
+function verifyCsrf(req: IncomingMessage): boolean {
+  const method = req.method?.toUpperCase();
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") return true;
+
   const cookies = parseCookies(req);
-  const token = cookies["auth_session"];
-  if (!token) return null;
-  const tokenHash = sha256(token);
-  const s = await query(
-    "SELECT user_id, user_role FROM auth_sessions WHERE token_hash = $1 AND expires_at > now() LIMIT 1",
-    [tokenHash]
-  );
-  if (!s.rows[0]) return null;
-  return { id: s.rows[0].user_id, role: s.rows[0].user_role };
+  if (!cookies["auth_session"]) return true;
+
+  const origin = req.headers.origin as string | undefined;
+  const referer = req.headers.referer as string | undefined;
+  const host = req.headers.host;
+
+  if (origin) {
+    try {
+      const originHost = new URL(origin).host;
+      return originHost === host;
+    } catch {
+      return false;
+    }
+  }
+
+  if (referer) {
+    try {
+      const refererHost = new URL(referer).host;
+      return refererHost === host;
+    } catch {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function isAdminRole(role?: string): boolean {
+  if (!role) return false;
+  const r = role.toLowerCase();
+  return r === "admin" || r === "super_admin" || r === "superadmin";
 }
 
 let isDbInitialized = false;
@@ -99,6 +124,13 @@ export function pgApiMiddleware() {
           res.writeHead(302, { Location: dest });
           res.end();
           return;
+        }
+
+        // ====================================================================
+        // CSRF Verification for Cookie-Authenticated Mutating Requests
+        // ====================================================================
+        if (cleanUrl.startsWith("/api/") && !verifyCsrf(req)) {
+          return sendJson(res, 403, { success: false, error: "CSRF verification failed: untrusted request origin." });
         }
 
         // ====================================================================
@@ -925,6 +957,23 @@ export function pgApiMiddleware() {
         // 2. CUSTOMER GARAGE API: /api/garage
         // ====================================================================
         if (cleanUrl.startsWith("/api/garage")) {
+          const authUser = await getAuthenticatedUser(req);
+          if (!authUser) {
+            return sendJson(res, 401, { success: false, error: "Authentication required to access garage." });
+          }
+
+          let customerId = authUser.id;
+          const paramCust = queryParams.get("customer_id");
+          if (authUser.role === "customer") {
+            if (paramCust && paramCust !== authUser.id) {
+              return sendJson(res, 403, { success: false, error: "Access denied. Cannot access another customer's garage." });
+            }
+          } else if (isAdminRole(authUser?.role)) {
+            customerId = paramCust || authUser.id;
+          } else {
+            return sendJson(res, 403, { success: false, error: "Forbidden." });
+          }
+
           const parts = cleanUrl.split("/").filter(Boolean);
           const garageId = parts.length > 2 ? parts[2] : null;
           const subAction = parts.length > 3 ? parts[3] : null;
@@ -932,7 +981,6 @@ export function pgApiMiddleware() {
           try {
             // GET /api/garage
             if (method === "GET") {
-              const customerId = queryParams.get("customer_id") || "usr_customer_demo";
               const rows = await GarageModel.findByCustomer(customerId);
               return sendJson(res, 200, { success: true, data: rows });
             }
@@ -943,6 +991,7 @@ export function pgApiMiddleware() {
               if (!body.vehicle_id || !body.make || !body.model) {
                 return sendJson(res, 400, { success: false, error: "Vehicle details (vehicle_id, make, model) required." });
               }
+              body.customer_id = customerId;
               const created = await GarageModel.addVehicle(body);
               return sendJson(res, 201, {
                 success: true,
@@ -953,13 +1002,16 @@ export function pgApiMiddleware() {
 
             // PUT /api/garage/:id/active
             if (method === "PUT" && garageId && subAction === "active") {
-              const customerId = queryParams.get("customer_id") || "usr_customer_demo";
               const updated = await GarageModel.setActive(garageId, customerId);
               return sendJson(res, 200, { success: true, data: updated });
             }
 
             // DELETE /api/garage/:id
             if (method === "DELETE" && garageId) {
+              const checkRow = await query("SELECT customer_id FROM customer_garage WHERE id = $1 LIMIT 1", [garageId]);
+              if (checkRow.rows[0] && checkRow.rows[0].customer_id !== customerId && authUser.role !== "admin" && authUser.role !== "superadmin") {
+                return sendJson(res, 403, { success: false, error: "Cannot delete vehicle belonging to another customer." });
+              }
               const ok = await GarageModel.removeVehicle(garageId);
               return sendJson(res, 200, { success: ok, message: "Vehicle removed from garage" });
             }
@@ -975,6 +1027,23 @@ export function pgApiMiddleware() {
         // 2.5 SERVICE BOOKINGS API: /api/service-bookings
         // ====================================================================
         if (cleanUrl.startsWith("/api/service-bookings")) {
+          const authUser = await getAuthenticatedUser(req);
+          if (!authUser) {
+            return sendJson(res, 401, { success: false, error: "Authentication required to access service bookings." });
+          }
+
+          let customerId = authUser.id;
+          const paramCust = queryParams.get("customer_id");
+          if (authUser.role === "customer") {
+            if (paramCust && paramCust !== authUser.id) {
+              return sendJson(res, 403, { success: false, error: "Access denied. Cannot access another customer's bookings." });
+            }
+          } else if (isAdminRole(authUser?.role)) {
+            customerId = paramCust || authUser.id;
+          } else {
+            return sendJson(res, 403, { success: false, error: "Forbidden." });
+          }
+
           const parts = cleanUrl.split("/").filter(Boolean);
           const bookingId = parts.length > 2 ? parts[2] : null;
           const subAction = parts.length > 3 ? parts[3] : null;
@@ -982,7 +1051,6 @@ export function pgApiMiddleware() {
           try {
             // GET /api/service-bookings
             if (method === "GET") {
-              const customerId = queryParams.get("customer_id") || "usr_customer_demo";
               const rows = await ServiceBookingModel.findByCustomer(customerId);
               return sendJson(res, 200, { success: true, data: rows });
             }
@@ -993,6 +1061,7 @@ export function pgApiMiddleware() {
               if (!body.service_type) {
                 return sendJson(res, 400, { success: false, error: "service_type is required." });
               }
+              body.customer_id = customerId;
               const created = await ServiceBookingModel.addBooking(body);
               return sendJson(res, 201, {
                 success: true,
@@ -1003,13 +1072,20 @@ export function pgApiMiddleware() {
 
             // PUT /api/service-bookings/:id/cancel
             if (method === "PUT" && bookingId && subAction === "cancel") {
-              const customerId = queryParams.get("customer_id") || undefined;
+              const checkRow = await query("SELECT customer_id FROM service_bookings WHERE id = $1 LIMIT 1", [bookingId]);
+              if (checkRow.rows[0] && checkRow.rows[0].customer_id !== customerId && authUser.role !== "admin" && authUser.role !== "superadmin") {
+                return sendJson(res, 403, { success: false, error: "Cannot cancel booking belonging to another customer." });
+              }
               const updated = await ServiceBookingModel.cancelBooking(bookingId, customerId);
               return sendJson(res, 200, { success: true, data: updated });
             }
 
             // DELETE /api/service-bookings/:id
             if (method === "DELETE" && bookingId) {
+              const checkRow = await query("SELECT customer_id FROM service_bookings WHERE id = $1 LIMIT 1", [bookingId]);
+              if (checkRow.rows[0] && checkRow.rows[0].customer_id !== customerId && authUser.role !== "admin" && authUser.role !== "superadmin") {
+                return sendJson(res, 403, { success: false, error: "Cannot delete booking belonging to another customer." });
+              }
               const ok = await ServiceBookingModel.deleteBooking(bookingId);
               return sendJson(res, 200, { success: ok, message: "Booking removed" });
             }
@@ -1078,51 +1154,52 @@ export function pgApiMiddleware() {
         // ====================================================================
         if (cleanUrl === "/api/vendor/dashboard" && method === "GET") {
           try {
-            let sellerId: string | null = null;
-            let sellerEmail: string | null = null;
-
-            const cookieHeader = req.headers.cookie || "";
-            const tokenMatch = cookieHeader.match(/(?:auth_session|riderzpro_session)=([^;]+)/);
-            if (tokenMatch) {
-              const token = tokenMatch[1].trim();
-              const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-              const sessRes = await query(
-                "SELECT user_id, user_role FROM auth_sessions WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now() LIMIT 1",
-                [tokenHash]
-              );
-              if (sessRes.rows[0]) {
-                const uid = sessRes.rows[0].user_id;
-                const sCheck = await query(
-                  "SELECT id, email FROM sellers WHERE id = $1 OR email = (SELECT email FROM users WHERE id = $1 LIMIT 1) LIMIT 1",
-                  [uid]
-                );
-                if (sCheck.rows[0]) {
-                  sellerId = sCheck.rows[0].id;
-                  sellerEmail = sCheck.rows[0].email;
-                }
-              }
-            }
-
-            // Allow Admin to view a specific vendor via query parameter, otherwise enforce session
-            const verifiedAdmin = await getVerifiedAdmin(req).catch(() => null);
-            if (verifiedAdmin && queryParams.get("seller_id")) {
-              sellerId = queryParams.get("seller_id");
-            }
-
-            let sellerRow: any = null;
-            if (sellerId) {
-              const res = await query("SELECT * FROM sellers WHERE id = $1 AND is_active = 1 LIMIT 1", [sellerId]);
-              sellerRow = res.rows[0];
-            }
-
-            if (!sellerRow) {
+            const authUser = await getAuthenticatedUser(req);
+            if (!authUser) {
               return sendJson(res, 401, {
                 success: false,
                 error: "Vendor authorization required. Please sign in to your vendor partner account.",
               });
             }
 
-            sellerEmail = sellerRow.email;
+            let sellerId: string;
+            const requestedSellerId = queryParams.get("seller_id");
+
+            if (authUser.role === "seller") {
+              if (requestedSellerId && requestedSellerId !== authUser.id) {
+                return sendJson(res, 403, {
+                  success: false,
+                  error: "Access denied. You can only view your own vendor dashboard.",
+                });
+              }
+              sellerId = authUser.id;
+              if (authUser.is_active === false) {
+                return sendJson(res, 403, {
+                  success: false,
+                  error: "Vendor account is disabled or inactive.",
+                });
+              }
+            } else if (isAdminRole(authUser?.role)) {
+              sellerId = requestedSellerId || "sel_volthub_01";
+            } else {
+              return sendJson(res, 403, {
+                success: false,
+                error: "Access denied. Vendor or admin role required.",
+              });
+            }
+
+            const resSeller = await query(
+              "SELECT * FROM sellers WHERE id = $1 LIMIT 1",
+              [sellerId]
+            );
+            const sellerRow = resSeller.rows[0];
+            if (!sellerRow) {
+              return sendJson(res, 404, {
+                success: false,
+                error: "Seller record not found.",
+              });
+            }
+            const sellerEmail = sellerRow.email;
 
             // Bank details & KYC documents for this seller
             const bankRes = await query(
@@ -1159,17 +1236,18 @@ export function pgApiMiddleware() {
             // Real orders from DB containing items sold by this vendor
             const ordersRes = await query(
               `SELECT o.id, o.order_number, o.status, o.total_amount, o.delivery_address, o.created_at,
+                      o.recipient_name, o.recipient_phone, o.delivery_instructions,
                       o.payment_status, o.payment_method,
-                      COALESCE(c.full_name, u.full_name, 'Customer') AS customer_name,
-                      COALESCE(c.phone, u.phone, '+91 98765 43210') AS customer_phone,
+                      COALESCE(o.recipient_name, c.full_name, u.full_name, 'Customer') AS customer_name,
+                      COALESCE(o.recipient_phone, c.phone, u.phone, '+91 98765 43210') AS customer_phone,
                       oi.id AS item_id, oi.product_id, oi.quantity, oi.unit_price, oi.subtotal,
                       p.name AS product_name
                FROM orders o
                LEFT JOIN customers c ON o.customer_id = c.id
-               LEFT JOIN users u ON o.customer_id = u.id
+               LEFT JOIN users u ON (o.customer_id = u.id OR c.email = u.email)
                JOIN order_items oi ON oi.order_id = o.id
                LEFT JOIN products p ON oi.product_id = p.id
-               WHERE (o.seller_id =  OR p.seller_id =  OR oi.seller_id = )$1
+               WHERE (o.seller_id = $1 OR p.seller_id = $1 OR oi.seller_id = $1)
                ORDER BY o.created_at DESC`,
               [sellerId]
             );
@@ -1234,39 +1312,29 @@ export function pgApiMiddleware() {
         // ====================================================================
         if (cleanUrl === "/api/vendor/profile" && (method === "PUT" || method === "POST")) {
           try {
+            const authUser = await getAuthenticatedUser(req);
+            if (!authUser) {
+              return sendJson(res, 401, { success: false, error: "Vendor authentication required." });
+            }
+
             const body = await parseBody(req);
-            let sellerId = body.sellerId || body.id;
+            let sellerId: string;
 
-            // If sellerId not supplied, deduce from session
-            if (!sellerId) {
-              const cookieHeader = req.headers.cookie || "";
-              const tokenMatch = cookieHeader.match(/(?:auth_session|riderzpro_session)=([^;]+)/);
-              if (tokenMatch) {
-                const token = tokenMatch[1].trim();
-                const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-                const sessRes = await query(
-                  "SELECT user_id FROM auth_sessions WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now() LIMIT 1",
-                  [tokenHash]
-                );
-                if (sessRes.rows[0]) {
-                  const uid = sessRes.rows[0].user_id;
-                  const sCheck = await query(
-                    "SELECT id FROM sellers WHERE id = $1 OR email = (SELECT email FROM users WHERE id = $1 LIMIT 1) LIMIT 1",
-                    [uid]
-                  );
-                  if (sCheck.rows[0]) sellerId = sCheck.rows[0].id;
-                }
+            if (authUser.role === "seller") {
+              if (body.sellerId && body.sellerId !== authUser.id) {
+                return sendJson(res, 403, { success: false, error: "Access denied. Cannot update another vendor's profile." });
               }
-            }
-
-            // Fallback to latest seller if still not found
-            if (!sellerId) {
-              const sFallback = await query("SELECT id FROM sellers ORDER BY created_at DESC LIMIT 1");
-              if (sFallback.rows[0]) sellerId = sFallback.rows[0].id;
-            }
-
-            if (!sellerId) {
-              return sendJson(res, 404, { success: false, error: "Seller profile not found in database" });
+              sellerId = authUser.id;
+              if (authUser.is_active === false || authUser.user?.is_frozen) {
+                return sendJson(res, 403, { success: false, error: "Your account is frozen or inactive. Profile cannot be modified." });
+              }
+            } else if (isAdminRole(authUser?.role)) {
+              sellerId = body.sellerId || body.id;
+              if (!sellerId) {
+                return sendJson(res, 400, { success: false, error: "sellerId required for admin profile update." });
+              }
+            } else {
+              return sendJson(res, 403, { success: false, error: "Forbidden." });
             }
 
             // Update sellers table
@@ -1370,7 +1438,24 @@ export function pgApiMiddleware() {
         // ====================================================================
         if (cleanUrl.startsWith("/api/vendor/notifications")) {
           try {
-            const sellerId = queryParams.get("seller_id") || "sel_2571cac9469b8dce";
+            const authUser = await getAuthenticatedUser(req);
+            if (!authUser) {
+              return sendJson(res, 401, { success: false, error: "Authentication required to view notifications." });
+            }
+
+            let sellerId: string;
+            const paramSeller = queryParams.get("seller_id");
+            if (authUser.role === "seller") {
+              if (paramSeller && paramSeller !== authUser.id) {
+                return sendJson(res, 403, { success: false, error: "Access denied. Cannot view another vendor's notifications." });
+              }
+              sellerId = authUser.id;
+            } else if (isAdminRole(authUser?.role)) {
+              sellerId = paramSeller || authUser.id;
+            } else {
+              return sendJson(res, 403, { success: false, error: "Forbidden." });
+            }
+
             if (method === "GET") {
               const notifsRes = await query(
                 `SELECT * FROM vendor_notifications 
@@ -1411,7 +1496,7 @@ export function pgApiMiddleware() {
         // ====================================================================
         if (cleanUrl === "/api/admin/notifications" && method === "GET") {
           const verifiedAdmin = await getVerifiedAdmin(req).catch(() => null);
-          if (!verifiedAdmin && process.env["NODE_ENV"] === "production") {
+          if (!verifiedAdmin) {
             return sendJson(res, 401, { success: false, error: "Administrative authorization required." });
           }
 
@@ -1455,7 +1540,7 @@ export function pgApiMiddleware() {
         // ====================================================================
         if (cleanUrl === "/api/admin/metrics" && method === "GET") {
           const verifiedAdmin = await getVerifiedAdmin(req);
-          if (!verifiedAdmin && process.env["NODE_ENV"] === "production") {
+          if (!verifiedAdmin) {
             return sendJson(res, 401, { success: false, error: "Administrative authorization required." });
           }
 
@@ -1561,7 +1646,7 @@ export function pgApiMiddleware() {
         // ====================================================================
         if (cleanUrl === "/api/admin/customers" && method === "GET") {
           const verifiedAdmin = await getVerifiedAdmin(req);
-          if (!verifiedAdmin && process.env["NODE_ENV"] === "production") {
+          if (!verifiedAdmin) {
             return sendJson(res, 401, { success: false, error: "Administrative authorization required." });
           }
 
@@ -1610,7 +1695,7 @@ export function pgApiMiddleware() {
         // ====================================================================
         if (cleanUrl.startsWith("/api/admin/sellers") || cleanUrl === "/api/admin/analytics/sellers") {
           const verifiedAdmin = await getVerifiedAdmin(req).catch(() => null);
-          if (!verifiedAdmin && process.env["NODE_ENV"] === "production") {
+          if (!verifiedAdmin) {
             return sendJson(res, 401, { success: false, error: "Administrative authorization required." });
           }
 
@@ -1634,8 +1719,8 @@ export function pgApiMiddleware() {
                   s.created_at,
                   COUNT(o.id) AS total_orders,
                   COALESCE(SUM(o.total_amount), 0) AS total_revenue,
-                  COALESCE(SUM(CASE WHEN o.created_at >= datetime('now', '-7 days') THEN o.total_amount ELSE 0 END), 0) AS weekly_revenue,
-                  COUNT(CASE WHEN o.created_at >= datetime('now', '-7 days') THEN o.id ELSE NULL END) AS weekly_orders
+                  COALESCE(SUM(CASE WHEN o.created_at >= (CURRENT_TIMESTAMP - INTERVAL '7 days') THEN o.total_amount ELSE 0 END), 0) AS weekly_revenue,
+                  COUNT(CASE WHEN o.created_at >= (CURRENT_TIMESTAMP - INTERVAL '7 days') THEN o.id ELSE NULL END) AS weekly_orders
                 FROM sellers s
                 LEFT JOIN orders o ON (s.id = o.seller_id OR o.seller_id IN (SELECT id FROM users WHERE email = s.email))
                 GROUP BY s.id, s.store_name, s.owner_name, s.email, s.phone, s.city, s.state, s.status, s.created_at
@@ -1836,7 +1921,7 @@ export function pgApiMiddleware() {
                  SET account_status = 'FROZEN', 
                      freeze_reason = $1, 
                      frozen_by = $2, 
-                     frozen_at = datetime('now'), 
+                     frozen_at = CURRENT_TIMESTAMP, 
                      updated_at = now() 
                  WHERE id = $3`,
                 [reason, adminId, sellerId]
@@ -1844,6 +1929,7 @@ export function pgApiMiddleware() {
 
               // Deactivate corresponding user account so active sessions are blocked
               await query("UPDATE users SET is_active = false WHERE email = $1", [seller.email]).catch(() => {});
+              await query("UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = $1 OR user_id IN (SELECT id FROM users WHERE email = $2)", [sellerId, seller.email]).catch(() => {});
 
               // Create compliance audit log
               await query(
@@ -2127,27 +2213,36 @@ export function pgApiMiddleware() {
         // ====================================================================
         if (cleanUrl.startsWith("/api/cart")) {
           const authUser = await getAuthenticatedUser(req);
-          let customerId: string | null = null;
-
-          if (authUser) {
-            const custRow = await query("SELECT id FROM customers WHERE id = $1 OR email = $1 LIMIT 1", [authUser.id || authUser.email]);
-            customerId = custRow.rows[0]?.id || authUser.id;
-          } else {
-            const paramId = queryParams.get("customer_id") || queryParams.get("customerId");
-            if (paramId && paramId !== "usr_customer_demo") {
-              const custRow = await query("SELECT id FROM customers WHERE id = $1 OR email = $1 LIMIT 1", [paramId]);
-              customerId = custRow.rows[0]?.id || paramId;
-            }
-          }
-
+          const paramId = queryParams.get("customer_id") || queryParams.get("customerId");
           let body: any = null;
           if (method === "POST" || method === "PUT" || method === "DELETE") {
             body = await parseBody(req).catch(() => ({}));
-            if (!customerId && (body.customerId || body.customer_id)) {
-              const bId = body.customerId || body.customer_id;
-              const custRow = await query("SELECT id FROM customers WHERE id = $1 OR email = $1 LIMIT 1", [bId]);
-              customerId = custRow.rows[0]?.id || bId;
+          }
+
+          let customerId: string | null = null;
+          if (authUser) {
+            if (authUser.role === "customer") {
+              if (paramId && paramId !== authUser.id) {
+                return sendJson(res, 403, { success: false, error: "Access denied. Cannot access another customer's cart." });
+              }
+              if (body && (body.customerId || body.customer_id) && (body.customerId || body.customer_id) !== authUser.id) {
+                return sendJson(res, 403, { success: false, error: "Access denied. Cannot modify another customer's cart." });
+              }
+              customerId = authUser.id;
+            } else if (isAdminRole(authUser?.role)) {
+              customerId = paramId || (body?.customerId || body?.customer_id) || null;
+            } else {
+              return sendJson(res, 403, { success: false, error: "Forbidden." });
             }
+          } else {
+            // Unauthenticated
+            if (paramId || (body && (body.customerId || body.customer_id))) {
+              return sendJson(res, 401, { success: false, error: "Authentication required to access customer cart." });
+            }
+            if (method === "GET") {
+              return sendJson(res, 200, { success: true, data: [], items: [], count: 0 });
+            }
+            return sendJson(res, 200, { success: true, message: "Guest session - local storage used", items: [] });
           }
 
           try {
@@ -2292,26 +2387,40 @@ export function pgApiMiddleware() {
         // ====================================================================
         if (cleanUrl.startsWith("/api/wishlist")) {
           const authUser = await getAuthenticatedUser(req);
-          let customerId: string | null = null;
-
-          if (authUser?.id) {
-            const custRow = await query(
-              "SELECT id FROM customers WHERE id = $1 OR user_id = $1 OR email = $1 LIMIT 1",
-              [authUser.id]
-            );
-            customerId = custRow.rows[0]?.id || authUser.id;
+          const paramCust = queryParams.get("customer_id");
+          const paramEmail = (queryParams.get("email") || "").trim().toLowerCase();
+          let body: any = null;
+          if (method === "POST" || method === "PUT" || method === "DELETE") {
+            body = await parseBody(req).catch(() => ({}));
           }
 
-          if (!customerId) {
-            const paramCust = queryParams.get("customer_id");
-            const paramEmail = (queryParams.get("email") || "").trim().toLowerCase();
-            if (paramCust && paramCust !== "usr_customer_demo" && paramCust !== "cst_demo_01") {
-              const custRow = await query("SELECT id FROM customers WHERE id = $1 OR email = $1 LIMIT 1", [paramCust]);
-              customerId = custRow.rows[0]?.id || paramCust;
-            } else if (paramEmail) {
-              const custRow = await query("SELECT id FROM customers WHERE LOWER(email) = LOWER($1) LIMIT 1", [paramEmail]);
-              if (custRow.rows[0]) customerId = custRow.rows[0].id;
+          let customerId: string | null = null;
+          if (authUser) {
+            if (authUser.role === "customer") {
+              if (paramCust && paramCust !== authUser.id) {
+                return sendJson(res, 403, { success: false, error: "Access denied. Cannot access another customer's wishlist." });
+              }
+              if (paramEmail && (!authUser.email || paramEmail !== authUser.email.toLowerCase())) {
+                return sendJson(res, 403, { success: false, error: "Access denied. Cannot access another customer's wishlist." });
+              }
+              if (body && (body.customer_id || body.customerId) && (body.customer_id || body.customerId) !== authUser.id) {
+                return sendJson(res, 403, { success: false, error: "Access denied. Cannot modify another customer's wishlist." });
+              }
+              customerId = authUser.id;
+            } else if (isAdminRole(authUser?.role)) {
+              customerId = paramCust || (body?.customer_id || body?.customerId) || null;
+            } else {
+              return sendJson(res, 403, { success: false, error: "Forbidden." });
             }
+          } else {
+            // Unauthenticated
+            if (paramCust || paramEmail || (body && (body.customer_id || body.customerId || body.email))) {
+              return sendJson(res, 401, { success: false, error: "Authentication required to access customer wishlist." });
+            }
+            if (method === "GET") {
+              return sendJson(res, 200, { success: true, data: [], items: [], count: 0 });
+            }
+            return sendJson(res, 200, { success: true, guest: true, message: "Guest session - local storage used" });
           }
 
           try {
@@ -2368,24 +2477,6 @@ export function pgApiMiddleware() {
 
               if (!productId) {
                 return sendJson(res, 400, { success: false, error: "Product ID required" });
-              }
-
-              if (!customerId && (body.email || body.customer_id)) {
-                const identifier = String(body.email || body.customer_id).toLowerCase().trim();
-                const custRow = await query(
-                  "SELECT id FROM customers WHERE LOWER(email) = LOWER($1) OR id = $1 OR user_id = $1 LIMIT 1",
-                  [identifier]
-                );
-                if (custRow.rows[0]) {
-                  customerId = custRow.rows[0].id;
-                } else if (identifier.includes("@")) {
-                  const newCustId = "cst_" + crypto.randomBytes(8).toString("hex");
-                  await query(
-                    "INSERT INTO customers (id, email, full_name, is_active) VALUES ($1, $2, $3, 1)",
-                    [newCustId, identifier, identifier.split("@")[0]]
-                  ).catch(() => {});
-                  customerId = newCustId;
-                }
               }
 
               if (!customerId) {
@@ -2742,20 +2833,48 @@ export function pgApiMiddleware() {
 
             // POST /api/orders/:id/status (Update order status)
             if (method === "POST" && urlOrderId && (subAction === "status" || cleanUrl.includes("/status"))) {
+              const authUser = await getAuthenticatedUser(req);
+              if (!authUser) {
+                return sendJson(res, 401, { success: false, error: "Authentication required to update order status." });
+              }
+
               const body = await parseBody(req);
-              const newStatus = (body.status || "").toLowerCase().trim();
+              let newStatus = (body.status || "").toLowerCase().trim();
               if (!newStatus) {
                 return sendJson(res, 400, { success: false, error: "New order status is required." });
               }
+              if (newStatus === "new") newStatus = "pending";
+              if (newStatus === "preparing") newStatus = "processing";
 
-              const existingRes = await query("SELECT id, status, total_amount, customer_id, seller_id FROM orders WHERE id = $1 OR order_number = $1", [urlOrderId]);
+              const existingRes = await query("SELECT id, order_number, status, total_amount, customer_id, seller_id FROM orders WHERE id = $1 OR order_number = $1", [urlOrderId]);
               const order = existingRes.rows[0];
               if (!order) {
                 return sendJson(res, 404, { success: false, error: "Order not found." });
               }
 
+              // Role permissions check
+              if (authUser.role === "customer") {
+                if (order.customer_id !== authUser.id) {
+                  return sendJson(res, 403, { success: false, error: "Access denied. You cannot modify an order belonging to another customer." });
+                }
+                if (newStatus !== "cancelled") {
+                  return sendJson(res, 403, { success: false, error: "Customers can only cancel orders." });
+                }
+              } else if (authUser.role === "seller") {
+                // Verify order has items for this seller
+                const itemCheck = await query(
+                  `SELECT id FROM order_items WHERE order_id = $1 AND (seller_id = $2 OR product_id IN (SELECT id FROM products WHERE seller_id = $2)) LIMIT 1`,
+                  [order.id, authUser.id]
+                );
+                if (itemCheck.rows.length === 0 && order.seller_id !== authUser.id) {
+                  return sendJson(res, 403, { success: false, error: "Access denied. Order does not belong to your store." });
+                }
+              } else if (authUser.role !== "admin" && authUser.role !== "superadmin") {
+                return sendJson(res, 403, { success: false, error: "Forbidden." });
+              }
+
               await query(
-                "UPDATE orders SET status = $1, updated_at = datetime('now') WHERE id = $2",
+                "UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
                 [newStatus, order.id]
               );
 
@@ -2763,13 +2882,13 @@ export function pgApiMiddleware() {
               if (newStatus === "cancelled" && order.status !== "cancelled") {
                 const itemsRes = await query("SELECT product_id, quantity FROM order_items WHERE order_id = $1", [order.id]);
                 for (const item of itemsRes.rows) {
-                  await query("UPDATE products SET stock = stock + $1, updated_at = datetime('now') WHERE id = $2", [item.quantity, item.product_id]);
+                  await query("UPDATE products SET stock = stock + $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2", [item.quantity, item.product_id]);
                 }
               }
 
               return sendJson(res, 200, {
                 success: true,
-                message: `Order #${order.id} status updated to ${newStatus}.`,
+                message: `Order #${order.order_number || order.id} status updated to ${newStatus}.`,
                 status: newStatus,
               });
             }
@@ -2777,11 +2896,11 @@ export function pgApiMiddleware() {
             // POST /api/orders/:id/refund (Admin order refund)
             if (method === "POST" && urlOrderId && (subAction === "refund" || cleanUrl.includes("/refund"))) {
               const verifiedAdmin = await getVerifiedAdmin(req);
-              if (!verifiedAdmin && process.env["NODE_ENV"] === "production") {
+              if (!verifiedAdmin) {
                 return sendJson(res, 401, { success: false, error: "Administrative authorization required." });
               }
 
-              const existingRes = await query("SELECT id, status, total_amount, payment_status FROM orders WHERE id = $1 OR order_number = $1", [urlOrderId]);
+              const existingRes = await query("SELECT id, order_number, status, total_amount, payment_status FROM orders WHERE id = $1 OR order_number = $1", [urlOrderId]);
               const order = existingRes.rows[0];
               if (!order) {
                 return sendJson(res, 404, { success: false, error: "Order not found." });
@@ -2792,7 +2911,7 @@ export function pgApiMiddleware() {
                  SET status = 'refunded', 
                      payment_status = 'refunded', 
                      refund_amount = total_amount, 
-                     updated_at = datetime('now') 
+                     updated_at = CURRENT_TIMESTAMP 
                  WHERE id = $1`,
                 [order.id]
               );
@@ -2807,7 +2926,7 @@ export function pgApiMiddleware() {
 
               return sendJson(res, 200, {
                 success: true,
-                message: `Order #${order.id} refunded successfully.`,
+                message: `Order #${order.order_number || order.id} refunded successfully.`,
                 status: "refunded",
                 payment_status: "refunded",
               });
@@ -2815,28 +2934,64 @@ export function pgApiMiddleware() {
 
             // GET /api/orders (List orders with items)
             if (method === "GET") {
-              const customerId = queryParams.get("customer_id");
-              const sellerId = queryParams.get("seller_id");
+              const authUser = await getAuthenticatedUser(req);
+              if (!authUser) {
+                return sendJson(res, 401, { success: false, error: "Authentication required to view orders." });
+              }
+
+              const paramCust = queryParams.get("customer_id");
+              const paramSeller = queryParams.get("seller_id");
+
+              let customerId: string | null = null;
+              let sellerId: string | null = null;
+
+              if (authUser.role === "customer") {
+                if (paramCust && paramCust !== authUser.id) {
+                  return sendJson(res, 403, { success: false, error: "Access denied. Cannot view another customer's orders." });
+                }
+                if (paramSeller) {
+                  return sendJson(res, 403, { success: false, error: "Access denied. Customers cannot view vendor order queues." });
+                }
+                customerId = authUser.id;
+              } else if (authUser.role === "seller") {
+                if (paramSeller && paramSeller !== authUser.id) {
+                  return sendJson(res, 403, { success: false, error: "Access denied. Cannot view another vendor's orders." });
+                }
+                if (paramCust) {
+                  return sendJson(res, 403, { success: false, error: "Access denied. Vendors cannot query customer order lists directly." });
+                }
+                sellerId = authUser.id;
+              } else if (isAdminRole(authUser?.role)) {
+                customerId = paramCust || null;
+                sellerId = paramSeller || null;
+              } else {
+                return sendJson(res, 403, { success: false, error: "Forbidden." });
+              }
 
               let sql = `
                 SELECT o.id, o.order_number, o.customer_id, o.seller_id, o.status, o.total_amount, 
-                       o.delivery_address, o.payment_status, o.payment_method, o.refund_amount, 
+                       o.delivery_address, o.recipient_name, o.recipient_phone, o.delivery_instructions,
+                       o.payment_status, o.payment_method, o.refund_amount, 
                        o.created_at, o.updated_at,
                        s.store_name, s.owner_name as seller_name,
-                       COALESCE(c.full_name, 'Customer') as customer_name,
-                       COALESCE(c.phone, '') as customer_phone,
-                       COALESCE(c.email, '') as customer_email
+                       COALESCE(o.recipient_name, c.full_name, u.full_name, 'Customer') as customer_name,
+                       COALESCE(o.recipient_phone, c.phone, u.phone, '') as customer_phone,
+                       COALESCE(c.email, u.email, '') as customer_email
                 FROM orders o
                 LEFT JOIN sellers s ON o.seller_id = s.id
                 LEFT JOIN customers c ON o.customer_id = c.id
+                LEFT JOIN users u ON (o.customer_id = u.id OR c.email = u.email)
               `;
               const params: any[] = [];
               if (customerId) {
                 params.push(customerId);
-                sql += ` WHERE o.customer_id = $${params.length} OR o.customer_id IN (SELECT id FROM customers WHERE email = $${params.length})`;
+                sql += ` WHERE (o.customer_id = $${params.length} 
+                          OR o.customer_id IN (SELECT id FROM customers WHERE email = $${params.length} OR user_id = $${params.length})
+                          OR o.customer_id IN (SELECT id FROM users WHERE email = $${params.length} OR id = $${params.length}))`;
               } else if (sellerId) {
                 params.push(sellerId);
-                sql += ` WHERE o.seller_id = $${params.length} OR o.id IN (SELECT oi.order_id FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE p.seller_id = $${params.length})`;
+                sql += ` WHERE (o.seller_id = $${params.length} 
+                          OR o.id IN (SELECT oi.order_id FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE p.seller_id = $${params.length} OR oi.seller_id = $${params.length}))`;
               }
               sql += " ORDER BY o.created_at DESC";
 
@@ -2851,13 +3006,13 @@ export function pgApiMiddleware() {
                          s.store_name
                   FROM order_items oi
                   LEFT JOIN products p ON oi.product_id = p.id
-                  LEFT JOIN sellers s ON p.seller_id = s.id
+                  LEFT JOIN sellers s ON (p.seller_id = s.id OR oi.seller_id = s.id)
                   WHERE oi.order_id = $1
                 `;
                 const itemParams: any[] = [ord.id];
                 if (sellerId) {
                   itemParams.push(sellerId);
-                  itemSql += ` AND (p.seller_id = $2 OR p.seller_id IS NULL)`;
+                  itemSql += ` AND (p.seller_id = $2 OR oi.seller_id = $2 OR p.seller_id IS NULL)`;
                 }
                 const itemsRes = await query(itemSql, itemParams);
                 ord.items = itemsRes.rows;
@@ -2970,25 +3125,52 @@ export function pgApiMiddleware() {
               }
 
               // 3. Resolve customer details
+              const authUser = await getAuthenticatedUser(req);
               let customerRow: any = null;
-              if (rawCustId) {
-                const cRes = await query("SELECT id, email, full_name, phone FROM customers WHERE id = $1 OR email = $1 LIMIT 1", [rawCustId]);
-                customerRow = cRes.rows[0];
+              let customerId: string;
+              if (authUser && authUser.role === "customer") {
+                customerId = authUser.id;
+                customerRow = authUser.user;
+              } else if (authUser && (isAdminRole(authUser?.role))) {
+                customerId = rawCustId || authUser.id;
+                if (rawCustId) {
+                  const cRes = await query("SELECT id, email, full_name, phone FROM customers WHERE id = $1 LIMIT 1", [rawCustId]);
+                  customerRow = cRes.rows[0];
+                }
+              } else {
+                // Guest order: reject spoofing registered customer IDs
+                if (rawCustId) {
+                  const checkCust = await query("SELECT id FROM customers WHERE id = $1 LIMIT 1", [rawCustId]);
+                  if (checkCust.rows.length > 0) {
+                    return sendJson(res, 401, { success: false, error: "Please sign in to place an order under your registered account." });
+                  }
+                }
+                customerId = rawCustId || `cst_guest_${cryptoMod.randomBytes(6).toString("hex")}`;
               }
-              const customerId = customerRow ? customerRow.id : (rawCustId || "cst_guest");
-              const customerEmail = customerRow ? customerRow.email : (body.email || "customer@riderzpro.com");
-              const customerName = customerRow ? customerRow.full_name : (body.customer_name || "Valued Customer");
+
+              const customerEmail = customerRow?.email || body.email || "customer@riderzpro.com";
+              const customerName = customerRow?.full_name || customerRow?.recipient_name || body.customer_name || body.shipping_address?.name || "Valued Customer";
+              const customerPhone = customerRow?.phone || body.shipping_address?.phone || "+91 98765 43210";
               const primarySellerId = validatedItems[0]?.sellerId || body.seller_id || "sel_volthub_01";
 
-              // 4. Resolve delivery address
+              // 4. Resolve delivery address & recipient details
               let deliveryAddressStr = "Doorstep Delivery Address";
+              let recipientName = customerName;
+              let recipientPhone = customerPhone;
+              let deliveryInstructions = "";
+
               if (body.shipping_address) {
                 if (typeof body.shipping_address === "string") {
                   deliveryAddressStr = body.shipping_address;
                 } else {
                   const addr = body.shipping_address;
+                  if (addr.name || addr.recipient_name) recipientName = addr.name || addr.recipient_name;
+                  if (addr.phone) recipientPhone = addr.phone;
+                  if (addr.deliveryInstructions || addr.delivery_instructions) {
+                    deliveryInstructions = addr.deliveryInstructions || addr.delivery_instructions;
+                  }
                   deliveryAddressStr = [
-                    addr.house_flat || addr.street || addr.street_address,
+                    addr.house_flat || addr.houseFlat || addr.street || addr.street_address,
                     addr.city,
                     addr.state,
                     addr.pincode,
@@ -3000,11 +3182,11 @@ export function pgApiMiddleware() {
 
               const paymentMethod = body.payment_method || "UPI";
 
-              // 5. Insert order record
+              // 5. Insert order record (status 'pending' for vendor fulfillment)
               await query(
-                `INSERT INTO orders (id, order_number, customer_id, seller_id, status, total_amount, delivery_address, payment_status, payment_method, created_at, updated_at)
-                 VALUES ($1, $2, $3, $4, 'completed', $5, $6, 'paid', $7, datetime('now'), datetime('now'))`,
-                [orderId, orderNum, customerId, primarySellerId, computedTotal, deliveryAddressStr, paymentMethod]
+                `INSERT INTO orders (id, order_number, customer_id, seller_id, status, total_amount, delivery_address, recipient_name, recipient_phone, delivery_instructions, payment_status, payment_method, created_at, updated_at)
+                 VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8, $9, 'paid', $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+                [orderId, orderNum, customerId, primarySellerId, computedTotal, deliveryAddressStr, recipientName, recipientPhone, deliveryInstructions, paymentMethod]
               );
 
               // 6. Insert order items & update inventory stock
@@ -3016,11 +3198,11 @@ export function pgApiMiddleware() {
                   [itemId, orderId, it.productId, it.qty, it.price, it.subtotal, it.sellerId]
                 );
 
-                // Deduct stock in products table
+                // Deduct stock safely in products table
                 await query(
                   `UPDATE products 
-                   SET stock = MAX(0, stock - $1), 
-                       updated_at = datetime('now') 
+                   SET stock = GREATEST(0, stock - $1), 
+                       updated_at = CURRENT_TIMESTAMP 
                    WHERE id = $2`,
                   [it.qty, it.productId]
                 );
@@ -3118,9 +3300,12 @@ export function pgApiMiddleware() {
                   id: orderId,
                   order_number: orderNum,
                   total_amount: computedTotal,
-                  status: "completed",
+                  status: "pending",
                   payment_status: "paid",
                   delivery_address: deliveryAddressStr,
+                  recipient_name: recipientName,
+                  recipient_phone: recipientPhone,
+                  delivery_instructions: deliveryInstructions,
                   payment_method: paymentMethod,
                   items: validatedItems,
                 },

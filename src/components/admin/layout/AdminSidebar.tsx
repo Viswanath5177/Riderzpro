@@ -41,21 +41,21 @@ export const ADMIN_NAV_GROUPS: NavGroup[] = [
   {
     title: "Core Operations",
     items: [
-      { title: "Operations Console", to: "/admin", icon: <LayoutDashboard className="h-4 w-4" /> },
-      { title: "Sellers & KYC", to: "/admin/sellers", icon: <Store className="h-4 w-4" /> },
-      { title: "Product Approvals", to: "/admin/products", icon: <ShieldCheck className="h-4 w-4" /> },
+      { title: "Operations Console", to: "/admin/adm_super_01?tab=overview", icon: <LayoutDashboard className="h-4 w-4" /> },
+      { title: "Sellers & KYC", to: "/admin/adm_super_01?tab=vendors", icon: <Store className="h-4 w-4" /> },
+      { title: "Product Approvals", to: "/admin/adm_super_01?tab=products", icon: <ShieldCheck className="h-4 w-4" /> },
     ],
   },
   {
     title: "Performance & Growth",
     items: [
-      { title: "Analytics & Metrics", to: "/admin/analytics", icon: <BarChart3 className="h-4 w-4" /> },
+      { title: "Analytics & Metrics", to: "/admin/adm_super_01?tab=reports", icon: <BarChart3 className="h-4 w-4" /> },
     ],
   },
   {
     title: "Platform Administration",
     items: [
-      { title: "Settings", to: "/admin/settings", icon: <Settings className="h-4 w-4" /> },
+      { title: "Settings", to: "/admin/adm_super_01?tab=settings", icon: <Settings className="h-4 w-4" /> },
     ],
   },
 ];
@@ -70,6 +70,7 @@ export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: Adm
   const { adminUser, logout } = useAdminAuth();
   const location = useLocation();
   const pathname = location.pathname;
+  const adminId = adminUser?.id || "adm_super_01";
   const [pendingKycCount, setPendingKycCount] = useState<number>(0);
   const [pendingProductsCount, setPendingProductsCount] = useState<number>(0);
 
@@ -121,18 +122,18 @@ export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: Adm
       items: [
         {
           title: "Operations Console",
-          to: "/admin",
+          to: `/admin/${adminId}?tab=overview`,
           icon: <LayoutDashboard className="h-4 w-4" />,
         },
         {
           title: "Sellers & KYC",
-          to: "/admin/sellers",
+          to: `/admin/${adminId}?tab=vendors`,
           icon: <Store className="h-4 w-4" />,
           badge: pendingKycCount > 0 ? String(pendingKycCount) : undefined,
         },
         {
           title: "Product Approvals",
-          to: "/admin/products",
+          to: `/admin/${adminId}?tab=products`,
           icon: <ShieldCheck className="h-4 w-4" />,
           badge: pendingProductsCount > 0 ? String(pendingProductsCount) : undefined,
         },
@@ -144,7 +145,7 @@ export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: Adm
       items: [
         {
           title: "Analytics & Metrics",
-          to: "/admin/analytics",
+          to: `/admin/${adminId}?tab=reports`,
           icon: <BarChart3 className="h-4 w-4" />,
         },
       ],
@@ -155,14 +156,14 @@ export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: Adm
       items: [
         {
           title: "Settings",
-          to: "/admin/settings",
+          to: `/admin/${adminId}?tab=settings`,
           icon: <Settings className="h-4 w-4" />,
         },
       ],
     });
 
     return groups;
-  }, [isSuperAdmin, pendingKycCount, pendingProductsCount]);
+  }, [isSuperAdmin, adminId, pendingKycCount, pendingProductsCount]);
 
   return (
     <aside
@@ -207,12 +208,19 @@ export function AdminSidebar({ isCollapsed, onToggleCollapse, onItemClick }: Adm
               )}
 
               {group.items.map((item) => {
-                const isActive = item.to === "/admin" ? pathname === "/admin" : pathname.startsWith(item.to);
+                const [pathPart, queryPart] = item.to.split("?");
+                const itemTab = queryPart ? new URLSearchParams(queryPart).get("tab") : null;
+                const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+                const currentTab = (location.search as any)?.tab || searchParams.get("tab") || "overview";
+                const isActive = itemTab
+                  ? pathname.startsWith("/admin") && currentTab === itemTab
+                  : pathname === item.to || (item.to !== "/admin" && pathname.startsWith(item.to));
 
                 return (
                   <Link
                     key={item.to}
-                    to={item.to}
+                    to={pathPart as any}
+                    search={(itemTab ? { tab: itemTab } : undefined) as any}
                     onClick={onItemClick}
                     title={isCollapsed ? item.title : undefined}
                     className={cn(

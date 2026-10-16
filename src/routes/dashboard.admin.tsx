@@ -71,7 +71,7 @@ import { ORDER_STEPS, useStore, type Order } from "@/lib/store";
 import type { NormalizedShipment, LogisticsProvider, ShipmentStatus } from "@/lib/logistics/types";
 import { cn } from "@/lib/utils";
 import { ProductFormPage } from "@/components/vendor/ProductFormPage";
-import { getCurrentRole } from "@/lib/auth";
+import { getCurrentRole, getCurrentUser } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard/admin")({
   beforeLoad: async () => {
@@ -79,11 +79,14 @@ export const Route = createFileRoute("/dashboard/admin")({
       return;
     }
     const role = await getCurrentRole();
-    if (!role) throw redirect({ to: "/vendor/login", search: { redirect: "/dashboard/admin" } });
+    const user = await getCurrentUser();
+    if (!role || !user) throw redirect({ to: "/vendor/login", search: { redirect: "/dashboard/admin" } });
     if (role === "SUPER_ADMIN" || role === "super_admin") throw redirect({ to: "/superadmin" });
-    if (role === "ADMIN" || role === "admin") throw redirect({ to: "/admin" });
-    if (role === "seller") throw redirect({ to: "/dashboard/vendor" });
-    throw redirect({ to: "/admin" });
+    if (role === "ADMIN" || role === "admin") {
+      throw redirect({ to: "/admin/$id", params: { id: user.id }, search: { tab: "overview" } });
+    }
+    if (role === "seller") throw redirect({ to: "/vendor/$id", params: { id: user.id }, search: { tab: "overview" } });
+    throw redirect({ to: "/admin/$id", params: { id: user.id }, search: { tab: "overview" } });
   },
   head: () => ({
     meta: [
@@ -126,7 +129,7 @@ interface AuditEntry {
   details: string;
 }
 
-export function AdminDashboard() {
+function AdminDashboard() {
   const {
     orders,
     shipments,

@@ -115,8 +115,9 @@ export function Header() {
             >
               <MapPin className="h-3.5 w-3.5 text-[#e11d2a] shrink-0 group-hover:scale-110 transition-transform" />
               <div className="text-left min-w-0 flex-1 truncate">
-                <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider block leading-none">Deliver to</span>
-                <span className="text-gray-900 font-bold truncate block text-xs mt-0.5">{userLocation?.name?.split(":")[0] || userLocation?.name || "Select location"}</span>
+                <span className="text-gray-900 font-bold truncate block text-xs mt-0.5" title={userLocation?.name ? `${userLocation.name}${userLocation.city ? `, ${userLocation.city}` : ""}${userLocation.pincode ? ` - ${userLocation.pincode}` : ""}` : undefined}>
+                  {userLocation?.name?.replace(/^(Home|Work|Saved|Other):\s*/i, "") || userLocation?.city || "Select location"}
+                </span>
               </div>
               <ChevronDown className="h-3 w-3 text-gray-400 shrink-0" />
             </button>

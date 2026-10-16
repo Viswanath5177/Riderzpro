@@ -21,7 +21,7 @@ export async function createNotification(payload: NotificationPayload): Promise<
     if (payload.entityId) {
       const check = await query(
         `SELECT id FROM notifications 
-         WHERE user_id = $1 AND type = $2 AND entity_id = $3 AND created_at > datetime('now', '-5 minutes')
+         WHERE user_id = $1 AND type = $2 AND entity_id = $3 AND created_at > (CURRENT_TIMESTAMP - INTERVAL '5 minutes')
          LIMIT 1`,
         [payload.userId, payload.type, payload.entityId]
       );
@@ -32,7 +32,7 @@ export async function createNotification(payload: NotificationPayload): Promise<
 
     await query(
       `INSERT INTO notifications (id, user_id, user_role, type, title, message, entity_id, target_route, is_read, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, datetime('now'))`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, CURRENT_TIMESTAMP)`,
       [
         notifId,
         payload.userId,

@@ -25,17 +25,24 @@ export function OrdersTab() {
             id: o.order_number || o.id,
             createdAt: o.created_at || new Date().toISOString(),
             payment: o.payment_method || "UPI",
-            status: (o.status === "completed" || o.status === "delivered" ? 5 : 2) as any,
+            status: (
+              o.status === "completed" || o.status === "delivered" ? 5 :
+              o.status === "shipped" || o.status === "in_transit" ? 4 :
+              o.status === "picked_up" ? 3 :
+              o.status === "packed" ? 2 :
+              o.status === "processing" || o.status === "accepted" ? 1 :
+              0
+            ) as any,
             total: Number(o.total_amount) || 0,
             itemsTotal: Number(o.total_amount) || 0,
             deliveryTotal: 0,
             tax: 0,
             shippingAddress: {
-              name: o.customer_name || user?.name || "Customer",
-              street: o.delivery_address || "Doorstep Address",
+              name: o.recipient_name || o.customer_name || user?.name || "Customer",
+              street: [o.delivery_address, o.delivery_instructions ? `(Instructions: ${o.delivery_instructions})` : ""].filter(Boolean).join(" "),
               city: "Bengaluru",
               pincode: "560038",
-              phone: o.customer_phone || "+91 98765 43210",
+              phone: o.recipient_phone || o.customer_phone || "+91 98765 43210",
             },
             groups: [
               {

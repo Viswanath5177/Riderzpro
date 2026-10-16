@@ -133,7 +133,7 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
   const handleSelectSavedAddress = (addr: any) => {
     const loc: LocationArea = {
       id: addr.id,
-      name: `${addr.label || "Saved"}: ${addr.street_address || addr.city}`,
+      name: addr.street_address || addr.city || "Bengaluru",
       city: addr.city || "Bengaluru",
       pincode: addr.pincode || "",
       lat: 12.9716,

@@ -1,23 +1,20 @@
-import { lazy, Suspense } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { Skeleton } from "@/components/admin/glass/Skeleton";
-
-const SellersScreen = lazy(() =>
-  import("@/components/admin/screens/SellersScreen").then((m) => ({
-    default: m.SellersScreen,
-  }))
-);
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { getAdminUser } from "@/lib/adminAuth";
 
 export const Route = createFileRoute("/admin/sellers")({
-  head: () => ({
-    meta: [
-      { title: "Sellers & KYC Queue — RiderzPro Admin" },
-      { name: "description", content: "Vendor KYC document verification, tier assignments and commission rates." },
-    ],
-  }),
-  component: () => (
-    <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-3xl" />}>
-      <SellersScreen />
-    </Suspense>
-  ),
+  beforeLoad: async () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const adminUser = await getAdminUser();
+    if (!adminUser) {
+      throw redirect({ to: "/vendor/login", search: { redirect: "/admin" } });
+    }
+    throw redirect({
+      to: "/admin/$id",
+      params: { id: adminUser.id },
+      search: { tab: "vendors" },
+    });
+  },
+  component: () => null,
 });

@@ -112,19 +112,8 @@ async function setup() {
     CREATE INDEX IF NOT EXISTS idx_saved_items_customer ON saved_items(customer_id);
   `);
 
-  // 6. Seed Customer Garage with Initial Demo Vehicles for usr_customer_demo
-  console.log('Checking customer_garage seed data...');
-  const garageCount = await client.query(`SELECT count(*) FROM customer_garage WHERE customer_id = 'usr_customer_demo'`);
-  if (parseInt(garageCount.rows[0].count) === 0) {
-    console.log('Seeding customer_garage for usr_customer_demo...');
-    await client.query(`
-      INSERT INTO customer_garage (id, customer_id, vehicle_id, make, model, year, vin, vehicle_type, voltage, battery_kwh, is_active)
-      VALUES 
-        ('gar_ola_s1pro', 'usr_customer_demo', 'ola-s1pro', 'Ola', 'S1 Pro Gen 2', 2023, 'P6R1S1PR2PN000001', 'bike', 60, 4.0, TRUE),
-        ('gar_ather_450x', 'usr_customer_demo', 'ather-450x', 'Ather', '450X Gen 3', 2024, 'MD9A450XAN1234567', 'bike', 48, 3.7, FALSE),
-        ('gar_tata_nexon', 'usr_customer_demo', 'tata-nexon-ev', 'Tata', 'Nexon.ev Empowered', 2024, 'MAT1234NEXON56789', 'car', 400, 40.5, FALSE);
-    `);
-  }
+  // 6. Customer Garage (Start clean without mock vehicles)
+  console.log('Customer garage table verified clean.');
 
   // Ensure seller users exist in users table so products_seller_id_fkey is satisfied
   await client.query(`
@@ -133,15 +122,14 @@ async function setup() {
     ON CONFLICT (email) DO NOTHING;
   `);
 
-  // 7. Seed Initial Catalog Products if products table only has 1 or few items
+  // 7. Seed Initial Catalog Products if products table is empty
   const productCount = await client.query(`SELECT count(*) FROM products`);
   console.log(`Current products in DB: ${productCount.rows[0].count}`);
   
-  // Seed sample products matching our pages so the customer garage immediately has rich parts
   const initialProductsSeed = [
     {
       id: 'prod_rzp_sc_001',
-      seller_id: 'usr_seller_01',
+      seller_id: 'sel_volthub_01',
       category_id: 'cat_accessories',
       name: 'Custom Fit Leatherette Seat Cover',
       brand: 'Riderz Armor',
@@ -152,7 +140,7 @@ async function setup() {
       discount_percent: 30,
       stock: 45,
       moq: 1,
-      supplier: 'Autotech Premium Ltd.',
+      supplier: 'VoltHub EV Components',
       variant_model: 'Custom Fit Leatherette Seat Cover',
       material: 'PU leatherette',
       fitment_size: 'Model specific (Swift, Creta, Nexon)',
@@ -166,7 +154,7 @@ async function setup() {
     },
     {
       id: 'prod_rzp_sc_002',
-      seller_id: 'usr_seller_01',
+      seller_id: 'sel_apex_02',
       category_id: 'cat_accessories',
       name: 'Custom Fit Fabric Breathable Seat Cover',
       brand: 'ComfortCraft Auto',
@@ -177,7 +165,7 @@ async function setup() {
       discount_percent: 28,
       stock: 30,
       moq: 1,
-      supplier: 'ComfortCraft Auto',
+      supplier: 'Apex EV Spares & Batteries',
       variant_model: 'Custom Fit Fabric Seat Cover',
       material: 'Jacquard / velvet fabric',
       fitment_size: 'Model specific',
@@ -191,7 +179,7 @@ async function setup() {
     },
     {
       id: 'prod_volt_60v_30ah',
-      seller_id: 'usr_seller_01',
+      seller_id: 'sel_volthub_01',
       category_id: 'cat_batteries',
       name: 'VoltRide 60V 30Ah Li-ion Battery Pack',
       brand: 'VoltRide',
@@ -202,7 +190,7 @@ async function setup() {
       discount_percent: 12,
       stock: 14,
       moq: 1,
-      supplier: 'VoltRide Tech',
+      supplier: 'VoltHub EV Components',
       variant_model: '60V 30Ah NMC Module',
       material: 'Aviation Aluminum IP67',
       fitment_size: 'OEM Bay Mount',
@@ -216,7 +204,7 @@ async function setup() {
     },
     {
       id: 'prod_chargemax_3kw',
-      seller_id: 'usr_seller_01',
+      seller_id: 'sel_volthub_01',
       category_id: 'cat_chargers',
       name: 'ChargeMax 3.3kW Portable Fast Charger',
       brand: 'ChargeMax',
@@ -227,7 +215,7 @@ async function setup() {
       discount_percent: 15,
       stock: 22,
       moq: 1,
-      supplier: 'ChargeMax Electronics',
+      supplier: 'VoltHub EV Components',
       variant_model: '3.3kW Level-2 Portable',
       material: 'Flame Retardant Polycarbonate',
       fitment_size: 'Compact Trunk Fit',
@@ -241,7 +229,7 @@ async function setup() {
     },
     {
       id: 'prod_brembo_rotor',
-      seller_id: 'usr_seller_01',
+      seller_id: 'sel_apex_02',
       category_id: 'cat_brakes',
       name: 'Wave Disc Brake Rotor 220mm High Heat Dissipation',
       brand: 'Brembo',
@@ -252,7 +240,7 @@ async function setup() {
       discount_percent: 20,
       stock: 35,
       moq: 1,
-      supplier: 'Brembo Racing Ind.',
+      supplier: 'Apex EV Spares & Batteries',
       variant_model: '220mm Wave Performance',
       material: '420 High Carbon Stainless Steel',
       fitment_size: '220mm 4-Bolt OEM Hub',
@@ -263,56 +251,6 @@ async function setup() {
       warranty: '1 Year Warranty',
       image_url: '/src/assets/parts.jpg',
       verification_status: 'approved'
-    },
-    {
-      id: 'prod_volt_smart_chg_60v',
-      seller_id: 'usr_demo_02',
-      category_id: 'cat_chargers',
-      name: 'Smart 60V 5A Fast Charger Auto Cut-Off',
-      brand: 'VoltPro Tech',
-      sku: 'VPT-60V-5A',
-      description: 'Intelligent high-efficiency EV scooter battery charger with dynamic temperature control and auto shut-off.',
-      price: 2899,
-      mrp: 3499,
-      discount_percent: 17,
-      stock: 25,
-      moq: 1,
-      supplier: "GATTIKOPPULA NAGA VAMSI SUBBARAYUDU's Auto Parts",
-      variant_model: '60V 5A Dual Fan Smart',
-      material: 'Aluminum Extrusion IP54',
-      fitment_size: 'Universal Trunk / Bag',
-      fitment_type: 'universal',
-      compatible_vehicles: JSON.stringify(['ola-s1pro', 'ather-450x', 'bajaj-chetak', 'tvs-iqube']),
-      color_options: JSON.stringify(['Matte Black']),
-      key_features: 'Over-voltage protection, auto cut-off, active dual fan cooling',
-      warranty: '1 Year Comprehensive',
-      image_url: '/src/assets/charger.jpg',
-      verification_status: 'pending_approval'
-    },
-    {
-      id: 'prod_brembo_ceramic_pads',
-      seller_id: 'usr_demo_02',
-      category_id: 'cat_brakes',
-      name: 'Sintered Ceramic Brake Pad Kit (Front & Rear)',
-      brand: 'Brembo Racing',
-      sku: 'BRM-CP-002',
-      description: 'High-friction sintered ceramic disc brake pad set engineered for heavy regenerative deceleration on modern EV scooters.',
-      price: 1499,
-      mrp: 1899,
-      discount_percent: 21,
-      stock: 40,
-      moq: 1,
-      supplier: "GATTIKOPPULA NAGA VAMSI SUBBARAYUDU's Auto Parts",
-      variant_model: 'Ceramic Composite Heavy Duty',
-      material: 'Copper-free Ceramic Composite',
-      fitment_size: 'OEM Caliper Direct Fit',
-      fitment_type: 'specific',
-      compatible_vehicles: JSON.stringify(['ather-450x', 'ola-s1pro', 'hero-vida-v1']),
-      color_options: JSON.stringify(['Gold Backplate']),
-      key_features: 'Zero brake fade, rotor-friendly formulation, low dust',
-      warranty: '6 Months Replacement',
-      image_url: '/src/assets/parts.jpg',
-      verification_status: 'pending_approval'
     }
   ];
 
@@ -329,6 +267,7 @@ async function setup() {
         $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, TRUE
       )
       ON CONFLICT (id) DO UPDATE SET
+        seller_id = EXCLUDED.seller_id,
         name = EXCLUDED.name,
         brand = EXCLUDED.brand,
         sku = EXCLUDED.sku,

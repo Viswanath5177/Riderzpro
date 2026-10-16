@@ -194,7 +194,8 @@ type Ctx = {
   deleteOrder: (id: string) => void;
   clearOrders: () => void;
   userLocation: LocationArea;
-  setUserLocation: (loc: LocationArea) => void;
+  setUserLocation: (loc: LocationArea | ((prev: LocationArea) => LocationArea)) => void;
+  refreshAddressesAndLocation: () => Promise<void>;
   isLocationModalOpen: boolean;
   setIsLocationModalOpen: (open: boolean) => void;
 };
@@ -360,44 +361,63 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           setIsLoadingWishlist(false);
         });
 
-      // Hydrate delivery location: default saved address from DB or device GPS
+      // Hydrate delivery location: default saved address from DB, or user profile address, or device GPS
       fetch("/api/customer/addresses", { credentials: "include" })
         .then((r) => r.json())
         .then((d) => {
           if (d.success && Array.isArray(d.data) && d.data.length > 0) {
             const def = d.data.find((a: any) => a.is_default) || d.data[0];
+            const addrName = def.street_address || def.city || "Bengaluru";
             setUserLocation({
               id: def.id,
-              name: `${def.label || "Saved"}: ${def.street_address || def.city}`,
+              name: addrName,
               city: def.city || "Bengaluru",
               pincode: def.pincode || "560001",
               lat: 12.9716,
               lng: 77.5946,
               tag: def.label || "Saved Address",
             });
-          } else if (typeof window !== "undefined" && "geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-              async (pos) => {
-                const { latitude, longitude } = pos.coords;
-                let geocoded;
-                try {
-                  geocoded = await reverseGeocodeCoords(latitude, longitude);
-                } catch {
-                  geocoded = { name: "Current Location", city: "India" };
+          } else {
+            // Check if userProfile has an address from database
+            fetch("/api/customer/profile", { credentials: "include" })
+              .then((pr) => pr.json())
+              .then((pd) => {
+                if (pd.success && pd.profile?.address) {
+                  setUserLocation({
+                    id: "profile_addr",
+                    name: pd.profile.address,
+                    city: pd.profile.city || "Bengaluru",
+                    pincode: "560001",
+                    lat: 12.9716,
+                    lng: 77.5946,
+                    tag: "Profile Address",
+                  });
+                } else if (typeof window !== "undefined" && "geolocation" in navigator) {
+                  navigator.geolocation.getCurrentPosition(
+                    async (pos) => {
+                      const { latitude, longitude } = pos.coords;
+                      let geocoded;
+                      try {
+                        geocoded = await reverseGeocodeCoords(latitude, longitude);
+                      } catch {
+                        geocoded = { name: "Current Location", city: "India" };
+                      }
+                      setUserLocation({
+                        id: `gps-auto`,
+                        name: geocoded.name || geocoded.city || "Current Location",
+                        city: geocoded.city || "India",
+                        pincode: geocoded.pincode || "",
+                        lat: latitude,
+                        lng: longitude,
+                        tag: "Device GPS",
+                      });
+                    },
+                    () => {},
+                    { enableHighAccuracy: true, timeout: 8000 }
+                  );
                 }
-                setUserLocation({
-                  id: `gps-auto`,
-                  name: geocoded.name || geocoded.city || "Current Location",
-                  city: geocoded.city || "India",
-                  pincode: geocoded.pincode || "",
-                  lat: latitude,
-                  lng: longitude,
-                  tag: "Device GPS",
-                });
-              },
-              () => {},
-              { enableHighAccuracy: true, timeout: 8000 }
-            );
+              })
+              .catch(() => {});
           }
         })
         .catch(() => {});
@@ -794,7 +814,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateUserProfile = useCallback((p: Partial<UserProfile>) => {
-    setUserProfile((prev) => ({ ...prev, ...p }));
+    setUserProfile((prev) => {
+      const next = { ...prev, ...p };
+      if (p.address || p.city) {
+        setUserLocation((loc) => ({
+          ...loc,
+          name: p.address || p.city || loc.name,
+          city: p.city || loc.city || "Bengaluru",
+          tag: "Primary Address",
+        }));
+      }
+      return next;
+    });
     // Synchronize to backend database
     fetch("/api/customer/profile", {
       method: "PUT",
@@ -802,6 +833,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       credentials: "include",
       body: JSON.stringify(p),
     }).catch(() => {});
+  }, []);
+
+  const refreshAddressesAndLocation = useCallback(async () => {
+    try {
+      const res = await fetch("/api/customer/addresses", { credentials: "include" });
+      const d = await res.json();
+      if (d.success && Array.isArray(d.data) && d.data.length > 0) {
+        const def = d.data.find((a: any) => a.is_default) || d.data[0];
+        setUserLocation({
+          id: def.id,
+          name: def.street_address || def.city || "Bengaluru",
+          city: def.city || "Bengaluru",
+          pincode: def.pincode || "560001",
+          lat: 12.9716,
+          lng: 77.5946,
+          tag: def.label || "Saved Address",
+        });
+      }
+    } catch {}
   }, []);
 
   const simulateDemoOrder = useCallback(() => {
@@ -990,6 +1040,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       signOut,
       userLocation,
       setUserLocation,
+      refreshAddressesAndLocation,
       isLocationModalOpen,
       setIsLocationModalOpen,
     }),
