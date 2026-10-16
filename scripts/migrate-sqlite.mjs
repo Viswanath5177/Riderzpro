@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { createClient } from "@libsql/client";
 
-const url = process.env.DATABASE_URL ?? "file:./database/riderzpro-dev.db";
+const url = process.env.DATABASE_URL ?? "file:./dev.db";
 if (!url.startsWith("file:")) {
   throw new Error("The local migration requires DATABASE_URL to be a SQLite file URL (file:...)");
 }
