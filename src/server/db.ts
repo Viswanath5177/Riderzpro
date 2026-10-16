@@ -114,6 +114,8 @@ export function translateToSqlite(text: string, params: any[] = []): { sql: stri
         const parsed = JSON.parse(val);
         if (Array.isArray(parsed) && parsed.length === 1) val = parsed[0];
       } catch {}
+    if (typeof val === "boolean") {
+      val = val ? 1 : 0;
     }
     args.push(val);
     return "?";

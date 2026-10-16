@@ -236,32 +236,7 @@ export async function ensureEnvironmentAndDatabase() {
       args: [customerHash, customerHash],
     });
 
-    // Deprovision legacy admins & other mock accounts
-    await db.execute(`
-      UPDATE admins SET is_active = 0 WHERE email NOT IN ('admin@riderzpro.com', 'admin.operations@riderzpro.com')
-    `);
-    await db.execute(`
-      UPDATE sellers SET is_active = 0 WHERE email NOT IN ('vendor1@riderzpro.com', 'vendor2@riderzpro.com')
-    `);
-    await db.execute(`
-      UPDATE customers SET is_active = 0 WHERE email NOT IN ('customer1@riderzpro.com', 'customer2@riderzpro.com', 'customer3@riderzpro.com')
-    `);
-    await db.execute(`
-      UPDATE users SET is_active = 0 WHERE email NOT IN (
-        'admin@riderzpro.com', 'admin.operations@riderzpro.com',
-        'vendor1@riderzpro.com', 'vendor2@riderzpro.com',
-        'customer1@riderzpro.com', 'customer2@riderzpro.com', 'customer3@riderzpro.com'
-      )
-    `);
-    await db.execute(`
-      UPDATE auth_sessions SET revoked_at = datetime('now') WHERE revoked_at IS NULL AND (
-        user_id IN (SELECT id FROM admins WHERE is_active = 0) OR
-        user_id IN (SELECT id FROM sellers WHERE is_active = 0) OR
-        user_id IN (SELECT id FROM customers WHERE is_active = 0) OR
-        user_id IN (SELECT id FROM users WHERE is_active = 0)
-      )
-    `);
-    console.log("  ✓ Verified active 7 development accounts & deprovisioned all other mock accounts");
+    console.log("  ✓ Verified baseline development accounts");
 
     const tableCheck = await db.execute(
       "SELECT count(*) as count FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
