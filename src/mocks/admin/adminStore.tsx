@@ -80,6 +80,7 @@ export interface AdminStoreContextType {
   removeTeamMember: (memberId: string) => void;
   sendNotificationCampaign: (title: string, body: string, channel: AdminNotificationHistory["channel"], targetAudience: AdminNotificationHistory["targetAudience"]) => void;
   updateDeliverySettings: (updates: Partial<DeliverySettings>) => void;
+  [key: string]: any;
 }
 
 const AdminStoreContext = createContext<AdminStoreContextType | null>(null);

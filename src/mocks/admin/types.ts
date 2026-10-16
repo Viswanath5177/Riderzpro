@@ -84,6 +84,9 @@ export interface AdminProduct {
   salesCount: number;
   verificationStatus?: "approved" | "pending_approval" | "rejected";
   rejectionReason?: string;
+  vendorProductRecord?: any;
+  pendingRevision?: any;
+  [key: string]: any;
 }
 
 export interface AdminOrderItem {

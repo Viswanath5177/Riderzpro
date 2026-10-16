@@ -221,7 +221,7 @@ export function DownloadInvoiceButton({
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {effectiveOrder.groups?.length > 0 ? (
-                      effectiveOrder.groups.flatMap((g) => g.items).map((it, idx) => {
+                      effectiveOrder.groups.flatMap((g: any) => g.items || []).map((it: any, idx: number) => {
                         const prod = getProduct(it.productId);
                         const isBat = (prod?.category || "").includes("Battery");
                         const hsn = isBat ? "8507 60 00" : "8504 40 90";

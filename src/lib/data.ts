@@ -16,6 +16,8 @@ export type LocationArea = {
   id: string;
   name: string;
   city: string;
+  state?: string;
+  description?: string;
   lat: number;
   lng: number;
   pincode?: string;
@@ -245,19 +247,6 @@ export type Product = {
 export type Rider = { id: string; name: string; phone: string; vehicle: string; plate: string; rating: number; avatar: string };
 
 export const CUSTOMER_LOCATION = { lat: 12.9716, lng: 77.5946, label: "MG Road, Bengaluru" };
-
-export type LocationArea = {
-  id: string;
-  name: string;
-  city: string;
-  state?: string;
-  description?: string;
-  lat: number;
-  lng: number;
-  pincode?: string;
-  tag?: string;
-  isPopular?: boolean;
-};
 
 export const DEFAULT_LOCATION: LocationArea = {
   id: "indiranagar",
