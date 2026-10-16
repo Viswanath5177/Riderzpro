@@ -25,6 +25,7 @@ describe("Native App & Back Button Module (Aakash After Lunch)", () => {
   describe("isRootPath", () => {
     it("identifies top-level root screens correctly", () => {
       expect(isRootPath("/")).toBe(true);
+      expect(isRootPath("/app")).toBe(true);
       expect(isRootPath("/dashboard/customer")).toBe(true);
       expect(isRootPath("/vendor/dashboard")).toBe(true);
       expect(isRootPath("/rider/dashboard")).toBe(true);

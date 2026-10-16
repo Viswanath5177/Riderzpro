@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AppRouteImport } from './routes/app'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CartRouteImport } from './routes/cart'
@@ -72,6 +73,11 @@ const IndexRoute = IndexRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AssistantRoute = AssistantRouteImport.update({
@@ -338,6 +344,7 @@ const VendorSignupRoute = VendorSignupRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/app': typeof AppRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
@@ -393,6 +400,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app': typeof AppRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
@@ -449,6 +457,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/app': typeof AppRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
@@ -507,6 +516,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/app'
     | '/assistant'
     | '/auth'
     | '/cart'
@@ -562,6 +572,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/app'
     | '/assistant'
     | '/auth'
     | '/cart'
@@ -617,6 +628,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/app'
     | '/assistant'
     | '/auth'
     | '/cart'
@@ -674,6 +686,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  AppRoute: typeof AppRoute
   AssistantRoute: typeof AssistantRoute
   AuthRoute: typeof AuthRoute
   CartRoute: typeof CartRoute
@@ -721,6 +734,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/assistant': {
@@ -1151,6 +1171,7 @@ const RiderRouteWithChildren = RiderRoute._addFileChildren(RiderRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  AppRoute: AppRoute,
   AssistantRoute: AssistantRoute,
   AuthRoute: AuthRoute,
   CartRoute: CartRoute,

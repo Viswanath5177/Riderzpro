@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore, quoteCart } from "@/lib/store";
-import { inr, products } from "@/lib/data";
+import { inr, products, vendors } from "@/lib/data";
 
 export function CartDrawer() {
   const {
@@ -149,9 +149,9 @@ export function CartDrawer() {
               </div>
 
               {quote.groups.map((group) => {
-                const vendor = products
-                  .flatMap((p) => p.offers)
-                  .find((o) => o.vendorId === group.vendorId)?.vendorName || `Supplier ${group.vendorId}`;
+                const vendor =
+                  vendors.find((v) => v.id === group.vendorId)?.name ||
+                  `Supplier ${group.vendorId}`;
 
                 return (
                   <div

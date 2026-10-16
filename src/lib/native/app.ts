@@ -39,6 +39,7 @@ export function registerBackHandler(handler: BackHandler): () => void {
 let lastBackPressTime = 0;
 const ROOT_PATHS = [
   "/",
+  "/app",
   "/login",
   "/auth",
   "/dashboard/customer",

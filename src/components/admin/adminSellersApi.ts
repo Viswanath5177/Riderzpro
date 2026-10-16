@@ -10,8 +10,8 @@ import { useState, useEffect, useCallback } from "react";
 // ==========================================
 // CONFIGURATION & TOGGLE FLAG
 // ==========================================
-// Flip this single flag to false to switch to real backend endpoints
-export const USE_MOCK = true;
+// Set VITE_USE_MOCK_ADMIN_SELLERS="true" to force mocks. Default is live.
+export const USE_MOCK = import.meta.env.VITE_USE_MOCK_ADMIN_SELLERS === "true";
 
 // ==========================================
 // TYPES & CONTRACT DEFINITIONS

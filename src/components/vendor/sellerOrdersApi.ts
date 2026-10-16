@@ -5,7 +5,7 @@
  * Real Seller API is managed by Vamsi.
  *
  * To toggle between Mock Data and Real API:
- * Change `USE_MOCK` below (or set VITE_USE_MOCK_SELLER_ORDERS="false").
+ * Set VITE_USE_MOCK_SELLER_ORDERS="true" to force mocks. Default is live.
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -14,8 +14,7 @@ import { reduceMockStockByOrderItems, notifyInventoryListeners } from "./sellerI
 // ==========================================
 // CONFIGURATION & TOGGLE FLAG
 // ==========================================
-// Flip this single flag to false to switch to real backend endpoints
-export const USE_MOCK = true;
+export const USE_MOCK = import.meta.env.VITE_USE_MOCK_SELLER_ORDERS === "true";
 
 // ==========================================
 // TYPES & CONTRACT DEFINITION
