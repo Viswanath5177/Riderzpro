@@ -660,7 +660,7 @@ export async function handleAuthRoute(
             phone: customer.phone,
             role: "customer",
           },
-          redirectUrl: `/${customer.id}?tab=overview`,
+          redirectUrl: "/dashboard/customer",
         });
         return true;
       }
@@ -727,7 +727,7 @@ export async function handleAuthRoute(
             phone: seller.phone,
             role: "customer",
           },
-          redirectUrl: `/${newCustId}?tab=overview`,
+          redirectUrl: "/dashboard/customer",
         });
         return true;
       }
@@ -846,7 +846,7 @@ export async function handleAuthRoute(
             phone: "",
             role: "customer",
           },
-          redirectUrl: `/${custId}?tab=overview`,
+          redirectUrl: "/dashboard/customer",
         });
         return true;
       }
