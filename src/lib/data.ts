@@ -7,8 +7,80 @@ import parts from "@/assets/parts.jpg";
 import heroBike from "@/assets/hero-bike.jpg";
 import scooterImg from "@/assets/scooter.jpg";
 
-export type Bike = { id: string; make: string; model: string; years: number[]; voltage: number; wmi: string; batteryKwh?: number };
+export type Bike = { id: string; make: string; model: string; years: number[]; voltage: number; wmi: string; batteryKwh?: number; brand?: string };
 export type Car = { id: string; make: string; model: string; years: number[]; batteryKWh?: number };
+
+export type LocationSource = "gps" | "search" | "saved" | "hub";
+
+export type LocationArea = {
+  id: string;
+  name: string;
+  city: string;
+  lat: number;
+  lng: number;
+  pincode?: string;
+  tag?: string;
+  isPopular?: boolean;
+  latitude?: number;
+  longitude?: number;
+  state?: string;
+  area?: string;
+  address?: string;
+  source?: LocationSource;
+};
+
+export type NormalizedLocation = {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  address: string;
+  area: string;
+  city: string;
+  state: string;
+  pincode?: string;
+  source: LocationSource;
+};
+
+export function toNormalizedLocation(
+  loc: LocationArea,
+  fallbackSource: LocationSource = "hub"
+): NormalizedLocation {
+  const latitude = loc.latitude ?? loc.lat;
+  const longitude = loc.longitude ?? loc.lng;
+  const city = loc.city || "Bengaluru";
+  const state = loc.state || "Karnataka";
+  const area = loc.area || loc.name;
+  const address = loc.address || `${loc.name}, ${city}`;
+
+  return {
+    id: loc.id,
+    name: loc.name,
+    latitude,
+    longitude,
+    address,
+    area,
+    city,
+    state,
+    pincode: loc.pincode,
+    source: loc.source || fallbackSource,
+  };
+}
+
+export const ALL_PRODUCT_CATEGORIES: string[] = [
+  "Battery",
+  "Charger",
+  "BMS",
+  "Motor",
+  "Controller",
+  "Brakes",
+  "Accessory",
+  "Electric Bikes",
+  "Car Accessories",
+  "Bike Accessories",
+  "Riding Gear & Helmets",
+  "Spare Parts"
+];
 
 export type VendorOffer = {
   vendorId: string;
@@ -121,7 +193,9 @@ export type Category =
   | "Car Accessories"
   | "Bike Accessories"
   | "Riding Gear & Helmets"
-  | "Spare Parts";
+  | "Spare Parts"
+  | "EV Batteries"
+  | string;
 export type Product = {
   id: string;
   name: string;
@@ -141,6 +215,11 @@ export type Product = {
   department?: string;
   availability?: string;
   priceType?: string;
+  price?: number;
+  subcategory?: string;
+  subcategories?: string[];
+  isAccessoryProduct?: boolean;
+  compatibleBikeIds?: string[];
   isAccessory?: boolean;
   accessoryDetails?: {
     type?: string;

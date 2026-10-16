@@ -27,7 +27,7 @@ export function DownloadInvoiceButton({
 
   // If no direct order object is provided, construct a minimal order representation from ID
   const effectiveId = order?.id || orderId || "RZ-849201";
-  const effectiveOrder: Order = order || {
+  const effectiveOrder: any = order || {
     id: effectiveId,
     createdAt: Date.now(),
     groups: [],

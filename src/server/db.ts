@@ -9,6 +9,7 @@ dotenv.config();
 const env = process.env;
 const rawUrl = env["DATABASE_URL"] || "postgresql://postgres:Vsvg%40db1@localhost:5432/riderzpro";
 const isSqliteConfigured = (rawUrl || "").startsWith("file:") || env["USE_SQLITE"] === "true";
+export const isPostgresAvailable = !isSqliteConfigured;
 
 const devDbPath = rawUrl.startsWith("file:")
   ? path.resolve(process.cwd(), rawUrl.slice(5))

@@ -27,7 +27,7 @@ const CATEGORIES: CategoryMeta[] = [
     id: "EV Batteries",
     title: "EV Batteries & Packs",
     subtitle: "Li-ion & LFP 48V/60V/72V with BMS protection",
-    count: products.filter((p) => p.category === "EV Batteries").length || 18,
+    count: products.filter((p) => (p.category as string) === "EV Batteries").length || 18,
     icon: Zap,
     color: "from-amber-500/20 to-amber-600/5 text-amber-400 border-amber-500/30",
     badge: "High Demand",

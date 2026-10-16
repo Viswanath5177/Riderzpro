@@ -34,7 +34,7 @@ function RiderDashboard() {
       const auth = await fetch("/api/auth/me", { credentials: "include" });
       const authData = await auth.json();
       if (!auth.ok || !authData.authenticated || authData.role !== "rider") {
-        await navigate({ to: "/rider/" });
+        await navigate({ to: "/rider" });
         return;
       }
       const response = await fetch("/api/rider/deliveries", { credentials: "include" });
@@ -109,7 +109,7 @@ function RiderDashboard() {
   async function signOut() {
     stopLocationSharing();
     await fetch("/api/auth/signout", { method: "POST", credentials: "include" });
-    await navigate({ to: "/rider/" });
+    await navigate({ to: "/rider" });
   }
 
   return (

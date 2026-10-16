@@ -22,7 +22,7 @@ export type AppTab = "home" | "categories" | "orders" | "account";
 
 export function AppShell({ initialTab = "home" }: { initialTab?: AppTab }) {
   const [activeTab, setActiveTab] = useState<AppTab>(initialTab);
-  const { cart, activeBikeId, openCart, orders } = useStore();
+  const { cart, activeBikeId, openCart, orders } = useStore() as any;
 
   const cartCount = cart.reduce((s, c) => s + c.qty, 0);
   const activeOrdersCount = orders ? orders.filter((o) => o.status < 5).length : 0;

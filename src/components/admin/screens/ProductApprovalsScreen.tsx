@@ -46,7 +46,7 @@ export function ProductApprovalsScreen() {
     approveAllPending,
   } = useAdminStore();
 
-  const [selectedProduct, setSelectedProduct] = useState<AdminProduct | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [filterType, setFilterType] = useState<"ALL" | "NEW" | "REVISION" | "OFFER">("ALL");
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);

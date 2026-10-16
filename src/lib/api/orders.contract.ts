@@ -274,9 +274,13 @@ export function normalizeOrder(raw: unknown): NormalizedOrder {
             : Math.max(0, subtotalPaise - discountPaise) + deliveryPaise + taxPaise;
 
   // 8. Payment
-  let payment = {
-    method: "UPI" as const,
-    status: "PENDING" as const,
+  let payment: {
+    method: "UPI" | "CARD" | "COD" | string;
+    status: "PENDING" | "PAID" | "FAILED" | "COD_DUE" | string;
+    amountDuePaise: number;
+  } = {
+    method: "UPI",
+    status: "PENDING",
     amountDuePaise: totalPaise,
   };
 

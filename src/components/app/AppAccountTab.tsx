@@ -22,8 +22,9 @@ import { useStore } from "@/lib/store";
 import { toast } from "sonner";
 
 export function AppAccountTab({ onOpenOrders }: { onOpenOrders: () => void }) {
-  const { user, isAuthenticated, logout } = useAuth();
-  const { userProfile } = useStore();
+  const { user, isAuthenticated, signOut, logout: authLogout } = useAuth() as any;
+  const logout = authLogout || signOut;
+  const { userProfile } = useStore() as any;
   const navigate = useNavigate();
 
   const displayName = userProfile?.name || user?.name || "Harshitha (QA Tester)";

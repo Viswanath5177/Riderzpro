@@ -449,3 +449,16 @@ export async function sendVendorNewOrderEmail(data: {
   });
 }
 
+export async function sendOrderConfirmationEmail(emailOrData: any, optionalData?: any): Promise<any> {
+  const data = typeof emailOrData === "object" ? emailOrData : { ...(optionalData || {}), customerEmail: emailOrData };
+  const to = data?.customerEmail || data?.to || (typeof emailOrData === "string" ? emailOrData : "customer@example.com");
+  const orderNumber = data?.orderNumber || data?.orderId || "RZP-ORDER";
+  const html = `<h2>Order Confirmed: #${orderNumber}</h2><p>Thank you for your order with RiderzPro!</p>`;
+  return sendEmail({
+    to,
+    subject: `Order Confirmed: #${orderNumber} — RiderzPro`,
+    html,
+    templateName: "ORDER_CONFIRMATION",
+  });
+}
+
