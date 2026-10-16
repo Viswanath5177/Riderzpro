@@ -151,7 +151,6 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         const msg = err instanceof Error ? err.message : "Invalid admin credentials";
         return { success: false, error: msg };
       }
-      }
 
       return { success: false, error: "Invalid admin credentials" };
     },
