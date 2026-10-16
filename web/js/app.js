@@ -196,7 +196,17 @@ class VoltFitApp {
     // 1. Initialize Live Map if container exists
     const mapContainer = document.getElementById("customer-live-map");
     if (mapContainer) {
-      this.currentMapInstance = new LiveMapCanvas("customer-live-map", { eta: 14, distanceKm: 3.8 });
+      if (this.currentMapInstance) {
+        this.currentMapInstance.destroy();
+      }
+      const selectedOrder = store.getSelectedOrder ? store.getSelectedOrder() : null;
+      this.currentMapInstance = new LiveMapCanvas("customer-live-map", {
+        eta: 14,
+        distanceKm: 3.8,
+        deliveryId: selectedOrder?.deliveryId || selectedOrder?.id || null,
+        userId: store.currentUser?.id || "usr_customer_demo",
+        userRole: store.currentRole || "customer"
+      });
     }
 
     // 2. Initialize Signature Canvas if present
@@ -238,11 +248,14 @@ class VoltFitApp {
         return;
       }
 
-      const accessoryBookBtn = target.closest(".accessory-book-button");
-      if (accessoryBookBtn) {
-        store.selectedAccessoryId = accessoryBookBtn.dataset.accessoryId;
-        store.setTab("accessory-booking");
-        return;
+      const accessoryAction = target.closest(".accessory-select-cta") || target.closest(".accessory-book-button") || target.closest(".accessory-card");
+      if (accessoryAction && !target.closest("a")) {
+        const id = accessoryAction.dataset.accessoryId || accessoryAction.closest("[data-accessory-id]")?.dataset.accessoryId;
+        if (id) {
+          store.selectedAccessoryId = id;
+          store.setTab("accessory-booking");
+          return;
+        }
       }
       if (target.closest("[data-accessory-back]")) {
         store.setTab("accessories");

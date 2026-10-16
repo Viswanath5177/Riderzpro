@@ -1,5 +1,5 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { AuthPage } from "@/components/auth/AuthPage";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 export type AuthSearch = {
   mode?: "signin" | "signup";
@@ -15,24 +15,22 @@ export const Route = createFileRoute("/auth")({
       redirect: typeof rawRedirect === "string" ? rawRedirect : undefined,
     };
   },
-  beforeLoad: ({ search }) => {
-    throw redirect({
-      to: "/login",
-      search: search.redirect ? { redirect: search.redirect } : undefined,
-    });
-  },
   head: () => ({
-    meta: [
-      { title: "Sign in & Sign up — Riderzpro" },
-      { name: "description", content: "Sign in or create your customer account on Riderzpro." },
-      { property: "og:title", content: "Customer Account — Riderzpro" },
-      { property: "og:description", content: "One account for EV parts, live tracking and garage fitment." },
-    ],
+    meta: [{ title: "Sign In — Riderzpro" }],
   }),
   component: AuthRouteComponent,
 });
 
 function AuthRouteComponent() {
   const search = Route.useSearch();
-  return <AuthPage initialMode={search.mode || "signin"} redirectPath={search.redirect} />;
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (search.redirect) params.set("redirect", search.redirect);
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    navigate({ to: `/login${qs}` as never });
+  }, [search, navigate]);
+
+  return null;
 }

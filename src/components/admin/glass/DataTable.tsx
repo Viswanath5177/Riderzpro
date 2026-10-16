@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 
 export interface Column<T> {
   key: string;
-  header: string;
+  header: React.ReactNode;
   sortable?: boolean;
   className?: string;
   render?: (item: T) => React.ReactNode;
@@ -27,16 +27,21 @@ export interface DataTableProps<T> {
   pageSize?: number;
   searchPlaceholder?: string;
   searchKey?: string | ((item: T) => string);
+  searchKeys?: string[];
+  searchable?: boolean;
   filterTabs?: { label: string; value: string; count?: number }[];
   currentFilter?: string;
   onFilterChange?: (filter: string) => void;
   filterPredicate?: (item: T, filterValue: string) => boolean;
   onRowClick?: (item: T) => void;
-  keyExtractor: (item: T) => string | number;
+  keyExtractor?: (item: T) => string | number;
+  selectable?: boolean;
   actions?: React.ReactNode;
   bulkActions?: (selectedIds: string[], clearSelection: () => void) => React.ReactNode;
   exportFileName?: string;
   emptyMessage?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -45,22 +50,37 @@ export function DataTable<T extends Record<string, any>>({
   pageSize = 10,
   searchPlaceholder = "Search records...",
   searchKey,
+  searchKeys,
+  searchable = true,
   filterTabs,
   currentFilter,
   onFilterChange,
   filterPredicate,
   onRowClick,
   keyExtractor,
+  selectable = true,
   actions,
   bulkActions,
   exportFileName = "export",
   emptyMessage = "No matching records found",
+  emptyTitle,
+  emptyDescription,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
+
+  const getKey = React.useCallback(
+    (item: T): string | number => {
+      if (typeof keyExtractor === "function") {
+        return keyExtractor(item);
+      }
+      return (item as any)?.id ?? (item as any)?.key ?? (item as any)?._id ?? String(Math.random());
+    },
+    [keyExtractor]
+  );
 
   // Filter & Search
   const filteredData = useMemo(() => {
@@ -77,8 +97,10 @@ export function DataTable<T extends Record<string, any>>({
       result = result.filter((item) => {
         if (typeof searchKey === "function") {
           return searchKey(item).toLowerCase().includes(q);
-        } else if (searchKey) {
+        } else if (typeof searchKey === "string") {
           return String(item[searchKey] || "").toLowerCase().includes(q);
+        } else if (Array.isArray(searchKeys) && searchKeys.length > 0) {
+          return searchKeys.some((k) => String(item[k] || "").toLowerCase().includes(q));
         }
         // Fallback: search across all string values
         return Object.values(item).some((val) =>
@@ -99,7 +121,7 @@ export function DataTable<T extends Record<string, any>>({
     }
 
     return result;
-  }, [data, search, searchKey, currentFilter, filterPredicate, sortKey, sortOrder]);
+  }, [data, search, searchKey, searchKeys, currentFilter, filterPredicate, sortKey, sortOrder]);
 
   const totalPages = Math.ceil(filteredData.length / pageSize) || 1;
   const paginatedData = useMemo(() => {
@@ -118,7 +140,7 @@ export function DataTable<T extends Record<string, any>>({
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(new Set(paginatedData.map(keyExtractor)));
+      setSelectedIds(new Set(paginatedData.map(getKey)));
     } else {
       setSelectedIds(new Set());
     }
@@ -135,7 +157,10 @@ export function DataTable<T extends Record<string, any>>({
 
   const handleExportCsv = () => {
     if (!filteredData.length) return;
-    const headers = columns.map((c) => `"${c.header}"`).join(",");
+    const headers = columns.map((c) => {
+      const headerText = typeof c.header === "string" ? c.header : c.key;
+      return `"${headerText.replace(/"/g, '""')}"`;
+    }).join(",");
     const rows = filteredData.map((item) =>
       columns
         .map((c) => {
@@ -249,15 +274,17 @@ export function DataTable<T extends Record<string, any>>({
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-[#E5E7EB] bg-gray-50/90 text-[#4B5563] uppercase tracking-wider font-bold">
-                <th className="p-3.5 pl-5 w-10">
-                  <input
-                    type="checkbox"
-                    aria-label="Select all"
-                    checked={paginatedData.length > 0 && selectedIds.size === paginatedData.length}
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="rounded border-gray-300 text-[#E31E24] focus:ring-0 cursor-pointer accent-[#E31E24]"
-                  />
-                </th>
+                {selectable && (
+                  <th className="p-3.5 pl-5 w-10">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all"
+                      checked={paginatedData.length > 0 && selectedIds.size === paginatedData.length}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                      className="rounded border-gray-300 text-[#E31E24] focus:ring-0 cursor-pointer accent-[#E31E24]"
+                    />
+                  </th>
+                )}
                 {columns.map((col) => (
                   <th
                     key={col.key}
@@ -279,7 +306,7 @@ export function DataTable<T extends Record<string, any>>({
             <tbody className="divide-y divide-[#E5E7EB] text-[#111111]">
               {paginatedData.length > 0 ? (
                 paginatedData.map((item) => {
-                  const id = keyExtractor(item);
+                  const id = getKey(item);
                   const isSelected = selectedIds.has(id);
 
                   return (
@@ -292,15 +319,17 @@ export function DataTable<T extends Record<string, any>>({
                         isSelected && "bg-red-50/40"
                       )}
                     >
-                      <td className="p-3.5 pl-5" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          aria-label={`Select row ${id}`}
-                          checked={isSelected}
-                          onChange={() => handleSelectRow(id)}
-                          className="rounded border-gray-300 text-[#E31E24] focus:ring-0 cursor-pointer accent-[#E31E24]"
-                        />
-                      </td>
+                      {selectable && (
+                        <td className="p-3.5 pl-5" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            aria-label={`Select row ${id}`}
+                            checked={isSelected}
+                            onChange={() => handleSelectRow(id)}
+                            className="rounded border-gray-300 text-[#E31E24] focus:ring-0 cursor-pointer accent-[#E31E24]"
+                          />
+                        </td>
+                      )}
                       {columns.map((col) => (
                         <td key={col.key} className={cn("p-3.5 text-[#111111]", col.className)}>
                           {col.render ? col.render(item) : String(item[col.key] ?? "")}
@@ -311,11 +340,11 @@ export function DataTable<T extends Record<string, any>>({
                 })
               ) : (
                 <tr>
-                  <td colSpan={columns.length + 1} className="py-12 text-center text-[#6B7280]">
+                  <td colSpan={columns.length + (selectable ? 1 : 0)} className="py-12 text-center text-[#6B7280]">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Filter className="h-6 w-6 text-[#9CA3AF]" />
-                      <p className="font-semibold text-sm text-[#111111]">{emptyMessage}</p>
-                      <p className="text-xs text-[#6B7280]">Try clearing search or filters to see more results.</p>
+                      <p className="font-semibold text-sm text-[#111111]">{emptyTitle || emptyMessage}</p>
+                      <p className="text-xs text-[#6B7280]">{emptyDescription || "Try clearing search or filters to see more results."}</p>
                     </div>
                   </td>
                 </tr>

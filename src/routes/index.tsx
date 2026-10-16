@@ -1,4 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { isNativePlatform } from "@/lib/native/app";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { Hero } from "@/components/site/landing/Hero";
 import { CategoryGrid } from "@/components/site/landing/CategoryGrid";
@@ -29,6 +31,18 @@ export const Route = createFileRoute("/")({
 });
 
 function LandingPage() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isNativePlatform()) {
+      navigate({ to: "/app", replace: true });
+    }
+  }, [navigate]);
+
+  if (typeof window !== "undefined" && isNativePlatform()) {
+    return null;
+  }
+
   return (
     <SiteLayout>
       {/* A. Hero: 2 clean columns, H1 with single red word, Bike Finder, Trust row, Single image */}

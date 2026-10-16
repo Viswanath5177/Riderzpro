@@ -100,6 +100,22 @@ export function AuthPage({ initialMode = "signin", redirectPath }: AuthPageProps
 
         {/* Center Container */}
         <div className="my-auto py-8 sm:py-12 mx-auto w-full max-w-md">
+          {/* Segmented Role Switcher: Customer | Vendor */}
+          <div className="mb-5 flex items-center justify-center p-1 rounded-2xl bg-muted border border-border">
+            <button
+              type="button"
+              className="flex-1 rounded-xl py-2 text-xs font-bold transition bg-white text-primary shadow-xs cursor-default"
+            >
+              Customer
+            </button>
+            <Link
+              to="/vendor/auth"
+              className="flex-1 text-center rounded-xl py-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition"
+            >
+              Vendor
+            </Link>
+          </div>
+
           {mode === "signin" ? (
             <SignInForm
               onSwitchToSignUp={() => setMode("signup")}
@@ -111,6 +127,14 @@ export function AuthPage({ initialMode = "signin", redirectPath }: AuthPageProps
               targetPath={targetPath}
             />
           )}
+
+          {/* Become a vendor link */}
+          <div className="mt-4 text-center text-xs text-muted-foreground">
+            <span>Selling EV parts? </span>
+            <Link to="/vendor/auth" search={{ mode: "signup" }} className="font-semibold text-primary hover:underline">
+              Become a RiderzPro vendor →
+            </Link>
+          </div>
         </div>
 
         {/* Footer info */}

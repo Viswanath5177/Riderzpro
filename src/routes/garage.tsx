@@ -41,9 +41,9 @@ export const Route = createFileRoute("/garage")({
   head: () => ({
     meta: [
       { title: "My Garage & Compatible Parts — Riderzpro" },
-      { name: "description", content: "Manage your registered EVs in PostgreSQL and retrieve vendor parts that fit your garage." },
+      { name: "description", content: "Manage your registered EVs and retrieve vendor parts that fit your garage." },
       { property: "og:title", content: "My Garage & Compatible Parts — Riderzpro" },
-      { property: "og:description", content: "Decode your VIN, manage EVs in PostgreSQL, and shop live compatible parts." },
+      { property: "og:description", content: "Decode your VIN, manage EVs, and shop live compatible parts." },
     ],
   }),
   component: GarageRoute,

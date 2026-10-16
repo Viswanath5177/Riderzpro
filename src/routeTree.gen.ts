@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as IdRouteImport } from './routes/$id'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AppRouteImport } from './routes/app'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CartRouteImport } from './routes/cart'
@@ -20,14 +21,19 @@ import { Route as GarageRouteImport } from './routes/garage'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as OffersRouteImport } from './routes/offers'
 import { Route as OrdersRouteImport } from './routes/orders'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RiderRouteImport } from './routes/rider'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SuperAdminRouteImport } from './routes/super-admin'
 import { Route as SuperadminRouteImport } from './routes/superadmin'
+import { Route as SupportRouteImport } from './routes/support'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminIdRouteImport } from './routes/admin.$id'
 import { Route as AdminAiAssistantRouteImport } from './routes/admin.ai-assistant'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
+import { Route as AdminApprovalsRouteImport } from './routes/admin.approvals'
 import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
 import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as AdminFitmentRouteImport } from './routes/admin.fitment'
@@ -49,12 +55,21 @@ import { Route as DashboardCustomerRouteImport } from './routes/dashboard.custom
 import { Route as DashboardRiderRouteImport } from './routes/dashboard.rider'
 import { Route as DashboardVendorRouteImport } from './routes/dashboard.vendor'
 import { Route as DashboardWorkshopRouteImport } from './routes/dashboard.workshop'
+import { Route as OrderConfirmationIdRouteImport } from './routes/order-confirmation.$id'
+import { Route as OrderIdRouteImport } from './routes/order.$id'
 import { Route as ProductIdRouteImport } from './routes/product.$id'
+import { Route as RiderIndexRouteImport } from './routes/rider.index'
+import { Route as RiderDashboardRouteImport } from './routes/rider.dashboard'
+import { Route as StoreSlugRouteImport } from './routes/store.$slug'
 import { Route as SuperAdminDashboardRouteImport } from './routes/super-admin.dashboard'
 import { Route as SuperAdminLoginRouteImport } from './routes/super-admin.login'
 import { Route as TrackIdRouteImport } from './routes/track.$id'
 import { Route as VendorIdRouteImport } from './routes/vendor.$id'
+import { Route as VendorAuthRouteImport } from './routes/vendor.auth'
+import { Route as VendorDashboardRouteImport } from './routes/vendor.dashboard'
 import { Route as VendorLoginRouteImport } from './routes/vendor.login'
+import { Route as VendorOnboardingRouteImport } from './routes/vendor.onboarding'
+import { Route as VendorPendingRouteImport } from './routes/vendor.pending'
 import { Route as VendorSignUpRouteImport } from './routes/vendor.sign-up'
 import { Route as VendorSignupRouteImport } from './routes/vendor.signup'
 
@@ -71,6 +86,11 @@ const IdRoute = IdRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AssistantRoute = AssistantRouteImport.update({
@@ -113,6 +133,16 @@ const OrdersRoute = OrdersRouteImport.update({
   path: '/orders',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RiderRoute = RiderRouteImport.update({
+  id: '/rider',
+  path: '/rider',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShopRoute = ShopRouteImport.update({
   id: '/shop',
   path: '/shop',
@@ -133,6 +163,16 @@ const SuperadminRoute = SuperadminRouteImport.update({
   path: '/superadmin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -151,6 +191,11 @@ const AdminAiAssistantRoute = AdminAiAssistantRouteImport.update({
 const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminApprovalsRoute = AdminApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminCustomersRoute = AdminCustomersRouteImport.update({
@@ -258,9 +303,34 @@ const DashboardWorkshopRoute = DashboardWorkshopRouteImport.update({
   path: '/dashboard/workshop',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrderConfirmationIdRoute = OrderConfirmationIdRouteImport.update({
+  id: '/order-confirmation/$id',
+  path: '/order-confirmation/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrderIdRoute = OrderIdRouteImport.update({
+  id: '/order/$id',
+  path: '/order/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductIdRoute = ProductIdRouteImport.update({
   id: '/product/$id',
   path: '/product/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RiderIndexRoute = RiderIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RiderRoute,
+} as any)
+const RiderDashboardRoute = RiderDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => RiderRoute,
+} as any)
+const StoreSlugRoute = StoreSlugRouteImport.update({
+  id: '/store/$slug',
+  path: '/store/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SuperAdminDashboardRoute = SuperAdminDashboardRouteImport.update({
@@ -283,9 +353,29 @@ const VendorIdRoute = VendorIdRouteImport.update({
   path: '/vendor/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VendorAuthRoute = VendorAuthRouteImport.update({
+  id: '/vendor/auth',
+  path: '/vendor/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VendorDashboardRoute = VendorDashboardRouteImport.update({
+  id: '/vendor/dashboard',
+  path: '/vendor/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VendorLoginRoute = VendorLoginRouteImport.update({
   id: '/vendor/login',
   path: '/vendor/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VendorOnboardingRoute = VendorOnboardingRouteImport.update({
+  id: '/vendor/onboarding',
+  path: '/vendor/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VendorPendingRoute = VendorPendingRouteImport.update({
+  id: '/vendor/pending',
+  path: '/vendor/pending',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VendorSignUpRoute = VendorSignUpRouteImport.update({
@@ -303,6 +393,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$id': typeof IdRoute
   '/admin': typeof AdminRouteWithChildren
+  '/app': typeof AppRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
@@ -311,13 +402,18 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/offers': typeof OffersRoute
   '/orders': typeof OrdersRoute
+  '/privacy': typeof PrivacyRoute
+  '/rider': typeof RiderRouteWithChildren
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
   '/super-admin': typeof SuperAdminRouteWithChildren
   '/superadmin': typeof SuperadminRoute
+  '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/admin/$id': typeof AdminIdRoute
   '/admin/ai-assistant': typeof AdminAiAssistantRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/approvals': typeof AdminApprovalsRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/fitment': typeof AdminFitmentRoute
@@ -339,19 +435,29 @@ export interface FileRoutesByFullPath {
   '/dashboard/rider': typeof DashboardRiderRoute
   '/dashboard/vendor': typeof DashboardVendorRoute
   '/dashboard/workshop': typeof DashboardWorkshopRoute
+  '/order-confirmation/$id': typeof OrderConfirmationIdRoute
+  '/order/$id': typeof OrderIdRoute
   '/product/$id': typeof ProductIdRoute
+  '/rider/dashboard': typeof RiderDashboardRoute
+  '/store/$slug': typeof StoreSlugRoute
   '/super-admin/dashboard': typeof SuperAdminDashboardRoute
   '/super-admin/login': typeof SuperAdminLoginRoute
   '/track/$id': typeof TrackIdRoute
   '/vendor/$id': typeof VendorIdRoute
+  '/vendor/auth': typeof VendorAuthRoute
+  '/vendor/dashboard': typeof VendorDashboardRoute
   '/vendor/login': typeof VendorLoginRoute
+  '/vendor/onboarding': typeof VendorOnboardingRoute
+  '/vendor/pending': typeof VendorPendingRoute
   '/vendor/sign-up': typeof VendorSignUpRoute
   '/vendor/signup': typeof VendorSignupRoute
   '/admin/': typeof AdminIndexRoute
+  '/rider/': typeof RiderIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$id': typeof IdRoute
+  '/app': typeof AppRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
@@ -360,13 +466,17 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/offers': typeof OffersRoute
   '/orders': typeof OrdersRoute
+  '/privacy': typeof PrivacyRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
   '/super-admin': typeof SuperAdminRouteWithChildren
   '/superadmin': typeof SuperadminRoute
+  '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/admin/$id': typeof AdminIdRoute
   '/admin/ai-assistant': typeof AdminAiAssistantRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/approvals': typeof AdminApprovalsRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/fitment': typeof AdminFitmentRoute
@@ -388,21 +498,31 @@ export interface FileRoutesByTo {
   '/dashboard/rider': typeof DashboardRiderRoute
   '/dashboard/vendor': typeof DashboardVendorRoute
   '/dashboard/workshop': typeof DashboardWorkshopRoute
+  '/order-confirmation/$id': typeof OrderConfirmationIdRoute
+  '/order/$id': typeof OrderIdRoute
   '/product/$id': typeof ProductIdRoute
+  '/rider/dashboard': typeof RiderDashboardRoute
+  '/store/$slug': typeof StoreSlugRoute
   '/super-admin/dashboard': typeof SuperAdminDashboardRoute
   '/super-admin/login': typeof SuperAdminLoginRoute
   '/track/$id': typeof TrackIdRoute
   '/vendor/$id': typeof VendorIdRoute
+  '/vendor/auth': typeof VendorAuthRoute
+  '/vendor/dashboard': typeof VendorDashboardRoute
   '/vendor/login': typeof VendorLoginRoute
+  '/vendor/onboarding': typeof VendorOnboardingRoute
+  '/vendor/pending': typeof VendorPendingRoute
   '/vendor/sign-up': typeof VendorSignUpRoute
   '/vendor/signup': typeof VendorSignupRoute
   '/admin': typeof AdminIndexRoute
+  '/rider': typeof RiderIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$id': typeof IdRoute
   '/admin': typeof AdminRouteWithChildren
+  '/app': typeof AppRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
@@ -411,13 +531,18 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/offers': typeof OffersRoute
   '/orders': typeof OrdersRoute
+  '/privacy': typeof PrivacyRoute
+  '/rider': typeof RiderRouteWithChildren
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
   '/super-admin': typeof SuperAdminRouteWithChildren
   '/superadmin': typeof SuperadminRoute
+  '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/admin/$id': typeof AdminIdRoute
   '/admin/ai-assistant': typeof AdminAiAssistantRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/approvals': typeof AdminApprovalsRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/fitment': typeof AdminFitmentRoute
@@ -439,15 +564,24 @@ export interface FileRoutesById {
   '/dashboard/rider': typeof DashboardRiderRoute
   '/dashboard/vendor': typeof DashboardVendorRoute
   '/dashboard/workshop': typeof DashboardWorkshopRoute
+  '/order-confirmation/$id': typeof OrderConfirmationIdRoute
+  '/order/$id': typeof OrderIdRoute
   '/product/$id': typeof ProductIdRoute
+  '/rider/dashboard': typeof RiderDashboardRoute
+  '/store/$slug': typeof StoreSlugRoute
   '/super-admin/dashboard': typeof SuperAdminDashboardRoute
   '/super-admin/login': typeof SuperAdminLoginRoute
   '/track/$id': typeof TrackIdRoute
   '/vendor/$id': typeof VendorIdRoute
+  '/vendor/auth': typeof VendorAuthRoute
+  '/vendor/dashboard': typeof VendorDashboardRoute
   '/vendor/login': typeof VendorLoginRoute
+  '/vendor/onboarding': typeof VendorOnboardingRoute
+  '/vendor/pending': typeof VendorPendingRoute
   '/vendor/sign-up': typeof VendorSignUpRoute
   '/vendor/signup': typeof VendorSignupRoute
   '/admin/': typeof AdminIndexRoute
+  '/rider/': typeof RiderIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -455,6 +589,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$id'
     | '/admin'
+    | '/app'
     | '/assistant'
     | '/auth'
     | '/cart'
@@ -463,13 +598,18 @@ export interface FileRouteTypes {
     | '/login'
     | '/offers'
     | '/orders'
+    | '/privacy'
+    | '/rider'
     | '/shop'
     | '/signup'
     | '/super-admin'
     | '/superadmin'
+    | '/support'
+    | '/terms'
     | '/admin/$id'
     | '/admin/ai-assistant'
     | '/admin/analytics'
+    | '/admin/approvals'
     | '/admin/customers'
     | '/admin/dashboard'
     | '/admin/fitment'
@@ -491,19 +631,29 @@ export interface FileRouteTypes {
     | '/dashboard/rider'
     | '/dashboard/vendor'
     | '/dashboard/workshop'
+    | '/order-confirmation/$id'
+    | '/order/$id'
     | '/product/$id'
+    | '/rider/dashboard'
+    | '/store/$slug'
     | '/super-admin/dashboard'
     | '/super-admin/login'
     | '/track/$id'
     | '/vendor/$id'
+    | '/vendor/auth'
+    | '/vendor/dashboard'
     | '/vendor/login'
+    | '/vendor/onboarding'
+    | '/vendor/pending'
     | '/vendor/sign-up'
     | '/vendor/signup'
     | '/admin/'
+    | '/rider/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/$id'
+    | '/app'
     | '/assistant'
     | '/auth'
     | '/cart'
@@ -512,13 +662,17 @@ export interface FileRouteTypes {
     | '/login'
     | '/offers'
     | '/orders'
+    | '/privacy'
     | '/shop'
     | '/signup'
     | '/super-admin'
     | '/superadmin'
+    | '/support'
+    | '/terms'
     | '/admin/$id'
     | '/admin/ai-assistant'
     | '/admin/analytics'
+    | '/admin/approvals'
     | '/admin/customers'
     | '/admin/dashboard'
     | '/admin/fitment'
@@ -540,20 +694,30 @@ export interface FileRouteTypes {
     | '/dashboard/rider'
     | '/dashboard/vendor'
     | '/dashboard/workshop'
+    | '/order-confirmation/$id'
+    | '/order/$id'
     | '/product/$id'
+    | '/rider/dashboard'
+    | '/store/$slug'
     | '/super-admin/dashboard'
     | '/super-admin/login'
     | '/track/$id'
     | '/vendor/$id'
+    | '/vendor/auth'
+    | '/vendor/dashboard'
     | '/vendor/login'
+    | '/vendor/onboarding'
+    | '/vendor/pending'
     | '/vendor/sign-up'
     | '/vendor/signup'
     | '/admin'
+    | '/rider'
   id:
     | '__root__'
     | '/'
     | '/$id'
     | '/admin'
+    | '/app'
     | '/assistant'
     | '/auth'
     | '/cart'
@@ -562,13 +726,18 @@ export interface FileRouteTypes {
     | '/login'
     | '/offers'
     | '/orders'
+    | '/privacy'
+    | '/rider'
     | '/shop'
     | '/signup'
     | '/super-admin'
     | '/superadmin'
+    | '/support'
+    | '/terms'
     | '/admin/$id'
     | '/admin/ai-assistant'
     | '/admin/analytics'
+    | '/admin/approvals'
     | '/admin/customers'
     | '/admin/dashboard'
     | '/admin/fitment'
@@ -590,21 +759,31 @@ export interface FileRouteTypes {
     | '/dashboard/rider'
     | '/dashboard/vendor'
     | '/dashboard/workshop'
+    | '/order-confirmation/$id'
+    | '/order/$id'
     | '/product/$id'
+    | '/rider/dashboard'
+    | '/store/$slug'
     | '/super-admin/dashboard'
     | '/super-admin/login'
     | '/track/$id'
     | '/vendor/$id'
+    | '/vendor/auth'
+    | '/vendor/dashboard'
     | '/vendor/login'
+    | '/vendor/onboarding'
+    | '/vendor/pending'
     | '/vendor/sign-up'
     | '/vendor/signup'
     | '/admin/'
+    | '/rider/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   IdRoute: typeof IdRoute
   AdminRoute: typeof AdminRouteWithChildren
+  AppRoute: typeof AppRoute
   AssistantRoute: typeof AssistantRoute
   AuthRoute: typeof AuthRoute
   CartRoute: typeof CartRoute
@@ -613,19 +792,30 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   OffersRoute: typeof OffersRoute
   OrdersRoute: typeof OrdersRoute
+  PrivacyRoute: typeof PrivacyRoute
+  RiderRoute: typeof RiderRouteWithChildren
   ShopRoute: typeof ShopRoute
   SignupRoute: typeof SignupRoute
   SuperAdminRoute: typeof SuperAdminRouteWithChildren
   SuperadminRoute: typeof SuperadminRoute
+  SupportRoute: typeof SupportRoute
+  TermsRoute: typeof TermsRoute
   DashboardAdminRoute: typeof DashboardAdminRoute
   DashboardCustomerRoute: typeof DashboardCustomerRoute
   DashboardRiderRoute: typeof DashboardRiderRoute
   DashboardVendorRoute: typeof DashboardVendorRoute
   DashboardWorkshopRoute: typeof DashboardWorkshopRoute
+  OrderConfirmationIdRoute: typeof OrderConfirmationIdRoute
+  OrderIdRoute: typeof OrderIdRoute
   ProductIdRoute: typeof ProductIdRoute
+  StoreSlugRoute: typeof StoreSlugRoute
   TrackIdRoute: typeof TrackIdRoute
   VendorIdRoute: typeof VendorIdRoute
+  VendorAuthRoute: typeof VendorAuthRoute
+  VendorDashboardRoute: typeof VendorDashboardRoute
   VendorLoginRoute: typeof VendorLoginRoute
+  VendorOnboardingRoute: typeof VendorOnboardingRoute
+  VendorPendingRoute: typeof VendorPendingRoute
   VendorSignUpRoute: typeof VendorSignUpRoute
   VendorSignupRoute: typeof VendorSignupRoute
 }
@@ -651,6 +841,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/assistant': {
@@ -709,6 +906,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rider': {
+      id: '/rider'
+      path: '/rider'
+      fullPath: '/rider'
+      preLoaderRoute: typeof RiderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/shop': {
       id: '/shop'
       path: '/shop'
@@ -737,6 +948,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SuperadminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/': {
       id: '/admin/'
       path: '/'
@@ -763,6 +988,13 @@ declare module '@tanstack/react-router' {
       path: '/analytics'
       fullPath: '/admin/analytics'
       preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/approvals': {
+      id: '/admin/approvals'
+      path: '/approvals'
+      fullPath: '/admin/approvals'
+      preLoaderRoute: typeof AdminApprovalsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/customers': {
@@ -912,11 +1144,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardWorkshopRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/order-confirmation/$id': {
+      id: '/order-confirmation/$id'
+      path: '/order-confirmation/$id'
+      fullPath: '/order-confirmation/$id'
+      preLoaderRoute: typeof OrderConfirmationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/order/$id': {
+      id: '/order/$id'
+      path: '/order/$id'
+      fullPath: '/order/$id'
+      preLoaderRoute: typeof OrderIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/product/$id': {
       id: '/product/$id'
       path: '/product/$id'
       fullPath: '/product/$id'
       preLoaderRoute: typeof ProductIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rider/': {
+      id: '/rider/'
+      path: '/'
+      fullPath: '/rider/'
+      preLoaderRoute: typeof RiderIndexRouteImport
+      parentRoute: typeof RiderRoute
+    }
+    '/rider/dashboard': {
+      id: '/rider/dashboard'
+      path: '/dashboard'
+      fullPath: '/rider/dashboard'
+      preLoaderRoute: typeof RiderDashboardRouteImport
+      parentRoute: typeof RiderRoute
+    }
+    '/store/$slug': {
+      id: '/store/$slug'
+      path: '/store/$slug'
+      fullPath: '/store/$slug'
+      preLoaderRoute: typeof StoreSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/super-admin/dashboard': {
@@ -947,11 +1214,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VendorIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vendor/auth': {
+      id: '/vendor/auth'
+      path: '/vendor/auth'
+      fullPath: '/vendor/auth'
+      preLoaderRoute: typeof VendorAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vendor/dashboard': {
+      id: '/vendor/dashboard'
+      path: '/vendor/dashboard'
+      fullPath: '/vendor/dashboard'
+      preLoaderRoute: typeof VendorDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/vendor/login': {
       id: '/vendor/login'
       path: '/vendor/login'
       fullPath: '/vendor/login'
       preLoaderRoute: typeof VendorLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vendor/onboarding': {
+      id: '/vendor/onboarding'
+      path: '/vendor/onboarding'
+      fullPath: '/vendor/onboarding'
+      preLoaderRoute: typeof VendorOnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vendor/pending': {
+      id: '/vendor/pending'
+      path: '/vendor/pending'
+      fullPath: '/vendor/pending'
+      preLoaderRoute: typeof VendorPendingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/vendor/sign-up': {
@@ -975,6 +1270,7 @@ interface AdminRouteChildren {
   AdminIdRoute: typeof AdminIdRoute
   AdminAiAssistantRoute: typeof AdminAiAssistantRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminApprovalsRoute: typeof AdminApprovalsRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminFitmentRoute: typeof AdminFitmentRoute
@@ -998,6 +1294,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminIdRoute: AdminIdRoute,
   AdminAiAssistantRoute: AdminAiAssistantRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminApprovalsRoute: AdminApprovalsRoute,
   AdminCustomersRoute: AdminCustomersRoute,
   AdminDashboardRoute: AdminDashboardRoute,
   AdminFitmentRoute: AdminFitmentRoute,
@@ -1019,6 +1316,18 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface RiderRouteChildren {
+  RiderDashboardRoute: typeof RiderDashboardRoute
+  RiderIndexRoute: typeof RiderIndexRoute
+}
+
+const RiderRouteChildren: RiderRouteChildren = {
+  RiderDashboardRoute: RiderDashboardRoute,
+  RiderIndexRoute: RiderIndexRoute,
+}
+
+const RiderRouteWithChildren = RiderRoute._addFileChildren(RiderRouteChildren)
+
 interface SuperAdminRouteChildren {
   SuperAdminDashboardRoute: typeof SuperAdminDashboardRoute
   SuperAdminLoginRoute: typeof SuperAdminLoginRoute
@@ -1037,6 +1346,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   IdRoute: IdRoute,
   AdminRoute: AdminRouteWithChildren,
+  AppRoute: AppRoute,
   AssistantRoute: AssistantRoute,
   AuthRoute: AuthRoute,
   CartRoute: CartRoute,
@@ -1045,19 +1355,30 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   OffersRoute: OffersRoute,
   OrdersRoute: OrdersRoute,
+  PrivacyRoute: PrivacyRoute,
+  RiderRoute: RiderRouteWithChildren,
   ShopRoute: ShopRoute,
   SignupRoute: SignupRoute,
   SuperAdminRoute: SuperAdminRouteWithChildren,
   SuperadminRoute: SuperadminRoute,
+  SupportRoute: SupportRoute,
+  TermsRoute: TermsRoute,
   DashboardAdminRoute: DashboardAdminRoute,
   DashboardCustomerRoute: DashboardCustomerRoute,
   DashboardRiderRoute: DashboardRiderRoute,
   DashboardVendorRoute: DashboardVendorRoute,
   DashboardWorkshopRoute: DashboardWorkshopRoute,
+  OrderConfirmationIdRoute: OrderConfirmationIdRoute,
+  OrderIdRoute: OrderIdRoute,
   ProductIdRoute: ProductIdRoute,
+  StoreSlugRoute: StoreSlugRoute,
   TrackIdRoute: TrackIdRoute,
   VendorIdRoute: VendorIdRoute,
+  VendorAuthRoute: VendorAuthRoute,
+  VendorDashboardRoute: VendorDashboardRoute,
   VendorLoginRoute: VendorLoginRoute,
+  VendorOnboardingRoute: VendorOnboardingRoute,
+  VendorPendingRoute: VendorPendingRoute,
   VendorSignUpRoute: VendorSignUpRoute,
   VendorSignupRoute: VendorSignupRoute,
 }

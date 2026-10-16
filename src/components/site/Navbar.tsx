@@ -287,7 +287,7 @@ export function Navbar() {
          ───────────────────────────────────────────────────────────── */}
       <div className="hidden lg:block border-t border-[#E5E7EB] bg-white">
         <div className="mx-auto flex h-10 max-w-7xl items-center px-4 sm:px-6">
-          <nav className="flex items-center gap-7 text-xs">
+          <nav className="flex items-center gap-7 text-xs w-full">
             {STORE_CATEGORIES.map((cat) => (
               <Link
                 key={cat.label}
@@ -300,6 +300,14 @@ export function Navbar() {
                 {cat.label}
               </Link>
             ))}
+            <div className="ml-auto">
+              <Link
+                to="/vendor/auth"
+                className="font-bold text-[#E31E24] hover:underline flex items-center gap-1 text-xs"
+              >
+                <span>Sell on RiderzPro →</span>
+              </Link>
+            </div>
           </nav>
         </div>
       </div>
@@ -372,6 +380,13 @@ export function Navbar() {
                   <User className="h-4 w-4" /> Customer Dashboard
                 </Link>
               )}
+              <Link
+                to="/vendor/auth"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-2 text-xs font-semibold text-[#E31E24] hover:underline pt-2 border-t border-gray-100"
+              >
+                <span>Sell on RiderzPro (Vendor Portal) →</span>
+              </Link>
               {!isLoggedIn ? (
                 <button
                   type="button"

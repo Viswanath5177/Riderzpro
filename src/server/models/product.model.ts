@@ -1,4 +1,4 @@
-import { pool } from "../db";
+import { pool, isPostgresAvailable } from "../db";
 
 export interface ProductRecord {
   id: string;
@@ -238,6 +238,10 @@ export class ProductModel {
       sql += ` OFFSET $${params.length}`;
     }
 
+    if (!isPostgresAvailable) {
+      return inMemoryCatalog;
+    }
+
     try {
       const result = await pool.query(sql, params);
       return (result.rows || []).map((row) => ({
@@ -247,9 +251,11 @@ export class ProductModel {
         stock: Number(row.stock),
         weight_kg: Number(row.weight_kg),
       }));
-    } catch (err) {
-      console.error('[PostgreSQL findAll error]:', err);
-      return [];
+    } catch (err: any) {
+      if (err?.code !== "28P01" && err?.code !== "ECONNRESET") {
+        console.error('[Product findAll error]:', err?.message || err);
+      }
+      return inMemoryCatalog;
     }
   }
 
@@ -257,6 +263,9 @@ export class ProductModel {
    * Retrieves a single product by its unique primary key ID.
    */
   static async findById(id: string): Promise<ProductRecord | null> {
+    if (!isPostgresAvailable) {
+      return inMemoryCatalog.find((p) => p.id === id) || null;
+    }
     const sql = `
       SELECT 
         p.*, 

@@ -1,30 +1,38 @@
-import React, { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 
 export function AIChatButton() {
-  const [showTooltip, setShowTooltip] = useState(false);
+  const isAiEnabled = import.meta.env.VITE_ENABLE_AI_COPILOT !== "false";
+
+  if (!isAiEnabled) {
+    return null;
+  }
+
+  // Only show on Home, Shop, and Product screens.
+  // Hide on Cart, Checkout, Orders, Tracking, Profile, Login.
+  const isAllowedScreen = (() => {
+    if (typeof window !== "undefined") {
+      const p = window.location.pathname;
+      if (p === "/" || p === "/shop" || p.startsWith("/product")) {
+        return true;
+      }
+      return false;
+    }
+    return true;
+  })();
+
+  if (!isAllowedScreen) {
+    return null;
+  }
 
   return (
-    <div className="fixed bottom-6 right-6 z-40">
-      {/* Tooltip */}
-      {showTooltip && (
-        <div className="absolute bottom-full right-0 mb-2 whitespace-nowrap rounded-lg bg-[#111111] px-3 py-1.5 text-xs font-semibold text-white shadow-lg animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
-          Ask AI Assistant
-          <div className="absolute -bottom-1 right-5 h-2 w-2 rotate-45 bg-[#111111]" />
-        </div>
-      )}
-
-      {/* Floating circular red button */}
-      <Link
-        to="/assistant"
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
-        aria-label="Ask AI Automotive Assistant"
-        className="flex h-13 w-13 items-center justify-center rounded-full bg-[#e11d2a] hover:bg-[#c91823] text-white shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-red-400/30"
-      >
-        <Sparkles className="h-6 w-6" />
-      </Link>
-    </div>
+    <Link
+      to="/assistant"
+      aria-label="Ask assistant"
+      title="Ask assistant"
+      className="fixed right-4 bottom-[calc(var(--nav-h,56px)+12px+env(safe-area-inset-bottom,0px))] md:bottom-6 md:right-6 z-[55] h-12 w-12 min-w-12 min-h-12 rounded-full grid place-items-center bg-[#111111] hover:bg-black text-white shadow-lg active:scale-95 transition-transform cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500"
+    >
+      <Sparkles className="h-5 w-5 text-white" />
+    </Link>
   );
 }

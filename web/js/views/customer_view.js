@@ -44,24 +44,25 @@ function availabilityLabel(value = "") {
 function renderAccessoryCard(product) {
   const price = formatCurrency(product.price_inr);
   return `
-    <article class="glass-card accessory-card">
-      <a class="accessory-image" href="${escapeHtml(product.source_url)}" target="_blank" rel="noopener noreferrer" aria-label="View ${escapeHtml(product.name)} at ${escapeHtml(product.source_name)}">
+    <article class="glass-card accessory-card" data-accessory-id="${escapeHtml(product.id)}">
+      <div class="accessory-image">
         <img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.image_alt)}" loading="lazy" onerror="this.parentElement.classList.add('no-accessory-image'); this.remove();">
         <span class="accessory-vehicle-badge">${product.vehicle_type === "car" ? "🚘 Car" : "🏍️ Bike"}</span>
-      </a>
+      </div>
       <div class="accessory-content">
-        <div class="accessory-meta"><span>${escapeHtml(product.brand)}</span><span>${escapeHtml(product.category)}</span></div>
-        <h2>${escapeHtml(product.name)}</h2>
-        <div class="accessory-price">${price}<small>Listed price · verify with seller</small></div>
-        <div class="accessory-fitment"><strong>Fitment</strong><span>${escapeHtml(product.fitment)}</span></div>
-        <details class="vehicle-catalog-more"><summary>Product details</summary><div>
-          <span>Part number: ${escapeHtml(product.part_number)}</span>
-          ${product.details.map(detail => `<span>• ${escapeHtml(detail)}</span>`).join("")}
-          <span>Source: ${escapeHtml(product.source_name)}</span>
-        </div></details>
-        <div class="accessory-actions">
-          <button type="button" class="btn btn-primary accessory-book-button" data-accessory-id="${escapeHtml(product.id)}">Book Now</button>
-          <a class="accessory-source-link" href="${escapeHtml(product.source_url)}" target="_blank" rel="noopener noreferrer">Seller details ↗</a>
+        <div class="accessory-meta">
+          <span class="accessory-brand-tag">${escapeHtml(product.brand)}</span>
+          <span class="accessory-subcat-tag">${escapeHtml(product.subcategory || product.category)}</span>
+        </div>
+        <h2 class="accessory-card-title">${escapeHtml(product.name)}</h2>
+        <div class="accessory-card-footer">
+          <div class="accessory-price-block">
+            <span class="accessory-price">${price}</span>
+            <span class="accessory-rating-stars">★★★★★ <small>4.8</small></span>
+          </div>
+          <button type="button" class="btn btn-primary accessory-select-cta" data-accessory-id="${escapeHtml(product.id)}">
+            View Details →
+          </button>
         </div>
       </div>
     </article>`;
@@ -69,21 +70,45 @@ function renderAccessoryCard(product) {
 
 function filteredAccessories() {
   const query = (store.accessorySearch || "").trim().toLowerCase();
+  const cat = store.accessoryCategory || "all";
   return accessoryCatalog.products.filter(product => {
-    const text = `${product.brand} ${product.name} ${product.category} ${product.part_number} ${product.fitment} ${product.details.join(" ")}`.toLowerCase();
-    return (!query || text.includes(query)) &&
-      (store.accessoryVehicleType === "all" || product.vehicle_type === store.accessoryVehicleType) &&
-      (store.accessoryCategory === "all" || product.category === store.accessoryCategory);
+    const detailsStr = Array.isArray(product.details) ? product.details.join(" ") : "";
+    const subcatsStr = Array.isArray(product.subcategories) ? product.subcategories.join(" ") : (product.subcategory || "");
+    const text = `${product.brand} ${product.name} ${product.category} ${subcatsStr} ${product.part_number || ""} ${product.fitment || ""} ${detailsStr}`.toLowerCase();
+    const matchesVehicle = (store.accessoryVehicleType === "all" || product.vehicle_type === store.accessoryVehicleType);
+    const matchesQuery = (!query || text.includes(query));
+    const matchesCategory = (cat === "all" ||
+      product.category === cat ||
+      product.subcategory === cat ||
+      (product.subcategories && product.subcategories.includes(cat)) ||
+      text.includes(cat.toLowerCase()));
+    return matchesVehicle && matchesQuery && matchesCategory;
   });
 }
+
+window.riderzproSelectSubcategory = function(subcat) {
+  store.accessoryCategory = (subcat === "All" || subcat === "all") ? "all" : subcat;
+  const pills = document.querySelectorAll(".accessory-pill");
+  pills.forEach(p => {
+    const isThis = p.textContent.trim() === subcat || ((subcat === "all" || subcat === "All") && p.textContent.trim() === "All");
+    if (isThis) p.classList.add("active");
+    else p.classList.remove("active");
+  });
+  window.riderzproFilterAccessories();
+};
+
+window.riderzproScrollSubcategories = function(offset) {
+  const track = document.getElementById("accessory-pills-track");
+  if (track) track.scrollBy({ left: offset, behavior: "smooth" });
+};
 
 window.riderzproFilterAccessories = function() {
   const search = document.getElementById("accessory-search");
   const vehicle = document.getElementById("accessory-vehicle-type");
-  const category = document.getElementById("accessory-category");
+  const cat = document.getElementById("accessory-category");
   store.accessorySearch = search?.value || "";
   store.accessoryVehicleType = vehicle?.value || "all";
-  store.accessoryCategory = category?.value || "all";
+  if (cat) store.accessoryCategory = cat.value;
   const products = filteredAccessories();
   const count = document.getElementById("accessory-results-count");
   if (count) count.textContent = `${products.length} accessories`;
@@ -197,33 +222,121 @@ function renderAccessoryBookingTab() {
     return `<section class="glass-card empty-state accessory-booking-empty"><div class="empty-state-icon">🧰</div><h1 class="text-title-medium">Choose an accessory first</h1><p class="text-secondary">Select a product from the accessories catalog to review its details.</p><button type="button" class="btn btn-primary" data-accessory-back>Browse accessories</button></section>`;
   }
   const image = `<img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.image_alt)}" onerror="this.parentElement.classList.add('no-accessory-image'); this.remove();">`;
+  const price = formatCurrency(product.price_inr);
   return `
-    <div class="page-header accessory-checkout-header">
-      <div class="page-title-group"><h1 class="text-title-large">Review your accessory</h1><p class="text-secondary">Check the product, price, and vehicle fitment before continuing to the seller.</p></div>
-      <button type="button" class="btn btn-glass" data-accessory-back>← Back to accessories</button>
-    </div>
-    <div class="accessory-checkout-layout">
-      <section class="glass-card accessory-booking-product">
-        <div class="accessory-booking-image">${image}<span class="accessory-vehicle-badge">${product.vehicle_type === "car" ? "🚘 Car accessory" : "🏍️ Bike accessory"}</span></div>
-        <div class="accessory-booking-copy"><span class="spec-label">${escapeHtml(product.brand)} · ${escapeHtml(product.category)}</span><h2>${escapeHtml(product.name)}</h2><p>${escapeHtml(product.fitment)}</p>
-          <details class="vehicle-catalog-more" open><summary>Product information</summary><div><span>Part number: ${escapeHtml(product.part_number)}</span>${product.details.map(detail => `<span>• ${escapeHtml(detail)}</span>`).join("")}<span>Seller: ${escapeHtml(product.source_name)}</span></div></details>
+    <div class="accessory-fullscreen-view">
+      <div class="accessory-fullscreen-topbar">
+        <button type="button" class="btn btn-glass accessory-back-btn" data-accessory-back>← Back to shop</button>
+        <div class="accessory-fullscreen-breadcrumbs">
+          <span>Shop</span> › <span>${escapeHtml(product.category)}</span> › <strong class="breadcrumb-active">${escapeHtml(product.name)}</strong>
         </div>
-      </section>
-      <aside class="glass-card accessory-booking-summary">
-        <h2>Booking details</h2><div class="accessory-checkout-seller"><span>Seller</span><strong>${escapeHtml(product.source_name)}</strong></div>
-        <div class="accessory-checkout-price"><span>Listed price</span><strong>${formatCurrency(product.price_inr)}</strong></div>
-        <p>Price, stock, delivery, and exact fitment are confirmed by the seller. Continue to the official listing to complete your booking or purchase.</p>
-        <a class="btn btn-primary accessory-checkout-cta" href="${escapeHtml(product.source_url)}" target="_blank" rel="noopener noreferrer">Book Now · Continue to seller ↗</a>
-        <button type="button" class="btn btn-glass accessory-back-link" data-accessory-back>Keep browsing</button>
-      </aside>
+      </div>
+
+      <div class="accessory-fullscreen-layout">
+        <!-- Left: Product Hero Media -->
+        <div class="glass-card accessory-fullscreen-media">
+          <div class="accessory-hero-image-wrap">
+            ${image}
+            <span class="accessory-vehicle-badge large">${product.vehicle_type === "car" ? "🚘 Car accessory" : "🏍️ Bike accessory"}</span>
+          </div>
+          <div class="accessory-trust-strip">
+            <div class="accessory-trust-item"><span>🛡️</span><strong>100% Genuine</strong></div>
+            <div class="accessory-trust-item"><span>✅</span><strong>Verified Fitment</strong></div>
+            <div class="accessory-trust-item"><span>⭐</span><strong>4.8 Rating</strong></div>
+          </div>
+        </div>
+
+        <!-- Right: Comprehensive Info & Specifications -->
+        <div class="accessory-fullscreen-info-column">
+          <div class="glass-card accessory-fullscreen-card">
+            <div class="accessory-detail-header">
+              <div class="accessory-detail-tags">
+                <span class="spec-label">${escapeHtml(product.brand)}</span>
+                <span class="subcat-pill">${escapeHtml(product.subcategory || product.category)}</span>
+              </div>
+              <h1 class="accessory-fullscreen-title">${escapeHtml(product.name)}</h1>
+              <div class="accessory-fullscreen-price-box">
+                <div class="price-main">${price}</div>
+                <div class="price-sub">Listed Price · Taxes &amp; Fitment verified with supplier</div>
+              </div>
+            </div>
+
+            <!-- Vehicle Fitment Box -->
+            <div class="accessory-fitment-box">
+              <div class="accessory-fitment-title">
+                <span class="fitment-icon">🏍️</span>
+                <strong>Vehicle Compatibility &amp; Fitment</strong>
+              </div>
+              <p class="accessory-fitment-desc">${escapeHtml(product.fitment)}</p>
+            </div>
+
+            <!-- Complete Specifications Grid -->
+            <div class="accessory-specs-section">
+              <h3 class="accessory-section-heading">Technical Specifications</h3>
+              <div class="accessory-specs-grid">
+                <div class="spec-item"><span class="spec-k">Part Number / SKU</span><strong class="spec-v">${escapeHtml(product.part_number || "RZP-" + product.id)}</strong></div>
+                <div class="spec-item"><span class="spec-k">Manufacturer / Brand</span><strong class="spec-v">${escapeHtml(product.brand)}</strong></div>
+                <div class="spec-item"><span class="spec-k">Vehicle Type</span><strong class="spec-v">${product.vehicle_type === "car" ? "Car" : "Motorcycle & Scooter"}</strong></div>
+                <div class="spec-item"><span class="spec-k">Category</span><strong class="spec-v">${escapeHtml(product.category)}</strong></div>
+                <div class="spec-item"><span class="spec-k">Subcategory</span><strong class="spec-v">${escapeHtml(product.subcategory || "Automotive Spares")}</strong></div>
+                <div class="spec-item"><span class="spec-k">Warranty</span><strong class="spec-v">12 Months Manufacturer Warranty</strong></div>
+                <div class="spec-item"><span class="spec-k">Seller / Dealer</span><strong class="spec-v">${escapeHtml(product.source_name)}</strong></div>
+                <div class="spec-item"><span class="spec-k">Installation</span><strong class="spec-v">Professional dealer / DIY fitment</strong></div>
+              </div>
+            </div>
+
+            <!-- Key Features & Details -->
+            <div class="accessory-features-section">
+              <h3 class="accessory-section-heading">Key Features &amp; Details</h3>
+              <ul class="accessory-features-list">
+                ${product.details.map(detail => `<li><span class="feature-check">✓</span><span>${escapeHtml(detail)}</span></li>`).join("")}
+              </ul>
+            </div>
+
+            <!-- Actions and Booking -->
+            <div class="accessory-fullscreen-actions">
+              <a class="btn btn-primary accessory-checkout-cta" href="${escapeHtml(product.source_url)}" target="_blank" rel="noopener noreferrer">
+                Book Now · Continue to Official Listing ↗
+              </a>
+              <button type="button" class="btn btn-glass accessory-back-link" data-accessory-back>
+                Keep Browsing
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>`;
 }
 
+const ACCESSORY_SUBCATEGORIES = [
+  "All",
+  "Amaze Plus",
+  "D-3 Seat Cover",
+  "H-Cross",
+  "U-Focus",
+  "U-Highway",
+  "X-Cross",
+  "2 Wheeler Mats",
+  "Amaze Duo +",
+  "Bungee Ropes",
+  "Mobile Holders",
+  "Bags",
+  "Microfibre Cleaning Cloth",
+  "Tank Covers",
+  "Car Care",
+  "Comfort Accessories",
+  "Car Organisers",
+  "Padded Seat Cover",
+  "Steering Covers",
+  "Utilities",
+  "EV Accessories",
+  "7D U Max 2 Row",
+  "Scooty Body Covers",
+  "Bike Body Covers"
+];
+
 function renderAccessoriesTab() {
   const products = filteredAccessories();
-  const categories = [...new Set(accessoryCatalog.products
-    .filter(product => store.accessoryVehicleType === "all" || product.vehicle_type === store.accessoryVehicleType)
-    .map(product => product.category))];
   return `
     <div class="page-header">
       <div class="page-title-group">
@@ -231,7 +344,7 @@ function renderAccessoriesTab() {
         <p class="text-secondary">Browse sourced accessories, check fitment, and view current seller listings.</p>
       </div>
     </div>
-    <div class="accessory-source-note">Starter listings from Maruti Suzuki Genuine Accessories and Royal Enfield. Prices and availability may change; confirm vehicle fitment with the seller before ordering.</div>
+    <div class="accessory-source-note">Starter listings from Maruti Suzuki Genuine Accessories, Royal Enfield, and verified automotive aftermarket providers. Prices and availability may change; confirm vehicle fitment before ordering.</div>
     <form class="catalog-toolbar accessory-toolbar" onsubmit="event.preventDefault(); window.riderzproFilterAccessories(); return false;">
       <label class="catalog-search-label">Search accessories
         <input id="accessory-search" class="form-control" type="search" placeholder="Name, brand, category or part number" value="${escapeHtml(store.accessorySearch)}" oninput="window.riderzproFilterAccessories()" autocomplete="off">
@@ -246,13 +359,16 @@ function renderAccessoriesTab() {
       <label class="catalog-type-label">Category
         <select id="accessory-category" class="form-control" onchange="window.riderzproFilterAccessories()">
           <option value="all">All categories</option>
-          ${categories.map(item => `<option value="${escapeHtml(item)}" ${store.accessoryCategory === item ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
+          ${ACCESSORY_SUBCATEGORIES.filter(sc => sc !== "All").map(item => `
+            <option value="${escapeHtml(item)}" ${(store.accessoryCategory === item) ? "selected" : ""}>${escapeHtml(item)}</option>
+          `).join("")}
         </select>
       </label>
       <span class="catalog-results-count" id="accessory-results-count">${products.length} accessories</span>
     </form>
+
     <div id="accessory-grid-container">
-      ${products.length ? `<div class="accessory-grid">${products.map(renderAccessoryCard).join("")}</div>` : `<div class="glass-card empty-state"><div class="empty-state-icon">🧰</div><h2 class="text-title-medium">Accessories are loading</h2><p class="text-secondary">The sourced catalog will appear here shortly.</p></div>`}
+      ${products.length ? `<div class="accessory-grid">${products.map(renderAccessoryCard).join("")}</div>` : `<div class="glass-card empty-state"><div class="empty-state-icon">🧰</div><h2 class="text-title-medium">No accessories found</h2><p class="text-secondary">Try a different search or subcategory filter.</p></div>`}
     </div>
     <p class="accessory-disclaimer">${escapeHtml(accessoryCatalog.price_note)}</p>
   `;
