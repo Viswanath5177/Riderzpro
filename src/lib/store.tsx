@@ -155,6 +155,7 @@ type Ctx = {
     shippingAddress: AddressRef;
     couponCode?: string;
     discount?: number;
+    paymentStatus?: any;
   }) => Order;
   advanceOrder: (id: string) => void;
   updateOrderStatus: (id: string, status: number) => void;
@@ -609,6 +610,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       shippingAddress: AddressRef;
       couponCode?: string;
       discount?: number;
+      paymentStatus?: any;
     }) => {
       const discount = options.discount || 0;
       const q = quoteCart(cart, discount);
@@ -621,7 +623,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         id: newOrderId,
         createdAt: Date.now(),
         payment: options.payment,
-        paymentStatus: options.payment.includes("COD") ? "Pending" : "Paid",
+        paymentStatus: options.paymentStatus || (options.payment.includes("COD") ? "Pending" : "Paid"),
         status: 0,
         fulfillmentStatus: "Awaiting Fulfillment",
         shippingAddress: options.shippingAddress,

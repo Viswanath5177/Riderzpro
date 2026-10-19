@@ -15,7 +15,6 @@ const cloudflareWorkersDevShim = {
 };
 
 export default defineConfig({
-  server: { allowedHosts: true },
   plugins: [cloudflareWorkersDevShim, pgApiMiddleware()],
   vite: {
     resolve: {

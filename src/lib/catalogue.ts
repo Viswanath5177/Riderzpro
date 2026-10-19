@@ -5,6 +5,7 @@ import {
   Product,
   Vendor,
   Category,
+  mapDbProductToProduct,
 } from "./data";
 import { INITIAL_SEED_VENDORS, INITIAL_SEED_PRODUCTS } from "./vendor/seedData";
 import { Vendor as VendorRecord, VendorProduct } from "./vendor/types";
@@ -256,6 +257,19 @@ export function getCatalogueProduct(id: string): CatalogueProduct | undefined {
  */
 export function useCatalogue() {
   const [version, setVersion] = useState(0);
+  const [dbProducts, setDbProducts] = useState<CatalogueProduct[]>([]);
+
+  useEffect(() => {
+    fetch("/api/products")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped = res.data.map((row: any) => mapDbProductToProduct(row) as CatalogueProduct);
+          setDbProducts(mapped);
+        }
+      })
+      .catch(() => {});
+  }, [version]);
 
   useEffect(() => {
     const handleSync = () => setVersion((v) => v + 1);
@@ -280,8 +294,9 @@ export function useCatalogue() {
 
   const products = useMemo(() => {
     void version;
+    if (dbProducts.length > 0) return dbProducts;
     return getCatalogueProducts({ includeOutOfStock: true });
-  }, [version]);
+  }, [version, dbProducts]);
 
   const vendors = useMemo(() => {
     void version;
@@ -291,9 +306,13 @@ export function useCatalogue() {
   const getProduct = useCallback(
     (id: string) => {
       void version;
+      if (dbProducts.length > 0) {
+        const found = dbProducts.find((p) => p.id === id);
+        if (found) return found;
+      }
       return getCatalogueProduct(id);
     },
-    [version],
+    [version, dbProducts],
   );
 
   const getVendor = useCallback(

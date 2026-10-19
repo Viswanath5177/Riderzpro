@@ -160,9 +160,10 @@ export function CartDrawer() {
               </div>
 
               {quote.groups.map((group) => {
-                const vendor = products
-                  .flatMap((p) => p.offers)
-                  .find((o) => o.vendorId === group.vendorId)?.vendorName || `Supplier ${group.vendorId}`;
+                const vendor =
+                  (products
+                    .flatMap((p) => p.offers)
+                    .find((o) => o.vendorId === group.vendorId) as any)?.vendorName || `Supplier ${group.vendorId}`;
 
                 return (
                   <div
