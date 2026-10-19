@@ -1,11 +1,4 @@
-import battery1 from "@/assets/battery-1.jpg";
-import battery2 from "@/assets/battery-2.jpg";
-import battery3 from "@/assets/battery-3.jpg";
-import charger from "@/assets/charger.jpg";
-import parts from "@/assets/parts.jpg";
 
-import heroBike from "@/assets/hero-bike.jpg";
-import scooterImg from "@/assets/scooter.jpg";
 
 export type Bike = { id: string; make: string; model: string; years: number[]; voltage: number; wmi: string; batteryKwh?: number; brand?: string };
 export type Car = { id: string; make: string; model: string; years: number[]; batteryKWh?: number };

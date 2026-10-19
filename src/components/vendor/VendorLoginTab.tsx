@@ -27,8 +27,8 @@ export function VendorLoginTab({ redirectTarget = "/vendor/dashboard" }: VendorL
   const { signInWithPassword, signInWithOtp } = useVendorAuth();
 
   const [authMethod, setAuthMethod] = useState<"password" | "otp">("password");
-  const [identifier, setIdentifier] = useState("9000000001");
-  const [password, setPassword] = useState("Vendor@123");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);

@@ -24,7 +24,7 @@ export function AdminLogin() {
 
   const [step, setStep] = useState<"credentials" | "otp">("credentials");
   const [email, setEmail] = useState("admin@riderzpro.com");
-  const [password, setPassword] = useState("Admin@123");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberDevice, setRememberDevice] = useState(true);
   const [otpCode, setOtpCode] = useState("");
@@ -237,8 +237,8 @@ export function AdminLogin() {
                   <button
                     type="button"
                     onClick={() => {
-                      toast.info("Mock password hint", {
-                        description: "Use admin@riderzpro.com / Admin@123",
+                      toast.info("Password assistance", {
+                        description: "Please enter your administrator account password.",
                       });
                     }}
                     className="font-semibold text-[#E31E24] hover:underline cursor-pointer"
@@ -276,10 +276,9 @@ export function AdminLogin() {
 
                 {/* Credentials Helper Box */}
                 <div className="mt-3 rounded-2xl border border-gray-200 bg-gray-50/90 p-3 text-[11px] text-gray-600">
-                  <p className="font-bold text-gray-800">Default Test Credentials:</p>
+                  <p className="font-bold text-gray-800">Administrator Console:</p>
                   <p className="mt-0.5 font-mono text-gray-600">
-                    Email: <span className="text-gray-900 font-bold">admin@riderzpro.com</span> · Password:{" "}
-                    <span className="text-gray-900 font-bold">Admin@123</span>
+                    Sign in with your authorized administrator credentials.
                   </p>
                 </div>
               </motion.form>
