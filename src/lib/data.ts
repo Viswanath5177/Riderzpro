@@ -1,4 +1,10 @@
-
+import battery1 from "@/assets/battery-1.jpg";
+import battery2 from "@/assets/battery-2.jpg";
+import battery3 from "@/assets/battery-3.jpg";
+import charger from "@/assets/charger.jpg";
+import parts from "@/assets/parts.jpg";
+import heroBike from "@/assets/hero-bike.jpg";
+import scooterImg from "@/assets/scooter.jpg";
 
 export type Bike = { id: string; make: string; model: string; years: number[]; voltage: number; wmi: string; batteryKwh?: number; brand?: string };
 export type Car = { id: string; make: string; model: string; years: number[]; batteryKWh?: number };
@@ -558,6 +564,11 @@ export const bestOffer = (p: Product) =>
     price: 0,
     stock: 0,
   };
+
+export const getBestOffer = (productIdOrProduct: string | Product) => {
+  const p = typeof productIdOrProduct === "string" ? getProduct(productIdOrProduct) : productIdOrProduct;
+  return p ? bestOffer(p) : null;
+};
 
 export const inr = (n: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);

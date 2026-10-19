@@ -17,17 +17,7 @@ import { handleRoute as riderRoute } from "./routes/rider";
 import { handleRoute as deliveriesRoute } from "./routes/deliveries";
 import { handleRoute as paymentsRoute } from "./routes/payments";
 import { handleRoute as assistantRoute } from "./routes/assistant";
-import {
-  sendVendorApprovedEmail,
-  sendVendorRejectedEmail,
-  sendVendorMoreInfoEmail,
-  sendProductApprovalEmail,
-  sendCustomerOrderPlacedEmail,
-  sendVendorNewOrderEmail,
-} from "../lib/email.server";
-import { handleAuthRoute, getAuthenticatedUser, type AuthenticatedUser } from "./authRoutes";
-import { handleSuperAdminRoute, getVerifiedAdmin } from "./superAdminRoutes";
-import { createNotification, notifyAdminRole } from "./notifications";
+
 
 async function parseBody(req: IncomingMessage): Promise<any> {
   return new Promise((resolve, reject) => {

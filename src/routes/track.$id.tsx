@@ -111,7 +111,7 @@ function Track() {
     groups: [
       {
         vendorId: "v1",
-        items: [{ productId: "p1", qty: 1 }],
+        items: [{ productId: "p1", qty: 1, price: 1250 }],
         subtotal: 1250,
         km: 18.4,
         fee: 45,
@@ -134,6 +134,7 @@ function Track() {
       city: "Amaravati",
       state: "Andhra Pradesh",
       pincode: "522503",
+      phone: userProfile?.phone || "+91 98490 12345",
     },
   };
 
