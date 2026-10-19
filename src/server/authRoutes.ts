@@ -615,9 +615,9 @@ export async function handleAuthRoute(
         if (!customer.is_active) {
           if (authType === "otp") {
             // User proved email ownership with verified OTP, ensure account is active
-            await query("UPDATE customers SET is_active = 1 WHERE id = $1", [customer.id]);
-            await query("UPDATE users SET is_active = 1 WHERE email = $1", [customer.email]).catch(() => {});
-            customer.is_active = 1;
+            await query("UPDATE customers SET is_active = true WHERE id = $1", [customer.id]);
+            await query("UPDATE users SET is_active = true WHERE email = $1", [customer.email]).catch(() => {});
+            customer.is_active = true;
           } else {
             sendJson(res, 401, { success: false, error: "Invalid email or password." });
             return true;
@@ -705,7 +705,7 @@ export async function handleAuthRoute(
         const newCustId = `cst_${crypto.randomBytes(8).toString("hex")}`;
         await query(
           `INSERT INTO customers (id, email, phone, password_hash, full_name, is_active)
-           VALUES ($1, $2, $3, $4, $5, 1)`,
+           VALUES ($1, $2, $3, $4, $5, true)`,
           [newCustId, seller.email, seller.phone || "", seller.password_hash || "", seller.owner_name || "Customer"]
         );
 

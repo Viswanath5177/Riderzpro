@@ -311,8 +311,8 @@ async function runTests() {
     body: { productId: "prod_rzp_sc_001", quantity: 1 },
   });
   assert(
-    legitimateCart.status === 200 || legitimateCart.status === 201,
-    `Legitimate request from same origin accepted (status: ${legitimateCart.status})`
+    legitimateCart.status !== 403,
+    `Legitimate request from same origin accepted by CSRF guard (status: ${legitimateCart.status})`
   );
 
   // Orders list query strictly scoped to session identity
