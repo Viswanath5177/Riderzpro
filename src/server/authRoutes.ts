@@ -416,7 +416,8 @@ export async function handleAuthRoute(
           const codeHash = sha256(otpCode);
           const otpCheck = await query(
             `SELECT id FROM email_verification_attempts 
-             WHERE email = $1 AND code_hash = $2 AND expires_at > now()
+             WHERE email = $1 AND code_hash = $2 AND expires_at > now() AND consumed_at IS NULL
+             ORDER BY created_at DESC
              LIMIT 1`,
             [email, codeHash]
           );
@@ -429,6 +430,7 @@ export async function handleAuthRoute(
           const recent = await query(
             `SELECT id FROM email_verification_attempts 
              WHERE email = $1 AND verified = true AND created_at > (CURRENT_TIMESTAMP - INTERVAL '10 minutes')
+             ORDER BY created_at DESC
              LIMIT 1`,
             [email]
           );
@@ -611,8 +613,15 @@ export async function handleAuthRoute(
       if (customerRes.rows.length > 0) {
         const customer = customerRes.rows[0];
         if (!customer.is_active) {
-          sendJson(res, 401, { success: false, error: "Invalid email or password." });
-          return true;
+          if (authType === "otp") {
+            // User proved email ownership with verified OTP, ensure account is active
+            await query("UPDATE customers SET is_active = 1 WHERE id = $1", [customer.id]);
+            await query("UPDATE users SET is_active = 1 WHERE email = $1", [customer.email]).catch(() => {});
+            customer.is_active = 1;
+          } else {
+            sendJson(res, 401, { success: false, error: "Invalid email or password." });
+            return true;
+          }
         }
 
         if (authType === "password") {
@@ -660,7 +669,7 @@ export async function handleAuthRoute(
             phone: customer.phone,
             role: "customer",
           },
-          redirectUrl: `/${customer.id}?tab=overview`,
+          redirectUrl: "/dashboard/customer",
         });
         return true;
       }
@@ -727,7 +736,7 @@ export async function handleAuthRoute(
             phone: seller.phone,
             role: "customer",
           },
-          redirectUrl: `/${newCustId}?tab=overview`,
+          redirectUrl: "/dashboard/customer",
         });
         return true;
       }
@@ -745,8 +754,13 @@ export async function handleAuthRoute(
       if (userRes.rows.length > 0) {
         const user = userRes.rows[0];
         if (!user.is_active) {
-          sendJson(res, 401, { success: false, error: "Invalid email or password." });
-          return true;
+          if (authType === "otp") {
+            await query("UPDATE users SET is_active = 1 WHERE id = $1", [user.id]);
+            user.is_active = 1;
+          } else {
+            sendJson(res, 401, { success: false, error: "Invalid email or password." });
+            return true;
+          }
         }
 
         if (authType === "password") {
@@ -846,7 +860,7 @@ export async function handleAuthRoute(
             phone: "",
             role: "customer",
           },
-          redirectUrl: `/${custId}?tab=overview`,
+          redirectUrl: "/dashboard/customer",
         });
         return true;
       }
@@ -1107,13 +1121,20 @@ export async function handleAuthRoute(
       // Generate 6-digit OTP
       const code = String(Math.floor(100000 + Math.random() * 900000));
       const codeHash = sha256(code);
-      console.log(`[AUTH OTP DISPATCH] Email: ${email} | Code: ${code} | Purpose: ${purpose}`);
+      console.log(`[AUTH OTP DISPATCH] Email: ${email} | Purpose: ${purpose}`);
+
+      // Invalidate any older unconsumed OTPs for this email and purpose
+      await query(
+        "UPDATE email_verification_attempts SET consumed_at = now() WHERE email = $1 AND purpose = $2 AND consumed_at IS NULL",
+        [email, purpose]
+      ).catch(() => {});
 
       // Save in email_verification_attempts table
+      const attemptId = "eva_" + crypto.randomBytes(8).toString("hex");
       await query(
-        `INSERT INTO email_verification_attempts (email, code_hash, purpose, expires_at)
-         VALUES ($1, $2, $3, now() + interval '15 minutes')`,
-        [email, codeHash, purpose]
+        `INSERT INTO email_verification_attempts (id, email, code_hash, purpose, expires_at)
+         VALUES ($1, $2, $3, $4, now() + interval '15 minutes')`,
+        [attemptId, email, codeHash, purpose]
       );
 
       // Send email via Resend API / Gmail SMTP
@@ -1164,7 +1185,7 @@ export async function handleAuthRoute(
       const codeHash = sha256(code);
       const attemptRes = await query(
         `SELECT id FROM email_verification_attempts 
-         WHERE email = $1 AND code_hash = $2 AND expires_at > now()
+         WHERE email = $1 AND code_hash = $2 AND expires_at > now() AND consumed_at IS NULL
          ORDER BY created_at DESC 
          LIMIT 1`,
         [email, codeHash]
@@ -1215,7 +1236,8 @@ export async function handleAuthRoute(
         const codeHash = sha256(otpCode);
         const check = await query(
           `SELECT id FROM email_verification_attempts 
-           WHERE email = $1 AND code_hash = $2 AND expires_at > now()
+           WHERE email = $1 AND code_hash = $2 AND expires_at > now() AND consumed_at IS NULL
+           ORDER BY created_at DESC
            LIMIT 1`,
           [email, codeHash]
         );
@@ -1229,6 +1251,7 @@ export async function handleAuthRoute(
         const checkVerif = await query(
           `SELECT id FROM email_verification_attempts 
            WHERE email = $1 AND verified = true AND created_at > (CURRENT_TIMESTAMP - INTERVAL '10 minutes')
+           ORDER BY created_at DESC
            LIMIT 1`,
           [email]
         );
@@ -1250,7 +1273,7 @@ export async function handleAuthRoute(
 
       const insertRes = await query(
         `INSERT INTO customers (id, email, phone, password_hash, full_name, is_active)
-         VALUES ($1, $2, $3, $4, $5, true)
+         VALUES ($1, $2, $3, $4, $5, 1)
          RETURNING id, email, phone, full_name`,
         [custId, email, body.phone || null, passwordHash, fullName]
       );
@@ -1259,7 +1282,7 @@ export async function handleAuthRoute(
       // Mirror into users
       await query(
         `INSERT INTO users (id, email, password_hash, full_name, role, is_active)
-         VALUES ($1, $2, $3, $4, 'customer', true)
+         VALUES ($1, $2, $3, $4, 'customer', 1)
          ON CONFLICT (email) DO NOTHING`,
         ["usr_" + custId.slice(4), email, passwordHash, fullName]
       ).catch(() => {});
@@ -1885,12 +1908,13 @@ export async function handleAuthRoute(
 
       const code = String(Math.floor(100000 + Math.random() * 900000));
       const codeHash = sha256(code);
-      console.log(`[PASSWORD OTP DISPATCH] Email: ${email} | Code: ${code}`);
+      console.log(`[PASSWORD OTP DISPATCH] Email: ${email}`);
 
+      const attemptId = "eva_" + crypto.randomBytes(8).toString("hex");
       await query(
-        `INSERT INTO email_verification_attempts (email, code_hash, purpose, expires_at)
-         VALUES ($1, $2, 'SET_PASSWORD', now() + interval '15 minutes')`,
-        [email, codeHash]
+        `INSERT INTO email_verification_attempts (id, email, code_hash, purpose, expires_at)
+         VALUES ($1, $2, $3, 'SET_PASSWORD', now() + interval '15 minutes')`,
+        [attemptId, email, codeHash]
       );
 
       await sendEmail({
@@ -1958,7 +1982,7 @@ export async function handleAuthRoute(
       const codeHash = sha256(otpCode);
       const checkOtp = await query(
         `SELECT id FROM email_verification_attempts 
-         WHERE email = $1 AND code_hash = $2 AND expires_at > now()
+         WHERE email = $1 AND code_hash = $2 AND expires_at > now() AND consumed_at IS NULL
          ORDER BY created_at DESC LIMIT 1`,
         [email, codeHash]
       );

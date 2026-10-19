@@ -363,7 +363,10 @@ export function CustomerLoginModal() {
     closeCustomerLoginModal();
 
     // Trigger post-login callback or navigation directly to customer dashboard
-    const targetUrl = customerLoginModalOptions?.redirectTo || "/dashboard/customer";
+    let targetUrl = customerLoginModalOptions?.redirectTo || "/dashboard/customer";
+    if ((targetUrl === "/dashboard/customer" || targetUrl === "/dashboard") && sessionUser.id) {
+      targetUrl = `/${sessionUser.id}`;
+    }
     if (customerLoginModalOptions?.onAuthenticated) {
       customerLoginModalOptions.onAuthenticated();
     }

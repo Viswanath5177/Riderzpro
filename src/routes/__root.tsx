@@ -18,6 +18,7 @@ import { AuthProvider } from "../lib/auth";
 import { AdminAuthProvider } from "../lib/adminAuth";
 import { StoreProvider } from "../lib/store";
 import { Toaster } from "../components/ui/sonner";
+import { initNativeApp, isMobileDevice } from "../lib/native/app";
 import { CustomerLoginModal } from "../components/auth/CustomerLoginModal";
 
 function NotFoundComponent() {
@@ -29,6 +30,9 @@ function NotFoundComponent() {
       pathname
     )
   ) {
+    if (typeof window !== "undefined" && isMobileDevice()) {
+      return <Navigate to="/app" replace />;
+    }
     return <Navigate to="/" replace />;
   }
 
@@ -69,6 +73,16 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
         <p className="mt-2 text-sm text-muted-foreground">
           Something went wrong on our end. You can try refreshing or head back home.
         </p>
+        {Boolean(error) && (
+          <div className="mt-4 p-3 bg-red-50 text-red-900 border border-red-200 rounded-lg text-xs text-left max-h-56 overflow-auto font-mono">
+            <p className="font-bold">{(error as any)?.message || String(error)}</p>
+            {(error as any)?.stack && (
+              <pre className="mt-1 whitespace-pre-wrap text-[10px] text-red-700">
+                {(error as any).stack}
+              </pre>
+            )}
+          </div>
+        )}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -95,7 +109,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Riderzpro — EV Batteries & Parts Marketplace" },
       { name: "description", content: "Find EV batteries and parts that fit your bike, order from many sellers at once and track delivery live." },
       { name: "theme-color", content: "#ffffff" },
@@ -111,9 +125,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.png", type: "image/png" },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
-      { rel: "apple-touch-icon", href: "/favicon.png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
@@ -145,6 +157,27 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    const cleanup = initNativeApp();
+
+    if (typeof window !== "undefined" && isMobileDevice()) {
+      const p = window.location.pathname;
+      if (
+        p.startsWith("/vendor") ||
+        p.startsWith("/dashboard/vendor") ||
+        p === "/login" ||
+        p === "/auth" ||
+        p === "/dashboards"
+      ) {
+        window.location.replace("/app");
+      }
+    }
+
+    return () => {
+      cleanup();
+    };
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

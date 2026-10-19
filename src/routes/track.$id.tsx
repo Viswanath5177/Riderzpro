@@ -68,7 +68,6 @@ function Track() {
 
   // Simulation controls permission check (admin server role or ?demo=1 URL parameter)
   const canSimulate = useSimulationControls();
-
   const [localSimStatus, setLocalSimStatus] = useState<number>(3);
   const [autoPlay, setAutoPlay] = useState<boolean>(false);
 
@@ -418,7 +417,6 @@ function Track() {
     is_arrived: progress >= 0.98,
     is_route_deviating: false,
   };
-
   return (
     <SiteLayout>
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">

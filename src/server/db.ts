@@ -81,7 +81,7 @@ export function translateToPostgres(text: string): string {
 
 export function translateToSqlite(text: string, params: any[] = []): { sql: string; args: any[] } {
   let sql = text
-    .replace(/now\(\)\s*([+-])\s*interval\s+'(\d+)\s+(seconds?|minutes?|hours?|days?)'/gi,
+    .replace(/(?:now\(\)|CURRENT_TIMESTAMP|CURRENT_DATE)\s*([+-])\s*interval\s+'(\d+)\s+(seconds?|minutes?|hours?|days?)'/gi,
       (_match, sign: string, amount: string, unit: string) => `datetime('now', '${sign}${amount} ${unit.toLowerCase()}')`)
     .replace(/now\(\)/gi, "CURRENT_TIMESTAMP")
     .replace(/clock_timestamp\(\)/gi, "CURRENT_TIMESTAMP")
@@ -114,6 +114,9 @@ export function translateToSqlite(text: string, params: any[] = []): { sql: stri
         const parsed = JSON.parse(val);
         if (Array.isArray(parsed) && parsed.length === 1) val = parsed[0];
       } catch {}
+    }
+    if (typeof val === "boolean") {
+      val = val ? 1 : 0;
     }
     args.push(val);
     return "?";

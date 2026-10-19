@@ -18,6 +18,8 @@ import { SettingsSection } from "@/components/vendor/dashboard/SettingsSection";
 import { NotificationsSection } from "@/components/vendor/dashboard/NotificationsSection";
 import { SupportSection } from "@/components/vendor/dashboard/SupportSection";
 
+import { isMobileDevice } from "@/lib/native/app";
+
 export const Route = createFileRoute("/vendor/dashboard")({
   head: () => ({
     meta: [
@@ -32,6 +34,18 @@ export const Route = createFileRoute("/vendor/dashboard")({
 });
 
 function VendorDashboardRoute() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isMobileDevice()) {
+      navigate({ to: "/app", replace: true });
+    }
+  }, [navigate]);
+
+  if (typeof window !== "undefined" && isMobileDevice()) {
+    return null;
+  }
+
   return (
     <VendorRouteGuard>
       <VendorDashboardContent />

@@ -1,4 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { isMobileDevice } from "@/lib/native/app";
 import { ArrowRight } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { ROLE_LINKS } from "@/components/site/DashboardShell";
@@ -42,6 +44,18 @@ export function RolePicker() {
 }
 
 function Dashboards() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isMobileDevice()) {
+      navigate({ to: "/app", replace: true });
+    }
+  }, [navigate]);
+
+  if (typeof window !== "undefined" && isMobileDevice()) {
+    return null;
+  }
+
   return (
     <SiteLayout>
       <div className="mx-auto max-w-6xl px-4 py-12 md:px-6">

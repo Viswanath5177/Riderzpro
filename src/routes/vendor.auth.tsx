@@ -1,4 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { isMobileDevice } from "@/lib/native/app";
 import { VendorAuthPage } from "@/components/vendor/VendorAuthPage";
 
 export type VendorAuthSearch = {
@@ -28,5 +30,18 @@ export const Route = createFileRoute("/vendor/auth")({
 
 function VendorAuthRouteComponent() {
   const search = Route.useSearch();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isMobileDevice()) {
+      navigate({ to: "/app", replace: true });
+    }
+  }, [navigate]);
+
+  if (typeof window !== "undefined" && isMobileDevice()) {
+    return null;
+  }
+
   return <VendorAuthPage initialMode={search.mode || "signin"} redirectPath={search.redirect} />;
 }
+

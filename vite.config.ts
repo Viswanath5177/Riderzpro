@@ -15,6 +15,7 @@ const cloudflareWorkersDevShim = {
 };
 
 export default defineConfig({
+  server: { allowedHosts: true },
   plugins: [cloudflareWorkersDevShim, pgApiMiddleware()],
   vite: {
     resolve: {
@@ -36,6 +37,7 @@ export default defineConfig({
       },
     },
     server: {
+      allowedHosts: true,
       proxy: {
         "/api/v1/chat": {
           target: "http://127.0.0.1:8000",

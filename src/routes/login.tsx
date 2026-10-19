@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { isMobileDevice } from "@/lib/native/app";
 
 export type LoginSearch = {
   redirect?: string;
@@ -13,6 +14,9 @@ export const Route = createFileRoute("/login")({
     };
   },
   beforeLoad: async ({ search }) => {
+    if (isMobileDevice()) {
+      throw redirect({ to: "/app", search: { tab: "account" } });
+    }
     // Permanently remove standalone /login page: redirect to home with customer login modal triggered
     const target = (search as any)?.redirect || "/dashboard/customer";
     throw redirect({

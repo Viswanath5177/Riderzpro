@@ -1,4 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { isMobileDevice } from "@/lib/native/app";
 import { VendorSignupFlow } from "@/components/vendor/VendorSignupFlow";
 
 export const Route = createFileRoute("/vendor/sign-up")({
@@ -17,5 +19,18 @@ export const Route = createFileRoute("/vendor/sign-up")({
 });
 
 function VendorSignUpRouteComponent() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isMobileDevice()) {
+      navigate({ to: "/app", replace: true });
+    }
+  }, [navigate]);
+
+  if (typeof window !== "undefined" && isMobileDevice()) {
+    return null;
+  }
+
   return <VendorSignupFlow />;
 }
+

@@ -1,0 +1,11 @@
+# Flutter/Dart build artifacts
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+*.lock.db
+.DS_Store
+*.log
+test_report.txt
+test_results.txt

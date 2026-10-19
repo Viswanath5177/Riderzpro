@@ -18,6 +18,9 @@ import { toast } from "sonner";
 import evShowcaseImg from "@/assets/ev-login-showcase.jpg";
 import { Logo } from "@/components/site/bits";
 
+import { isMobileDevice } from "@/lib/native/app";
+import { useEffect } from "react";
+
 export const Route = createFileRoute("/vendor/login")({
   head: () => ({
     meta: [
@@ -35,6 +38,16 @@ export const Route = createFileRoute("/vendor/login")({
 
 function VendorLoginRouteComponent() {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isMobileDevice()) {
+      navigate({ to: "/app", replace: true });
+    }
+  }, [navigate]);
+
+  if (typeof window !== "undefined" && isMobileDevice()) {
+    return null;
+  }
 
   // Form States
   const [email, setEmail] = useState("");

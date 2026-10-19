@@ -5,11 +5,15 @@ import { SiteLayout } from "@/components/site/SiteLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { inr } from "@/lib/data";
 import { getCurrentRole, useAuth } from "@/lib/auth";
+import { isMobileDevice } from "@/lib/native/app";
 
 export const Route = createFileRoute("/orders")({
   beforeLoad: async () => {
     if (typeof window === "undefined") {
       return;
+    }
+    if (isMobileDevice()) {
+      throw redirect({ to: "/app", search: { tab: "orders" } });
     }
     const role = await getCurrentRole();
     if (!role) {

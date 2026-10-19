@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import type { Vendor, VendorBusinessType, VendorOnboarding } from "./vendor/types";
 import { useVendorStore, VENDORS_STORAGE_KEY } from "./vendor/vendorStore";
 import { otpAdapter, DEMO_OTP } from "./vendor/adapters/otp";
+import { isMobileDevice } from "./native/app";
 
 export interface VendorUserSession {
   vendorId: string;
@@ -91,6 +92,15 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
             "torque@evparts.com": defaultHash,
           };
           localStorage.setItem(VENDOR_AUTH_CRED_KEY, JSON.stringify(defaultCreds));
+        }
+
+        // Mobile devices are strictly customers: clear vendor session and never auto-seed
+        if (isMobileDevice()) {
+          localStorage.removeItem(VENDOR_SESSION_KEY);
+          sessionStorage.removeItem(VENDOR_SESSION_KEY);
+          setSession(null);
+          setLoading(false);
+          return;
         }
 
         const wasExplicitlySignedOut = localStorage.getItem("vendor_signed_out") === "true";
@@ -414,7 +424,11 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
     setSession(null);
     toast.info("Signed out of Vendor Portal");
     if (typeof window !== "undefined") {
-      window.location.replace("/login?role=vendor");
+      if (isMobileDevice()) {
+        window.location.replace("/app");
+      } else {
+        window.location.replace("/login?role=vendor");
+      }
     }
   }, []);
 
@@ -499,6 +513,11 @@ export function VendorRouteGuard({
         </div>
       </div>
     );
+  }
+
+  // Mobile clients must NEVER access vendor portal or vendor guards
+  if (typeof window !== "undefined" && isMobileDevice()) {
+    return <Navigate to="/app" replace />;
   }
 
   // If an admin opens the vendor dashboard, redirect to admin dashboard (admin has no vendor store)
