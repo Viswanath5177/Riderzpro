@@ -25,6 +25,7 @@ interface MobileDrawerProps {
   isAuthenticated: boolean;
   activeName?: string;
   onSignOut: () => void;
+  isAdmin?: boolean;
 }
 
 const shopCategories = [
@@ -42,6 +43,7 @@ export function MobileDrawer({
   isAuthenticated,
   activeName,
   onSignOut,
+  isAdmin = false,
 }: MobileDrawerProps) {
   const [isShopExpanded, setIsShopExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -130,23 +132,27 @@ export function MobileDrawer({
             )}
           </div>
 
-          <Link
-            to="/garage"
-            onClick={onClose}
-            className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#111111] hover:bg-[#f7f7f8] transition"
-          >
-            <Bike className="h-4 w-4 text-[#6b7280]" />
-            <span>My Garage</span>
-          </Link>
+          {!isAdmin && (
+            <>
+              <Link
+                to="/garage"
+                onClick={onClose}
+                className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#111111] hover:bg-[#f7f7f8] transition"
+              >
+                <Bike className="h-4 w-4 text-[#6b7280]" />
+                <span>My Garage</span>
+              </Link>
 
-          <Link
-            to="/orders"
-            onClick={onClose}
-            className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#111111] hover:bg-[#f7f7f8] transition"
-          >
-            <Package className="h-4 w-4 text-[#6b7280]" />
-            <span>Orders</span>
-          </Link>
+              <Link
+                to="/orders"
+                onClick={onClose}
+                className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#111111] hover:bg-[#f7f7f8] transition"
+              >
+                <Package className="h-4 w-4 text-[#6b7280]" />
+                <span>Orders</span>
+              </Link>
+            </>
+          )}
 
           <Link
             to="/offers"
@@ -176,18 +182,18 @@ export function MobileDrawer({
                   {activeName?.slice(0, 2).toUpperCase() || "CU"}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-[#111111] truncate">{activeName || "Customer"}</p>
-                  <p className="text-[11px] text-[#6b7280]">Customer Account</p>
+                  <p className="text-xs font-bold text-[#111111] truncate">{activeName || (isAdmin ? "Admin" : "Customer")}</p>
+                  <p className="text-[11px] text-[#6b7280]">{isAdmin ? "Operations Admin" : "Customer Account"}</p>
                 </div>
               </div>
               <div className="flex gap-2 pt-1">
                 <Link
-                  to="/app"
-                  search={{ tab: "account" } as any}
+                  to={isAdmin ? "/admin" : "/app"}
+                  search={!isAdmin ? ({ tab: "account" } as any) : undefined}
                   onClick={onClose}
                   className="flex-1 rounded-xl border border-[#ececec] bg-white py-2 text-center text-xs font-semibold text-[#111111] hover:bg-gray-50 transition"
                 >
-                  My Account
+                  {isAdmin ? "Dashboard" : "My Account"}
                 </Link>
                 <button
                   onClick={() => {

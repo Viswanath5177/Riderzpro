@@ -22,6 +22,10 @@ dist-ssr/
 .env
 .env.*
 !.env.example
+*.pem
+certs/
+backups/
+*.sql
 
 # Python backend
 __pycache__/

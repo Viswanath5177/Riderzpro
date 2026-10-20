@@ -6,6 +6,7 @@ import type { Vendor, VendorBusinessType, VendorOnboarding } from "./vendor/type
 import { useVendorStore, VENDORS_STORAGE_KEY } from "./vendor/vendorStore";
 import { otpAdapter, DEMO_OTP } from "./vendor/adapters/otp";
 import { isMobileDevice } from "./native/app";
+import { broadcastAuthEvent, AUTH_CHANNEL_NAME } from "./auth";
 
 export interface VendorUserSession {
   vendorId: string;
@@ -133,6 +134,70 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
     }
 
     initCredentials();
+  }, []);
+
+  // Multi-tab synchronization and Back-Forward Cache (bfcache) pageshow handling
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleSync = (data: any) => {
+      if (data?.type === "LOGOUT" || data?.type === "SESSION_EXPIRED") {
+        setSession(null);
+        if (window.location.pathname.startsWith("/vendor/")) {
+          const dest = data.type === "SESSION_EXPIRED" ? "/vendor/login?sessionExpired=true" : "/vendor/login";
+          window.location.replace(dest);
+        }
+      }
+    };
+
+    let bc: BroadcastChannel | null = null;
+    if ("BroadcastChannel" in window) {
+      bc = new BroadcastChannel(AUTH_CHANNEL_NAME);
+      bc.onmessage = (e) => handleSync(e.data);
+    }
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "riderzpro_auth_event" && e.newValue) {
+        try {
+          handleSync(JSON.parse(e.newValue));
+        } catch {}
+      }
+    };
+    window.addEventListener("storage", onStorage);
+
+    const onPageShow = async (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        try {
+          const res = await fetch("/api/auth/me", {
+            credentials: "include",
+            headers: { "X-Passive-Poll": "true" },
+          });
+          if (!res.ok) {
+            setSession(null);
+            if (window.location.pathname.startsWith("/vendor/")) {
+              window.location.replace("/vendor/login");
+            }
+            return;
+          }
+          const d = await res.json();
+          if (!d.authenticated || d.role !== "seller") {
+            setSession(null);
+            if (window.location.pathname.startsWith("/vendor/")) {
+              window.location.replace("/vendor/login");
+            }
+          }
+        } catch {
+          setSession(null);
+        }
+      }
+    };
+    window.addEventListener("pageshow", onPageShow);
+
+    return () => {
+      bc?.close();
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("pageshow", onPageShow);
+    };
   }, []);
 
   const currentVendor = useMemo(() => {
@@ -418,6 +483,7 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
       sessionStorage.removeItem("riderzpro_auth_user");
       sessionStorage.removeItem("riderzpro_auth_token");
       await fetch("/api/auth/signout", { method: "POST", credentials: "include" }).catch(() => {});
+      broadcastAuthEvent({ type: "LOGOUT", role: "seller" });
     } catch (e) {
       console.warn("Storage signout cleanup:", e);
     }
@@ -427,7 +493,7 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
       if (isMobileDevice()) {
         window.location.replace("/app");
       } else {
-        window.location.replace("/login?role=vendor");
+        window.location.replace("/vendor/login");
       }
     }
   }, []);

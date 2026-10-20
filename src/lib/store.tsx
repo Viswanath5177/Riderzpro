@@ -195,7 +195,10 @@ type Ctx = {
   deleteOrder: (id: string) => void;
   clearOrders: () => void;
   userLocation: LocationArea;
-  setUserLocation: (loc: LocationArea | ((prev: LocationArea) => LocationArea)) => void;
+  setUserLocation: (loc: LocationArea | ((prev: LocationArea) => LocationArea), persistToDb?: boolean) => void;
+  isDetectingLocation: boolean;
+  locationGpsError: string | null;
+  detectCurrentLocation: (options?: { force?: boolean }) => Promise<LocationArea | null>;
   refreshAddressesAndLocation: () => Promise<void>;
   isLocationModalOpen: boolean;
   setIsLocationModalOpen: (open: boolean) => void;
@@ -266,9 +269,134 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return false;
   });
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
-  const [userLocation, setUserLocation] = useState<LocationArea>(DEFAULT_LOCATION);
+  const [userLocation, setUserLocationState] = useState<LocationArea>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const rawLoc = localStorage.getItem("riderzpro_delivery_location");
+        if (rawLoc) {
+          const parsed = JSON.parse(rawLoc);
+          if (parsed && (parsed.name || parsed.city)) return parsed;
+        }
+      } catch {}
+    }
+    return DEFAULT_LOCATION;
+  });
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [locationGpsError, setLocationGpsError] = useState<string | null>(null);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
+
+  const setUserLocation = useCallback(
+    (locOrFn: LocationArea | ((prev: LocationArea) => LocationArea), persistToDb = true) => {
+      setUserLocationState((prev) => {
+        const next = typeof locOrFn === "function" ? locOrFn(prev) : locOrFn;
+        try {
+          localStorage.setItem("riderzpro_delivery_location", JSON.stringify(next));
+        } catch {}
+
+        if (persistToDb && (next.name || next.city)) {
+          fetch("/api/customer/location-preference", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              name: next.name,
+              city: next.city,
+              state: next.state,
+              pincode: next.pincode,
+              latitude: next.lat || next.latitude || 0,
+              longitude: next.lng || next.longitude || 0,
+              source: next.source || "search",
+              isManual: Boolean(next.isManual),
+            }),
+          }).catch(() => {});
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  const detectCurrentLocation = useCallback(
+    async (options?: { force?: boolean }): Promise<LocationArea | null> => {
+      // Preserve manual selection unless explicit force refresh is requested
+      if (!options?.force) {
+        if (typeof window !== "undefined") {
+          try {
+            const rawLoc = localStorage.getItem("riderzpro_delivery_location");
+            if (rawLoc) {
+              const parsed = JSON.parse(rawLoc);
+              if (parsed?.isManual) {
+                return parsed;
+              }
+            }
+          } catch {}
+        }
+      }
+
+      if (typeof window === "undefined" || !("geolocation" in navigator)) {
+        setLocationGpsError("Geolocation is not supported by your browser. Please search manually.");
+        return null;
+      }
+
+      setIsDetectingLocation(true);
+      setLocationGpsError(null);
+
+      return new Promise<LocationArea | null>((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            const { latitude, longitude } = pos.coords;
+            try {
+              const geocoded = await reverseGeocodeCoords(latitude, longitude);
+              if (!geocoded || (!geocoded.name && !geocoded.city)) {
+                throw new Error("Unable to reverse geocode device location.");
+              }
+
+              const detectedLoc: LocationArea = {
+                id: `gps-${Date.now()}`,
+                name: geocoded.name || geocoded.city,
+                city: geocoded.city || "",
+                state: geocoded.state || "",
+                pincode: geocoded.pincode || "",
+                lat: latitude,
+                lng: longitude,
+                latitude,
+                longitude,
+                tag: `GPS: ${geocoded.name || geocoded.city}`,
+                source: "gps",
+                isManual: false,
+              };
+
+              setUserLocation(detectedLoc, true);
+              setIsDetectingLocation(false);
+              setLocationGpsError(null);
+              resolve(detectedLoc);
+            } catch (err: any) {
+              setIsDetectingLocation(false);
+              const msg = err?.message || "Unable to reverse geocode device location. Please search manually.";
+              setLocationGpsError(msg);
+              resolve(null);
+            }
+          },
+          (error) => {
+            setIsDetectingLocation(false);
+            let msg = "Unable to detect your device location. Please search manually.";
+            if (error.code === error.PERMISSION_DENIED) {
+              msg = "Location permission denied. Please allow location access or search your address manually.";
+            } else if (error.code === error.POSITION_UNAVAILABLE) {
+              msg = "GPS position unavailable from your device. Please search your address manually.";
+            } else if (error.code === error.TIMEOUT) {
+              msg = "Location detection timed out. Please try again or search manually.";
+            }
+            setLocationGpsError(msg);
+            resolve(null);
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      });
+    },
+    [setUserLocation]
+  );
 
   useEffect(() => {
     try {
@@ -323,7 +451,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }));
         }
         if (s.role) setRole(s.role);
-        if (s.userLocation && s.userLocation.name) setUserLocation(s.userLocation);
       } else {
         setNotifications(DEFAULT_NOTIFICATIONS);
       }
@@ -386,66 +513,44 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           setIsLoadingWishlist(false);
         });
 
-      // Hydrate delivery location: default saved address from DB, or user profile address, or device GPS
-      fetch("/api/customer/addresses", { credentials: "include" })
+      // Hydrate customer location preference or run auto GPS detection
+      fetch("/api/customer/location-preference", { credentials: "include" })
         .then((r) => r.json())
         .then((d) => {
-          if (d.success && Array.isArray(d.data) && d.data.length > 0) {
-            const def = d.data.find((a: any) => a.is_default) || d.data[0];
-            const addrName = def.street_address || def.city || "Bengaluru";
-            setUserLocation({
-              id: def.id,
-              name: addrName,
-              city: def.city || "Bengaluru",
-              pincode: def.pincode || "560001",
-              lat: 12.9716,
-              lng: 77.5946,
-              tag: def.label || "Saved Address",
-            });
+          if (d.success && d.preference && (d.preference.name || d.preference.city)) {
+            setUserLocationState(d.preference);
+            try {
+              localStorage.setItem("riderzpro_delivery_location", JSON.stringify(d.preference));
+            } catch {}
           } else {
-            // Check if userProfile has an address from database
-            fetch("/api/customer/profile", { credentials: "include" })
-              .then((pr) => pr.json())
-              .then((pd) => {
-                if (pd.success && pd.profile?.address) {
-                  setUserLocation({
-                    id: "profile_addr",
-                    name: pd.profile.address,
-                    city: pd.profile.city || "Bengaluru",
-                    pincode: "560001",
-                    lat: 12.9716,
-                    lng: 77.5946,
-                    tag: "Profile Address",
-                  });
-                } else if (typeof window !== "undefined" && "geolocation" in navigator) {
-                  navigator.geolocation.getCurrentPosition(
-                    async (pos) => {
-                      const { latitude, longitude } = pos.coords;
-                      let geocoded;
-                      try {
-                        geocoded = await reverseGeocodeCoords(latitude, longitude);
-                      } catch {
-                        geocoded = { name: "Current Location", city: "India" };
-                      }
-                      setUserLocation({
-                        id: `gps-auto`,
-                        name: geocoded.name || geocoded.city || "Current Location",
-                        city: geocoded.city || "India",
-                        pincode: geocoded.pincode || "",
-                        lat: latitude,
-                        lng: longitude,
-                        tag: "Device GPS",
-                      });
-                    },
-                    () => {},
-                    { enableHighAccuracy: true, timeout: 8000 }
-                  );
+            // Check localStorage
+            const rawLoc = localStorage.getItem("riderzpro_delivery_location");
+            if (rawLoc) {
+              try {
+                const parsed = JSON.parse(rawLoc);
+                if (parsed && (parsed.name || parsed.city)) {
+                  setUserLocationState(parsed);
+                  if (parsed.isManual) return;
                 }
-              })
-              .catch(() => {});
+              } catch {}
+            }
+            // Auto detect real device GPS on load
+            detectCurrentLocation({ force: false });
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          const rawLoc = localStorage.getItem("riderzpro_delivery_location");
+          if (rawLoc) {
+            try {
+              const parsed = JSON.parse(rawLoc);
+              if (parsed && (parsed.name || parsed.city)) {
+                setUserLocationState(parsed);
+                if (parsed.isManual) return;
+              }
+            } catch {}
+          }
+          detectCurrentLocation({ force: false });
+        });
     } catch {}
     setLoaded(true);
   }, []);
@@ -842,14 +947,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const updateUserProfile = useCallback((p: Partial<UserProfile>) => {
     setUserProfile((prev) => {
       const next = { ...prev, ...p };
-      if (p.address || p.city) {
-        setUserLocation((loc) => ({
-          ...loc,
-          name: p.address || p.city || loc.name,
-          city: p.city || loc.city || "Bengaluru",
-          tag: "Primary Address",
-        }));
-      }
       return next;
     });
     // Synchronize to backend database
@@ -863,20 +960,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const refreshAddressesAndLocation = useCallback(async () => {
     try {
-      const res = await fetch("/api/customer/addresses", { credentials: "include" });
-      const d = await res.json();
-      if (d.success && Array.isArray(d.data) && d.data.length > 0) {
-        const def = d.data.find((a: any) => a.is_default) || d.data[0];
-        setUserLocation({
-          id: def.id,
-          name: def.street_address || def.city || "Bengaluru",
-          city: def.city || "Bengaluru",
-          pincode: def.pincode || "560001",
-          lat: 12.9716,
-          lng: 77.5946,
-          tag: def.label || "Saved Address",
-        });
-      }
+      await fetch("/api/customer/addresses", { credentials: "include" });
     } catch {}
   }, []);
 
@@ -1066,6 +1150,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       signOut,
       userLocation,
       setUserLocation,
+      isDetectingLocation,
+      locationGpsError,
+      detectCurrentLocation,
       refreshAddressesAndLocation,
       isLocationModalOpen,
       setIsLocationModalOpen,
@@ -1114,6 +1201,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       signIn,
       signOut,
       userLocation,
+      setUserLocation,
+      isDetectingLocation,
+      locationGpsError,
+      detectCurrentLocation,
       isLocationModalOpen,
     ],
   );

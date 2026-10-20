@@ -5,6 +5,7 @@ import { SiteLayout } from "@/components/site/SiteLayout";
 import { ProductCard } from "@/components/site/bits";
 import { bikes, products, type Product } from "@/lib/data";
 import { useStore } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
 import battery1 from "@/assets/battery-1.jpg";
 import battery2 from "@/assets/battery-2.jpg";
 import battery3 from "@/assets/battery-3.jpg";
@@ -238,6 +239,7 @@ function FormattedMessage({ text }: { text: string }) {
 }
 
 function Assistant() {
+  const { isAuthenticated, openCustomerLoginModal } = useAuth();
   const { activeBikeId, liveOrder } = useStore() as any;
   const [msgs, setMsgs] = useState<Msg[]>([
     {
@@ -431,6 +433,31 @@ function Assistant() {
       setListening(true);
     } catch {}
   };
+
+  if (!isAuthenticated) {
+    return (
+      <SiteLayout>
+        <div className="mx-auto flex max-w-lg flex-col items-center justify-center px-4 py-20 text-center">
+          <div className="h-16 w-16 mb-5 rounded-full bg-[#111111] grid place-items-center text-white shadow-xl">
+            <Zap className="h-8 w-8 text-amber-400" />
+          </div>
+          <h1 className="text-2xl font-black text-[#111111] tracking-tight mb-2">
+            Sign In to Access Volt AI Assistant
+          </h1>
+          <p className="text-sm text-gray-500 mb-6 max-w-sm">
+            Volt helps you find compatible EV batteries, check voltage safety specs, and track live orders. Please sign in to your customer account to continue.
+          </p>
+          <button
+            type="button"
+            onClick={openCustomerLoginModal}
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer"
+          >
+            Sign In to Continue
+          </button>
+        </div>
+      </SiteLayout>
+    );
+  }
 
   return (
     <SiteLayout>

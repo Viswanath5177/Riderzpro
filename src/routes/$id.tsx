@@ -174,7 +174,6 @@ function CustomerDashboard() {
       to: "/$id",
       params: { id },
       search: { tab: newTab as CustomerAllowedTab },
-      replace: true,
     });
   };
 

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { Navigate, useLocation } from "@tanstack/react-router";
-import { adminSignIn } from "./auth";
+import { adminSignIn, broadcastAuthEvent, AUTH_CHANNEL_NAME } from "./auth";
 
 export interface AdminUser {
   id: string;
@@ -123,6 +123,53 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     initSession();
   }, [refreshAdminSession]);
 
+  // Multi-tab synchronization and Back-Forward Cache (bfcache) pageshow handling
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleSync = (data: any) => {
+      if (data?.type === "LOGOUT" || data?.type === "SESSION_EXPIRED") {
+        setAdminUser(null);
+        setServerRole(null);
+        setPendingUser(null);
+        if (window.location.pathname.startsWith("/admin") || window.location.pathname.startsWith("/superadmin")) {
+          window.location.replace("/vendor/login");
+        }
+      }
+    };
+
+    let bc: BroadcastChannel | null = null;
+    if ("BroadcastChannel" in window) {
+      bc = new BroadcastChannel(AUTH_CHANNEL_NAME);
+      bc.onmessage = (e) => handleSync(e.data);
+    }
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "riderzpro_auth_event" && e.newValue) {
+        try {
+          handleSync(JSON.parse(e.newValue));
+        } catch {}
+      }
+    };
+    window.addEventListener("storage", onStorage);
+
+    const onPageShow = async (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        const u = await refreshAdminSession();
+        if (!u && (window.location.pathname.startsWith("/admin") || window.location.pathname.startsWith("/superadmin"))) {
+          window.location.replace("/vendor/login");
+        }
+      }
+    };
+    window.addEventListener("pageshow", onPageShow);
+
+    return () => {
+      bc?.close();
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, [refreshAdminSession]);
+
   const login = useCallback(
     async (email: string, pass: string): Promise<{ success: boolean; error?: string; requireOtp?: boolean }> => {
       const trimmedEmail = email.trim().toLowerCase();
@@ -194,6 +241,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     setAdminUser(null);
     setServerRole(null);
     setPendingUser(null);
+    broadcastAuthEvent({ type: "LOGOUT", role: "admin" });
   }, []);
 
   const value = useMemo<AdminAuthContextType>(

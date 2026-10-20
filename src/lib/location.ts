@@ -24,9 +24,9 @@ export async function reverseGeocodeCoords(
       if (data.success && (data.name || data.city)) {
         return {
           name: data.name || data.city,
-          city: data.city || data.state || "India",
-          state: data.state,
-          pincode: data.pincode,
+          city: data.city || data.name || "",
+          state: data.state || "",
+          pincode: data.pincode || "",
         };
       }
     }
@@ -39,13 +39,13 @@ export async function reverseGeocodeCoords(
     );
     if (res.ok) {
       const d = await res.json();
-      const locality = d.locality || d.city || d.principalSubdivision;
-      const city = d.city || d.principalSubdivision || "India";
+      const locality = d.locality || d.city || "";
+      const city = d.city || d.principalSubdivision || "";
       if (locality || city) {
         return {
           name: locality || city,
-          city: city,
-          state: d.principalSubdivision,
+          city: city || locality || "",
+          state: d.principalSubdivision || "",
           pincode: d.postcode || "",
         };
       }
@@ -66,7 +66,8 @@ export async function reverseGeocodeCoords(
         addr.residential ||
         addr.road ||
         addr.subdistrict ||
-        d.name;
+        d.name ||
+        "";
       const city =
         addr.city ||
         addr.town ||
@@ -74,23 +75,19 @@ export async function reverseGeocodeCoords(
         addr.city_district ||
         addr.county ||
         addr.state_district ||
-        addr.state ||
-        "India";
+        "";
       if (locality || city) {
         return {
           name: locality || city,
-          city: city,
-          state: addr.state,
+          city: city || locality || "",
+          state: addr.state || "",
           pincode: addr.postcode || "",
         };
       }
     }
   } catch {}
 
-  return {
-    name: "Current Location",
-    city: "India",
-  };
+  throw new Error("Unable to reverse geocode device coordinates.");
 }
 
 export interface PlaceSuggestion {

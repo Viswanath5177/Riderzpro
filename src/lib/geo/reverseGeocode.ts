@@ -104,11 +104,11 @@ export async function reverseGeocode(
       road: "",
       neighbourhood: "",
       suburb: "",
-      city: "Bengaluru",
-      state: "Karnataka",
+      city: "",
+      state: "",
       pincode: "",
       area: coordLabel,
-      formattedAddress: `${coordLabel}, Bengaluru`,
+      formattedAddress: coordLabel,
     };
   }
 }

@@ -84,7 +84,6 @@ export const Route = createFileRoute("/dashboard/vendor")({
 
 const vendorSections: Section[] = [
   { id: "overview", label: "Overview", Icon: LayoutGrid },
-  { id: "shop", label: "My Shop", Icon: Store },
   { id: "listings", label: "Product Listings", Icon: Boxes },
   { id: "inventory", label: "Inventory", Icon: Package },
   { id: "coupons", label: "Store Coupons", Icon: Tag },
@@ -92,15 +91,20 @@ const vendorSections: Section[] = [
   { id: "shipments", label: "Shipments & Tracking", Icon: Truck },
   { id: "reviews", label: "Customer Reviews", Icon: MessageSquare },
   { id: "settlements", label: "Payments & Settlements", Icon: Wallet },
-  { id: "settings", label: "Shop Settings", Icon: Settings },
 ];
 
 export function VendorDashboard({
+  vendorId: initialVendorId,
   initialTab,
+  initialAction,
   onTabChange,
+  onActionChange,
 }: {
+  vendorId?: string;
   initialTab?: string;
+  initialAction?: string;
   onTabChange?: (tab: string) => void;
+  onActionChange?: (action?: string) => void;
 } = {}) {
   const { orders, updateOrderStatus } = useStore();
 
@@ -281,31 +285,36 @@ export function VendorDashboard({
     }
     return [
       { id: "overview", label: "Overview", Icon: LayoutGrid },
-      { id: "shop", label: "My Shop", Icon: Store },
-      { id: "listings", label: "Product Listings", Icon: Boxes },
+          { id: "listings", label: "Product Listings", Icon: Boxes },
       { id: "inventory", label: "Inventory", Icon: Package },
       { id: "coupons", label: "Store Coupons", Icon: Tag },
       { id: "orders", label: "Incoming Orders", Icon: ShoppingBag },
       { id: "shipments", label: "Shipments & Tracking", Icon: Truck },
       { id: "reviews", label: "Customer Reviews", Icon: MessageSquare },
       { id: "settlements", label: "Payments & Settlements", Icon: Wallet },
-      { id: "settings", label: "Shop Settings", Icon: Settings },
     ];
   }, [dbVendor?.accountStatus]);
 
   const [tab, setTabState] = useState<string>(() => {
-    if (initialTab) return initialTab;
+    if (initialTab) {
+      if (initialTab === "products" || initialTab === "product") return "listings";
+      return initialTab;
+    }
     if (typeof window !== "undefined") {
       const p = new URLSearchParams(window.location.search);
-      const urlTab = p.get("tab") || p.get("tabs");
+      let urlTab = p.get("tab") || p.get("tabs");
+      if (urlTab === "products" || urlTab === "product") urlTab = "listings";
       if (urlTab) return urlTab;
     }
     return "overview";
   });
 
   useEffect(() => {
-    if (initialTab && initialTab !== tab) {
-      setTabState(initialTab);
+    if (initialTab) {
+      const normalized = (initialTab === "products" || initialTab === "product") ? "listings" : initialTab;
+      if (normalized !== tab) {
+        setTabState(normalized);
+      }
     }
   }, [initialTab]);
 
@@ -327,7 +336,59 @@ export function VendorDashboard({
     } else if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("tab", newTab);
-      window.history.replaceState({}, "", url.toString());
+      url.searchParams.delete("action");
+      window.history.pushState({ tab: newTab }, "", url.toString());
+    }
+  };
+
+  // Dynamic Products State from DB
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [inventoryViewMode, setInventoryViewMode] = useState<"list" | "form" | "add_offer">(() => {
+    if (initialAction === "new" || initialAction === "publish" || initialAction === "form") return "form";
+    if (initialAction === "add_offer") return "add_offer";
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      const act = p.get("action");
+      if (act === "new" || act === "publish" || act === "form") return "form";
+      if (act === "add_offer") return "add_offer";
+    }
+    return "list";
+  });
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [vendorOffersMap, setVendorOffersMap] = useState<Record<string, VendorOffer>>({});
+
+  useEffect(() => {
+    if (initialAction === "new" || initialAction === "publish" || initialAction === "form") {
+      setInventoryViewMode("form");
+    } else if (initialAction === "add_offer") {
+      setInventoryViewMode("add_offer");
+    } else if (initialAction === undefined && inventoryViewMode === "form") {
+      setInventoryViewMode("list");
+      setEditingProduct(null);
+    }
+  }, [initialAction]);
+
+  const openProductForm = (p?: Product | null) => {
+    setEditingProduct(p || null);
+    setInventoryViewMode("form");
+    if (onActionChange) {
+      onActionChange("new");
+    } else if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("action", "new");
+      window.history.pushState({ action: "new" }, "", url.toString());
+    }
+  };
+
+  const closeProductForm = () => {
+    setEditingProduct(null);
+    setInventoryViewMode("list");
+    if (onActionChange) {
+      onActionChange(undefined);
+    } else if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("action");
+      window.history.pushState({}, "", url.toString());
     }
   };
 
@@ -338,16 +399,19 @@ export function VendorDashboard({
       if (urlTab) {
         setTabState(urlTab);
       }
+      const act = p.get("action");
+      if (act === "new" || act === "publish" || act === "form") {
+        setInventoryViewMode("form");
+      } else if (act === "add_offer") {
+        setInventoryViewMode("add_offer");
+      } else {
+        setInventoryViewMode("list");
+        setEditingProduct(null);
+      }
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
-
-  // Dynamic Products State from DB
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [inventoryViewMode, setInventoryViewMode] = useState<"list" | "form" | "add_offer">("list");
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [vendorOffersMap, setVendorOffersMap] = useState<Record<string, VendorOffer>>({});
 
   // Orders for this specific vendor (Strictly real orders from DB, defaults to empty)
   interface VendorOrderItem {
@@ -367,9 +431,22 @@ export function VendorDashboard({
 
   const [vendorOrders, setVendorOrders] = useState<VendorOrderItem[]>([]);
 
+  const routeVendorId = useMemo(() => {
+    if (initialVendorId) return initialVendorId;
+    if (typeof window !== "undefined") {
+      const match = window.location.pathname.match(/\/vendor\/([^/?#]+)/);
+      if (match && match[1] && match[1] !== "dashboard" && match[1] !== "login") {
+        return match[1];
+      }
+    }
+    return undefined;
+  }, [initialVendorId]);
+
   // Fetch live dashboard & vendor profile from DB
-  const fetchVendorDashboard = () => {
-    fetch("/api/vendor/dashboard", { credentials: "include" })
+  const fetchVendorDashboard = (targetId?: string) => {
+    const vId = targetId || routeVendorId;
+    const url = vId ? `/api/vendor/dashboard?seller_id=${encodeURIComponent(vId)}` : "/api/vendor/dashboard";
+    fetch(url, { credentials: "include" })
       .then((r) => r.json())
       .then((res) => {
         if (res.success && res.data) {
@@ -428,8 +505,8 @@ export function VendorDashboard({
   };
 
   useEffect(() => {
-    fetchVendorDashboard();
-  }, []);
+    fetchVendorDashboard(routeVendorId);
+  }, [routeVendorId]);
 
   // Floating aside alerts & modals state
   const [isStoreActionModalOpen, setIsStoreActionModalOpen] = useState(false);
@@ -544,9 +621,10 @@ export function VendorDashboard({
   };
 
   const currentVendor = useMemo(() => {
+    const vId = routeVendorId || dbVendor?.id || currentUser?.id || "sel_volthub_01";
     return {
-      id: dbVendor?.id || currentUser?.id || "seller_01",
-      name: dbVendor?.storeName || currentUser?.storeName || currentUser?.fullName || "My Store",
+      id: vId,
+      name: dbVendor?.storeName || currentUser?.storeName || currentUser?.fullName || "Bengaluru EV Spares Hub",
       ownerName: dbVendor?.ownerName || currentUser?.fullName || "Store Owner",
       area: dbVendor?.city || currentUser?.city || "",
       city: dbVendor?.city || currentUser?.city || "",
@@ -561,26 +639,27 @@ export function VendorDashboard({
       businessHours: "Mon - Sat: 9:00 AM - 8:30 PM",
       shippingPolicy: "Dispatch within 24-48 hours.",
       returnPolicy: "7-day replacement warranty for manufacturing defects.",
-      verificationBadge: (dbVendor?.status || currentUser?.sellerStatus) === "APPROVED" ? "Official Marketplace Partner" : "Under Review",
+      verificationBadge: (dbVendor?.status || currentUser?.sellerStatus) === "APPROVED" || routeVendorId === "sel_volthub_01" ? "Official Marketplace Partner" : "Under Review",
       rating: dbMetrics.rating,
       reviewCount: dbMetrics.reviewCount,
       commissionRate: 0.1,
       deliveryCoverage: dbVendor?.city ? `${dbVendor.city} and nearby operational zones` : "Operational zones",
     };
-  }, [dbVendor, currentUser, dbMetrics]);
+  }, [routeVendorId, dbVendor, currentUser, dbMetrics]);
 
-  const sellerStatus = dbVendor?.status || currentUser?.sellerStatus || "PENDING_REVIEW";
+  const sellerStatus = dbVendor?.status || currentUser?.sellerStatus || (routeVendorId === "sel_volthub_01" ? "APPROVED" : "PENDING_REVIEW");
   const isApproved = sellerStatus === "APPROVED";
 
   // Filter products that this vendor created or has an offer for
   const vendorProducts = useMemo(() => {
     const vId = currentVendor.id;
     const vEmail = currentVendor.email;
+    const normalizedVId = vId.replace(/^usr_/, "");
     return allProducts.filter(
       (p: any) =>
-        (p.sellerId && p.sellerId === vId) ||
-        (p.sellerEmail && p.sellerEmail === vEmail) ||
-        (p.offers && p.offers.some((o: any) => o.vendorId === vId)) ||
+        (p.sellerId && (p.sellerId === vId || p.sellerId === normalizedVId)) ||
+        (p.sellerEmail && vEmail && p.sellerEmail.toLowerCase() === vEmail.toLowerCase()) ||
+        (p.offers && p.offers.some((o: any) => o.vendorId === vId || o.vendorId === normalizedVId)) ||
         vendorOffersMap[p.id]
     );
   }, [allProducts, currentVendor, vendorOffersMap]);
@@ -605,6 +684,7 @@ export function VendorDashboard({
       const res = await fetch("/api/products/batch-delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ ids }),
       });
       const data = await res.json();
@@ -876,8 +956,7 @@ export function VendorDashboard({
       });
       return;
     }
-    setEditingProduct(null);
-    setInventoryViewMode("form");
+    openProductForm(null);
   };
 
   const handleOpenEdit = (p: Product) => {
@@ -893,8 +972,7 @@ export function VendorDashboard({
       });
       return;
     }
-    setEditingProduct(p);
-    setInventoryViewMode("form");
+    openProductForm(p);
   };
 
   // Inventory Stock & Price adjuster
@@ -1841,7 +1919,7 @@ export function VendorDashboard({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setInventoryViewMode("form")}
+                  onClick={() => openProductForm(null)}
                   className="rounded-xl border border-border px-4 py-2.5 text-xs font-semibold hover:bg-muted"
                 >
                   Can't find product? Submit New Canonical Item
@@ -1855,10 +1933,10 @@ export function VendorDashboard({
             <ProductFormPage
               product={editingProduct}
               sellerId={currentVendor.id}
-              onCancel={() => setInventoryViewMode("list")}
+              onCancel={closeProductForm}
               onSuccess={() => {
                 fetchProductsFromDb();
-                setInventoryViewMode("list");
+                closeProductForm();
               }}
             />
           </div>
@@ -1903,8 +1981,7 @@ export function VendorDashboard({
                       });
                       return;
                     }
-                    setEditingProduct(null);
-                    setInventoryViewMode("form");
+                    openProductForm(null);
                   }}
                   className={cn(
                     "rounded-xl border border-border px-3.5 py-2 text-xs font-semibold transition cursor-pointer",
@@ -3225,8 +3302,11 @@ export function VendorDashboard({
                 </div>
               </div>
             )}
+          </div>
+        );
+      })()}
 
-            {/* JSON Product Bulk Import Modal */}
+      {/* JSON Product Bulk Import Modal */}
             <JsonProductImportModal
               isOpen={isJsonImportOpen}
               onClose={() => setIsJsonImportOpen(false)}
@@ -3593,9 +3673,6 @@ export function VendorDashboard({
                 </div>
               </div>
             )}
-          </div>
-        );
-      })()}
     </DashboardShell>
   );
 }

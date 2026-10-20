@@ -151,7 +151,7 @@ interface DbProductResponse {
 function ProductPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const { activeBikeId, addToCart, isSaved, toggleSaved } = useStore();
+  const { activeBikeId, addToCart, isSaved, toggleSaved, userLocation } = useStore();
 
   const [dbData, setDbData] = useState<DbProductResponse | null>(null);
   const [product, setProduct] = useState<Product | null>(null);
@@ -248,7 +248,13 @@ function ProductPage() {
     const list = dbData.offers.map((o) => {
       // Calculate realistic distance and fee based on customer location
       const vendorRef = getVendor(o.vendorId);
-      const km = Math.round(distanceKm(vendorRef, CUSTOMER_LOCATION) * 10) / 10;
+      const userCoords =
+        userLocation?.lat && userLocation?.lng
+          ? { lat: userLocation.lat, lng: userLocation.lng }
+          : userLocation?.latitude && userLocation?.longitude
+          ? { lat: Number(userLocation.latitude), lng: Number(userLocation.longitude) }
+          : CUSTOMER_LOCATION;
+      const km = Math.round(distanceKm(vendorRef, userCoords) * 10) / 10;
       const fee = o.shippingCharge ?? deliveryFee(km);
       const totalCost = o.price + fee;
       const eta = etaMinutes(km, o.dispatchHours ? Math.round(o.dispatchHours * 2.5) : 15);
@@ -276,7 +282,7 @@ function ProductPage() {
     }
 
     return list;
-  }, [dbData, offerSort]);
+  }, [dbData, offerSort, userLocation]);
 
   // Selected Offer (or top sorted offer)
   const activeOffer = useMemo(() => {

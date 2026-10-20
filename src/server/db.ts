@@ -33,20 +33,105 @@ if (isSqliteConfigured) {
   }
 }
 
+// PostgreSQL connection parameters
+const dbHost = env["DB_HOST"] || env["PGHOST"] || "localhost";
+const dbPort = parseInt(env["DB_PORT"] || env["PGPORT"] || "5432", 10);
+const dbName = env["DB_NAME"] || env["PGDATABASE"] || "riderzpro";
+const dbUser = env["DB_USER"] || env["PGUSER"] || "postgres";
+const dbPassword = env["DB_PASSWORD"] || env["PGPASSWORD"] || "";
+const dbSsl = env["DB_SSL"] === "true" || env["PGSSLMODE"] === "require" || env["PGSSLMODE"] === "verify-full";
+const dbSslCa = env["DB_SSL_CA"] || "./global-bundle.pem";
+
+let sslConfig: any = false;
+if (dbSsl) {
+  const resolvedCaPath = path.resolve(process.cwd(), dbSslCa);
+  if (fs.existsSync(resolvedCaPath)) {
+    sslConfig = {
+      rejectUnauthorized: true,
+      ca: fs.readFileSync(resolvedCaPath, "utf8"),
+      servername: dbHost,
+    };
+  } else {
+    console.warn(`[Database] TLS requested but CA bundle not found at: ${resolvedCaPath}`);
+  }
+}
+
 // PostgreSQL primary pool
 let pgPool: pg.Pool | null = null;
 if (!isSqliteConfigured) {
-  const connectionString =
-    (rawUrl && !rawUrl.startsWith("file:") ? rawUrl : null) ||
-    `postgresql://${env["PGUSER"] || "postgres"}:${encodeURIComponent(env["PGPASSWORD"] || "Vsvg@db1")}@${env["PGHOST"] || "localhost"}:${env["PGPORT"] || "5432"}/${env["PGDATABASE"] || "riderzpro"}`;
-  
-  pgPool = new pg.Pool({
-    connectionString,
-    max: 15,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
+  if (env["DB_HOST"] && env["DB_PASSWORD"]) {
+    pgPool = new pg.Pool({
+      host: dbHost,
+      port: dbPort,
+      database: dbName,
+      user: dbUser,
+      password: dbPassword,
+      ssl: sslConfig,
+      max: 15,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
+    console.log(`[Database] Connected to PostgreSQL: postgresql://${dbUser}:****@${dbHost}:${dbPort}/${dbName} (TLS Verified: ${Boolean(sslConfig)})`);
+  } else {
+    const connectionString =
+      (rawUrl && !rawUrl.startsWith("file:") ? rawUrl : null) ||
+      `postgresql://${env["PGUSER"] || "postgres"}:${encodeURIComponent(env["PGPASSWORD"] || "Vsvg@db1")}@${env["PGHOST"] || "localhost"}:${env["PGPORT"] || "5432"}/${env["PGDATABASE"] || "riderzpro"}`;
+    
+    pgPool = new pg.Pool({
+      connectionString,
+      max: 15,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+    });
+    console.log(`[Database] Connected to PostgreSQL: ${connectionString.replace(/:[^:@]+@/, ":****@")}`);
+  }
+
+  pgPool.on("error", (err) => {
+    console.error("[Database Pool Error]:", err?.message || err);
   });
-  console.log(`[Database] Connected to PostgreSQL: ${connectionString.replace(/:[^:@]+@/, ":****@")}`);
+}
+
+export async function testDatabaseConnectivity() {
+  if (isSqliteConfigured || !pgPool) {
+    return {
+      engine: "sqlite",
+      database: devDbPath,
+      connected: true,
+      ssl: false,
+    };
+  }
+  const client = await pgPool.connect();
+  try {
+    const infoRes = await client.query(`
+      SELECT
+        current_database() AS database_name,
+        current_user AS database_user,
+        NOW() AS server_time,
+        version() AS version
+    `);
+    let sslInfo = null;
+    try {
+      const sslRes = await client.query(`
+        SELECT ssl, version, cipher, bits 
+        FROM pg_stat_ssl 
+        WHERE pid = pg_backend_pid()
+      `);
+      sslInfo = sslRes.rows[0] || null;
+    } catch {
+      // pg_stat_ssl might require superuser or not be available
+    }
+    return {
+      engine: "postgresql",
+      serverTime: infoRes.rows[0]?.server_time,
+      database: infoRes.rows[0]?.database_name,
+      user: infoRes.rows[0]?.database_user,
+      version: infoRes.rows[0]?.version,
+      ssl: sslInfo,
+      connected: true,
+    };
+  } finally {
+    client.release();
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -354,14 +439,54 @@ export async function initializeDatabaseSchema() {
           updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         );
       `);
-      // Ensure Sellers & Products have rating/gst columns
+      // Ensure Sellers, Products & Coupons have compatibility columns
       await client.query(`
         ALTER TABLE sellers ADD COLUMN IF NOT EXISTS rating NUMERIC(3,2) DEFAULT 0.00;
         ALTER TABLE sellers ADD COLUMN IF NOT EXISTS review_count INTEGER DEFAULT 0;
         ALTER TABLE products ADD COLUMN IF NOT EXISTS gst_percent NUMERIC(4,2) DEFAULT 18.00;
         ALTER TABLE products ADD COLUMN IF NOT EXISTS rating NUMERIC(3,2) DEFAULT 0.00;
         ALTER TABLE products ADD COLUMN IF NOT EXISTS reviews_count INTEGER DEFAULT 0;
+        ALTER TABLE coupons ADD COLUMN IF NOT EXISTS vendor_id VARCHAR(64);
+        ALTER TABLE coupons ADD COLUMN IF NOT EXISTS status VARCHAR(32) DEFAULT 'active';
+        ALTER TABLE coupons ADD COLUMN IF NOT EXISTS minimum_order_value NUMERIC DEFAULT 0;
+        ALTER TABLE coupons ADD COLUMN IF NOT EXISTS maximum_discount NUMERIC;
+        ALTER TABLE coupons ADD COLUMN IF NOT EXISTS per_customer_limit INTEGER DEFAULT 1;
+        UPDATE coupons SET vendor_id = seller_id WHERE vendor_id IS NULL AND seller_id IS NOT NULL;
+        UPDATE coupons SET seller_id = vendor_id WHERE seller_id IS NULL AND vendor_id IS NOT NULL;
       `).catch(() => {});
+
+      // Auth Sessions with sliding inactivity tracking
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS auth_sessions (
+          id VARCHAR(64) PRIMARY KEY,
+          user_id VARCHAR(64) NOT NULL,
+          user_role VARCHAR(64) NOT NULL,
+          token_hash CHAR(64) NOT NULL UNIQUE,
+          created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+          expires_at TIMESTAMPTZ NOT NULL,
+          revoked_at TIMESTAMPTZ,
+          last_active_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        );
+        ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+        CREATE INDEX IF NOT EXISTS idx_auth_sessions_token_hash ON auth_sessions(token_hash);
+        CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions(user_id);
+      `).catch(() => {});
+
+      // Customer Location Preferences (Scoped strictly per customer, separate from saved addresses)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS customer_location_preferences (
+          customer_id VARCHAR(64) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          city VARCHAR(128) NOT NULL,
+          state VARCHAR(128),
+          pincode VARCHAR(32),
+          latitude NUMERIC(10, 6) NOT NULL,
+          longitude NUMERIC(10, 6) NOT NULL,
+          source VARCHAR(32) NOT NULL DEFAULT 'gps',
+          is_manual BOOLEAN DEFAULT FALSE,
+          updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
       client.release();
       console.log("[Database] PostgreSQL schema verified and ready.");
     } catch (err: any) {

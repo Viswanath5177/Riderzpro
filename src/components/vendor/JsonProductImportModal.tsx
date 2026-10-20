@@ -42,7 +42,7 @@ const SAMPLE_TEMPLATE = {
     {
       name: "High Torque Ceramic Disc Brake Rotor 220mm",
       description: "Ventilated 220mm stainless steel front brake rotor with heat-dissipating aerodynamic cutouts for high-performance electric motorcycles.",
-      category: "Braking & Safety",
+      category: "Braking & Safety Parts",
       brand: "Brembo Racing",
       sku: "BRK-CER-220",
       price: 2499,
@@ -62,7 +62,7 @@ const SAMPLE_TEMPLATE = {
     {
       name: "Smart 72V 100A Bluetooth BMS Module",
       description: "Advanced smart battery management system with active balancing and low-temperature charge cutoff protection.",
-      category: "BMS Systems",
+      category: "Motor Controllers & Throttle",
       brand: "Daly Smart",
       sku: "BMS-72V-100A",
       price: 5899,
@@ -82,7 +82,7 @@ const SAMPLE_TEMPLATE = {
     {
       name: "Quick-Release Ergonomic Handlebar Grips",
       description: "Ultra-grip dual density silicone grips with integrated vibration absorption for endurance long-distance riding.",
-      category: "Accessories",
+      category: "Vehicle Accessories & Mounts",
       brand: "Riderz Pro Series",
       sku: "GRP-SIL-BLK",
       price: 899,
@@ -145,13 +145,15 @@ export function JsonProductImportModal({
       }
 
       const rawPrice = p.price ?? p.selling_price ?? p.sellingPrice ?? p.mrp ?? p.cost ?? p.amount ?? p.unit_price;
-      const priceNum = Number(rawPrice);
+      const cleanPriceStr = typeof rawPrice === "string" ? rawPrice.replace(/[^0-9.]/g, "") : String(rawPrice ?? "");
+      const priceNum = Number(cleanPriceStr);
       if (rawPrice === undefined || rawPrice === null || isNaN(priceNum) || priceNum <= 0) {
         errors.push("Price must be a valid non-negative number.");
       }
 
       const rawStock = p.stock ?? p.quantity ?? p.qty ?? p.inventory ?? p.units ?? 10;
-      const stockNum = parseInt(String(rawStock), 10);
+      const cleanStockStr = typeof rawStock === "string" ? rawStock.replace(/[^0-9]/g, "") : String(rawStock ?? "");
+      const stockNum = parseInt(cleanStockStr, 10);
       if (isNaN(stockNum) || stockNum < 0) {
         errors.push("Stock must be a valid non-negative integer.");
       }
@@ -210,7 +212,9 @@ export function JsonProductImportModal({
 
   const handleParseJson = (rawContent: string) => {
     try {
-      const parsed = JSON.parse(rawContent);
+      // Strip markdown code fences if pasted with ```json ... ```
+      const cleaned = (rawContent || "").replace(/^```[a-z]*\s*/i, "").replace(/\s*```$/, "").trim();
+      const parsed = JSON.parse(cleaned);
       let items: any[] = [];
       if (Array.isArray(parsed)) {
         items = parsed;
@@ -221,6 +225,10 @@ export function JsonProductImportModal({
         else if (Array.isArray(parsed.catalog)) items = parsed.catalog;
         else if (Array.isArray(parsed.listings)) items = parsed.listings;
         else if (Array.isArray(parsed.records)) items = parsed.records;
+        else if (Array.isArray(parsed.rows)) items = parsed.rows;
+        else if (Array.isArray(parsed.inventory)) items = parsed.inventory;
+        else if (Array.isArray(parsed.parts)) items = parsed.parts;
+        else if (Array.isArray(parsed.result)) items = parsed.result;
         else if (parsed.name || parsed.title) items = [parsed];
         else throw new Error("Could not find a list of products in the provided JSON.");
       } else {
@@ -324,7 +332,7 @@ export function JsonProductImportModal({
       setImportResult({
         successCount: result.importedCount,
         failedCount: result.failedCount || 0,
-        imported: result.imported || [],
+        imported: result.imported || result.importedProducts || [],
         errors: result.errors || [],
       });
 
@@ -521,16 +529,39 @@ export function JsonProductImportModal({
                     placeholder='{ "products": [ { "name": "...", "price": 1299, "stock": 4, "sku": "...", "category": "Accessories" } ] }'
                     className="w-full font-mono text-xs p-3.5 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary focus:outline-none"
                   />
-                  <div className="flex justify-end">
+                  <div className="flex items-center justify-between gap-2">
                     <button
                       type="button"
-                      disabled={!jsonText.trim()}
-                      onClick={() => handleParseJson(jsonText)}
-                      className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                      onClick={() => {
+                        const sampleStr = JSON.stringify(SAMPLE_TEMPLATE, null, 2);
+                        setJsonText(sampleStr);
+                        toast.success("Sample product JSON loaded into editor!");
+                      }}
+                      className="text-xs font-semibold text-primary hover:underline flex items-center gap-1.5 cursor-pointer"
                     >
-                      <RefreshCw className="h-3.5 w-3.5" />
-                      Parse & Validate JSON
+                      <Download className="h-3 w-3" />
+                      Load Sample Template into Box
                     </button>
+                    <div className="flex items-center gap-2">
+                      {jsonText.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => setJsonText("")}
+                          className="rounded-xl border border-border px-3 py-2 text-xs font-semibold hover:bg-muted text-muted-foreground hover:text-foreground transition cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        disabled={!jsonText.trim()}
+                        onClick={() => handleParseJson(jsonText)}
+                        className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground hover:opacity-90 disabled:opacity-50 cursor-pointer transition shadow-2xs"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Parse & Validate JSON
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

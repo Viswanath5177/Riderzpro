@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   Mail,
@@ -21,7 +21,58 @@ import { Logo } from "@/components/site/bits";
 import { isMobileDevice } from "@/lib/native/app";
 import { useEffect } from "react";
 
+interface VendorLoginSearch {
+  redirect?: string;
+  sessionExpired?: string | boolean;
+}
+
 export const Route = createFileRoute("/vendor/login")({
+  validateSearch: (search: Record<string, unknown>): VendorLoginSearch => {
+    return {
+      redirect: typeof search["redirect"] === "string" ? search["redirect"] : undefined,
+      sessionExpired: search["sessionExpired"] ? String(search["sessionExpired"]) : undefined,
+    };
+  },
+  beforeLoad: async ({ search }) => {
+    if (typeof window === "undefined") return;
+    if (isMobileDevice()) {
+      throw redirect({ to: "/app" });
+    }
+    // If user was redirected due to explicit sessionExpired, do NOT auto-redirect to dashboard
+    if (search.sessionExpired) return;
+
+    // If user is already authenticated with a valid session, redirect to their dashboard
+    try {
+      const res = await fetch("/api/auth/me", {
+        credentials: "include",
+        headers: { "X-Passive-Poll": "true" },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.authenticated && data.user) {
+          const queryRedirect = search.redirect;
+          if (queryRedirect && !queryRedirect.includes("/vendor/login")) {
+            throw redirect({ to: queryRedirect as any });
+          }
+          if (data.role === "SUPER_ADMIN") {
+            throw redirect({ to: "/superadmin" });
+          }
+          if (data.role === "ADMIN" || data.role === "admin") {
+            throw redirect({ to: "/admin" });
+          }
+          if (data.role === "seller") {
+            throw redirect({
+              to: "/vendor/$id",
+              params: { id: data.user.id },
+              search: { tab: "overview" },
+            });
+          }
+        }
+      }
+    } catch (e: any) {
+      if (e?.to) throw e;
+    }
+  },
   head: () => ({
     meta: [
       { title: "Vendor Sign In — RiderzPro" },
@@ -38,6 +89,8 @@ export const Route = createFileRoute("/vendor/login")({
 
 function VendorLoginRouteComponent() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
+  const isSessionExpired = Boolean(search.sessionExpired);
 
   useEffect(() => {
     if (isMobileDevice()) {
@@ -154,18 +207,18 @@ function VendorLoginRouteComponent() {
             "/dashboard/vendor"
           ));
 
-      // For admin and superadmin logins, direct window.location ensures clean sync without router state bounce
+      // For admin and superadmin logins, direct window.location.replace ensures clean sync without router state bounce
       if (data.role === "SUPER_ADMIN" || data.role === "ADMIN") {
-        window.location.href = destination;
+        window.location.replace(destination);
         return;
       }
 
-      navigate({ to: destination as any }).catch(() => {
-        window.location.href = destination;
+      navigate({ to: destination as any, replace: true }).catch(() => {
+        window.location.replace(destination);
       });
       setTimeout(() => {
         if (window.location.pathname !== destination.split("?")[0]) {
-          window.location.href = destination;
+          window.location.replace(destination);
         }
       }, 200);
     } catch (err: any) {
@@ -264,6 +317,17 @@ function VendorLoginRouteComponent() {
                   Sign in to manage your store and marketplace activities.
                 </p>
               </div>
+
+              {/* Session Expired feedback banner */}
+              {isSessionExpired && (
+                <div className="mb-4 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5 animate-in fade-in duration-150">
+                  <AlertCircle className="h-4.5 w-4.5 shrink-0 text-amber-600 mt-0.5" />
+                  <div className="flex-1 space-y-0.5">
+                    <p className="font-bold">Session Expired</p>
+                    <p className="text-amber-800">Your session expired after 10 minutes of inactivity. Please sign in again to continue.</p>
+                  </div>
+                </div>
+              )}
 
               {/* Error feedback banner */}
               {errorMessage && (

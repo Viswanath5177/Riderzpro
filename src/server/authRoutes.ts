@@ -51,14 +51,30 @@ function sha256(val: string): string {
   return crypto.createHash("sha256").update(val).digest("hex");
 }
 
-function setSessionCookie(res: ServerResponse, token: string) {
+export function setSessionCookie(res: ServerResponse, token: string) {
   const isProd = process.env["NODE_ENV"] === "production";
   const cookie = `auth_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${isProd ? "; Secure" : ""}`;
   res.setHeader("Set-Cookie", cookie);
 }
 
-function clearSessionCookie(res: ServerResponse) {
+export function clearSessionCookie(res: ServerResponse) {
   res.setHeader("Set-Cookie", "auth_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly; SameSite=Lax");
+}
+
+export const INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes sliding inactivity timeout
+
+export function isPassiveRequest(req: IncomingMessage, cleanUrl?: string): boolean {
+  const passiveHeader = req.headers["x-passive-poll"] || req.headers["x-background-poll"];
+  if (passiveHeader === "true" || passiveHeader === "1") return true;
+
+  const url = cleanUrl || req.url?.split("?")[0] || "";
+  if (url.startsWith("/api/vendor/notifications") || url.startsWith("/api/notifications")) {
+    return true;
+  }
+  if (req.url && (req.url.includes("isPassive=true") || req.url.includes("passive=true"))) {
+    return true;
+  }
+  return false;
 }
 
 export interface AuthenticatedUser {
@@ -77,13 +93,45 @@ export async function getAuthenticatedUser(req: IncomingMessage): Promise<Authen
   if (!token) return null;
   const tokenHash = sha256(token);
   const s = await query(
-    "SELECT user_id, user_role FROM auth_sessions WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > CURRENT_TIMESTAMP LIMIT 1",
+    "SELECT id, user_id, user_role, last_active_at, expires_at, revoked_at FROM auth_sessions WHERE token_hash = $1 LIMIT 1",
     [tokenHash]
   );
   if (!s.rows[0]) return null;
 
-  const uid = s.rows[0].user_id;
-  const urole = s.rows[0].user_role;
+  const session = s.rows[0];
+
+  // 1. If explicitly revoked
+  if (session.revoked_at) {
+    (req as any).sessionRevoked = true;
+    return null;
+  }
+
+  // 2. If absolute expires_at reached
+  const now = Date.now();
+  if (new Date(session.expires_at).getTime() <= now) {
+    (req as any).sessionExpired = true;
+    return null;
+  }
+
+  // 3. 10-minute sliding inactivity timeout check
+  const lastActiveTime = session.last_active_at ? new Date(session.last_active_at).getTime() : 0;
+  if (lastActiveTime > 0 && now - lastActiveTime > INACTIVITY_TIMEOUT_MS) {
+    // Invalidate server session upon inactivity timeout
+    await query("UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE id = $1", [session.id]).catch(() => {});
+    (req as any).sessionExpired = true;
+    (req as any).sessionExpiredReason = "10 minutes of inactivity";
+    return null;
+  }
+
+  // 4. Update sliding activity timestamp on valid user activity (skip passive polling)
+  if (!isPassiveRequest(req)) {
+    if (now - lastActiveTime > 5000) {
+      query("UPDATE auth_sessions SET last_active_at = CURRENT_TIMESTAMP WHERE id = $1", [session.id]).catch(() => {});
+    }
+  }
+
+  const uid = session.user_id;
+  const urole = session.user_role;
 
   if (urole === "customer") {
     const cRes = await query("SELECT id, email, is_active FROM customers WHERE id = $1 LIMIT 1", [uid]);
@@ -199,21 +247,14 @@ export async function handleAuthRoute(
         [email, emailVariant]
       );
       if (adm.rows[0]) {
-        if (portal === "vendor") {
-          sendJson(res, 200, {
-            success: true,
-            email,
-            isRegistered: true,
-            role: adm.rows[0].role,
-            fullName: adm.rows[0].full_name,
-          });
-          return true;
-        }
         sendJson(res, 200, {
           success: true,
           email,
-          isRegistered: false,
-          hasPassword: false,
+          isRegistered: true,
+          hasPassword: true,
+          isAdmin: true,
+          role: adm.rows[0].role,
+          fullName: adm.rows[0].full_name,
         });
         return true;
       }
@@ -464,13 +505,6 @@ export async function handleAuthRoute(
       );
       if (adminRes.rows.length > 0) {
         const admin = adminRes.rows[0];
-        if (body.portal === "customer") {
-          sendJson(res, 401, {
-            success: false,
-            error: "Invalid email or password.",
-          });
-          return true;
-        }
 
         if (authType === "password") {
           let valid = await bcrypt.compare(password, admin.password_hash);
@@ -825,12 +859,12 @@ export async function handleAuthRoute(
         const fullName = "User";
         await query(
           `INSERT INTO customers (id, email, phone, password_hash, full_name, is_active)
-           VALUES ($1, $2, $3, $4, $5, 1)`,
+           VALUES ($1, $2, $3, $4, $5, true)`,
           [custId, email, "", "", fullName]
         );
         await query(
           `INSERT INTO users (id, email, password_hash, full_name, role, is_active)
-           VALUES ($1, $2, $3, $4, 'customer', 1)
+           VALUES ($1, $2, $3, $4, 'customer', true)
            ON CONFLICT (email) DO NOTHING`,
           ["usr_" + custId.slice(4), email, "", fullName]
         ).catch(() => {});
@@ -889,12 +923,11 @@ export async function handleAuthRoute(
         return true;
       }
 
-
       const tokenHash = sha256(token);
       const sessRes = await query(
-        `SELECT user_id, user_role, expires_at 
+        `SELECT id, user_id, user_role, last_active_at, expires_at, revoked_at 
          FROM auth_sessions 
-         WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now() 
+         WHERE token_hash = $1 
          LIMIT 1`,
         [tokenHash]
       );
@@ -906,6 +939,57 @@ export async function handleAuthRoute(
       }
 
       const session = sessRes.rows[0];
+
+      // Check if session was revoked
+      if (session.revoked_at) {
+        clearSessionCookie(res);
+        sendJson(res, 200, {
+          authenticated: false,
+          user: null,
+          role: null,
+          sessionRevoked: true,
+          error: "Session has been revoked or signed out from another tab.",
+        });
+        return true;
+      }
+
+      // Check absolute expiration
+      const now = Date.now();
+      if (new Date(session.expires_at).getTime() <= now) {
+        clearSessionCookie(res);
+        sendJson(res, 401, {
+          authenticated: false,
+          sessionExpired: true,
+          error: "Session has expired. Please log in again.",
+        });
+        return true;
+      }
+
+      // Check 10-minute sliding inactivity timeout
+      const lastActiveTime = session.last_active_at ? new Date(session.last_active_at).getTime() : 0;
+      if (lastActiveTime > 0 && now - lastActiveTime > INACTIVITY_TIMEOUT_MS) {
+        await query("UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE id = $1", [session.id]).catch(() => {});
+        clearSessionCookie(res);
+        sendJson(res, 401, {
+          authenticated: false,
+          sessionExpired: true,
+          error: "Session expired due to 10 minutes of inactivity. Please log in again.",
+        });
+        return true;
+      }
+
+      let effectiveLastActive = lastActiveTime;
+      // If client signaled explicit user activity
+      if (req.headers["x-user-activity"] === "true") {
+        await query("UPDATE auth_sessions SET last_active_at = CURRENT_TIMESTAMP WHERE id = $1", [session.id]).catch(() => {});
+        effectiveLastActive = now;
+      }
+
+      const remainingInactivitySecs = Math.max(0, Math.floor((INACTIVITY_TIMEOUT_MS - (now - effectiveLastActive)) / 1000));
+      const sessionMeta = {
+        inactivityTimeoutSeconds: 600,
+        inactivityRemainingSeconds: remainingInactivitySecs,
+      };
 
       // Customer
       if (session.user_role === "customer") {
@@ -919,6 +1003,7 @@ export async function handleAuthRoute(
             authenticated: true,
             role: "customer",
             user: { id: c.id, email: c.email, fullName: c.full_name, phone: c.phone, role: "customer" },
+            ...sessionMeta,
           });
           return true;
         }
@@ -950,6 +1035,7 @@ export async function handleAuthRoute(
               phone: s.phone,
               role: "seller",
             },
+            ...sessionMeta,
           });
           return true;
         }
@@ -966,6 +1052,7 @@ export async function handleAuthRoute(
           authenticated: true,
           role: a.role,
           user: { id: a.id, email: a.email, fullName: a.full_name, role: a.role },
+          ...sessionMeta,
         });
         return true;
       }
@@ -981,6 +1068,7 @@ export async function handleAuthRoute(
           authenticated: true,
           role: u.role,
           user: { id: u.id, email: u.email, fullName: u.full_name, phone: u.phone, role: u.role },
+          ...sessionMeta,
         });
         return true;
       }
@@ -991,6 +1079,51 @@ export async function handleAuthRoute(
     } catch (err: any) {
       console.error("[Auth /api/auth/me Error]:", err);
       sendJson(res, 500, { authenticated: false, error: err.message });
+      return true;
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 2.5 POST /api/auth/activity (Heartbeat for valid user interaction)
+  // --------------------------------------------------------------------------
+  if (cleanUrl === "/api/auth/activity" && (method === "POST" || method === "GET")) {
+    try {
+      const cookies = parseCookies(req);
+      const token = cookies["auth_session"];
+      if (!token) {
+        sendJson(res, 401, { success: false, authenticated: false, error: "No active session." });
+        return true;
+      }
+      const tokenHash = sha256(token);
+      const sRes = await query(
+        "SELECT id, last_active_at, expires_at, revoked_at FROM auth_sessions WHERE token_hash = $1 LIMIT 1",
+        [tokenHash]
+      );
+      if (!sRes.rows[0] || sRes.rows[0].revoked_at || new Date(sRes.rows[0].expires_at).getTime() <= Date.now()) {
+        clearSessionCookie(res);
+        sendJson(res, 401, { success: false, authenticated: false, sessionExpired: true, error: "Session invalid or expired." });
+        return true;
+      }
+      const sess = sRes.rows[0];
+      const now = Date.now();
+      const lastActiveTime = sess.last_active_at ? new Date(sess.last_active_at).getTime() : 0;
+      if (lastActiveTime > 0 && now - lastActiveTime > INACTIVITY_TIMEOUT_MS) {
+        await query("UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE id = $1", [sess.id]).catch(() => {});
+        clearSessionCookie(res);
+        sendJson(res, 401, { success: false, authenticated: false, sessionExpired: true, error: "Session expired due to 10 minutes of inactivity." });
+        return true;
+      }
+      // Record valid user activity
+      await query("UPDATE auth_sessions SET last_active_at = CURRENT_TIMESTAMP WHERE id = $1", [sess.id]).catch(() => {});
+      sendJson(res, 200, {
+        success: true,
+        message: "Activity recorded successfully",
+        inactivityTimeoutSeconds: 600,
+        inactivityRemainingSeconds: 600,
+      });
+      return true;
+    } catch (err: any) {
+      sendJson(res, 500, { success: false, error: err.message });
       return true;
     }
   }
@@ -1273,7 +1406,7 @@ export async function handleAuthRoute(
 
       const insertRes = await query(
         `INSERT INTO customers (id, email, phone, password_hash, full_name, is_active)
-         VALUES ($1, $2, $3, $4, $5, 1)
+         VALUES ($1, $2, $3, $4, $5, true)
          RETURNING id, email, phone, full_name`,
         [custId, email, body.phone || null, passwordHash, fullName]
       );
@@ -1282,7 +1415,7 @@ export async function handleAuthRoute(
       // Mirror into users
       await query(
         `INSERT INTO users (id, email, password_hash, full_name, role, is_active)
-         VALUES ($1, $2, $3, $4, 'customer', 1)
+         VALUES ($1, $2, $3, $4, 'customer', true)
          ON CONFLICT (email) DO NOTHING`,
         ["usr_" + custId.slice(4), email, passwordHash, fullName]
       ).catch(() => {});
@@ -1718,6 +1851,105 @@ export async function handleAuthRoute(
       return true;
     } catch (err: any) {
       console.error("[Accept Invite Error]:", err);
+      sendJson(res, 500, { success: false, error: err.message });
+      return true;
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 8a-2. CUSTOMER LOCATION PREFERENCES: GET & POST /api/customer/location-preference
+  // --------------------------------------------------------------------------
+  if (cleanUrl === "/api/customer/location-preference") {
+    try {
+      const authUser = await getAuthenticatedUser(req);
+      const urlObj = new URL(req.url || "", `http://${req.headers.host || "localhost"}`);
+      const qCustId = urlObj.searchParams.get("customer_id") || urlObj.searchParams.get("customerId");
+
+      if (method === "GET") {
+        const custId = authUser?.id || qCustId;
+        if (!custId) {
+          sendJson(res, 200, { success: true, preference: null });
+          return true;
+        }
+
+        const prefRes = await query(
+          "SELECT customer_id, name, city, state, pincode, latitude, longitude, source, is_manual, updated_at FROM customer_location_preferences WHERE customer_id = $1 LIMIT 1",
+          [custId]
+        );
+        const row = prefRes.rows[0] || null;
+        sendJson(res, 200, {
+          success: true,
+          preference: row
+            ? {
+                id: `pref-${row.customer_id}`,
+                name: row.name,
+                city: row.city,
+                state: row.state,
+                pincode: row.pincode,
+                lat: parseFloat(row.latitude),
+                lng: parseFloat(row.longitude),
+                source: row.source,
+                isManual: Boolean(row.is_manual),
+              }
+            : null,
+        });
+        return true;
+      }
+
+      if (method === "POST" || method === "PUT") {
+        const body = await parseBody(req);
+        const name = (body.name || body.locality || "").trim();
+        const city = (body.city || "").trim();
+        const state = (body.state || "").trim();
+        const pincode = (body.pincode || "").trim();
+        const latitude = parseFloat(body.latitude ?? body.lat ?? 0);
+        const longitude = parseFloat(body.longitude ?? body.lng ?? 0);
+        const source = body.source || "gps";
+        const isManual = Boolean(body.isManual || body.is_manual);
+        const custId = authUser?.id || (body.customerId || body.customer_id || qCustId || "").trim();
+
+        if (!name && !city) {
+          sendJson(res, 400, { success: false, error: "Location name or city is required." });
+          return true;
+        }
+
+        if (custId) {
+          await query(
+            `INSERT INTO customer_location_preferences (
+              customer_id, name, city, state, pincode, latitude, longitude, source, is_manual, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+            ON CONFLICT (customer_id) DO UPDATE SET
+              name = EXCLUDED.name,
+              city = EXCLUDED.city,
+              state = EXCLUDED.state,
+              pincode = EXCLUDED.pincode,
+              latitude = EXCLUDED.latitude,
+              longitude = EXCLUDED.longitude,
+              source = EXCLUDED.source,
+              is_manual = EXCLUDED.is_manual,
+              updated_at = CURRENT_TIMESTAMP`,
+            [custId, name, city, state, pincode, latitude, longitude, source, isManual]
+          );
+        }
+
+        sendJson(res, 200, {
+          success: true,
+          preference: {
+            id: `pref-${custId || "active"}`,
+            name,
+            city,
+            state,
+            pincode,
+            lat: latitude,
+            lng: longitude,
+            source,
+            isManual,
+          },
+        });
+        return true;
+      }
+    } catch (err: any) {
+      console.error("[Customer Location Preference Error]:", err);
       sendJson(res, 500, { success: false, error: err.message });
       return true;
     }

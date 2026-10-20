@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from "react";
 
 export interface VendorRegistrationPayload {
   // Personal
@@ -80,20 +80,11 @@ export async function checkEmailExists(
       body: JSON.stringify({ email: cleanEmail, portal }),
     });
     const data = await res.json();
-    if (data.isAdmin || data.role?.includes("ADMIN") || data.role === "admin") {
-      return {
-        isRegistered: false,
-        isAdmin: true,
-        role: data.role,
-        fullName: data.fullName,
-        error: "Invalid email.",
-        redirectUrl: "/vendor/login",
-      };
-    }
     if (res.ok && data.success) {
       return {
         isRegistered: !!data.isRegistered,
         hasPassword: !!data.hasPassword,
+        isAdmin: !!data.isAdmin || data.role?.includes("ADMIN") || data.role === "admin",
         role: data.role,
         fullName: data.fullName,
         error: data.error,
@@ -296,8 +287,24 @@ export async function getCurrentUser(): Promise<any> {
 export const AUTH_USER_KEY = "riderzpro_auth_user";
 export const AUTH_TOKEN_KEY = "riderzpro_auth_token";
 export const USERS_STORE_KEY = "riderzpro_registered_users";
+export const AUTH_CHANNEL_NAME = "riderzpro_auth_sync";
 
-export async function signOut(): Promise<void> {
+export function broadcastAuthEvent(event: { type: "LOGOUT" | "SESSION_EXPIRED" | "LOGIN"; role?: string; user?: any; timestamp?: number }) {
+  if (typeof window === "undefined") return;
+  const payload = { ...event, timestamp: event.timestamp || Date.now() };
+  try {
+    if ("BroadcastChannel" in window) {
+      const channel = new BroadcastChannel(AUTH_CHANNEL_NAME);
+      channel.postMessage(payload);
+      channel.close();
+    }
+  } catch {}
+  try {
+    localStorage.setItem("riderzpro_auth_event", JSON.stringify(payload));
+  } catch {}
+}
+
+export async function signOut(reason: "explicit" | "inactivity" = "explicit"): Promise<void> {
   try {
     if (typeof window !== "undefined") {
       localStorage.removeItem(AUTH_USER_KEY);
@@ -321,8 +328,9 @@ export async function signOut(): Promise<void> {
         console.warn("Server signout request failed:", e);
       }
 
+      broadcastAuthEvent({ type: reason === "inactivity" ? "SESSION_EXPIRED" : "LOGOUT" });
       window.dispatchEvent(new Event("storage"));
-      window.dispatchEvent(new CustomEvent("riderzpro:signout"));
+      window.dispatchEvent(new CustomEvent("riderzpro:signout", { detail: { reason } }));
     }
   } catch (err) {
     console.error("Sign out error:", err);
@@ -405,9 +413,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   });
 
-  // Customer Login Modal state & controls
   const [isCustomerLoginModalOpen, setIsCustomerLoginModalOpen] = useState(false);
   const [customerLoginModalOptions, setCustomerLoginModalOptions] = useState<CustomerLoginModalOptions | null>(null);
+
+  const lastActivityRef = useRef<number>(Date.now());
+  const lastTouchApiRef = useRef<number>(Date.now());
 
   const openCustomerLoginModal = useCallback((options?: CustomerLoginModalOptions) => {
     setCustomerLoginModalOptions(options || null);
@@ -419,11 +429,145 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCustomerLoginModalOptions(null);
   }, []);
 
+  // Track user interaction for 10-minute sliding inactivity timeout
+  const handleUserActivity = useCallback(() => {
+    lastActivityRef.current = Date.now();
+    const now = Date.now();
+    // Debounce touch to server: send heartbeat at most once every 60s when active
+    if (user && now - lastTouchApiRef.current > 60000) {
+      lastTouchApiRef.current = now;
+      fetch("/api/auth/activity", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      }).catch(() => {});
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const events = ["mousedown", "keydown", "touchstart", "scroll"];
+    const onActivity = () => handleUserActivity();
+    events.forEach((ev) => window.addEventListener(ev, onActivity, { passive: true }));
+    return () => {
+      events.forEach((ev) => window.removeEventListener(ev, onActivity));
+    };
+  }, [handleUserActivity]);
+
+  // Client-side 10-minute inactivity timer
+  useEffect(() => {
+    if (typeof window === "undefined" || !user) return;
+    const checkInterval = setInterval(async () => {
+      const elapsed = Date.now() - lastActivityRef.current;
+      if (elapsed >= 10 * 60 * 1000) {
+        setUser(null);
+        await signOut("inactivity");
+        const pathname = window.location.pathname;
+        const isProtected =
+          pathname.startsWith("/vendor/") ||
+          pathname.startsWith("/admin") ||
+          pathname.startsWith("/dashboard") ||
+          pathname === "/garage" ||
+          pathname === "/orders";
+        if (isProtected) {
+          const isVendorOrAdmin = user.role !== "customer";
+          const dest = isVendorOrAdmin ? "/vendor/login?sessionExpired=true" : "/login?sessionExpired=true";
+          window.location.replace(dest);
+        }
+      }
+    }, 5000);
+    return () => clearInterval(checkInterval);
+  }, [user]);
+
+  // Multi-tab synchronization and Back-Forward Cache (bfcache) pageshow handling
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleSyncMessage = (data: any) => {
+      if (data?.type === "LOGOUT" || data?.type === "SESSION_EXPIRED") {
+        setUser(null);
+        const pathname = window.location.pathname;
+        const isProtected =
+          pathname.startsWith("/vendor/") ||
+          pathname.startsWith("/admin") ||
+          pathname.startsWith("/dashboard") ||
+          pathname === "/garage" ||
+          pathname === "/orders";
+        if (isProtected) {
+          const isVendor = pathname.startsWith("/vendor") || pathname.startsWith("/admin");
+          const dest = isVendor
+            ? (data.type === "SESSION_EXPIRED" ? "/vendor/login?sessionExpired=true" : "/vendor/login")
+            : (data.type === "SESSION_EXPIRED" ? "/login?sessionExpired=true" : "/");
+          window.location.replace(dest);
+        }
+      } else if (data?.type === "LOGIN" && data.user) {
+        setUser(data.user);
+        lastActivityRef.current = Date.now();
+      }
+    };
+
+    let bc: BroadcastChannel | null = null;
+    if ("BroadcastChannel" in window) {
+      bc = new BroadcastChannel(AUTH_CHANNEL_NAME);
+      bc.onmessage = (e) => handleSyncMessage(e.data);
+    }
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "riderzpro_auth_event" && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          handleSyncMessage(parsed);
+        } catch {}
+      }
+    };
+    window.addEventListener("storage", onStorage);
+
+    // Revalidate on browser Back-Forward Cache restoration
+    const onPageShow = async (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        try {
+          const res = await fetch("/api/auth/me", {
+            credentials: "include",
+            headers: { "X-Passive-Poll": "true" },
+          });
+          if (!res.ok) {
+            setUser(null);
+            const p = window.location.pathname;
+            if (p.startsWith("/vendor/") || p.startsWith("/admin") || p.startsWith("/dashboard") || p === "/orders" || p === "/garage") {
+              window.location.replace(p.startsWith("/vendor") || p.startsWith("/admin") ? "/vendor/login" : "/login");
+            }
+            return;
+          }
+          const d = await res.json();
+          if (!d.authenticated) {
+            setUser(null);
+            const p = window.location.pathname;
+            if (p.startsWith("/vendor/") || p.startsWith("/admin") || p.startsWith("/dashboard") || p === "/orders" || p === "/garage") {
+              window.location.replace(p.startsWith("/vendor") || p.startsWith("/admin") ? "/vendor/login" : "/login");
+            }
+          }
+        } catch {
+          setUser(null);
+        }
+      }
+    };
+    window.addEventListener("pageshow", onPageShow);
+
+    return () => {
+      bc?.close();
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, []);
+
   // Initialize and check PostgreSQL session
   useEffect(() => {
     async function initAuth() {
       try {
-        const meRes = await fetch("/api/auth/me", { credentials: "include" });
+        const meRes = await fetch("/api/auth/me", {
+          credentials: "include",
+          headers: { "X-Passive-Poll": "true" },
+        });
         if (meRes.ok) {
           const meData = await meRes.json();
           if (meData.authenticated && meData.user) {
@@ -436,6 +580,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               storeName: meData.user.storeName,
             };
             setUser(u);
+            lastActivityRef.current = Date.now();
             return;
           }
         }
@@ -482,6 +627,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       setUser(sessionUser);
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(sessionUser));
+      lastActivityRef.current = Date.now();
+      broadcastAuthEvent({ type: "LOGIN", role: sessionUser.role, user: sessionUser });
       return { success: true, redirectUrl: data.redirectUrl, role: data.role, user: dbUser };
     } catch (e: any) {
       console.error("Sign in error:", e);
@@ -517,6 +665,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       setUser(sessionUser);
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(sessionUser));
+      lastActivityRef.current = Date.now();
+      broadcastAuthEvent({ type: "LOGIN", role: "customer", user: sessionUser });
       return { success: true };
     } catch (e: any) {
       console.error("Sign up error:", e);

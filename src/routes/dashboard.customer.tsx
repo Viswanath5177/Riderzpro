@@ -100,7 +100,6 @@ function CustomerDashboard() {
     navigate({
       to: "/dashboard/customer",
       search: { tab: newTab as CustomerAllowedTab },
-      replace: true,
     });
   };
 

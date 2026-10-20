@@ -1,10 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 
 export function AIChatButton() {
+  const { isAuthenticated } = useAuth();
   const isAiEnabled = import.meta.env.VITE_ENABLE_AI_COPILOT !== "false";
 
-  if (!isAiEnabled) {
+  // Assistant only appears after login
+  if (!isAiEnabled || !isAuthenticated) {
     return null;
   }
 

@@ -147,15 +147,6 @@ function CartPage() {
               if (prev && data.data.some((a: any) => a.id === prev)) return prev;
               return def.id;
             });
-            setUserLocation({
-              id: def.id,
-              name: def.street_address || def.city || "Bengaluru",
-              city: def.city || "Bengaluru",
-              pincode: def.pincode || "560001",
-              lat: 12.9716,
-              lng: 77.5946,
-              tag: `${def.label || "Saved"} (Default)`,
-            });
           } else {
             setSelectedAddressId(null);
           }
@@ -366,11 +357,14 @@ function CartPage() {
             id: data.data.id,
             name: addressForm.streetLocality.trim(),
             city: addressForm.city.trim(),
+            state: addressForm.state.trim(),
             pincode: cleanPin,
-            lat: 12.9716,
-            lng: 77.5946,
+            lat: 0,
+            lng: 0,
             tag: `${addressForm.label} (Selected)`,
-          });
+            source: "saved",
+            isManual: true,
+          }, true);
         }
       } else {
         toast.error(data.error || "Failed to save delivery address");

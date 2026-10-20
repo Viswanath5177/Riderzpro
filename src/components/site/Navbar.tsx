@@ -108,9 +108,18 @@ export function Navbar() {
     window.location.href = "/";
   };
 
+  const userRole = (user?.role || role || userProfile?.role || "").toLowerCase();
+  const isAdmin =
+    userRole.includes("admin") ||
+    user?.email === "admin.operations@riderzpro.com" ||
+    user?.email === "admin@riderzpro.com";
+  const isSeller = userRole === "seller";
+  const dashboardLink = isAdmin ? "/admin" : isSeller ? "/dashboard/vendor" : "/dashboard/customer";
+  const dashboardLabel = isAdmin ? "Dashboard" : isSeller ? "Vendor Dashboard" : "Customer Dashboard";
+
   const displayName = userProfile?.name?.trim()
     ? userProfile.name.trim().split(" ")[0]
-    : "Account";
+    : isAdmin ? "Admin" : "Account";
 
   return (
     <header className="static w-full bg-white border-b border-[#E5E7EB] z-30 select-none">
@@ -219,32 +228,36 @@ export function Navbar() {
                   </div>
                   <div className="py-1 space-y-0.5">
                     <Link
-                      to={user?.role === "seller" || role === "seller" || userProfile?.role === "seller" ? "/dashboard/vendor" : "/dashboard/customer"}
+                      to={dashboardLink}
                       onClick={() => setIsAccountMenuOpen(false)}
                       className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition"
                     >
                       <LayoutDashboard className="h-3.5 w-3.5 text-gray-500" />
-                      <span>{user?.role === "seller" || role === "seller" || userProfile?.role === "seller" ? "Vendor Dashboard" : "Customer Dashboard"}</span>
+                      <span>{dashboardLabel}</span>
                     </Link>
-                    <button
-                      onClick={(e) => {
-                        setIsAccountMenuOpen(false);
-                        handleCarClick(e);
-                      }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition text-left"
-                    >
-                      <Car className="h-3.5 w-3.5 text-gray-500" />
-                      <span>My Garage & Vehicle</span>
-                    </button>
-                    <Link
-                      to="/dashboard/customer"
-                      search={{ tab: "orders" } as any}
-                      onClick={() => setIsAccountMenuOpen(false)}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition"
-                    >
-                      <ShoppingCart className="h-3.5 w-3.5 text-gray-500" />
-                      <span>My Orders</span>
-                    </Link>
+                    {!isAdmin && (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            setIsAccountMenuOpen(false);
+                            handleCarClick(e);
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition text-left"
+                        >
+                          <Car className="h-3.5 w-3.5 text-gray-500" />
+                          <span>My Garage & Vehicle</span>
+                        </button>
+                        <Link
+                          to="/dashboard/customer"
+                          search={{ tab: "orders" } as any}
+                          onClick={() => setIsAccountMenuOpen(false)}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition"
+                        >
+                          <ShoppingCart className="h-3.5 w-3.5 text-gray-500" />
+                          <span>My Orders</span>
+                        </Link>
+                      </>
+                    )}
                   </div>
                   <div className="pt-1 border-t border-gray-100">
                     <button
@@ -352,16 +365,18 @@ export function Navbar() {
             </div>
 
             <div className="pt-4 border-t border-[#E5E7EB] space-y-2.5">
-              <button
-                onClick={(e) => {
-                  setIsMobileMenuOpen(false);
-                  handleCarClick(e);
-                }}
-                className="flex items-center gap-2 text-xs font-semibold text-[#111111] hover:text-[#E31E24] w-full text-left"
-              >
-                <Car className="h-4 w-4 text-[#E31E24]" /> My Car & Garage
-                {!isLoggedIn && <Lock className="h-3 w-3 text-gray-400 ml-1" />}
-              </button>
+              {!isAdmin && (
+                <button
+                  onClick={(e) => {
+                    setIsMobileMenuOpen(false);
+                    handleCarClick(e);
+                  }}
+                  className="flex items-center gap-2 text-xs font-semibold text-[#111111] hover:text-[#E31E24] w-full text-left"
+                >
+                  <Car className="h-4 w-4 text-[#E31E24]" /> My Car & Garage
+                  {!isLoggedIn && <Lock className="h-3 w-3 text-gray-400 ml-1" />}
+                </button>
+              )}
               <button
                 onClick={(e) => {
                   setIsMobileMenuOpen(false);
@@ -373,11 +388,11 @@ export function Navbar() {
               </button>
               {isLoggedIn && (
                 <Link
-                  to="/dashboard/customer"
+                  to={dashboardLink}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 text-xs font-semibold text-[#111111] hover:text-[#E31E24]"
                 >
-                  <User className="h-4 w-4" /> Customer Dashboard
+                  <User className="h-4 w-4" /> {dashboardLabel}
                 </Link>
               )}
               <Link

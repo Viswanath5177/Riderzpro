@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "http";
 import crypto from "node:crypto";
-import { initializeDatabaseSchema, query, isPostgresAvailable } from "./db";
+import { initializeDatabaseSchema, query, isPostgresAvailable, testDatabaseConnectivity } from "./db";
 import { ProductModel, CategoryModel, GarageModel, ServiceBookingModel } from "./models";
 import {
   sendVendorApprovedEmail,
@@ -10,7 +10,7 @@ import {
   sendCustomerOrderPlacedEmail,
   sendVendorNewOrderEmail,
 } from "../lib/email.server";
-import { handleAuthRoute, getAuthenticatedUser, type AuthenticatedUser } from "./authRoutes";
+import { handleAuthRoute, getAuthenticatedUser, clearSessionCookie, type AuthenticatedUser } from "./authRoutes";
 import { handleSuperAdminRoute, getVerifiedAdmin } from "./superAdminRoutes";
 import { createNotification, notifyAdminRole } from "./notifications";
 import { handleRoute as riderRoute } from "./routes/rider";
@@ -135,8 +135,47 @@ export function pgApiMiddleware() {
         // ====================================================================
         // CSRF Verification for Cookie-Authenticated Mutating Requests
         // ====================================================================
-        if (cleanUrl.startsWith("/api/") && !verifyCsrf(req)) {
-          return sendJson(res, 403, { success: false, error: "CSRF verification failed: untrusted request origin." });
+        if (cleanUrl.startsWith("/api/")) {
+          res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+          res.setHeader("Pragma", "no-cache");
+          res.setHeader("Expires", "0");
+
+          // CSRF Protection for mutating requests with untrusted Origin
+          const origin = req.headers["origin"] as string | undefined;
+          const isMutating = method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE";
+          if (origin && isMutating) {
+            try {
+              const originHost = new URL(origin).host;
+              const reqHost = req.headers["host"] || "localhost:8080";
+              const isAllowed =
+                originHost === reqHost ||
+                originHost.includes("localhost") ||
+                originHost.includes("127.0.0.1") ||
+                originHost.endsWith("riderzpro.com");
+              if (!isAllowed) {
+                return sendJson(res, 403, {
+                  success: false,
+                  error: "CSRF verification failed: Cross-site request from untrusted origin blocked.",
+                });
+              }
+            } catch {
+              return sendJson(res, 403, {
+                success: false,
+                error: "CSRF verification failed: Invalid origin.",
+              });
+            }
+          }
+        }
+
+
+        // 0. DATABASE HEALTH & CONNECTIVITY TEST API
+        if (cleanUrl === "/api/db-health" && method === "GET") {
+          try {
+            const health = await testDatabaseConnectivity();
+            return sendJson(res, 200, { success: true, health });
+          } catch (err: any) {
+            return sendJson(res, 500, { success: false, error: "Database health check failed" });
+          }
         }
 
         // ====================================================================
@@ -207,7 +246,7 @@ export function pgApiMiddleware() {
                 return sendJson(res, 200, {
                   success: true,
                   name: locality || city,
-                  city: city || locality || state || "India",
+                  city: city || locality || state || "",
                   state,
                   pincode,
                 });
@@ -223,19 +262,23 @@ export function pgApiMiddleware() {
             );
             if (bdcRes.ok) {
               const d: any = await bdcRes.json();
-              const locality = d.locality || d.city;
-              const city = d.city || d.principalSubdivision || "India";
-              return sendJson(res, 200, {
-                success: true,
-                name: locality || city,
-                city,
-                state: d.principalSubdivision || "",
-                pincode: d.postcode || "",
-              });
+              const locality = d.locality || d.city || "";
+              const city = d.city || d.principalSubdivision || "";
+              const state = d.principalSubdivision || "";
+              const pincode = d.postcode || "";
+              if (locality || city) {
+                return sendJson(res, 200, {
+                  success: true,
+                  name: locality || city,
+                  city: city || locality || state || "",
+                  state,
+                  pincode,
+                });
+              }
             }
           } catch {}
 
-          return sendJson(res, 200, {
+          return sendJson(res, 404, {
             success: false,
             error: "Could not reverse geocode coordinates",
           });
@@ -700,158 +743,229 @@ export function pgApiMiddleware() {
 
             // POST /api/products/bulk-import (JSON bulk import)
             if (cleanUrl === "/api/products/bulk-import" && method === "POST") {
-              const body = await parseBody(req);
-              const authUser = await getAuthenticatedUser(req);
-              let sellerId = body.seller_id;
-              if (authUser && (authUser.role === "seller" || authUser.role === "vendor")) {
-                sellerId = authUser.id;
-              } else if (!sellerId && authUser) {
-                sellerId = authUser.id;
-              }
+              try {
+                const body = await parseBody(req);
+                const authUser = await getAuthenticatedUser(req);
 
-              if (!sellerId) {
-                const sRow = await query("SELECT id FROM sellers WHERE status = 'APPROVED' AND account_status != 'FROZEN' LIMIT 1");
-                sellerId = sRow.rows[0]?.id || "usr_seller_01";
-              }
+                // Robust seller ID resolution against 'sellers' table
+                let targetSellerId: string | null = null;
+                let sellerRecord: any = null;
 
-              // Freeze enforcement
-              if (sellerId) {
-                const sCheck = await query("SELECT account_status, freeze_reason FROM sellers WHERE id = $1", [sellerId]);
-                if (sCheck.rows[0]?.account_status === "FROZEN") {
+                // 1. If authenticated user is a seller, locate their seller record
+                if (authUser && (authUser.role === "seller" || authUser.role === "vendor")) {
+                  const sRes = await query(
+                    "SELECT id, account_status, freeze_reason FROM sellers WHERE id = $1 OR email = $2 OR id = $3 LIMIT 1",
+                    [authUser.id, authUser.email, authUser.id.replace(/^usr_/, "")]
+                  );
+                  if (sRes.rows[0]) {
+                    sellerRecord = sRes.rows[0];
+                    targetSellerId = sellerRecord.id;
+                  }
+                }
+
+                // 2. If admin or candidate seller_id provided in payload
+                if (!targetSellerId && body.seller_id) {
+                  const sRes = await query(
+                    "SELECT id, account_status, freeze_reason FROM sellers WHERE id = $1 OR email = $1 OR id = $2 LIMIT 1",
+                    [body.seller_id, String(body.seller_id).replace(/^usr_/, "")]
+                  );
+                  if (sRes.rows[0]) {
+                    sellerRecord = sRes.rows[0];
+                    targetSellerId = sellerRecord.id;
+                  }
+                }
+
+                // 3. Fallback for authenticated admin without explicit seller_id
+                if (!targetSellerId && authUser && isAdminRole(authUser.role)) {
+                  const sRes = await query(
+                    "SELECT id, account_status, freeze_reason FROM sellers WHERE status = 'APPROVED' AND (account_status IS NULL OR account_status != 'FROZEN') ORDER BY id ASC LIMIT 1"
+                  );
+                  if (sRes.rows[0]) {
+                    sellerRecord = sRes.rows[0];
+                    targetSellerId = sellerRecord.id;
+                  }
+                }
+
+                // 4. Default fallback to first active seller
+                if (!targetSellerId) {
+                  const sRes = await query(
+                    "SELECT id, account_status, freeze_reason FROM sellers WHERE status = 'APPROVED' AND (account_status IS NULL OR account_status != 'FROZEN') LIMIT 1"
+                  );
+                  sellerRecord = sRes.rows[0] || { id: "sel_volthub_01", account_status: "ACTIVE" };
+                  targetSellerId = sellerRecord.id;
+                }
+
+                const sellerId: string = targetSellerId || "sel_volthub_01";
+
+                // Freeze enforcement
+                if (sellerRecord && sellerRecord.account_status === "FROZEN") {
                   return sendJson(res, 403, {
                     success: false,
-                    error: `Vendor account is FROZEN by administration. Bulk import blocked. Reason: ${sCheck.rows[0].freeze_reason || "Compliance review"}.`,
+                    error: `Vendor account is FROZEN by administration. Bulk import blocked. Reason: ${sellerRecord.freeze_reason || "Compliance review"}.`,
                   });
                 }
-              }
 
-              const rawList = Array.isArray(body.products) ? body.products : [];
-              if (rawList.length === 0) {
-                return sendJson(res, 400, { success: false, error: "No products array provided in JSON file." });
-              }
-              if (rawList.length > 100) {
-                return sendJson(res, 400, { success: false, error: "Maximum limit is 100 products per import batch." });
-              }
+                const rawList = Array.isArray(body.products)
+                  ? body.products
+                  : Array.isArray(body.items)
+                  ? body.items
+                  : Array.isArray(body.data)
+                  ? body.data
+                  : [];
 
-              const importedProducts: any[] = [];
-              const failedItems: any[] = [];
-              const seenSkus = new Set<string>();
-
-              for (let i = 0; i < rawList.length; i++) {
-                const item = rawList[i];
-                const index = i + 1;
-                const name = (item.name || item.title || item.product_name || item.productName || "").trim();
-                const price = Number(item.price ?? item.selling_price ?? item.sellingPrice ?? item.mrp);
-                const stock = item.stock !== undefined
-                  ? parseInt(String(item.stock), 10)
-                  : item.quantity !== undefined
-                  ? parseInt(String(item.quantity), 10)
-                  : 0;
-                const category = (item.category || item.department || "Accessories").trim();
-                const brand = (item.brand || item.make || "Vendor Certified").trim();
-                let sku = (item.sku || item.sku_code || item.partNumber || "").trim();
-                const description = (item.description || item.desc || "").trim();
-
-                if (!name) {
-                  failedItems.push({ index, name: `Item #${index}`, error: "Product name is required and cannot be empty." });
-                  continue;
+                if (rawList.length === 0) {
+                  return sendJson(res, 400, { success: false, error: "No products array provided in JSON file." });
                 }
-                if (isNaN(price) || price <= 0) {
-                  failedItems.push({ index, name, error: "Price must be a valid positive number." });
-                  continue;
-                }
-                if (isNaN(stock) || stock < 0) {
-                  failedItems.push({ index, name, error: "Stock quantity must be a non-negative integer." });
-                  continue;
+                if (rawList.length > 100) {
+                  return sendJson(res, 400, { success: false, error: "Maximum limit is 100 products per import batch." });
                 }
 
-                if (!sku) {
-                  sku = `SKU-${Date.now().toString(36).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
+                const importedProducts: any[] = [];
+                const failedItems: any[] = [];
+                const seenSkus = new Set<string>();
+
+                for (let i = 0; i < rawList.length; i++) {
+                  const item = rawList[i];
+                  const index = i + 1;
+                  const name = (item.name || item.title || item.product_name || item.productName || "").trim();
+
+                  // Sanitize price and stock
+                  const rawPrice = item.price ?? item.selling_price ?? item.sellingPrice ?? item.mrp;
+                  const priceStr = typeof rawPrice === "string" ? rawPrice.replace(/[^0-9.]/g, "") : String(rawPrice ?? "");
+                  const price = Number(priceStr);
+
+                  const rawStock = item.stock ?? item.quantity ?? item.qty ?? item.inventory ?? item.units ?? 10;
+                  const stockStr = typeof rawStock === "string" ? rawStock.replace(/[^0-9]/g, "") : String(rawStock);
+                  const stock = parseInt(stockStr, 10);
+
+                  const category = (item.category || item.department || "Accessories").trim();
+                  const brand = (item.brand || item.make || "Vendor Certified").trim();
+                  let sku = (item.sku || item.sku_code || item.partNumber || "").trim();
+                  const description = (item.description || item.desc || `${brand} ${name}`).trim();
+
+                  if (!name) {
+                    failedItems.push({ index, name: `Item #${index}`, error: "Product name is required and cannot be empty." });
+                    continue;
+                  }
+                  if (isNaN(price) || price <= 0) {
+                    failedItems.push({ index, name, error: "Price must be a valid positive number." });
+                    continue;
+                  }
+                  if (isNaN(stock) || stock < 0) {
+                    failedItems.push({ index, name, error: "Stock quantity must be a non-negative integer." });
+                    continue;
+                  }
+
+                  if (!sku) {
+                    sku = `SKU-${Date.now().toString(36).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}-${index}`;
+                  }
+                  const existingSku = await query("SELECT id FROM products WHERE LOWER(sku) = LOWER($1) LIMIT 1", [sku]);
+                  if (existingSku.rows.length > 0 || seenSkus.has(sku.toLowerCase())) {
+                    sku = `${sku}-${Math.floor(100 + Math.random() * 900)}`;
+                  }
+                  seenSkus.add(sku.toLowerCase());
+
+                  let primaryImage = "/src/assets/parts.jpg";
+                  let imageArray: string[] = [];
+
+                  if (Array.isArray(item.images) && item.images.length > 0) {
+                    imageArray = item.images.map((img: any) => typeof img === "string" ? img : img?.url).filter(Boolean);
+                    if (imageArray[0]) primaryImage = imageArray[0];
+                  } else if (typeof item.image_url === "string" && item.image_url) {
+                    primaryImage = item.image_url;
+                    imageArray = [primaryImage];
+                  } else if (typeof item.image === "string" && item.image) {
+                    primaryImage = item.image;
+                    imageArray = [primaryImage];
+                  }
+
+                  let specsText = "";
+                  if (item.specifications && typeof item.specifications === "object") {
+                    specsText = Object.entries(item.specifications)
+                      .map(([k, v]) => `${k}: ${v}`)
+                      .join(" | ");
+                  }
+
+                  // Dynamic Category resolution
+                  let categoryId = "cat_accessories";
+                  if (category) {
+                    const catRes = await query(
+                      "SELECT id FROM categories WHERE LOWER(name) = LOWER($1) OR LOWER(slug) = LOWER($1) OR id = $1 OR LOWER(name) LIKE '%' || LOWER($1) || '%' LIMIT 1",
+                      [category]
+                    );
+                    if (catRes.rows[0]?.id) {
+                      categoryId = catRes.rows[0].id;
+                    }
+                  }
+
+                  const productId = `prod_${crypto.randomBytes(6).toString("hex")}`;
+                  const mrp = Number(item.mrp) || Math.round(price * 1.15);
+                  const discount = mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0;
+
+                  try {
+                    const prodRecord = await ProductModel.create({
+                      id: productId,
+                      seller_id: sellerId,
+                      category_id: categoryId,
+                      name,
+                      brand,
+                      sku,
+                      description: specsText ? `${description}\n\nSpecifications: ${specsText}` : description,
+                      price,
+                      mrp,
+                      discount_percent: discount,
+                      stock,
+                      image_url: JSON.stringify(imageArray.length > 0 ? imageArray : [primaryImage]),
+                      verification_status: "pending_approval",
+                      is_active: false,
+                      department: category,
+                      variant_model: item.variant_model || item.model || "",
+                      fitment_type: item.fitment_type || "universal",
+                      compatible_vehicles: Array.isArray(item.compatible_vehicles) ? item.compatible_vehicles : ["universal"],
+                      warranty: item.warranty || "1 Year Manufacturer",
+                    });
+
+                    // Create vendor offer record so this product binds to the vendor
+                    await query(`
+                      INSERT INTO product_offers (
+                        id, product_id, vendor_id, price, stock, status, warranty_terms, dispatch_hours
+                      ) VALUES ($1, $2, $3, $4, $5, 'active', $6, 24)
+                      ON CONFLICT (id) DO NOTHING
+                    `, [
+                      `off_${crypto.randomBytes(6).toString("hex")}`,
+                      productId,
+                      sellerId,
+                      price,
+                      stock,
+                      item.warranty || "1 Year Manufacturer",
+                    ]).catch(() => {});
+
+                    // Log into approval history for admin review
+                    await query(`
+                      INSERT INTO product_approval_history (id, product_id, admin_id, action, reason)
+                      VALUES ($1, $2, 'SYSTEM', 'pending_approval', 'Bulk imported by vendor, queued for admin verification')
+                    `, [`pah_${crypto.randomBytes(6).toString("hex")}`, productId]).catch(() => {});
+
+                    importedProducts.push(prodRecord);
+                  } catch (err: any) {
+                    console.error(`[Bulk import item error for "${name}"]:`, err.message);
+                    failedItems.push({ index, name, error: err.message || "Failed to persist to database." });
+                  }
                 }
-                const existingSku = await query("SELECT id FROM products WHERE LOWER(sku) = LOWER($1) LIMIT 1", [sku]);
-                if (existingSku.rows.length > 0 || seenSkus.has(sku.toLowerCase())) {
-                  sku = `${sku}-${Math.floor(100 + Math.random() * 900)}`;
-                }
-                seenSkus.add(sku.toLowerCase());
 
-                let primaryImage = "/src/assets/parts.jpg";
-                let imageArray: string[] = [];
-
-                if (Array.isArray(item.images) && item.images.length > 0) {
-                  imageArray = item.images.map((img: any) => typeof img === "string" ? img : img?.url).filter(Boolean);
-                  if (imageArray[0]) primaryImage = imageArray[0];
-                } else if (typeof item.image_url === "string" && item.image_url) {
-                  primaryImage = item.image_url;
-                  imageArray = [primaryImage];
-                } else if (typeof item.image === "string" && item.image) {
-                  primaryImage = item.image;
-                  imageArray = [primaryImage];
-                }
-
-                let specsText = "";
-                if (item.specifications && typeof item.specifications === "object") {
-                  specsText = Object.entries(item.specifications)
-                    .map(([k, v]) => `${k}: ${v}`)
-                    .join(" | ");
-                }
-
-                const productId = `prod_${crypto.randomBytes(6).toString("hex")}`;
-                const mrp = Number(item.mrp) || Math.round(price * 1.15);
-                const discount = mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0;
-
-                const prodRecord = await ProductModel.create({
-                  id: productId,
-                  seller_id: sellerId,
-                  name,
-                  brand,
-                  sku,
-                  description: specsText ? `${description}\n\nSpecifications: ${specsText}` : description,
-                  price,
-                  mrp,
-                  discount_percent: discount,
-                  stock,
-                  image_url: JSON.stringify(imageArray.length > 0 ? imageArray : [primaryImage]),
-                  verification_status: "pending_approval",
-                  is_active: false,
-                  department: category,
-                  variant_model: item.variant_model || item.model || "",
-                  fitment_type: item.fitment_type || "universal",
-                  compatible_vehicles: Array.isArray(item.compatible_vehicles) ? item.compatible_vehicles : ["universal"],
-                  warranty: item.warranty || "1 Year Manufacturer",
+                return sendJson(res, 200, {
+                  success: true,
+                  importedCount: importedProducts.length,
+                  failedCount: failedItems.length,
+                  errors: failedItems,
+                  imported: importedProducts,
+                  importedProducts,
+                  message: `Bulk import completed: ${importedProducts.length} imported (awaiting admin certification), ${failedItems.length} failed.`,
                 });
-
-                // Create vendor offer record so this product binds to the vendor
-                await query(`
-                  INSERT INTO product_offers (
-                    id, product_id, vendor_id, price, stock, status, warranty_terms, dispatch_hours
-                  ) VALUES ($1, $2, $3, $4, $5, 'active', $6, 24)
-                  ON CONFLICT (id) DO NOTHING
-                `, [
-                  `off_${crypto.randomBytes(6).toString("hex")}`,
-                  productId,
-                  sellerId,
-                  price,
-                  stock,
-                  item.warranty || "1 Year Manufacturer",
-                ]).catch(() => {});
-
-                // Log into approval history for admin review
-                await query(`
-                  INSERT INTO product_approval_history (id, product_id, admin_id, action, reason)
-                  VALUES ($1, $2, 'SYSTEM', 'pending_approval', 'Bulk imported by vendor, queued for admin verification')
-                `, [`pah_${crypto.randomBytes(6).toString("hex")}`, productId]).catch(() => {});
-
-                importedProducts.push(prodRecord);
+              } catch (err: any) {
+                console.error("[Bulk import server error]:", err);
+                return sendJson(res, 500, { success: false, error: err.message || "Internal server error during bulk import." });
               }
-
-              return sendJson(res, 200, {
-                success: true,
-                importedCount: importedProducts.length,
-                failedCount: failedItems.length,
-                errors: failedItems,
-                importedProducts,
-                message: `Bulk import completed: ${importedProducts.length} imported (awaiting admin certification), ${failedItems.length} failed.`,
-              });
             }
 
             // POST /api/products/batch-delete
@@ -1162,8 +1276,18 @@ export function pgApiMiddleware() {
           try {
             const authUser = await getAuthenticatedUser(req);
             if (!authUser) {
+              if ((req as any).sessionExpired) {
+                clearSessionCookie(res);
+                return sendJson(res, 401, {
+                  success: false,
+                  authenticated: false,
+                  sessionExpired: true,
+                  error: "Session expired due to 10 minutes of inactivity. Please log in again.",
+                });
+              }
               return sendJson(res, 401, {
                 success: false,
+                authenticated: false,
                 error: "Vendor authorization required. Please sign in to your vendor partner account.",
               });
             }
@@ -1172,13 +1296,22 @@ export function pgApiMiddleware() {
             const requestedSellerId = queryParams.get("seller_id");
 
             if (authUser.role === "seller") {
-              if (requestedSellerId && requestedSellerId !== authUser.id) {
-                return sendJson(res, 403, {
-                  success: false,
-                  error: "Access denied. You can only view your own vendor dashboard.",
-                });
+              if (requestedSellerId && requestedSellerId !== authUser.id && requestedSellerId !== authUser.id.replace(/^usr_/, "")) {
+                // Verify if requested seller matches authUser by email or mapped ID
+                const selfCheck = await query(
+                  "SELECT id FROM sellers WHERE id = $1 AND (id = $2 OR email = $3 OR id = $4) LIMIT 1",
+                  [requestedSellerId, authUser.id, authUser.email, authUser.id.replace(/^usr_/, "")]
+                );
+                if (selfCheck.rows.length === 0) {
+                  return sendJson(res, 403, {
+                    success: false,
+                    error: "Access denied. You can only view your own vendor dashboard.",
+                  });
+                }
+                sellerId = requestedSellerId;
+              } else {
+                sellerId = requestedSellerId || authUser.id;
               }
-              sellerId = authUser.id;
               if (authUser.is_active === false) {
                 return sendJson(res, 403, {
                   success: false,
@@ -1195,8 +1328,8 @@ export function pgApiMiddleware() {
             }
 
             const resSeller = await query(
-              "SELECT * FROM sellers WHERE id = $1 LIMIT 1",
-              [sellerId]
+              "SELECT * FROM sellers WHERE id = $1 OR email = $2 OR id = $3 LIMIT 1",
+              [sellerId, authUser.email, String(sellerId).replace(/^usr_/, "")]
             );
             const sellerRow = resSeller.rows[0];
             if (!sellerRow) {
@@ -2573,7 +2706,7 @@ export function pgApiMiddleware() {
             // GET /api/vendor/coupons
             if (method === "GET") {
               const sql = sellerId
-                ? "SELECT * FROM coupons WHERE vendor_id = $1 ORDER BY created_at DESC"
+                ? "SELECT * FROM coupons WHERE (seller_id = $1 OR vendor_id = $1) ORDER BY created_at DESC"
                 : "SELECT * FROM coupons ORDER BY created_at DESC";
               const params = sellerId ? [sellerId] : [];
               const cRes = await query(sql, params);
@@ -2640,8 +2773,8 @@ export function pgApiMiddleware() {
 
               const cId = `cpn_${crypto.randomBytes(8).toString("hex")}`;
               await query(
-                `INSERT INTO coupons (id, vendor_id, code, description, discount_type, discount_value, minimum_order_value, maximum_discount, starts_at, expires_at, usage_limit, per_customer_limit, status)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'active')`,
+                `INSERT INTO coupons (id, seller_id, vendor_id, code, description, discount_type, discount_value, min_order_value, minimum_order_value, max_discount_amount, maximum_discount, starts_at, expires_at, usage_limit, per_customer_limit, status, is_active)
+                 VALUES ($1, $2, $2, $3, $4, $5, $6, $7, $7, $8, $8, $9, $10, $11, $12, 'active', true)`,
                 [cId, postSellerId, code, description, discountType, discountValue, minOrder, maxDiscount, startsAt, expiresAt, usageLimit, perCustomerLimit]
               );
 

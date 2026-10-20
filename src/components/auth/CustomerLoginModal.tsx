@@ -21,6 +21,8 @@ import { useStore } from "@/lib/store";
 
 export function CustomerLoginModal() {
   const {
+    user,
+    isAuthenticated,
     isCustomerLoginModalOpen,
     openCustomerLoginModal,
     closeCustomerLoginModal,
@@ -52,8 +54,30 @@ export function CustomerLoginModal() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
-      if (sp.get("openLogin") === "customer" || sp.get("login") === "customer") {
+      const isOpenLogin = sp.get("openLogin") === "customer" || sp.get("login") === "customer";
+      const isExpired = sp.get("sessionExpired") === "true";
+
+      if (isExpired) {
+        toast.error("Session Expired", {
+          description: "Your session has expired due to 10 minutes of inactivity. Please sign in again.",
+        });
+      }
+
+      if (isOpenLogin) {
         const redirectTo = sp.get("redirect") || "/dashboard/customer";
+        if (isAuthenticated) {
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete("openLogin");
+          newUrl.searchParams.delete("login");
+          newUrl.searchParams.delete("redirect");
+          newUrl.searchParams.delete("sessionExpired");
+          window.history.replaceState({}, "", newUrl.toString());
+          if (redirectTo && redirectTo !== "/") {
+            window.location.replace(redirectTo);
+          }
+          return;
+        }
+
         openCustomerLoginModal({ redirectTo });
         const newUrl = new URL(window.location.href);
         newUrl.searchParams.delete("openLogin");
@@ -61,7 +85,7 @@ export function CustomerLoginModal() {
         window.history.replaceState({}, "", newUrl.toString());
       }
     }
-  }, [openCustomerLoginModal]);
+  }, [isAuthenticated, openCustomerLoginModal]);
 
   // Initialize with initialIdentifier if supplied
   useEffect(() => {
@@ -154,20 +178,13 @@ export function CustomerLoginModal() {
       // 1. Check account existence & password status
       const checkRes = await checkEmailExists(cleanEmail, "customer");
 
-      // Administrators MUST NOT sign in via customer portal
-      if (checkRes.isAdmin || checkRes.role?.includes("ADMIN") || checkRes.role === "admin") {
-        setIsLoading(false);
-        setErrorMessage("Invalid email.");
-        return;
-      }
-
       setIsRegistered(checkRes.isRegistered);
       setHasPassword(Boolean(checkRes.hasPassword));
-      setUserFullName(checkRes.fullName || "User");
-      setUserRole(checkRes.role || "customer");
+      setUserFullName(checkRes.fullName || (checkRes.isAdmin ? "Admin" : "User"));
+      setUserRole(checkRes.role || (checkRes.isAdmin ? "admin" : "customer"));
 
-      if (checkRes.hasPassword) {
-        // User has a password configured -> provide password entry or OTP option
+      if (checkRes.hasPassword || checkRes.isAdmin) {
+        // User has a password configured -> provide password entry
         setStage("password_or_otp");
       } else {
         // User has NO password set yet -> immediately send OTP verification
@@ -325,46 +342,69 @@ export function CustomerLoginModal() {
 
   // Final Session Establishment & Dashboard Navigation
   const completeSession = (sessionData: any) => {
-    const userObj = sessionData.user || sessionData.customer;
+    const userObj = sessionData.user || sessionData.customer || {};
+    const roleRaw = String(userObj.role || sessionData.role || "").toLowerCase();
+    const isAdmin =
+      roleRaw.includes("admin") ||
+      userObj.email === "admin.operations@riderzpro.com" ||
+      userObj.email === "admin@riderzpro.com";
+
     const sessionUser = {
       id: userObj.id,
-      name: userObj.fullName || "User",
+      name: userObj.fullName || userObj.name || (isAdmin ? "Admin" : "User"),
       email: userObj.email,
       phone: userObj.phone || "",
-      role: "customer" as const,
+      role: isAdmin ? ("admin" as const) : roleRaw === "seller" ? ("seller" as const) : ("customer" as const),
     };
 
     localStorage.setItem("riderzpro_auth_user", JSON.stringify(sessionUser));
     localStorage.setItem("riderzpro_auth_token", "session_active");
     localStorage.setItem("riderzpro_token", "session_active");
-    localStorage.removeItem("riderzpro_admin_session");
+
+    if (isAdmin) {
+      localStorage.setItem(
+        "riderzpro_admin_session",
+        JSON.stringify({
+          id: sessionUser.id,
+          email: sessionUser.email,
+          name: sessionUser.name,
+          role: userObj.role || "ADMIN",
+          authenticatedAt: Date.now(),
+        })
+      );
+    } else {
+      localStorage.removeItem("riderzpro_admin_session");
+    }
 
     try {
       const rawStore = localStorage.getItem("riderzpro-v7");
       if (rawStore) {
         const parsed = JSON.parse(rawStore);
-        parsed.role = "customer";
+        parsed.role = isAdmin ? "admin" : sessionUser.role;
         parsed.userProfile = {
           ...(parsed.userProfile || {}),
           name: sessionUser.name,
           email: sessionUser.email,
           phone: sessionUser.phone,
+          role: parsed.role,
         };
         localStorage.setItem("riderzpro-v7", JSON.stringify(parsed));
       }
     } catch {}
 
-    setAuthUser(sessionUser);
-    setRole("customer");
+    setAuthUser(sessionUser as any);
+    setRole(isAdmin ? ("admin" as any) : "customer");
 
     toast.success(`Welcome to RiderzPro, ${sessionUser.name}!`);
 
     // Close modal
     closeCustomerLoginModal();
 
-    // Trigger post-login callback or navigation directly to customer dashboard
-    let targetUrl = customerLoginModalOptions?.redirectTo || "/dashboard/customer";
-    if ((targetUrl === "/dashboard/customer" || targetUrl === "/dashboard") && sessionUser.id) {
+    // Trigger post-login callback or navigation
+    let targetUrl = customerLoginModalOptions?.redirectTo || (isAdmin ? "/admin" : "/dashboard/customer");
+    if (isAdmin) {
+      targetUrl = "/admin";
+    } else if ((targetUrl === "/dashboard/customer" || targetUrl === "/dashboard") && sessionUser.id) {
       targetUrl = `/${sessionUser.id}`;
     }
     if (customerLoginModalOptions?.onAuthenticated) {

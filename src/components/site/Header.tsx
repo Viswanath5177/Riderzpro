@@ -84,6 +84,15 @@ export function Header() {
   };
 
   const activeName = user?.name || userProfile?.name || "Customer";
+  const userRole = (user?.role || userProfile?.role || "").toLowerCase();
+  const isAdmin =
+    userRole.includes("admin") ||
+    user?.email === "admin.operations@riderzpro.com" ||
+    user?.email === "admin@riderzpro.com";
+  const isSeller = userRole === "seller";
+  const dashboardLink = isAdmin ? "/admin" : isSeller ? "/dashboard/vendor" : "/dashboard/customer";
+  const dashboardLabel = isAdmin ? "Dashboard" : isSeller ? "Vendor Dashboard" : "Customer Dashboard";
+
   const initials = activeName
     .split(" ")
     .map((n) => n[0])
@@ -283,31 +292,35 @@ export function Header() {
                   </div>
                   <DropdownMenuItem asChild>
                     <Link
-                      to={user?.role === "seller" || userProfile?.role === "seller" ? "/dashboard/vendor" : "/dashboard/customer"}
+                      to={dashboardLink}
                       className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-[#f7f7f8] text-[#111111]"
                     >
                       <LayoutDashboard className="h-4 w-4 text-emerald-600" />
-                      <span>{user?.role === "seller" || userProfile?.role === "seller" ? "Vendor Dashboard" : "Customer Dashboard"}</span>
+                      <span>{dashboardLabel}</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      to="/garage"
-                      className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-[#f7f7f8] text-[#111111]"
-                    >
-                      <Bike className="h-4 w-4 text-emerald-600" />
-                      <span>My Garage</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      to="/orders"
-                      className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-[#f7f7f8] text-[#111111]"
-                    >
-                      <Package className="h-4 w-4 text-[#e11d2a]" />
-                      <span>My Orders</span>
-                    </Link>
-                  </DropdownMenuItem>
+                  {!isAdmin && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          to="/garage"
+                          className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-[#f7f7f8] text-[#111111]"
+                        >
+                          <Bike className="h-4 w-4 text-emerald-600" />
+                          <span>My Garage</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          to="/orders"
+                          className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-[#f7f7f8] text-[#111111]"
+                        >
+                          <Package className="h-4 w-4 text-[#e11d2a]" />
+                          <span>My Orders</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuSeparator className="my-1 bg-[#ececec]" />
                   <DropdownMenuItem
                     onClick={handleSignOut}
@@ -345,6 +358,7 @@ export function Header() {
         isAuthenticated={isAuthenticated}
         activeName={activeName}
         onSignOut={handleSignOut}
+        isAdmin={isAdmin}
       />
     </>
   );

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import {
@@ -89,9 +89,16 @@ export function CustomerLayout({
     userLocation,
     isLocationModalOpen,
     setIsLocationModalOpen,
+    detectCurrentLocation,
   } = useStore();
   const { user: authUser, signOut: authSignOut } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!userLocation || (!userLocation.isManual && userLocation.name === "Detecting location...")) {
+      detectCurrentLocation({ force: false });
+    }
+  }, [userLocation, detectCurrentLocation]);
 
   const [isSigningOut, setIsSigningOut] = useState(false);
 

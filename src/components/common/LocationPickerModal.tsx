@@ -30,13 +30,17 @@ interface LocationPickerModalProps {
 
 export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProps) {
   const { user } = useAuth();
-  const { userProfile, userLocation, setUserLocation } = useStore();
+  const {
+    userProfile,
+    userLocation,
+    setUserLocation,
+    isDetectingLocation,
+    locationGpsError,
+    detectCurrentLocation,
+  } = useStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [placeSuggestions, setPlaceSuggestions] = useState<PlaceSuggestion[]>([]);
   const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
-  const [isDetectingGps, setIsDetectingGps] = useState(false);
-  const [detectedGpsLocation, setDetectedGpsLocation] = useState<LocationArea | null>(null);
-  const [gpsError, setGpsError] = useState<string | null>(null);
 
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
@@ -80,8 +84,6 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
   useEffect(() => {
     if (isOpen) {
       loadAddresses();
-      setDetectedGpsLocation(null);
-      setGpsError(null);
       setSearchQuery("");
       setPlaceSuggestions([]);
     }
@@ -115,15 +117,19 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
     const loc: LocationArea = {
       id: place.id,
       name: place.name,
-      city: place.city || "India",
+      city: place.city || "",
       state: place.state,
       description: place.description,
       pincode: place.pincode || "",
-      lat: place.lat || 12.9716,
-      lng: place.lng || 77.5946,
+      lat: place.lat || 0,
+      lng: place.lng || 0,
+      latitude: place.lat || 0,
+      longitude: place.lng || 0,
       tag: `Maps: ${place.name}`,
+      source: "search",
+      isManual: true,
     };
-    setUserLocation(loc);
+    setUserLocation(loc, true);
     toast.success(`Delivery location set to ${place.name}`, {
       description: place.city ? `${place.city}${place.state ? ", " + place.state : ""}` : undefined,
     });
@@ -133,14 +139,17 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
   const handleSelectSavedAddress = (addr: any) => {
     const loc: LocationArea = {
       id: addr.id,
-      name: addr.street_address || addr.city || "Bengaluru",
-      city: addr.city || "Bengaluru",
+      name: addr.street_address || addr.city || "Saved Address",
+      city: addr.city || "",
+      state: addr.state || "",
       pincode: addr.pincode || "",
-      lat: 12.9716,
-      lng: 77.5946,
+      lat: 0,
+      lng: 0,
       tag: addr.label || "Saved Address",
+      source: "saved",
+      isManual: true,
     };
-    setUserLocation(loc);
+    setUserLocation(loc, true);
     toast.success(`Delivery location set to ${addr.label || "Saved Address"}`);
     onClose();
   };
@@ -216,61 +225,14 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
     }
   };
 
-  const handleDetectGps = () => {
-    setIsDetectingGps(true);
-    setGpsError(null);
-    setDetectedGpsLocation(null);
-
-    if (typeof window !== "undefined" && "geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-
-          try {
-            const geocoded = await reverseGeocodeCoords(latitude, longitude);
-            setIsDetectingGps(false);
-
-            const detectedLoc: LocationArea = {
-              id: `gps-${Date.now()}`,
-              name: geocoded.name || geocoded.city || "Current Location",
-              city: geocoded.city || "India",
-              lat: latitude,
-              lng: longitude,
-              pincode: geocoded.pincode || "",
-              tag: `GPS: ${geocoded.city || "Current Location"}`,
-            };
-
-            setDetectedGpsLocation(detectedLoc);
-          } catch (err: any) {
-            setIsDetectingGps(false);
-            setGpsError("Unable to reverse geocode device location. Please search manually.");
-          }
-        },
-        (error) => {
-          setIsDetectingGps(false);
-          if (error.code === error.PERMISSION_DENIED) {
-            setGpsError("Location permission denied. Please allow location access or search your address manually.");
-          } else if (error.code === error.POSITION_UNAVAILABLE) {
-            setGpsError("GPS position unavailable from your device. Please search your address manually.");
-          } else {
-            setGpsError("Location detection timed out. Please search your address manually.");
-          }
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
-      );
-    } else {
-      setIsDetectingGps(false);
-      setGpsError("Geolocation is not supported by your browser. Please search manually.");
+  const handleDetectGps = async () => {
+    const loc = await detectCurrentLocation({ force: true });
+    if (loc) {
+      toast.success(`Delivery location updated to ${loc.name}${loc.city ? ", " + loc.city : ""}`, {
+        description: "Browsing catalog and shipping estimates have been adjusted for this location.",
+      });
+      onClose();
     }
-  };
-
-  const handleConfirmGpsLocation = () => {
-    if (!detectedGpsLocation) return;
-    setUserLocation(detectedGpsLocation);
-    toast.success(`Delivery location updated to ${detectedGpsLocation.name}, ${detectedGpsLocation.city}`, {
-      description: "Browsing catalog and shipping estimates have been adjusted for this location.",
-    });
-    onClose();
   };
 
   const handleConfirmCustomSearch = () => {
@@ -280,13 +242,15 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
     const customLoc: LocationArea = {
       id: `custom-${Date.now()}`,
       name: parts[0] || trimmed,
-      city: parts[1] || (trimmed.toLowerCase().includes("bengaluru") || trimmed.toLowerCase().includes("bangalore") ? "Bengaluru" : "India"),
-      lat: 12.9716,
-      lng: 77.5946,
+      city: parts[1] || "",
+      lat: 0,
+      lng: 0,
       pincode: "",
       tag: "Custom Pin",
+      source: "search",
+      isManual: true,
     };
-    setUserLocation(customLoc);
+    setUserLocation(customLoc, true);
     toast.success(`Delivery location set to ${customLoc.name}`, {
       description: "Browsing catalog and shipping estimates adjusted.",
     });
@@ -322,11 +286,24 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
               <h3 className="text-lg sm:text-xl font-extrabold text-[#111111] font-display">
                 Select Delivery Location
               </h3>
-              <p className="text-xs text-[#6B7280] mt-0.5">
-                Currently delivering to:{" "}
-                <span className="font-bold text-[#111111]">{userLocation?.name || "Select location"}</span>
-                {userLocation?.city ? ` (${userLocation.city})` : ""}
-              </p>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <p className="text-xs text-[#6B7280]">
+                  Currently delivering to:{" "}
+                  <span className="font-bold text-[#111111]">{userLocation?.name || "Detecting location..."}</span>
+                  {userLocation?.city ? ` (${userLocation.city})` : ""}
+                  {userLocation?.pincode ? ` - ${userLocation.pincode}` : ""}
+                </p>
+                {userLocation?.source === "gps" && !userLocation?.isManual && (
+                  <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Live GPS
+                  </span>
+                )}
+                {userLocation?.isManual && (
+                  <span className="text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200">
+                    Manual Selection
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <button
@@ -376,24 +353,32 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
           <button
             type="button"
             onClick={handleDetectGps}
-            disabled={isDetectingGps}
+            disabled={isDetectingLocation}
             className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-red-50/70 hover:bg-red-50 text-[#E31E24] border border-red-100/90 hover:border-red-200 transition cursor-pointer group active:scale-[0.99] disabled:opacity-60"
           >
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-xl bg-[#E31E24] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition shrink-0">
                 <Navigation
-                  className={cn("h-4 w-4", isDetectingGps ? "animate-spin" : "group-hover:rotate-45 transition-transform")}
+                  className={cn("h-4 w-4", isDetectingLocation ? "animate-spin" : "group-hover:rotate-45 transition-transform")}
                 />
               </div>
               <div className="text-left">
                 <p className="text-xs sm:text-sm font-bold text-[#E31E24] flex items-center gap-1.5">
-                  <span>{isDetectingGps ? "Detecting actual device coordinates..." : "Use Current Location"}</span>
+                  <span>
+                    {isDetectingLocation
+                      ? "Detecting actual device coordinates..."
+                      : userLocation?.isManual
+                      ? "Switch to Real Current Location (GPS)"
+                      : "Use Current Location"}
+                  </span>
                   <span className="text-[10px] font-semibold bg-white/80 px-1.5 py-0.5 rounded text-red-700 border border-red-200">
                     GPS
                   </span>
                 </p>
                 <p className="text-[11px] text-red-600/80">
-                  Request device coordinates and reverse-geocode your real locality
+                  {isDetectingLocation
+                    ? "Acquiring live GPS coordinates and reverse geocoding locality..."
+                    : "Detect your exact device location without hardcoded city defaults"}
                 </p>
               </div>
             </div>
@@ -401,52 +386,19 @@ export function LocationPickerModal({ isOpen, onClose }: LocationPickerModalProp
           </button>
 
           {/* GPS Inline Error */}
-          {gpsError && (
-            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-start gap-2 animate-in fade-in">
-              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>{gpsError}</span>
-            </div>
-          )}
-
-          {/* GPS Detected Confirmation Card */}
-          {detectedGpsLocation && (
-            <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-3 animate-in fade-in">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
-                    <CheckCircle2 className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
-                      Location Detected via Device GPS
-                    </span>
-                    <p className="text-sm font-bold text-gray-900 mt-0.5">
-                      {detectedGpsLocation.name}, {detectedGpsLocation.city}
-                    </p>
-                  </div>
-                </div>
-                {detectedGpsLocation.pincode && (
-                  <span className="text-xs font-semibold bg-white px-2 py-0.5 rounded border border-emerald-200 text-emerald-800">
-                    PIN {detectedGpsLocation.pincode}
-                  </span>
-                )}
+          {locationGpsError && (
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-center justify-between gap-2 animate-in fade-in">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{locationGpsError}</span>
               </div>
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={handleConfirmGpsLocation}
-                  className="flex-1 py-2 px-4 rounded-xl bg-[#E31E24] hover:bg-red-700 text-white text-xs font-bold shadow-xs transition cursor-pointer text-center"
-                >
-                  Confirm & Use This Location
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDetectedGpsLocation(null)}
-                  className="py-2 px-3 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs font-semibold cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleDetectGps}
+                className="shrink-0 px-2 py-1 rounded bg-red-600 text-white font-semibold text-[11px] hover:bg-red-700 transition"
+              >
+                Retry
+              </button>
             </div>
           )}
 

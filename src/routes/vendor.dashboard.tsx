@@ -77,7 +77,7 @@ function VendorDashboardContent() {
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("tab", tab);
-      window.history.replaceState({}, "", url.toString());
+      window.history.pushState({ tab }, "", url.toString());
     }
   };
 

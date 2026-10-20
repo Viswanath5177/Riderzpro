@@ -70,15 +70,35 @@ export async function getVerifiedAdmin(req: IncomingMessage): Promise<{
 
   const tokenHash = sha256(token);
   const sessRes = await query(
-    `SELECT user_id, user_role, expires_at 
+    `SELECT id, user_id, user_role, last_active_at, expires_at, revoked_at 
      FROM auth_sessions 
-     WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now() 
+     WHERE token_hash = $1 
      LIMIT 1`,
     [tokenHash]
   );
 
   if (sessRes.rows.length === 0) return null;
   const session = sessRes.rows[0];
+
+  if (session.revoked_at) return null;
+
+  const now = Date.now();
+  if (new Date(session.expires_at).getTime() <= now) return null;
+
+  // 10-minute sliding inactivity check
+  const lastActiveTime = session.last_active_at ? new Date(session.last_active_at).getTime() : 0;
+  if (lastActiveTime > 0 && now - lastActiveTime > 10 * 60 * 1000) {
+    await query("UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE id = $1", [session.id]).catch(() => {});
+    return null;
+  }
+
+  // Update sliding activity timestamp on valid admin activity
+  const passiveHeader = req.headers["x-passive-poll"] || req.headers["x-background-poll"];
+  if (passiveHeader !== "true" && passiveHeader !== "1") {
+    if (now - lastActiveTime > 5000) {
+      query("UPDATE auth_sessions SET last_active_at = CURRENT_TIMESTAMP WHERE id = $1", [session.id]).catch(() => {});
+    }
+  }
 
   if (session.user_role === "customer" || session.user_role === "seller") {
     return null;
@@ -554,14 +574,14 @@ export async function handleSuperAdminRoute(
 
       await query(
         `INSERT INTO admins (id, email, password_hash, full_name, role, is_active, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, 1, now(), now())`,
+         VALUES ($1, $2, $3, $4, $5, true, now(), now())`,
         [adminId, email, passwordHash, fullName, role]
       );
 
       // Sync into users table for unified sessions
       await query(
         `INSERT INTO users (id, email, password_hash, full_name, role, is_active, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, 1, now(), now())
+         VALUES ($1, $2, $3, $4, $5, true, now(), now())
          ON CONFLICT(email) DO UPDATE SET role = excluded.role, password_hash = excluded.password_hash`,
         [`usr_${adminId}`, email, passwordHash, fullName, role.toLowerCase()]
       ).catch(() => {});
@@ -603,7 +623,7 @@ export async function handleSuperAdminRoute(
         return sendJson(res, 404, { success: false, error: "Admin account not found." });
       }
 
-      const newActive = cur.rows[0].is_active ? 0 : 1;
+      const newActive = Boolean(cur.rows[0].is_active) ? false : true;
       await query("UPDATE admins SET is_active = $1, updated_at = now() WHERE id = $2", [newActive, targetAdminId]);
 
       await recordAuditLog({

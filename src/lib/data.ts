@@ -27,6 +27,7 @@ export type LocationArea = {
   area?: string;
   address?: string;
   source?: LocationSource;
+  isManual?: boolean;
 };
 
 export type NormalizedLocation = {
@@ -247,14 +248,15 @@ export type Rider = { id: string; name: string; phone: string; vehicle: string; 
 export const CUSTOMER_LOCATION = { lat: 12.9716, lng: 77.5946, label: "MG Road, Bengaluru" };
 
 export const DEFAULT_LOCATION: LocationArea = {
-  id: "indiranagar",
-  name: "Indiranagar",
-  city: "Bengaluru",
-  lat: 12.9784,
-  lng: 77.6408,
-  pincode: "560038",
-  tag: "Central-East Hub",
-  isPopular: true,
+  id: "detecting",
+  name: "Detecting location...",
+  city: "",
+  state: "",
+  lat: 0,
+  lng: 0,
+  pincode: "",
+  source: "gps",
+  isManual: false,
 };
 
 export const POPULAR_LOCATIONS: LocationArea[] = [
@@ -574,6 +576,9 @@ export const inr = (n: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 
 export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  if (!a || !b || (a.lat === 0 && a.lng === 0) || (b.lat === 0 && b.lng === 0)) {
+    return 4.5;
+  }
   const R = 6371;
   const dLat = ((b.lat - a.lat) * Math.PI) / 180;
   const dLng = ((b.lng - a.lng) * Math.PI) / 180;

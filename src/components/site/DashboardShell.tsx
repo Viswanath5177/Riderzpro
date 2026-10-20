@@ -132,36 +132,42 @@ export function DashboardShell({
 
             {showProfileMenu && (
               <div className="absolute bottom-full left-0 right-0 mb-2 rounded-2xl border border-border bg-card p-1.5 shadow-xl animate-in fade-in slide-in-from-bottom-2 z-50">
-                <button
-                  onClick={() => {
-                    onSelect("shop");
-                    setShowProfileMenu(false);
-                  }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
-                >
-                  <Store className="h-4 w-4 text-primary" />
-                  <span>My Shop</span>
-                </button>
-                <button
-                  onClick={() => {
-                    onSelect("reviews");
-                    setShowProfileMenu(false);
-                  }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
-                >
-                  <MessageSquare className="h-4 w-4 text-amber-500" />
-                  <span>Customer reviews</span>
-                </button>
-                <button
-                  onClick={() => {
-                    onSelect("settings");
-                    setShowProfileMenu(false);
-                  }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
-                >
-                  <Settings className="h-4 w-4 text-primary" />
-                  <span>Shop settings</span>
-                </button>
+                {sections.some((s) => s.id === "shop") && (
+                  <button
+                    onClick={() => {
+                      onSelect("shop");
+                      setShowProfileMenu(false);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+                  >
+                    <Store className="h-4 w-4 text-primary" />
+                    <span>My Shop</span>
+                  </button>
+                )}
+                {sections.some((s) => s.id === "reviews") && (
+                  <button
+                    onClick={() => {
+                      onSelect("reviews");
+                      setShowProfileMenu(false);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+                  >
+                    <MessageSquare className="h-4 w-4 text-amber-500" />
+                    <span>Customer reviews</span>
+                  </button>
+                )}
+                {sections.some((s) => s.id === "settings") && (
+                  <button
+                    onClick={() => {
+                      onSelect("settings");
+                      setShowProfileMenu(false);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+                  >
+                    <Settings className="h-4 w-4 text-primary" />
+                    <span>Shop settings</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -257,39 +263,45 @@ export function DashboardShell({
 
                 {showProfileMenu && (
                   <div className="mt-1 rounded-2xl border border-border bg-card p-1.5 shadow-xl">
-                    <button
-                      onClick={() => {
-                        onSelect("shop");
-                        setShowProfileMenu(false);
-                        setIsMobileDrawerOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
-                    >
-                      <Store className="h-4 w-4 text-primary" />
-                      <span>My Shop</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        onSelect("reviews");
-                        setShowProfileMenu(false);
-                        setIsMobileDrawerOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
-                    >
-                      <MessageSquare className="h-4 w-4 text-amber-500" />
-                      <span>Customer reviews</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        onSelect("settings");
-                        setShowProfileMenu(false);
-                        setIsMobileDrawerOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
-                    >
-                      <Settings className="h-4 w-4 text-primary" />
-                      <span>Shop settings</span>
-                    </button>
+                    {sections.some((s) => s.id === "shop") && (
+                      <button
+                        onClick={() => {
+                          onSelect("shop");
+                          setShowProfileMenu(false);
+                          setIsMobileDrawerOpen(false);
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+                      >
+                        <Store className="h-4 w-4 text-primary" />
+                        <span>My Shop</span>
+                      </button>
+                    )}
+                    {sections.some((s) => s.id === "reviews") && (
+                      <button
+                        onClick={() => {
+                          onSelect("reviews");
+                          setShowProfileMenu(false);
+                          setIsMobileDrawerOpen(false);
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+                      >
+                        <MessageSquare className="h-4 w-4 text-amber-500" />
+                        <span>Customer reviews</span>
+                      </button>
+                    )}
+                    {sections.some((s) => s.id === "settings") && (
+                      <button
+                        onClick={() => {
+                          onSelect("settings");
+                          setShowProfileMenu(false);
+                          setIsMobileDrawerOpen(false);
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+                      >
+                        <Settings className="h-4 w-4 text-primary" />
+                        <span>Shop settings</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

@@ -57,14 +57,32 @@ export async function getSessionUser(req: IncomingMessage): Promise<SessionUser 
 
   // 1. Check PostgreSQL auth_sessions if pool is available
   try {
-    const result = await query<{ user_id: string; user_role: string }>(
-      `SELECT user_id, user_role FROM auth_sessions
-        WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now()
+    const result = await query<{ id: string; user_id: string; user_role: string; last_active_at: string; expires_at: string; revoked_at: string | null }>(
+      `SELECT id, user_id, user_role, last_active_at, expires_at, revoked_at FROM auth_sessions
+        WHERE token_hash = $1
         LIMIT 1`,
       [tokenHash],
     );
     if (result.rows[0]) {
-      const { user_id, user_role } = result.rows[0];
+      const sess = result.rows[0];
+      if (sess.revoked_at) return null;
+      const now = Date.now();
+      if (new Date(sess.expires_at).getTime() <= now) return null;
+
+      const lastActiveTime = sess.last_active_at ? new Date(sess.last_active_at).getTime() : 0;
+      if (lastActiveTime > 0 && now - lastActiveTime > 10 * 60 * 1000) {
+        await query("UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE id = $1", [sess.id]).catch(() => {});
+        return null;
+      }
+
+      const passiveHeader = req.headers["x-passive-poll"] || req.headers["x-background-poll"];
+      if (passiveHeader !== "true" && passiveHeader !== "1") {
+        if (now - lastActiveTime > 5000) {
+          query("UPDATE auth_sessions SET last_active_at = CURRENT_TIMESTAMP WHERE id = $1", [sess.id]).catch(() => {});
+        }
+      }
+
+      const { user_id, user_role } = sess;
 
       // Cross-reference with users table to ensure user is active and role is fresh
       try {

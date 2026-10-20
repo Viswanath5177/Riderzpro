@@ -25,15 +25,18 @@ const STATIC_VENDOR_ROUTES = new Set(["login", "sign-up", "signup"]);
 
 interface VendorSearchParams {
   tab?: VendorAllowedTab;
+  action?: string;
 }
 
 export const Route = createFileRoute("/vendor/$id")({
   validateSearch: (search: Record<string, unknown>): VendorSearchParams => {
-    const rawTab = typeof search["tab"] === "string" ? search["tab"] : "overview";
+    let rawTab = typeof search["tab"] === "string" ? search["tab"] : "overview";
+    if (rawTab === "products" || rawTab === "product") rawTab = "listings";
     const tab = VENDOR_ALLOWED_TABS.includes(rawTab as VendorAllowedTab)
       ? (rawTab as VendorAllowedTab)
       : "overview";
-    return { tab };
+    const action = typeof search["action"] === "string" ? (search["action"] as string) : undefined;
+    return { tab, action };
   },
   beforeLoad: async ({ params, search }) => {
     if (typeof window === "undefined") {
@@ -53,9 +56,13 @@ export const Route = createFileRoute("/vendor/$id")({
     const user = await getCurrentUser();
 
     if (!role || (role !== "seller" && role !== "ADMIN" && role !== "SUPER_ADMIN" && role !== "admin" && role !== "super_admin")) {
+      const queryParts: string[] = [];
+      if (search.tab) queryParts.push(`tab=${search.tab}`);
+      if (search.action) queryParts.push(`action=${search.action}`);
+      const queryStr = queryParts.length ? `?${queryParts.join("&")}` : "";
       throw redirect({
         to: "/vendor/login",
-        search: { redirect: `/vendor/${params.id}${search["tab"] ? `?tab=${search["tab"]}` : ""}` },
+        search: { redirect: `/vendor/${params.id}${queryStr}` },
       });
     }
 
@@ -64,7 +71,7 @@ export const Route = createFileRoute("/vendor/$id")({
       throw redirect({
         to: "/vendor/$id",
         params: { id: user.id },
-        search: { tab: search["tab"] || "overview" },
+        search: { tab: search["tab"] || "overview", action: search["action"] },
       });
     }
 
@@ -112,15 +119,25 @@ function VendorDashboardRoute() {
     navigate({
       to: "/vendor/$id",
       params: { id },
-      search: { tab: newTab as VendorAllowedTab },
-      replace: true,
+      search: { tab: newTab as VendorAllowedTab, action: undefined },
+    });
+  };
+
+  const handleActionChange = (newAction?: string) => {
+    navigate({
+      to: "/vendor/$id",
+      params: { id },
+      search: { tab: search["tab"] || "overview", action: newAction },
     });
   };
 
   return (
     <VendorDashboard
+      vendorId={id}
       initialTab={search["tab"] || "overview"}
+      initialAction={search["action"]}
       onTabChange={handleTabChange}
+      onActionChange={handleActionChange}
     />
   );
 }
